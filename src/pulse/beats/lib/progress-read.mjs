@@ -239,10 +239,10 @@ export async function readClientProgress(db, { orgId, clientId, now = new Date()
       .then((r) => (r && Array.isArray(r.held) ? r.held : [])))
   ]);
 
-  const referral = await readReferral(db, { orgId, clientId, customFields, env });
-
-  const stageKey = await soft("repair_stage", null,
-    () => readRepairStage(db, { orgId, clientId }));
+  const [referral, stageKey] = await Promise.all([
+    readReferral(db, { orgId, clientId, customFields, env }),
+    soft("repair_stage", null, () => readRepairStage(db, { orgId, clientId }))
+  ]);
 
   // ── scores ───────────────────────────────────────────────────────────────
   const personalReportId = newestDocumentId(documentRows, PERSONAL_REPORT_SUBTYPE);

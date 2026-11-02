@@ -191,7 +191,7 @@ test("runtime: live + mocked model → reply path uses agent sender (dispatch mo
   let agentRow = {
     code: "GHL-A1", name: "Lead Follow-up", status: "live",
     agent_class: "client_facing", channel: "sms_email", runtime: "anthropic",
-    from_name: "Josh at Fundhub", booking_enabled: true,
+    from_name: "Chris at Fundhub", booking_enabled: true,
     prompt: "You book strategy calls. Never promise amounts. STOP on a complaint, a legal threat, distress.",
     guardrails: {
       stop_words: ["complaint", "lawsuit"],
@@ -315,7 +315,7 @@ test("runtime: shadow status logs would-be reply and sends nothing", async () =>
   const shadows = [];
   const agentRow = {
     code: "GHL-A1", status: "shadow", agent_class: "client_facing",
-    channel: "sms_email", runtime: "anthropic", from_name: "Josh",
+    channel: "sms_email", runtime: "anthropic", from_name: "Chris",
     booking_enabled: true,
     prompt: "You book calls. STOP on a complaint.",
     guardrails: { stop_words: ["complaint"], authority: { msgcap: 8, disc: 0 }, flags: { noamount: true } }

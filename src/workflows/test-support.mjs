@@ -9,6 +9,7 @@
 
 export function pgFake(seed = {}) {
   const clients = seed.clients || [];
+  const accounts = seed.accounts || [];
   const events = seed.events || [];
   const templates = seed.templates || [];
   const bookings = seed.bookings || [];
@@ -32,8 +33,24 @@ export function pgFake(seed = {}) {
     clients.find((c) => c.org_id === org && String(c.email || "").toLowerCase() === String(email).toLowerCase());
 
   return {
-    clients, events, templates, bookings, messages, tasks, fundingRounds, applications, inquiryLog, pipelineStages, cards, behaviorScores, invoices, invoicePayments, paymentLinks, crsResults,
+    clients, accounts, events, templates, bookings, messages, tasks, fundingRounds, applications, inquiryLog, pipelineStages, cards, behaviorScores, invoices, invoicePayments, paymentLinks, crsResults,
     async query(sql, params = []) {
+      if (/SELECT self_signup FROM account_signup_policy/.test(sql)) {
+        return { rows: [{ self_signup: true }] };
+      }
+      if (/SELECT id, email, first_name, last_name FROM clients/.test(sql)) {
+        const c = clients.find((row) => row.id === params[0] && row.org_id === params[1]);
+        return { rows: c ? [{ id: c.id, email: c.email, first_name: c.first_name, last_name: c.last_name }] : [] };
+      }
+      if (/SELECT id, kind, client_id, status FROM accounts/.test(sql)) {
+        const a = accounts.find((row) => row.org_id === params[0] && String(row.email).toLowerCase() === params[1]);
+        return { rows: a ? [{ id: a.id, kind: a.kind, client_id: a.client_id, status: a.status }] : [] };
+      }
+      if (/INSERT INTO accounts/.test(sql)) {
+        const row = { id: "acct-" + ++n, org_id: params[0], kind: params[1], email: params[2], name: params[3], status: params[5], client_id: params[6] };
+        accounts.push(row);
+        return { rows: [{ id: row.id, kind: row.kind, email: row.email, status: row.status }] };
+      }
       if (/SELECT starts_at FROM bookings/.test(sql)) {
         const row = bookings
           .filter((b) => b.org_id === params[0] && b.client_id === params[1] &&

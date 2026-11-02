@@ -205,8 +205,8 @@ SELECT count(DISTINCT m.id)::int AS sample_count,
 // Written by src/messaging/gate.mjs gateAndRecord (status, blocked_reason,
 // blocked_at, and a createTask for restricted wording) and dispatch.mjs finalise
 // (status 'blocked' with last_error). The task body is "<message id>:<codes>".
-// opted_out, quiet_hours, recipient_unknown and gate_error clear on their own and
-// raise no task; every other code is restricted wording and does.
+// opted_out, quiet_hours, drip_hours, recipient_unknown and gate_error clear on their
+// own and raise no task; every other code is restricted wording and does.
 //
 // The gate can also fail the other way: let a message out that it should have
 // stopped. That leaves no blocked row, so sent and delivered staff messages are in
@@ -223,7 +223,7 @@ SELECT count(DISTINCT m.id)::int AS sample_count,
                   AND NULLIF(BTRIM(COALESCE(m.last_error, '')), '') IS NULL))
          OR (NULLIF(BTRIM(COALESCE(m.blocked_reason, '')), '') IS NOT NULL AND m.blocked_at IS NULL)
          OR (NULLIF(BTRIM(COALESCE(m.blocked_reason, '')), '') IS NOT NULL
-             AND m.blocked_reason !~ '^(opted_out|quiet_hours|recipient_unknown|gate_error)(,(opted_out|quiet_hours|recipient_unknown|gate_error))*$'
+             AND m.blocked_reason !~ '^(opted_out|quiet_hours|drip_hours|recipient_unknown|gate_error)(,(opted_out|quiet_hours|drip_hours|recipient_unknown|gate_error))*$'
              AND (t.assignee_role IS NULL OR t.assignee_role NOT IN (${quote(TASK_ASSIGNEE_ROLES)})))
          OR ${SENT_WHILE_OPTED_OUT}
          OR ${SENT_WITH_RESTRICTED_WORDS})::int AS bad_count

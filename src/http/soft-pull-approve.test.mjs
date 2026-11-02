@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import handler, {
   ageMonthsFromIncorporated,
+  clientPullProgress,
   ensureSoftPullCheckout,
   normalizeSoftPullEin,
   parseIncorporatedDate,
@@ -11,6 +12,8 @@ import handler, {
 } from "../../api/soft-pull-approve.mjs";
 import { softPullTotalCents } from "../finance/soft-pull-pricing.mjs";
 import { ConsentError } from "../consent/index.mjs";
+import { resumePaidDiagnosticSoftPull } from "../handlers/diagnostic-soft-pull.mjs";
+import { signature } from "../consent/approve-token.mjs";
 
 function row(over = {}) {
   return {
@@ -243,6 +246,7 @@ test("ensureSoftPullCheckout reuses matching open link", async () => {
   const db = {
     async query(sql, params) {
       calls.push({ sql: String(sql), params });
+      if (/status = 'paid'/i.test(sql)) return { rows: [] };
       if (/amount_cents = \$4/i.test(sql) && /ORDER BY created_at/i.test(sql)) {
         return { rows: [link] };
       }
@@ -258,4 +262,224 @@ test("ensureSoftPullCheckout reuses matching open link", async () => {
   });
   assert.equal(out.checkout_url, link.checkout_url);
   assert.equal(out.amount_cents, 4200);
+});
+
+test("paid diagnostic never gets a second checkout, even if the form total changed", async () => {
+  const paid = { id: "paid-1", status: "paid", amount_cents: 3200 };
+  const calls = [];
+  const database = { async query(sql) {
+    calls.push(String(sql));
+    if (/status = 'paid'/i.test(sql)) return { rows: [paid] };
+    throw new Error("a second checkout query must not run");
+  } };
+  const out = await ensureSoftPullCheckout(database, {
+    orgId: "o", clientId: "c", amountCents: 4200, env: {}
+  });
+  assert.equal(out, paid);
+  assert.equal(calls.length, 1);
+});
+
+test("consent after verified payment resumes the same event once; failure stays paid", async () => {
+  const event = { id: "event-paid-1", org_id: "org-1", client_id: "client-1",
+    payload: { source: "commas", product: "crs", amount: 32 } };
+  const database = { async query(sql, params) {
+    assert.match(sql, /name = 'diagnostic.paid'/);
+    assert.deepEqual(params, ["org-1", "client-1"]);
+    return { rows: [event] };
+  } };
+  const calls = [];
+  const paid = await resumePaidDiagnosticSoftPull(database, {
+    orgId: "org-1", clientId: "client-1", amountCents: 3200,
+    runPaidPull: async (original) => {
+      calls.push(original.id);
+      return { pulled: true, requestId: "pull-1" };
+    }
+  });
+  assert.equal(paid.paid, true);
+  assert.equal(paid.pull.pulled, true);
+  assert.deepEqual(calls, ["event-paid-1"]);
+  const failed = await resumePaidDiagnosticSoftPull(database, {
+    orgId: "org-1", clientId: "client-1", amountCents: 3200,
+    runPaidPull: async () => { throw new Error("CRS unavailable"); }
+  });
+  assert.equal(failed.paid, true);
+  assert.equal(failed.pull, null);
+  assert.match(failed.error, /CRS unavailable/);
+});
+
+test("different paid amount does not pull or create a second checkout", async () => {
+  const database = { async query() { return { rows: [{ id: "event-1", org_id: "o", client_id: "c",
+    payload: { source: "commas", product: "crs", amount: 32 } }] }; } };
+  const out = await resumePaidDiagnosticSoftPull(database, {
+    orgId: "o", clientId: "c", amountCents: 4200,
+    runPaidPull: async () => { throw new Error("must not pull"); }
+  });
+  assert.equal(out.paid, true);
+  assert.equal(out.reason, "paid_amount_mismatch");
+});
+
+test("portal approval GET derives client and org from session, never query fields", async () => {
+  const orgId = "11111111-1111-4111-8111-111111111111";
+  const clientId = "22222222-2222-4222-8222-222222222222";
+  const queries = [];
+  const database = { async query(sql, params) {
+    queries.push({ sql: String(sql), params });
+    if (/FROM clients/.test(sql)) return { rows: [{ id: clientId, first_name: "Sam", last_name: "Buyer" }] };
+    if (/FROM client_consents/.test(sql)) return { rows: [] };
+    if (/FROM events/.test(sql)) return { rows: [] };
+    if (/FROM payment_links/.test(sql)) return { rows: [] };
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: [] };
+    if (/FROM crs_results/.test(sql)) return { rows: [] };
+    throw new Error(`unexpected query: ${String(sql).slice(0, 80)}`);
+  } };
+  const response = { statusCode: 0, body: null,
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; }
+  };
+  await handler({ method: "GET", query: { portal: "1", org: "spoofed", client: "spoofed" } }, response, {
+    db: database,
+    requirePrincipal: async () => ({ kind: "client", orgId, clientId, accountId: "account-1" })
+  });
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.ok, true);
+  assert.equal(response.body.contact.first_name, "Sam");
+  assert.deepEqual(response.body.pull, { status: "not_started", result_ready: false });
+  assert.deepEqual(queries[0].params, [clientId, orgId]);
+  assert.equal(JSON.stringify(response.body).includes("ssn"), false);
+});
+
+test("client progress only completes for a real result tied to the latest request", async () => {
+  const requestedAt = "2026-10-31T18:00:00Z";
+  let request = { id: "request-2", status: "processing", requested_at: requestedAt, crs_result_id: null };
+  let result = { id: "result-1", created_at: "2026-10-30T18:00:00Z", result: { bureaus: {} }, is_demo: false };
+  const database = { async query(sql) {
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: request ? [request] : [] };
+    if (/FROM crs_results/.test(sql)) return { rows: result ? [result] : [] };
+    throw new Error("unexpected query");
+  } };
+  const args = { orgId: "org-1", clientId: "client-1" };
+  assert.deepEqual(await clientPullProgress(database, args), { status: "processing", result_ready: false });
+  result = { ...result, id: "result-2", created_at: "2026-10-31T18:01:00Z", is_demo: true };
+  assert.deepEqual(await clientPullProgress(database, args), { status: "processing", result_ready: false });
+  result = { ...result, is_demo: false };
+  assert.deepEqual(await clientPullProgress(database, args), { status: "complete", result_ready: true });
+  request = { ...request, status: "failed", requested_at: "2026-10-31T18:02:00Z" };
+  assert.deepEqual(await clientPullProgress(database, args), { status: "failed", result_ready: false });
+});
+
+test("signed soft-pull link sends a client without an account to portal claim", async () => {
+  const orgId = "11111111-1111-4111-8111-111111111111";
+  const clientId = "22222222-2222-4222-8222-222222222222";
+  const secret = "test-soft-pull-secret";
+  const exp = String(Math.floor(Date.now() / 1000) + 3600);
+  const query = { org: orgId, client: clientId, exp,
+    sig: signature({ orgId, clientId, expiresAt: Number(exp), secret }) };
+  const database = { async query(sql) {
+    if (/FROM clients/.test(sql)) return { rows: [{ id: clientId, email: "buyer@example.test" }] };
+    throw new Error("consent and identity must not be touched without a client session");
+  } };
+  for (const method of ["GET", "POST"]) {
+    const response = { statusCode: 0, body: null,
+      status(code) { this.statusCode = code; return this; },
+      json(body) { this.body = body; return this; }
+    };
+    await handler({ method, query, body: { granted_name: "Sam Buyer" } }, response, {
+      db: database, secret, resolvePrincipal: async () => null
+    });
+    assert.equal(response.statusCode, 401);
+    assert.equal(response.body.error, "account_required");
+    assert.equal(response.body.create_account_url, "/portal-login.html?mode=claim");
+  }
+});
+
+test("replaceSoftPullBusinesses rolls back a mid-list failure and replays without duplicates", async () => {
+  // A disposable transaction-aware fake: no customer, bureau, payment or
+  // production database is involved.
+  const rows = [
+    { org: "org-A", client: "client-A", name: "Prior LLC", source: "soft_pull_approve" },
+    { org: "org-B", client: "client-B", name: "Other company", source: "soft_pull_approve" }
+  ];
+  let failSecond = true;
+  let inserts = 0;
+  let releases = 0;
+  const queries = [];
+  const pool = {
+    async connect() {
+      let snapshot = null;
+      return {
+        async query(sql, params = []) {
+          const statement = String(sql).trim();
+          queries.push({ statement, params });
+          if (statement === "BEGIN") {
+            snapshot = rows.map((r) => ({ ...r }));
+            return { rows: [] };
+          }
+          if (statement === "ROLLBACK") {
+            rows.splice(0, rows.length, ...snapshot.map((r) => ({ ...r })));
+            return { rows: [] };
+          }
+          if (statement === "COMMIT") return { rows: [] };
+          if (/^SELECT id FROM clients/.test(statement)) {
+            assert.match(statement, /org_id = \$2 FOR UPDATE/);
+            return { rows: params[0] === "client-A" && params[1] === "org-A"
+              ? [{ id: "client-A" }] : [] };
+          }
+          if (/^DELETE FROM businesses/.test(statement)) {
+            for (let i = rows.length - 1; i >= 0; i--) {
+              if (rows[i].org === params[0] && rows[i].client === params[1]
+                  && rows[i].source === params[2]) rows.splice(i, 1);
+            }
+            return { rows: [] };
+          }
+          if (/^INSERT INTO businesses/.test(statement)) {
+            inserts += 1;
+            if (failSecond && inserts === 2) throw new Error("synthetic insert failure");
+            rows.push({ org: params[0], client: params[1], name: params[2],
+              source: JSON.parse(params[4]).source });
+            return { rows: [] };
+          }
+          throw new Error("Unexpected SQL");
+        },
+        release() { releases += 1; }
+      };
+    }
+  };
+  const businesses = [
+    { name: "New A", age_months: 12 },
+    { name: "New B", age_months: 18 }
+  ];
+  await assert.rejects(
+    replaceSoftPullBusinesses(pool, { orgId: "org-A", clientId: "client-A", businesses }),
+    /synthetic insert failure/
+  );
+  assert.deepEqual(rows.map((r) => r.name), ["Prior LLC", "Other company"],
+    "a failed second insert must not erase the previously approved businesses");
+  assert.equal(queries.filter((q) => q.statement === "ROLLBACK").length, 1);
+  assert.equal(releases, 1);
+  failSecond = false;
+  await replaceSoftPullBusinesses(pool, { orgId: "org-A", clientId: "client-A", businesses });
+  await replaceSoftPullBusinesses(pool, { orgId: "org-A", clientId: "client-A", businesses });
+  assert.deepEqual(rows.map((r) => r.name), ["Other company", "New A", "New B"]);
+  assert.equal(releases, 3);
+  assert.equal(queries.filter((q) => q.statement === "COMMIT").length, 2);
+});
+
+test("replaceSoftPullBusinesses rejects a wrong-org client before deletion", async () => {
+  let deleted = false, rolledBack = false, released = false;
+  const pool = { async connect() { return {
+    async query(sql) {
+      if (/^SELECT id FROM clients/.test(String(sql).trim())) return { rows: [] };
+      if (/^DELETE FROM businesses/.test(String(sql).trim())) deleted = true;
+      if (sql === "ROLLBACK") rolledBack = true;
+      return { rows: [] };
+    },
+    release() { released = true; }
+  }; } };
+  await assert.rejects(
+    replaceSoftPullBusinesses(pool, { orgId: "wrong-org", clientId: "client-A", businesses: [] }),
+    (e) => e instanceof ConsentError && e.code === "not_found"
+  );
+  assert.equal(deleted, false);
+  assert.equal(rolledBack, true);
+  assert.equal(released, true);
 });

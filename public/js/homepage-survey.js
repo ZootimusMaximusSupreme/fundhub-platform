@@ -57,7 +57,8 @@
       id: "current_score",
       title: "Your Current Score",
       type: "single",
-      options: ["500-579", "580-649", "650-699", "700-749", "750+", "Not sure"],
+      // Owner-set score ranges (2026-10-31), same as the /apply survey.
+      options: ["500-619", "620-699", "700-759", "760-850", "Not sure"],
     },
     {
       id: "has_negatives",

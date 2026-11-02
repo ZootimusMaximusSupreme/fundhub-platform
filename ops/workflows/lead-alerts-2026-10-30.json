@@ -1,18 +1,18 @@
 {
   "task": "Fix staff lead alerts for setters and closers",
   "owner": "Codex root",
-  "base": "origin/main b10099a16",
+  "base": "origin/main 50788ff4d",
   "workflows": [
     {
       "name": "SMS and event routing",
       "owner": "Codex root",
-      "status": "implemented_and_verified_locally",
+      "status": "merged_and_shipped_web",
       "prompt": "Trace lead intake, assignment, booking, setter-set, closer SMS. Implement Chris's requested setter immediate SMS with contact, survey and booking status; closer SMS on set and upcoming client. Work only in /private/tmp/fundhub-lead-alerts-2026-10-30. Avoid duplicate sends. Test and deliver via GitHub."
     },
     {
       "name": "Phone push and tap route",
       "owner": "push_trace agent",
-      "status": "implemented_and_verified_locally",
+      "status": "merged_and_shipped_web_ios_build7_exported",
       "prompt": "Implement native staff APNs registration, fixed lead/set/upcoming payloads, durable alert deduplication, and tap-to-contact routing for the setter and closer dashboards. Verify focused tests and Swift syntax."
     }
   ],
@@ -22,12 +22,15 @@
     "typescript": "npx tsc --noEmit passed after main merge",
     "ios_simulator_build": "passed after tap-session binding correction",
     "ios_simulator_tests": "22 passed including cross-session notification tap refusal",
-    "ios_app_store_ipa": "Earlier iOS 1.0.2 build 6 is VALID but predates the tap-session correction. A new signed build is required after the web pipeline ships; owner has held app release.",
-    "app_store_current": "iOS 1.0 live; 1.0.1 pending developer release",
-    "github_ci": "Run 41122167424 passed full browser suite; unit shards 3 and 4 exposed stale retired-control counts and positional proof assumptions. Both fixed locally; fresh run required after push.",
+    "ios_app_store_ipa": "iOS 1.0.2 build 7 archived and exported after tap-session correction; Apple validation and upload pending.",
+    "app_store_current": "iOS 1.0.1 build 4 READY_FOR_SALE after release request; 1.0.2 build 6 VALID but stale.",
+    "github_ci": "PR #320 run 41128268044 passed all 14 jobs; merge 1626c698 shipped by run 41130879283; live /api/health pending 0.",
     "full_npm_test": "interrupted after 8667 tests with no reported failures because the runner stopped progressing",
-    "app_release": "Owner held app release until web pipeline is ready, deployed, shipped, and verified; do not release 1.0.1 or 1.0.2 yet.",
+    "app_release": "Owner condition met for web ship; 1.0.1 released. Preparing iOS 1.0.2 build 7 for review. No physical iPhone APNs receipt yet.",
     "lint": "4428 files and inline scripts parse clean after CI repair batch"
   },
-  "leftovers": []
+  "leftovers": [
+    "Pre-existing message-health red: one booking.created customer confirmation SMS has no text row; investigate separately from staff alert send path.",
+    "Physical staff iPhone APNs and SMS receipt not yet observed."
+  ]
 }

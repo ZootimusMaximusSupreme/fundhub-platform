@@ -600,17 +600,17 @@ export async function runCrsPull(db, {
     });
   }
 
-  /* CLAIM BEFORE ANY PROVIDER CALL. coordinateCrsResult only fulfils a
-     processing row, and claiming here is what makes a concurrent second runner
-     lose the race instead of ordering the same consumer twice. A row already
-     claimed by this worker is fine to continue; any other open state is not. */
-  if (ledger.status === "queued") {
-    const claim = await claimSoftPull(db, { requestId, orgId, clientId });
-    if (!claim.claimed && claim.reason !== "already_claimed") {
-      throw new SoftPullError(`soft pull request is already ${claim.reason}`, { status: 409 });
-    }
-  } else if (ledger.status !== "processing") {
+  /* EXCLUSIVE CLAIM BEFORE ANY PROVIDER CALL. A SELECT of QUEUED is only
+     a snapshot: another worker may win the atomic UPDATE before this one.
+     ONLY the queued -> processing UPDATE winner may cross the bureau fence.
+     A losing or preexisting processing request needs manual reconciliation,
+     not a second credit order. No automatic retry of ambiguous provider work. */
+  if (ledger.status !== "queued") {
     throw new SoftPullError(`soft pull request is already ${ledger.status}`, { status: 409 });
+  }
+  const claim = await claimSoftPull(db, { requestId, orgId, clientId });
+  if (!claim.claimed) {
+    throw new SoftPullError(`soft pull request is already ${claim.reason}`, { status: 409 });
   }
 
   const crs = client || createCrsClient({ env, fetchImpl });

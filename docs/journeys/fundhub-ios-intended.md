@@ -10,6 +10,7 @@
 5. **Open full portal** opens the existing Fundhub portal in an in-app view for documents, payments, messages, and other detailed actions.
 6. Sign out asks the server to revoke the session, then removes the native token and in-app web data. If the server cannot be reached, the app says that revocation could not be confirmed.
 7. The client can opt in to native iPhone notifications from Home only after the server and Apple signing are ready. The app registers this installation under the current client session; turning notifications off or signing out revokes it. A revoked or expired session must never receive another alert. Staff do not get this client notification card.
+7a. A client notification tap opens the in-app portal at most once, only after the app verifies that the same saved bearer still belongs to that client. Sign-out, a different account, a failed session refresh, or a cancelled tap consumes the queued open without opening the portal.
 
 ## Employees
 

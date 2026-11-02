@@ -368,6 +368,7 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "migrations/505_chris_setter_booking_alert.sql",
   "migrations/506_cortana_booking_feed.sql",
   "migrations/507_sales_set_stage.sql",
+  "migrations/508_qualification_bucket.sql",
   "migrations/520_ar_client_balance_issued_only.sql",
   "migrations/521_staff_roster_removal.sql",
   "migrations/522_staff_apns_devices.sql",
@@ -413,7 +414,11 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "seed/297_marketing_funnels.sql",
   "seed/298_s04_booking_app_confirm_email.sql",
   "seed/299_s04_confirm_ack.sql",
-  "seed/300_sms_noshow_copy_restore.sql"
+  "seed/300_booking_portal_claim.sql",
+  "seed/300_sms_noshow_copy_restore.sql",
+  "seed/301_followup_flows_copy.sql",
+  "seed/302_containment_plain_survey_copy.sql",
+  "seed/303_no_josh_chris.sql"
 ]);
 
 export default EXPECTED_MIGRATIONS;

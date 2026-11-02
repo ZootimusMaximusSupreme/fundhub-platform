@@ -164,11 +164,11 @@ describe("/api/agents", () => {
     assert.equal(r.body.agent.status, "draft");
   });
 
-  test("run refuses Setter Josh", async () => {
+  test("run refuses Setter Chris", async () => {
     stubDb({
       session: { role: "owner", orgId: ORG_A },
       answers: [[/SELECT[\s\S]*FROM agents/i, { rows: [agentRow({
-        code: "AG-04", name: "Setter Josh", agent_class: "client_facing",
+        code: "AG-04", name: "Setter Chris", agent_class: "client_facing",
         channel: "sms", status: "live"
       })] }]]
     });

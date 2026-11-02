@@ -82,7 +82,7 @@ describe("visual D, the credit optimization journey", () => {
     assert.match(html, /class="fhv-journey-rung" data-level="FULL_FUNDING"/, "no marker on the level the file is not at");
     assert.ok(html.includes('You are here</span><span class="fhv-journey-amt" data-fhv-count="0" data-fhv-key="today">$0</span>'));
     assert.ok(html.includes('Projects to</span><span class="fhv-journey-amt" data-fhv-count="8250" data-fhv-key="optimized">$8,250</span>'));
-    assert.match(html, /<svg class="fhv-journey-link"[^>]*><line x1="16\.667%" y1="120" x2="50\.001%" y2="90"/, "a dotted line climbs from today's rung to the projected one");
+    assert.match(html, /<svg class="fhv-journey-link"[^>]*><line x1="16\.667%" y1="90" x2="50\.001%" y2="65"/, "a dotted line climbs from today's rung to the projected one");
     for (const name of ["Repair only", "Funding plus repair", "Full funding"]) assert.ok(html.includes(">" + name + "<"), name);
     assert.ok(!html.includes("fhv-journey-tag"), "a real file carries no Sample tag");
     assert.ok(!html.includes("No pull on this file yet"));

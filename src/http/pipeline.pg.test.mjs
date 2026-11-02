@@ -156,8 +156,12 @@ test("Sales cards prefer the next active call, then the latest past call", { ski
   }
 
   try {
-    assert.equal(new Date((await cardFor("sales")).booked_starts_at).toISOString(), next);
-    assert.equal((await cardFor("optimization")).booked_starts_at, null);
+    const first = await cardFor("sales");
+    assert.equal(new Date(first.booked_starts_at).toISOString(), next);
+    assert.equal(first.booked_kind, "rescheduled");
+    const otherRail = await cardFor("optimization");
+    assert.equal(otherRail.booked_starts_at, null);
+    assert.equal(otherRail.booked_kind, null);
 
     await db.query(`UPDATE bookings SET status = 'cancelled' WHERE id = $1`, [inserted[1]]);
     assert.equal(new Date((await cardFor("sales")).booked_starts_at).toISOString(), later);
@@ -166,7 +170,9 @@ test("Sales cards prefer the next active call, then the latest past call", { ski
     assert.equal(new Date((await cardFor("sales")).booked_starts_at).toISOString(), earlier);
 
     await db.query(`UPDATE bookings SET status = 'cancelled' WHERE id = $1`, [inserted[0]]);
-    assert.equal((await cardFor("sales")).booked_starts_at, null);
+    const noBooking = await cardFor("sales");
+    assert.equal(noBooking.booked_starts_at, null);
+    assert.equal(noBooking.booked_kind, null);
   } finally {
     await db.query(`DELETE FROM bookings WHERE id = ANY($1::uuid[])`, [inserted]);
   }

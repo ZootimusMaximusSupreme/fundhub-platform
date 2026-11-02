@@ -52,7 +52,7 @@ export async function queueAffiliateTemplate(db, {
     contact: { first_name: first, email: dest },
     affiliate_link: link,
     affiliate_dashboard: dash,
-    sender_name: "Josh",
+    sender_name: "Chris",
     "cta-link": dash,
     custom_fields: { affiliate_tracking_id: trackingId || "" }
   };

@@ -86,7 +86,7 @@ export default async function handler(req, res) {
       )
     ]);
 
-    if (!rows.client) {
+    if (!rows.client || rows.client.custom_fields?.crm_archived_at) {
       return res.status(404).json({ ok: false, error: "client not found" });
     }
 

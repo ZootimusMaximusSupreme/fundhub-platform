@@ -85,7 +85,7 @@ export const KNOWN_TEMPLATES = [
   {
     template_key: "SMS-AISET03-MSG1",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, it's Josh from Fundhub! I just tried giving you a call about your Strategy Session. Looking at your file — you've been pre-approved for {{contact.analyzer_prequal_amount}} in capital. Just want to make sure your appointment still works? Reply STOP to opt out."
+    body: "Hey {{contact.first_name}}, it's Chris from Fundhub! I just tried giving you a call about your Strategy Session. Looking at your file — you've been pre-approved for {{contact.analyzer_prequal_amount}} in capital. Just want to make sure your appointment still works? Reply STOP to opt out."
   },
   {
     template_key: "SMS-AISET03-MSG2",
@@ -95,22 +95,22 @@ export const KNOWN_TEMPLATES = [
   {
     template_key: "SMS-AISET03-MSG3",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, I noticed we haven't been able to connect. Your pre-approval is still active but I can't hold your advisor's slot much longer. If you're still interested, reply YES and I'll get you rebooked. — Josh. Reply STOP to opt out."
+    body: "Hey {{contact.first_name}}, I noticed we haven't been able to connect. Your pre-approval is still active but I can't hold your advisor's slot much longer. If you're still interested, reply YES and I'll get you rebooked. — Chris. Reply STOP to opt out."
   },
   {
     template_key: "SMS-AISET04-HANDOFF",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, it's Josh from Fundhub. Your call starts in 15 minutes. I've intro'd your advisor so you're not walking in cold — link: {{appointment.meeting_location}}. See you soon. Reply STOP to opt out."
+    body: "Hey {{contact.first_name}}, it's Chris from Fundhub. Your call starts in 15 minutes. I've intro'd your advisor so you're not walking in cold — link: {{appointment.meeting_location}}. See you soon. Reply STOP to opt out."
   },
   {
     template_key: "SMS-BS01-01-BOOKED",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, it's Josh from Fundhub. You're booked — we'll text you again before the call. Need to move it? Just reply here. Reply STOP to opt out."
+    body: "Hey {{contact.first_name}}, it's Chris from Fundhub. You're booked — we'll text you again before the call. Need to move it? Just reply here. Reply STOP to opt out."
   },
   {
     template_key: "SMS-BS01-02-PRECALL",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, Josh from Fundhub here. Quick check-in before your call — reply if you have questions or need to reschedule. Looking forward to it. Reply STOP to opt out."
+    body: "Hey {{contact.first_name}}, Chris from Fundhub here. Quick check-in before your call — reply if you have questions or need to reschedule. Looking forward to it. Reply STOP to opt out."
   },
   {
     template_key: "SMS-BS01-03-DAYOF",
@@ -135,22 +135,22 @@ export const KNOWN_TEMPLATES = [
   {
     template_key: "SMS-NOBOOK-01",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, it's Josh from Fundhub. Your file is ready — grab a time so we can walk you through what it supports: {{custom_values.booking_link}} Reply STOP to opt out."
+    body: "Hey {{contact.first_name}}, it's Chris from Fundhub. Your file is ready — grab a time so we can walk you through what it supports: {{custom_values.booking_link}} Reply STOP to opt out."
   },
   {
     template_key: "SMS-NOBOOK-02",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, Josh from Fundhub here. Still worth a look — same file, wrong order of apps is usually the ceiling. Book here: {{custom_values.booking_link}} Reply STOP to opt out."
+    body: "Hey {{contact.first_name}}, Chris from Fundhub here. Still worth a look — same file, wrong order of apps is usually the ceiling. Book here: {{custom_values.booking_link}} Reply STOP to opt out."
   },
   {
     template_key: "SMS-NOBOOK-03",
     channel: "sms",
-    body: "Last nudge from Josh at Fundhub, {{contact.first_name}}. Want help mapping your cleanest path? {{custom_values.booking_link}} Reply STOP to opt out."
+    body: "Last nudge from Chris at Fundhub, {{contact.first_name}}. Want help mapping your cleanest path? {{custom_values.booking_link}} Reply STOP to opt out."
   },
   {
     template_key: "SMS-DPC04-RESCHEDULE-REBOOKING",
     channel: "sms",
-    body: "Hey {{contact.first_name}}, no worries about the reschedule! Here's the link to grab a new time that works better for you: {{calendar.booking_link}}. Looking forward to it! — Josh. Reply STOP to opt out."
+    body: "Hey {{contact.first_name}}, no worries about the reschedule! Here's the link to grab a new time that works better for you: {{calendar.booking_link}}. Looking forward to it! — Chris. Reply STOP to opt out."
   }
 ];
 

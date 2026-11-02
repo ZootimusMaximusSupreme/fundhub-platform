@@ -241,7 +241,7 @@ test("AI path that should dial and has no dial or failure row fails; a dial or a
   assert.equal(inGrace.by["calls:ai-dial-no-failure"].status, "PASS");
 });
 
-test("AI path: Josh not live, or outbound held by the fence, means no dial is expected", async () => {
+test("AI path: the setter not live, or outbound held by the fence, means no dial is expected", async () => {
   for (const [agent, word] of [
     [liveJosh({ agent_status: "retired" }), /retired/],
     [liveJosh({ agent_status: "draft" }), /draft/],
@@ -641,7 +641,7 @@ describe("gap-calls SQL on the Postgres engine, over fixture rows", { skip: HAVE
   const event = (o = {}) => ({ id: uid(), org_id: org, client_id: CL, name: "booking.created", is_demo: false, created_at: ago(2), payload: { bookingUid: "72964", email: "lead@example.com", startTime: ago(-24) }, ...o });
   const cfBody = (callId, email = true) => JSON.stringify({ id: 1054662981, type: "appointments/scheduled_event.created", data: { id: Number(callId), primary_contact: { first_name: "A", ...(email ? { email_address: "lead@example.com" } : {}) } } });
   const capture = (body, o = {}) => ({ id: uid(), org_id: null, provider: "clickfunnels", raw_body: body, created_at: ago(2), ...o });
-  const josh = (o = {}) => ({ org_id: org, code: "AG-04", status: "live", runtime: "bland", prompt: "You are Josh", ...o });
+  const josh = (o = {}) => ({ org_id: org, code: "AG-04", status: "live", runtime: "bland", prompt: "You are Chris", ...o });
 
   /* NOW is 2026-10-08, before join links were kept, so these cases count the join-link feed from the start of
      time; the JOIN_FEED_SINCE cut-off has its own case at the end of this block. */
@@ -702,7 +702,7 @@ describe("gap-calls SQL on the Postgres engine, over fixture rows", { skip: HAVE
     assert.equal(await status(id, { webhook_captures: [capture(cfBody(72964), { provider: "twilio" })] }), "PASS");
   });
 
-  test("ai-dial: live Josh, a late booking, a phone, no dial row and no failure row fails", async () => {
+  test("ai-dial: live setter, a late booking, a phone, no dial row and no failure row fails", async () => {
     const id = "calls:ai-dial-no-failure";
     const base = { agents: [josh()], clients: [client()], events: [event({ created_at: ago(1) })] };
     assert.equal(await status(id, base), "FAIL");
@@ -710,7 +710,7 @@ describe("gap-calls SQL on the Postgres engine, over fixture rows", { skip: HAVE
     assert.equal(await status(id, { ...base, failed_events: [{ org_id: org, event_id: null, client_id: CL, handler_name: "ai-set-01-josh-setter", first_seen_at: ago(0.9) }] }), "PASS");
   });
 
-  test("ai-dial: cancelled bookings, a retired Josh, the fence, no phone, and the grace wait are not misses", async () => {
+  test("ai-dial: cancelled bookings, a retired setter, the fence, no phone, and the grace wait are not misses", async () => {
     const id = "calls:ai-dial-no-failure";
     const base = { agents: [josh()], clients: [client()], events: [event({ created_at: ago(1) })] };
     assert.equal(await status(id, { ...base, events: [...base.events, event({ name: "booking.cancelled", created_at: ago(0.5) })] }), "PASS");

@@ -248,13 +248,16 @@ describe("native alert after a gated booking confirmation", () => {
   });
 
   test("an opted-out or quiet-hours text cannot unlock native send", async () => {
-    for (const [db, now, expected] of [
-      [bookingDb({ optedOut: new Set([`${CLIENT}:sms`]) }), MIDDAY, OUTCOME.BLOCKED],
-      [bookingDb(), () => new Date("2026-08-01T07:00:00Z"), OUTCOME.DEFERRED]
+    // The booking confirmation itself is never held now (owner-set 2026-10-31), so
+    // the quiet-hours case uses the 24-hour reminder, which still waits for 8 a.m.
+    const reminder = () => claimed({ channel: "sms", template_key: "SMS-S04-02-REMIND-24H" });
+    for (const [db, message, now, expected] of [
+      [bookingDb({ optedOut: new Set([`${CLIENT}:sms`]) }), bookingText(), MIDDAY, OUTCOME.BLOCKED],
+      [bookingDb(), reminder(), () => new Date("2026-08-01T07:00:00Z"), OUTCOME.DEFERRED]
     ]) {
       const calls = [];
       const sms = spy();
-      const result = await dispatchOne(db, bookingText(), {
+      const result = await dispatchOne(db, message, {
         fetchImpl: sms, env: APNS_ENV, now,
         sendNative: async () => { calls.push(1); }
       });
@@ -262,6 +265,16 @@ describe("native alert after a gated booking confirmation", () => {
       assert.equal(sms.calls.length, 0);
       assert.equal(calls.length, 0);
     }
+  });
+
+  test("the booking confirmation goes out at midnight Arizona time (owner-set 2026-10-31)", async () => {
+    const sms = spy();
+    const result = await dispatchOne(bookingDb(), bookingText(), {
+      fetchImpl: sms, env: APNS_ENV, now: () => new Date("2026-08-01T07:00:00Z"),
+      sendNative: async () => ({ sent: 1 })
+    });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.equal(sms.calls.length, 1);
   });
 
   test("dry run and missing APNs keys do not trigger native send; other sent service texts do", async () => {
@@ -1051,5 +1064,72 @@ describe("an email address that has already bounced twice", () => {
     const corrected = await send(fakeDb({ bouncedEmailAddresses: [address, address] }), "roger-new@aol.com");
     assert.equal(corrected.result.outcome, OUTCOME.SENT);
     assert.equal(corrected.calls.length, 1);
+  });
+});
+
+/* Customer send hours (owner-set 2026-10-31, src/messaging/send-window.mjs).
+   Arizona is UTC-7 all year: 16:00Z is 9 a.m. there, 00:00Z is 5 p.m. */
+describe("customer send hours: instant any hour, drips 9 a.m. to 5 p.m. Arizona", () => {
+  const twilioDb = (client) => fakeDb({
+    ...(client ? { client } : {}),
+    routing: { email: { provider: "mailgun", enabled: true }, sms: { provider: "twilio", enabled: true } }
+  });
+  const TWILIO_ENV = { ...ENV, TWILIO_SEND_ACCOUNT_SID: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    TWILIO_SEND_AUTH_TOKEN: "twilio-auth-token-value", TWILIO_SEND_FROM: "+15550001111" };
+
+  test("a follow-up email due at 6 p.m. waits for 9 a.m. the next day", async () => {
+    const f = spy();
+    const db = fakeDb();
+    const res = await dispatchOne(db, claimed({ channel: "email", template_key: "EMAIL-NOBOOK-01" }), {
+      fetchImpl: f, env: ENV, now: () => new Date("2026-08-02T01:00:00Z")
+    });
+    assert.equal(res.outcome, OUTCOME.DEFERRED);
+    assert.equal(res.detail, "2026-08-02T16:00:00.000Z");
+    assert.equal(f.calls.length, 0);
+    assert.ok(db.updates.some((u) => /status = 'queued'/.test(u.sql)), "held on the queue, not blocked");
+  });
+
+  test("a follow-up text due at 8:30 a.m. waits for 9 a.m., not the 8 a.m. text hour", async () => {
+    const res = await dispatchOne(fakeDb(), claimed({ channel: "sms", template_key: "SMS-NOBOOK-01" }), {
+      fetchImpl: spy(), env: ENV, now: () => new Date("2026-08-01T15:30:00Z")
+    });
+    assert.equal(res.outcome, OUTCOME.DEFERRED);
+    assert.equal(res.detail, "2026-08-01T16:00:00.000Z");
+  });
+
+  test("a follow-up text inside the window goes out", async () => {
+    const f = spy();
+    const res = await dispatchOne(twilioDb(), claimed({ channel: "sms", template_key: "SMS-S02-RESUME-1" }), {
+      fetchImpl: f, env: TWILIO_ENV, now: MIDDAY
+    });
+    assert.equal(res.outcome, OUTCOME.SENT);
+    assert.equal(f.calls.length, 1);
+  });
+
+  test("the welcome text goes out at 2 a.m.", async () => {
+    const f = spy();
+    const res = await dispatchOne(twilioDb(), claimed({ channel: "sms", template_key: "SMS-S00-WELCOME" }), {
+      fetchImpl: f, env: TWILIO_ENV, now: () => new Date("2026-08-01T09:00:00Z")
+    });
+    assert.equal(res.outcome, OUTCOME.SENT);
+    assert.equal(f.calls.length, 1, "an instant message is never held");
+  });
+
+  test("a call reminder at 2 a.m. still waits for 8 a.m. (unchanged)", async () => {
+    const res = await dispatchOne(fakeDb(), claimed({ channel: "sms", template_key: "SMS-S04-03-REMIND-2H" }), {
+      fetchImpl: spy(), env: ENV, now: () => new Date("2026-08-01T09:00:00Z")
+    });
+    assert.equal(res.outcome, OUTCOME.DEFERRED);
+    assert.equal(res.detail, "2026-08-01T15:00:00.000Z");
+  });
+
+  test("a +sim- test person's follow-up is not held, so a night proof can run", async () => {
+    const f = spy();
+    const res = await dispatchOne(twilioDb({ email: "stanbridgejchris+sim-fund@gmail.com", phone: "+16616054248" }),
+      claimed({ channel: "sms", template_key: "SMS-NOBOOK-02" }), {
+        fetchImpl: f, env: TWILIO_ENV, now: () => new Date("2026-08-02T03:00:00Z")
+      });
+    assert.equal(res.outcome, OUTCOME.SENT);
+    assert.equal(f.calls.length, 1);
   });
 });

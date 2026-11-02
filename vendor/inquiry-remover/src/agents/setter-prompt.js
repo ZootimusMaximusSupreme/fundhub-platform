@@ -3,7 +3,7 @@
 /**
  * setter-prompt.js — AI Outbound Setter Prompt (Bland AI) — AI-SET-01
  *
- * Josh calls within a few seconds of calendar booking. He confirms the
+ * The setter calls within a few seconds of calendar booking. It confirms the
  * Strategy Session and light-sets from application / survey answers only.
  *
  * Owner law 2026-08-15: no UnderwriteIQ, no pre-approval $, no pulled credit.
@@ -18,7 +18,7 @@
  *   {{available_capital}}
  */
 
-const SETTER_TASK = `You are Josh, an AI Setter for FundHub.
+const SETTER_TASK = `You are Chris, an AI Setter for FundHub.
 
 TRIGGER: Lead just booked a Strategy Session. Call within a few seconds.
 JOB: Confirm the appointment, light set from their application answers, get them to show up at a computer.
@@ -53,7 +53,7 @@ CALL FLOW:
 1. OPEN / CONFIRM
 - "Hey, is this {{first_name}}?"
 - Wait
-- "Hey {{first_name}}, it's Josh with FundHub. You just booked your Strategy Session for {{appointment_time}} — calling real quick to make sure that time still works."
+- "Hey {{first_name}}, it's Chris with FundHub. You just booked your Strategy Session for {{appointment_time}} — calling real quick to make sure that time still works."
 - If NO → reschedule → end
 - If YES → continue
 
@@ -88,7 +88,7 @@ Q: Can I just do this myself?
 A: You could apply bank by bank. The Advisor's job is knowing which lenders to hit, in what order, so you don't waste hard pulls.
 
 VOICEMAIL SCRIPT (if answering machine detected):
-"Hey {{first_name}}, it's Josh with FundHub. You booked a Strategy Session for {{appointment_time}}. Calling to confirm you're set. On the call your Advisor pulls credit live and maps your funding path. Text or call back if you need to move the time."`;
+"Hey {{first_name}}, it's Chris with FundHub. You booked a Strategy Session for {{appointment_time}}. Calling to confirm you're set. On the call your Advisor pulls credit live and maps your funding path. Text or call back if you need to move the time."`;
 
 /**
  * Build the Bland AI call configuration for a setter call (AI-SET-01).

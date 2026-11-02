@@ -40,9 +40,9 @@ function payload(tier) {
     engine: {
       available: true, tier, label: tier, fico: { ex: 650, tu: 640, eq: 655 },
       total: 20000, afterFix: 60000, negItems: 3, reasons: [], plan: [],
-      totalBasis: "personal_only", sample: true
+      totalBasis: "personal_only", sample: false
     },
-    soft_pull: null,
+    soft_pull: { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "fin-b02-proof-result", sample: false },
     offers: OFFERS
   };
 }

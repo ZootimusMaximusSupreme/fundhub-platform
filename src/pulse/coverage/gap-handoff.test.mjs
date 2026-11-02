@@ -38,7 +38,12 @@ import {
   WELCOME_GRACE_MIN,
   assertSelect,
   gapChecks,
-  testAddressSql
+  testAddressSql,
+  NUDGE_DUE_MIN,
+  NOBOOK_DUE_MIN,
+  SETTER_TASK_SOURCE,
+  SETTER_TASK_DUE_MIN,
+  SETTER_TASK_GRACE_MIN
 } from "./gap-handoff.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -50,7 +55,7 @@ const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 
 const MARKERS = [
-  "welcome", "nudge", "nobook", "contact-m1", "contact-197", "confirm",
+  "welcome", "nudge", "nobook", "setter-task", "contact-m1", "contact-197", "confirm",
   "remind-24h", "remind-2h", "noshow", "offer", "declined", "templates"
 ];
 
@@ -182,7 +187,7 @@ test("handoff: nothing missing is five PASS rows with no fix", async () => {
   const rows = await gapChecks(ctxOf(db));
   assertShape(rows);
   assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS", "PASS", "PASS"]);
-  assert.equal(db.calls.length, 11, "11 branch reads, no template lookup when nothing is red");
+  assert.equal(db.calls.length, 12, "12 branch reads (the setter call task joined 2026-10-31), no template lookup when nothing is red");
 });
 
 /* ------------------------------------------------------------------ check 1 */
@@ -205,8 +210,9 @@ test("handoff: a lead with no welcome email is RED and names the people and the 
 
 test("handoff: each first-touch branch goes red alone and says which one", async () => {
   const cases = [
-    ["nudge", /1 lead had not finished the survey after 25 minutes and got no nudge email \(EMAIL-S02-FINISH-APPLICATION\)/, /welcome|chase/],
-    ["nobook", /1 lead finished the survey, never booked, and got no chase email \(EMAIL-NOBOOK-01\) after 2\.5 hours/, /welcome email|nudge/]
+    ["nudge", /1 lead stopped partway through the survey and got no come-back text or email \(EMAIL-S02-RESUME-1\) when it was due \(20 minutes after signing up, or 9 a\.m\. Arizona after a night sign-up\)/, /welcome|chase/],
+    ["nobook", /1 lead finished the survey, never booked or replied, and got no chase message \(EMAIL-NOBOOK-01\) when it was due \(2 hours after the survey, or 9 a\.m\. Arizona after a night survey\)/, /welcome email|come-back/],
+    ["setter-task", /1 lead finished the survey, did not book in 15 minutes, and no setter got a call task \(setter-survey-done\)/, /welcome email|come-back|chase message/]
   ];
   for (const [marker, want, notWant] of cases) {
     const r = byId(await gapChecks(ctxOf(fakeDb({ [marker]: { n: 1 } }))))["handoff:lead-first-touches-missing"];
@@ -216,7 +222,7 @@ test("handoff: each first-touch branch goes red alone and says which one", async
   }
   const all = byId(await gapChecks(ctxOf(fakeDb({ welcome: { n: 1 }, nudge: { n: 3 }, nobook: { n: 4 } }))))["handoff:lead-first-touches-missing"];
   assert.match(all.detail, /1 new lead got no welcome/);
-  assert.match(all.detail, /3 leads had not finished/);
+  assert.match(all.detail, /3 leads stopped partway through the survey/);
   assert.match(all.detail, /4 leads finished the survey/);
 });
 
@@ -343,14 +349,14 @@ test("handoff: a red branch stays red when another branch cannot be read", async
   const r = byId(rows)["handoff:lead-first-touches-missing"];
   assert.equal(r.status, "FAIL");
   assert.match(r.detail, /^5 new leads got no welcome email/);
-  assert.match(r.detail, /Could not read: finish-application nudge: relation "events" does not exist/);
+  assert.match(r.detail, /Could not read: first come-back message: relation "events" does not exist/);
 });
 
 test("handoff: nothing red and a branch unread is skip, never PASS", async () => {
   const rows = await gapChecks(ctxOf(fakeDb({}, { throwOn: "nudge" })));
   const r = byId(rows)["handoff:lead-first-touches-missing"];
   assert.equal(r.status, "skip");
-  assert.match(r.detail, /finish-application nudge/);
+  assert.match(r.detail, /first come-back message/);
   assert.equal(r.suggestedFix, null);
 });
 
@@ -402,7 +408,8 @@ test("handoff: the cutoffs are the grace times before now, and the window is 7 d
 
   assert.deepEqual(call("welcome").params, [ORG, ["entry.captured"], start, iso(30 * MIN)]);
   assert.deepEqual(call("nudge").params, [ORG, ["entry.captured"], start, iso(25 * MIN)]);
-  assert.deepEqual(call("nobook").params, [ORG, ["survey.submitted"], start, iso(150 * MIN)]);
+  assert.deepEqual(call("nobook").params, [ORG, ["survey.completed"], start, iso(150 * MIN)]);
+  assert.deepEqual(call("setter-task").params, [ORG, ["survey.completed"], start, iso(25 * MIN)]);
   assert.deepEqual(call("contact-m1").params, [ORG, start, iso(30 * MIN)]);
   assert.deepEqual(call("contact-197").params, [ORG, start, iso(25 * HOUR)]);
   assert.deepEqual(call("confirm").params, [ORG, ["booking.created", "booking.rescheduled"], start, iso(20 * MIN)]);
@@ -445,13 +452,13 @@ test("handoff: the reminder SQL only reads calls inside the window and booked fa
 test("handoff: when a template is the cause the fix says so", async () => {
   const templates = [
     { template_key: "EMAIL-S00-WELCOME", missing: false, approved: false, draft: false },
-    { template_key: "EMAIL-S02-FINISH-APPLICATION", missing: false, approved: true, draft: true },
+    { template_key: "EMAIL-S02-RESUME-1", missing: false, approved: true, draft: true },
     { template_key: "EMAIL-NOBOOK-01", missing: true, approved: false, draft: false }
   ];
   const rows = await gapChecks(ctxOf(fakeDb({ welcome: { n: 1 }, nudge: { n: 1 }, nobook: { n: 1 }, templates })));
   const r = byId(rows)["handoff:lead-first-touches-missing"];
   assert.equal(r.status, "FAIL");
-  assert.match(r.suggestedFix, /Template problem: EMAIL-S00-WELCOME is not approved; EMAIL-S02-FINISH-APPLICATION is still draft copy; EMAIL-NOBOOK-01 does not exist\./);
+  assert.match(r.suggestedFix, /Template problem: EMAIL-S00-WELCOME is not approved; EMAIL-S02-RESUME-1 is still draft copy; EMAIL-NOBOOK-01 does not exist\./);
 });
 
 test("handoff: good templates add no template note, and a failed template read does not hide the red", async () => {
@@ -502,11 +509,19 @@ test("handoff: the offer keys and the declined task are the ones the workflows r
   assert.equal(TEMPLATES.offerPrefix, "EMAIL-OFFER-");
 });
 
-test("handoff: the grace times are longer than the waits in the workflows", () => {
-  const sleepOf = (src, id) => new RegExp(`step\\.sleep\\("${id}",\\s*"([0-9]+)([mh])"\\)`).exec(src);
-  const toMin = ([, n, u]) => Number(n) * (u === "h" ? 60 : 1);
-  assert.ok(NUDGE_GRACE_MIN > toMin(sleepOf(WF("s-02-incomplete-survey-nudge.mjs"), "wait-20-min")));
-  assert.ok(NOBOOK_GRACE_MIN > toMin(sleepOf(WF("s-nobook-chase.mjs"), "wait-2h")));
+test("handoff: the grace times are longer than the waits in the workflows", async () => {
+  // S-02 and S-NOBOOK plan each first message at a fixed wait after the event, moved to 9 a.m.
+  // Arizona when that lands outside the follow-up hours (dripSendTime; dripAtSql here). The
+  // check's "due" offsets must be those waits, and its grace must be longer than them.
+  const s02 = await import("../../workflows/s-02-incomplete-survey-nudge.mjs");
+  const nobook = await import("../../workflows/s-nobook-chase.mjs");
+  assert.equal(s02.FIRST_TOUCH_WAIT_MS, NUDGE_DUE_MIN * MIN);
+  assert.equal(nobook.TEXT_GAP_MS[1], NOBOOK_DUE_MIN * MIN);
+  assert.ok(NUDGE_GRACE_MIN > NUDGE_DUE_MIN);
+  assert.ok(NOBOOK_GRACE_MIN > NOBOOK_DUE_MIN);
+  assert.equal(nobook.SETTER_TASK_SOURCE, SETTER_TASK_SOURCE);
+  assert.match(WF("s-nobook-chase.mjs"), new RegExp(`step\\.sleep\\("wait-15m",\\s*"${SETTER_TASK_DUE_MIN}m"\\)`));
+  assert.ok(SETTER_TASK_GRACE_MIN > SETTER_TASK_DUE_MIN);
   assert.match(WF("slo-genuine-followup.mjs"), /WAIT_M1 = "15m"/);
   assert.ok(CONTACT_M1_GRACE_MIN > 15);
   assert.match(WF("slo-no-reply-197.mjs"), /WAIT_NO_REPLY = "24h"/);
@@ -524,7 +539,7 @@ test("handoff: the grace times are longer than the waits in the workflows", () =
 test("handoff: the reminders, the repeat rule and the registered workflows still match the code", () => {
   const cf = fs.readFileSync(path.join(ROOT, "src/adapters/clickfunnels.mjs"), "utf8");
   assert.match(cf, /FUNNEL_REPEAT_WINDOW_MINUTES = 6 \* 60/);
-  assert.match(cf, /REPEAT_SUPPRESSED_EVENTS = new Set\(\["survey\.submitted", "entry\.captured"\]\)/);
+  assert.match(cf, /REPEAT_SUPPRESSED_EVENTS = new Set\(\["survey\.submitted", "survey\.completed", "entry\.captured"\]\)/);
   assert.match(ALL_SQL.NUDGE_SQL, /interval '6 hours'/);
   assert.match(ALL_SQL.NOBOOK_SQL, /interval '6 hours'/);
   assert.doesNotMatch(ALL_SQL.WELCOME_SQL, /interval '6 hours'/, "welcome is once per client, repeats cannot make a miss");
