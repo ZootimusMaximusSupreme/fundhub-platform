@@ -130,6 +130,31 @@ export const DECK_TITLES = Object.freeze({
   "blueprint-in-action": "Your Blueprint dashboard, start to finish"
 });
 
+export const DECK_INTROS = Object.freeze({
+  "the-call": "Your file comes first on the call. The path and price follow what it actually shows.",
+  "soft-pull": "A soft file review lets us see where you stand before anyone applies at a bank.",
+  "pre-underwriting": "A strong score can still meet a bank rule your file does not pass yet.",
+  "bank-said-no": "A decline gives us a starting point: read the file, find the reason, then put the work in order.",
+  "funding-sequence": "Bank choice and application order matter because each lender reads the file it receives.",
+  "thirteen-points": "The Blueprint puts the 13 funding-readiness checks in an order you can act on.",
+  "who-we-are": "See the people, records and written steps behind the Fundhub process.",
+  "apply-yourself": "Before sending another application, see what the next lender may read on your file.",
+  "card-paydown": "Each card has its own balance target and statement date. The order changes what reports next.",
+  "your-data-is-safe": "See what information Fundhub uses, where it appears and what you approve before paying.",
+  "money-on-the-table": "A sample file shows how card balances can change the funding path even with a strong score.",
+  "credit-optimization": "Credit work moves through documented rounds, bureau replies and a visible record in your portal.",
+  "cost-of-waiting": "Waiting has a cost only if it delays a real goal. Put your own timing against the work ahead.",
+  "after-you-say-yes": "The agreement and portal show what starts after you sign, who acts and what approved means.",
+  "blueprint-value": "The Blueprint starts with your file and turns it into an ordered 12-month plan.",
+  "the-maximum": "Your first bank offer is one answer. Your file and application order shape what comes next.",
+  "business-one-two": "Each business has its own setup and bank review, even when the owner is the same.",
+  "blueprint-12-months": "See the first Blueprint steps and how the plan changes as your file changes.",
+  "tried-before": "If a past funding attempt failed, look at what was sent and what it left on the file.",
+  "the-money-talk": "If cost is the concern, bring it to the call. We will read the real terms with your file open.",
+  "credit-partner": "A credit partner has a separate file, consent and obligation. See how that path works.",
+  "blueprint-in-action": "Open a sample Blueprint dashboard and follow the first steps from the file review forward."
+});
+
 export async function currentDeckLane(database, clientId) {
   const r = await database.query("SELECT custom_fields FROM clients WHERE id = $1", [clientId]);
   return creditTierFor(r.rows[0]?.custom_fields || {});
@@ -141,7 +166,9 @@ export async function deckContentReady(database, orgId) {
       `SELECT body, subject, compliance_passed FROM message_templates
         WHERE org_id = $1 AND template_key = $2 LIMIT 1`, [orgId, key]
     );
-    if (!result.rows[0]?.compliance_passed) return false;
+    const template = result.rows[0];
+    if (!template?.compliance_passed || !String(template.body || "").trim()
+      || (key.startsWith("EMAIL-") && !String(template.subject || "").trim())) return false;
   }
   return true;
 }
@@ -185,7 +212,7 @@ export function deckTime(startTime, index) {
 export async function runDeckDrip({ db: database, step, orgId, clientId, eventId, startTime,
   bookingUid = null, sendPush = sendDeckPush,
   bookingCurrent = currentDeckBooking,
-  enabled = process.env.BS_DECK_LESSONS_ENABLED === "true" }) {
+  enabled = process.env.BS_DECK_LESSONS_ENABLED !== "false" }) {
   if (!enabled) return { sent: [], skipped: "deck_lessons_disabled" };
   if (!startTime) return { sent: [], skipped: "no_start_time" };
   const startMs = new Date(startTime).getTime();
@@ -223,7 +250,8 @@ export async function runDeckDrip({ db: database, step, orgId, clientId, eventId
         orgId, clientId, channel,
         templateKey: channel === "sms" ? "SMS-BS-DECK" : "EMAIL-BS-DECK-LESSON",
         eventId: `bs-deck:${clientId}:${slug}`,
-        context: { deck_title: DECK_TITLES[slug], deck_url: `https://fundhub.ai/slideshows/${slug}.html` }
+        context: { deck_title: DECK_TITLES[slug], deck_intro: DECK_INTROS[slug],
+          deck_url: `https://fundhub.ai/slideshows/${slug}.html` }
       }), channel };
     });
     if (["booking_changed", "no_future_booking", "opted_out", "outbound_paused", "dry_run"].includes(result.reason)) {
@@ -409,7 +437,7 @@ async function runSmsDrip({ db, step, orgId, clientId, eventId, startTime }) {
 }
 
 export async function handle({ event, db, step,
-  lessonsEnabled = process.env.BS_DECK_LESSONS_ENABLED === "true",
+  lessonsEnabled = process.env.BS_DECK_LESSONS_ENABLED !== "false",
   bookingCurrent = currentDeckBooking, sendPush = sendDeckPush }) {
   const clientId = await step.run("resolve-client", () => resolveClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
