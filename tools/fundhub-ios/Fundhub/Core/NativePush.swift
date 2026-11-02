@@ -108,7 +108,7 @@ final class NativePushCenter: ObservableObject {
     @Published private(set) var state: State = .checking
     @Published private(set) var openRequestId = 0
     private var bearer: String?
-    private var pendingPortalOpenAt: Date?
+    private var pendingPortalOpen: (at: Date, bearer: String)?
     private var pendingStaffOpen: (alert: NativePushTap.StaffAlert, at: Date, bearer: String)?
     private let api = FundhubAPI()
     private let registeredKey = "fundhub.nativePush.registered"
@@ -120,7 +120,8 @@ final class NativePushCenter: ObservableObject {
     @discardableResult
     func recordNotificationTap(userInfo: [AnyHashable: Any], now: Date = Date(), sessionBearer: String? = nil) -> Bool {
         if NativePushTap.opensClientPortal(userInfo) {
-            pendingPortalOpenAt = now
+            guard let expectedBearer = sessionBearer ?? bearer, !expectedBearer.isEmpty else { return false }
+            pendingPortalOpen = (now, expectedBearer)
             openRequestId &+= 1
             return true
         }
@@ -133,10 +134,12 @@ final class NativePushCenter: ObservableObject {
         return false
     }
 
-    func takePortalOpenRequest(now: Date = Date()) -> Bool {
-        guard let receivedAt = pendingPortalOpenAt else { return false }
-        pendingPortalOpenAt = nil
-        let age = now.timeIntervalSince(receivedAt)
+    func takePortalOpenRequest(now: Date = Date(), currentBearer: String? = nil) -> Bool {
+        guard let pending = pendingPortalOpen else { return false }
+        guard let currentBearer = currentBearer ?? bearer else { return false }
+        pendingPortalOpen = nil
+        guard currentBearer == pending.bearer else { return false }
+        let age = now.timeIntervalSince(pending.at)
         return age >= 0 && age <= NativePushTap.requestLifetime
     }
 
@@ -153,13 +156,14 @@ final class NativePushCenter: ObservableObject {
         // A different account cannot inherit another session's local consent.
         if let prior = self.bearer, prior != bearer {
             NativePushConsent.setEnabled(false)
-            pendingPortalOpenAt = nil
+            pendingPortalOpen = nil
             pendingStaffOpen = nil
         }
+        if let pending = pendingPortalOpen, pending.bearer != bearer { pendingPortalOpen = nil }
         if let pending = pendingStaffOpen, pending.bearer != bearer { pendingStaffOpen = nil }
         NativePushConsent.bind(to: bearer)
         self.bearer = bearer
-        if pendingStaffOpen != nil { openRequestId &+= 1 }
+        if pendingPortalOpen != nil || pendingStaffOpen != nil { openRequestId &+= 1 }
         await refresh()
     }
 
@@ -284,7 +288,7 @@ final class NativePushCenter: ObservableObject {
         UIApplication.shared.unregisterForRemoteNotifications()
         UserDefaults.standard.set(false, forKey: registeredKey)
         self.bearer = nil
-        pendingPortalOpenAt = nil
+        pendingPortalOpen = nil
         pendingStaffOpen = nil
         state = .off
     }
@@ -294,7 +298,7 @@ final class NativePushCenter: ObservableObject {
         UIApplication.shared.unregisterForRemoteNotifications()
         UserDefaults.standard.set(false, forKey: registeredKey)
         bearer = nil
-        pendingPortalOpenAt = nil
+        pendingPortalOpen = nil
         pendingStaffOpen = nil
         state = .off
     }

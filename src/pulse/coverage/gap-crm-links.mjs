@@ -714,6 +714,14 @@ export const BOARD_CARDS_SQL = `
   LIMIT $3
 `;
 
+// Compare the saved native receipt with the Sales rows actually returned to staff.
+export const BOARD_APP_OPENS_SQL = `
+  SELECT client_id, MIN(first_authenticated_at) AS first_authenticated_at
+    FROM native_client_app_opens
+   WHERE org_id = $1 AND platform = 'ios' AND client_id = ANY($2::uuid[])
+   GROUP BY client_id
+`;
+
 export const COUNTS_SQL = `
   SELECT p.key AS pipeline_key,
          COUNT(cd.id) FILTER (
@@ -790,6 +798,23 @@ export function judgeBoard(stages, cards) {
   return row(id, "PASS", `the Pipeline board read for the sales rail returned ${cols.length} columns and ${(cards || []).length} cards`);
 }
 
+export function judgeBoardAppOpens(cards, opens) {
+  const id = "crm-data:pipeline";
+  const expected = new Map((opens || []).map((open) => [String(open.client_id), open.first_authenticated_at]));
+  for (const card of cards || []) {
+    if (!card.client_id) continue;
+    const saved = expected.get(String(card.client_id));
+    const shown = card.app_first_authenticated_at;
+    if (saved == null && shown == null) continue;
+    if (saved == null || shown == null || !Number.isFinite(new Date(saved).getTime()) ||
+        new Date(saved).getTime() !== new Date(shown).getTime()) {
+      return row(id, "FAIL", `a saved iPhone app open for client ${card.client_id} does not match the Sales board read`,
+        `Open Pipeline. Restore the app-open receipt on the Sales card. ${RECON}`);
+    }
+  }
+  return row(id, "PASS", `${expected.size} saved iPhone app opens match the Sales board read`);
+}
+
 /** The rail counts. A company with no pipelines leaves every rail tab on a dash. */
 export function judgeRailCounts(rows) {
   const id = "crm-data:pipeline-counts";
@@ -843,7 +868,12 @@ async function checkRouteReads(db, readers, orgId, clientOnFile) {
       const stages = await all(run, BOARD_STAGES_SQL, [BOARD_KEY, orgId]);
       if (!stages.length) return judgeBoard(stages, []);
       const cards = await all(run, BOARD_CARDS_SQL, [BOARD_KEY, orgId, BOARD_LIMIT, demoOn]);
-      return judgeBoard(stages, cards);
+      const board = judgeBoard(stages, cards);
+      const clientIds = [...new Set(cards.map((card) => card.client_id).filter(Boolean))];
+      if (!clientIds.length) return board;
+      const opens = await all(run, BOARD_APP_OPENS_SQL, [orgId, clientIds]);
+      const proof = judgeBoardAppOpens(cards, opens);
+      return proof.status === "FAIL" ? proof : { ...board, detail: `${board.detail}; ${proof.detail}` };
     }),
     guarded("crm-data:pipeline-counts", `Open Pipeline. Restore the rail count read (api/dashboard/pipeline-counts). ${RECON}`, async () =>
       judgeRailCounts(await all(run, COUNTS_SQL, [orgId, demoOn]))),

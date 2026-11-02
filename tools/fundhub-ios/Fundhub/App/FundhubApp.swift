@@ -497,6 +497,18 @@ enum StaffAlertNavigation {
     }
 }
 
+enum ClientPortalNavigation {
+    // A client tap may reload the portal only under the same verified session.
+    static func shouldOpen(
+        bearerAtTap: String,
+        bearerAfterRefresh: String?,
+        clientSessionVerified: Bool,
+        taskCancelled: Bool
+    ) -> Bool {
+        !taskCancelled && bearerAfterRefresh == bearerAtTap && clientSessionVerified
+    }
+}
+
 private struct HomeView: View {
     @EnvironmentObject private var store: FundhubSessionStore
     @ObservedObject private var push = NativePushCenter.shared
@@ -555,9 +567,16 @@ private struct HomeView: View {
         .onChange(of: store.identity?.principal) { _, _ in staffAlertPath = nil }
         .onChange(of: store.identity?.staff) { _, _ in staffAlertPath = nil }
         .task(id: push.openRequestId) {
-            if store.identity?.principal == "client", push.takePortalOpenRequest() {
+            if store.identity?.principal == "client",
+               let bearerAtTap = store.token, !bearerAtTap.isEmpty,
+               push.takePortalOpenRequest(currentBearer: bearerAtTap) {
                 await store.refreshSession()
-                guard store.phase == .signedIn, store.identity?.principal == "client" else { return }
+                guard ClientPortalNavigation.shouldOpen(
+                    bearerAtTap: bearerAtTap,
+                    bearerAfterRefresh: store.token,
+                    clientSessionVerified: store.phase == .signedIn && store.identity?.principal == "client",
+                    taskCancelled: Task.isCancelled
+                ) else { return }
                 reloadId = UUID()
                 return
             }

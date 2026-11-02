@@ -1979,7 +1979,7 @@ restore();
     // An authenticated native first-open is proof the app ran, unlike a download-link click.
     // No event means unknown, never "not installed" or a made-up checkmark.
     if (pipelineKey === "sales" && c.app_first_authenticated_at) {
-      var appOpened = div("c-app-opened", "✓ App downloaded");
+      var appOpened = div("c-app-opened", "✓ App opened");
       appOpened.title = "Client signed in using the iPhone app: " + formatBookedWhen(c.app_first_authenticated_at);
       card.appendChild(appOpened);
     }
