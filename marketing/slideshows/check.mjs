@@ -19,7 +19,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../..");
 
 // Chris's exact guarantee line (owner-voice.md, 2026-10-31).
-const GUARANTEE = "Applications go out within 72 business hours. That's our guarantee, and it's in your contract. That typically means approvals come very shortly after.";
+const GUARANTEE = "Applications go out within 72 business hours. That's our guarantee, and it's in your contract.";
 
 const BANNED = [
   [/\bCRS\b/, `"CRS" in customer copy (Chris, 2026-10-31)`],
