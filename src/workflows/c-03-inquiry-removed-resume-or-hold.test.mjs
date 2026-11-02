@@ -63,6 +63,7 @@ test("branch: fraud alert holds the file instead", async () => {
   assert.equal(res.branch, "fraud_hold");
   assert.equal(db.clients[0].custom_fields.round_hold_reason, "Fraud Alert");
   assert.deepEqual(db.clients[0].tags, ["fraud:alert-present"]);
+  assert.equal(db.tasks[0].assignee_role, "inquiry_specialist");
 });
 
 test("duplicate delivery: replaying does not double-create the task", async () => {
