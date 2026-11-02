@@ -96,6 +96,7 @@ test('pipeline switches and same-board stage moves work with a keyboard', async 
   await page.keyboard.press('Enter');
   await expect.poll(() => writes.length).toBe(1);
   expect(writes[0]).toMatchObject({ action: 'move', client_id: CLIENT_ID, pipeline_key: 'sales', stage_key: 'booked' });
+  await expect(page.locator('.card.saving')).toHaveCount(0);
   const funding = page.locator('.rail-tab[data-rail="R-02"]');
   await funding.focus();
   await page.keyboard.press('Space');
