@@ -30,6 +30,7 @@ import { db, close } from "../src/db.mjs";
 import { plan, apply, resolveActor } from "./retention-purge.mjs";
 import { DATA_CLASSES, loadPolicy, policyGaps } from "../src/retention/policy.mjs";
 import { CLASSES } from "../src/retention/classes.mjs";
+import { reviewRetention } from "../src/workflows/retention-review.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 
@@ -48,6 +49,7 @@ let staffA = null;
    first or the client delete fails. */
 async function wipe(orgId) {
   for (const sql of [
+    `DELETE FROM retention_run_receipts WHERE org_id = $1`,
     `DELETE FROM pii_access_log     WHERE org_id = $1`,
     `DELETE FROM events             WHERE org_id = $1`,
     `DELETE FROM bank_transactions  WHERE org_id = $1`,
@@ -156,9 +158,10 @@ async function contentFingerprint(orgId) {
 async function setPolicy(orgId, retainDays) {
   for (const name of DATA_CLASSES) {
     await db.query(
-      `INSERT INTO retention_policy (org_id, data_class, action, retain_days)
-       VALUES ($1,$2,$3,$4)
-       ON CONFLICT (org_id, data_class) DO UPDATE SET retain_days = EXCLUDED.retain_days`,
+      `INSERT INTO retention_policy (org_id, data_class, action, retain_days, signed_off_at, signed_off_by)
+       VALUES ($1,$2,$3,$4,now(),'retention suite')
+       ON CONFLICT (org_id, data_class) DO UPDATE SET retain_days = EXCLUDED.retain_days,
+         signed_off_at = EXCLUDED.signed_off_at, signed_off_by = EXCLUDED.signed_off_by`,
       [orgId, name, CLASSES[name].action, retainDays]
     );
   }
@@ -433,6 +436,30 @@ describe("a dry run removes nothing", () => {
   });
 });
 
+test("monthly review stores a count-only receipt without changing customer rows", { skip: !HAS_DB }, async () => {
+  const before = await census(orgA);
+  const contentBefore = await contentFingerprint(orgA);
+  const oneOrg = {
+    query(sql, params) {
+      if (sql.includes("SELECT id FROM orgs ORDER BY id")) return Promise.resolve({ rows: [{ id: orgA }] });
+      return db.query(sql, params);
+    }
+  };
+  const result = await reviewRetention(oneOrg, { asOf: new Date("2035-01-01T04:00:00Z") });
+  assert.equal(result.count, 1);
+  const receipt = (await db.query(
+    `SELECT kind, actor_staff_id, plan_counts, applied_counts
+       FROM retention_run_receipts
+      WHERE org_id = $1 AND run_key = '2035-01'`, [orgA]
+  )).rows[0];
+  assert.equal(receipt.kind, "review");
+  assert.equal(receipt.actor_staff_id, null);
+  assert.equal(receipt.plan_counts.length, DATA_CLASSES.length);
+  assert.deepEqual(receipt.applied_counts, []);
+  assert.deepEqual(await census(orgA), before);
+  assert.deepEqual(await contentFingerprint(orgA), contentBefore);
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // An unset retention period purges nothing, even with --apply.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -450,7 +477,7 @@ describe("no retention period means no purge, even under --apply", () => {
       assert.match(item.skipped ?? "", /no retention period set/, `${item.dataClass} was not skipped`);
     }
 
-    const applied = await apply(db, { orgId: orgA, items: result.items });
+    const applied = await apply(db, { orgId: orgA, items: result.items, actorId: staffA });
     assert.deepEqual(applied, [], "apply() acted on a class with no retention period");
     assert.deepEqual(await census(orgA), countsBefore, "--apply DELETED ROWS WITH NO RETENTION PERIOD SET");
     assert.deepEqual(await contentFingerprint(orgA), contentBefore, "--apply REWROTE DATA WITH NO RETENTION PERIOD SET");
@@ -472,7 +499,7 @@ describe("no retention period means no purge, even under --apply", () => {
       assert.equal(item.skipped, undefined);
       assert.equal(item.expired, 0, `${item.dataClass} treated a row inside its retention period as expired`);
     }
-    await apply(db, { orgId: orgA, items: result.items });
+    await apply(db, { orgId: orgA, items: result.items, actorId: staffA });
     assert.deepEqual(await census(orgA), countsBefore, "rows inside the retention period were removed");
   });
 });
@@ -486,8 +513,18 @@ describe("--apply does what it says, and only what it says", () => {
   test("delete classes are deleted; de-identify classes keep their row", { skip: !HAS_DB }, async () => {
     await setPolicy(orgA, 1);
     const result = await plan(db, { orgId: orgA });
-    const applied = await apply(db, { orgId: orgA, items: result.items });
+    const applied = await apply(db, { orgId: orgA, items: result.items, actorId: staffA });
     assert.equal(applied.length, DATA_CLASSES.length);
+    assert.ok(applied.receiptId, "an applied purge did not return its receipt id");
+    const receipt = (await db.query(
+      `SELECT kind, actor_staff_id, plan_counts, applied_counts
+         FROM retention_run_receipts WHERE id = $1 AND org_id = $2`,
+      [applied.receiptId, orgA]
+    )).rows[0];
+    assert.equal(receipt.kind, "apply");
+    assert.equal(receipt.actor_staff_id, staffA);
+    assert.equal(receipt.plan_counts.length, DATA_CLASSES.length);
+    assert.equal(receipt.applied_counts.length, DATA_CLASSES.length);
     for (const a of applied) assert.equal(a.affected, 1, `${a.dataClass} affected ${a.affected} rows, expected 1`);
 
     const after = await census(orgA);
@@ -532,7 +569,7 @@ describe("--apply does what it says, and only what it says", () => {
     assert.equal(byClass.crs_raw_payloads.expired, 0, "a tombstoned payload was counted again");
     assert.equal(byClass.bank_transactions.expired, 0, "a tombstoned transaction was counted again");
 
-    const applied = await apply(db, { orgId: orgA, items: result.items });
+    const applied = await apply(db, { orgId: orgA, items: result.items, actorId: staffA });
     for (const a of applied) assert.equal(a.affected, 0, `${a.dataClass} churned rows on a second run`);
   });
 });
@@ -567,7 +604,7 @@ describe("org scoping is real, and it fails closed", () => {
     const bContentBefore = await contentFingerprint(orgB);
 
     const result = await plan(db, { orgId: orgA });
-    await apply(db, { orgId: orgA, items: result.items });
+    await apply(db, { orgId: orgA, items: result.items, actorId: staffOfA });
 
     assert.deepEqual(await census(orgB), bBefore, "PURGING ORG A REMOVED ORG B'S ROWS");
     assert.deepEqual(await contentFingerprint(orgB), bContentBefore, "PURGING ORG A REWROTE ORG B'S DATA");

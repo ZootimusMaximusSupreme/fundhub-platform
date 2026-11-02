@@ -54,7 +54,7 @@ const POLICY_ALL_SET = DATA_CLASSES.map((data_class) => ({
   data_class,
   retain_days: 30,
   action: CLASSES[data_class].action,
-  signed_off_at: null,
+  signed_off_at: "2026-11-02T00:00:00Z",
   signed_off_by: null
 }));
 
@@ -119,13 +119,40 @@ describe("dry run is the default, and it does not write", () => {
 
     // The same items, run through apply(), DO write. This is the control: it
     // proves the test above is capable of detecting a write.
-    const applyDb = fakeDb({ ...COUNTS });
+    const applyDb = fakeDb({ ...COUNTS,
+      "INSERT INTO retention_run_receipts": { rows: [{ id: "receipt-1" }], rowCount: 1 }
+    });
     applyDb.connect = async () => ({
       query: async (sql, params) => applyDb.query(sql, params),
       release: () => {}
     });
-    await apply(applyDb, { orgId: ORG, items: result.items });
+    const applied = await apply(applyDb, { orgId: ORG, items: result.items, actorId: "staff-1" });
     assert.ok(applyDb.writes().length > 0, "apply() wrote nothing — the dry-run test proves nothing");
+    assert.equal(applied.receiptId, "receipt-1");
+    const receipt = applyDb.queries.find((q) => q.sql.includes("INSERT INTO retention_run_receipts"));
+    assert.ok(receipt, "an applied purge has no durable receipt");
+    assert.equal(receipt.params[0], ORG);
+    assert.equal(receipt.params[2], "staff-1");
+    assert.equal(JSON.parse(receipt.params[3]).length, DATA_CLASSES.length);
+    assert.equal(JSON.parse(receipt.params[4]).length, DATA_CLASSES.length);
+  });
+
+  test("a missing actor cannot apply customer-data changes", async () => {
+    const db = fakeDb(COUNTS);
+    const result = await plan(db, { orgId: ORG });
+    db.connect = async () => ({ query: async (s, p) => db.query(s, p), release: () => {} });
+    await assert.rejects(() => apply(db, { orgId: ORG, items: result.items }), /actorId is required/);
+    assert.deepEqual(db.writes(), []);
+  });
+
+  test("an unsigned policy cannot apply customer-data changes", async () => {
+    const db = fakeDb({ ...COUNTS, "FROM retention_policy": [
+      { data_class: "bank_transactions", retain_days: 731, action: "de_identify", signed_off_at: null }
+    ] });
+    const result = await plan(db, { orgId: ORG });
+    db.connect = async () => ({ query: async (s, p) => db.query(s, p), release: () => {} });
+    await assert.rejects(() => apply(db, { orgId: ORG, items: result.items, actorId: "staff-1" }), /signed off/);
+    assert.deepEqual(db.writes(), []);
   });
 });
 

@@ -62,6 +62,7 @@ import { hasRole } from "../src/http/middleware/requireRole.mjs";
 import { verifySession } from "../src/auth/session.mjs";
 import { DATA_CLASSES, loadPolicy, policyGaps } from "../src/retention/policy.mjs";
 import { CLASSES } from "../src/retention/classes.mjs";
+import { randomUUID } from "node:crypto";
 
 // Who may run this. An owner passes every gate (SUPER_ROLES in requireRole.mjs),
 // so this reads as "owner or admin". Gated on the role explicitly rather than
@@ -201,9 +202,24 @@ export async function plan(dbh, { orgId } = {}) {
  * period were already dropped by plan() and are not reachable from here; the
  * per-class ctxOrThrow() in classes.mjs checks it a second time anyway.
  */
-export async function apply(dbh, { orgId, items } = {}) {
+export function countOnlyPlan(items = []) {
+  return items.map((item) => ({
+    dataClass: item.dataClass,
+    action: item.action ?? null,
+    retainDays: item.retainDays ?? null,
+    signedOff: item.signedOff ?? false,
+    expired: item.expired ?? null,
+    skipped: item.skipped ?? null
+  }));
+}
+
+export async function apply(dbh, { orgId, items, actorId } = {}) {
   const actionable = items.filter((i) => !i.skipped);
   if (!actionable.length) return [];
+  if (!actorId) throw new Error("actorId is required before applying a retention purge");
+  if (actionable.some((item) => !item.signedOff)) {
+    throw new Error("every retention class must be signed off before applying a purge");
+  }
 
   return withTransaction(dbh, async (tx) => {
     const done = [];
@@ -211,6 +227,16 @@ export async function apply(dbh, { orgId, items } = {}) {
       const res = await CLASSES[item.dataClass].purge(tx, { orgId, retainDays: item.retainDays });
       done.push({ dataClass: item.dataClass, label: item.label, action: item.action, ...res });
     }
+    const receipt = await tx.query(
+      `INSERT INTO retention_run_receipts
+         (org_id, run_key, kind, actor_staff_id, plan_counts, applied_counts)
+       VALUES ($1, $2, 'apply', $3, $4::jsonb, $5::jsonb)
+       RETURNING id`,
+      [orgId, randomUUID(), actorId, JSON.stringify(countOnlyPlan(items)),
+        JSON.stringify(done.map(({ dataClass, action, affected }) => ({ dataClass, action, affected })))]
+    );
+    if (!receipt?.rows?.[0]?.id) throw new Error("retention purge receipt was not saved; transaction rolled back");
+    done.receiptId = receipt.rows[0].id;
     return done;
   });
 }
@@ -222,6 +248,7 @@ function report({ actor, result, applied, didApply }) {
   lines.push("=".repeat(64));
   lines.push(`org:   ${result.orgId}`);
   lines.push(`actor: ${actor.name ?? actor.id} (${actor.role ?? "no role"})`);
+  if (didApply && applied?.receiptId) lines.push(`receipt: ${applied.receiptId}`);
   lines.push("");
 
   for (const item of result.items) {
@@ -310,7 +337,7 @@ export async function main(argv = process.argv.slice(2), { dbh = db, out = conso
 
   let applied = null;
   if (args.apply) {
-    applied = await apply(dbh, { orgId: actor.staff.orgId, items: result.items });
+    applied = await apply(dbh, { orgId: actor.staff.orgId, items: result.items, actorId: actor.staff.id });
   }
 
   out.log(report({ actor: actor.staff, result, applied, didApply: args.apply }));
