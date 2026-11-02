@@ -69,12 +69,12 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
 
     test("foreign invoice ID never credits or creates a local-org task on a foreign buyer", async () => {
       const foreign = await issue({ orgId: otherOrg, clientId: otherBuyer });
-      const res = await allocatePayment(tx, received({
-        payload: { product: "success_fee", amount: 25, invoiceId: foreign.id, paymentId: randomUUID() }
-      }));
-      assert.equal(res.allocated, false);
-      assert.equal(res.reason, "invoice_mismatch");
-      assert.equal("invoiceId" in res, false, "do not echo foreign invoice metadata");
+      await assert.rejects(
+        () => allocatePayment(tx, received({
+          payload: { product: "success_fee", amount: 25, invoiceId: foreign.id, paymentId: randomUUID() }
+        })),
+        { message: "ar_foreign_invoice_unroutable" }
+      );
       assert.equal(await badTaskCount(), 0);
       assert.equal(await receiptCount(foreign.id), 0);
       assert.equal((await getInvoice(conn, { invoiceId: foreign.id })).status, "sent");
@@ -82,11 +82,12 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
 
     test("foreign non-success-fee invoice ID is rejected BEFORE revealing its type", async () => {
       const foreign = await issue({ orgId: otherOrg, clientId: otherBuyer, source: "diy_letters" });
-      const res = await allocatePayment(tx, received({
-        payload: { product: "success_fee", amount: 25, invoiceId: foreign.id, paymentId: randomUUID() }
-      }));
-      assert.equal(res.reason, "invoice_mismatch");
-      assert.equal("invoiceId" in res, false);
+      await assert.rejects(
+        () => allocatePayment(tx, received({
+          payload: { product: "success_fee", amount: 25, invoiceId: foreign.id, paymentId: randomUUID() }
+        })),
+        { message: "ar_foreign_invoice_unroutable" }
+      );
       assert.equal(await badTaskCount(), 0);
       assert.equal(await receiptCount(foreign.id), 0);
     });
@@ -100,13 +101,14 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
          RETURNING id`,
         [otherOrg, otherBuyer, `ar-other-link-${randomUUID()}`, foreign.id]
       )).rows[0].id;
-      const res = await allocatePayment(tx, received({
-        payload: { product: "success_fee", amount: 25, paymentLinkId: link, paymentId: randomUUID() }
-      }));
-      assert.equal(res.allocated, false);
-      // A supplied foreign checkout identifier is a conflicting identity,
-      // not an unspecified payment. No invoice/client details are disclosed.
-      assert.equal(res.reason, "invoice_mismatch");
+      // No local invoice or owned client exists for a safe exception task.
+      // Retain the signed payment in the failed-event retry/DLQ, not done:true.
+      await assert.rejects(
+        () => allocatePayment(tx, received({
+          payload: { product: "success_fee", amount: 25, paymentLinkId: link, paymentId: randomUUID() }
+        })),
+        { message: "ar_explicit_checkout_mismatch_unroutable" }
+      );
       assert.equal(await badTaskCount(), 0);
       assert.equal(await receiptCount(foreign.id), 0);
     });
@@ -114,11 +116,20 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
     test("foreign provider reference cannot borrow another org's invoice", async () => {
       const ref = `ar-foreign-provider-${randomUUID()}`;
       const foreign = await issue({ orgId: otherOrg, clientId: otherBuyer, ref });
-      const res = await allocatePayment(tx, received({
-        payload: { product: "success_fee", amount: 25, invoiceRef: ref, paymentId: randomUUID() }
-      }));
-      assert.equal(res.reason, "unresolved");
-      assert.equal(res.allocated, false);
+      const paymentId = randomUUID();
+      await assert.rejects(
+        () => allocatePayment(tx, received({
+          payload: { product: "success_fee", amount: 25, invoiceRef: ref, paymentId }
+        })),
+        { message: "ar_unmatched_success_fee_unroutable" }
+      );
+      // No verified local buyer exists: preserve event for retry, and do not
+      // fabricate a local review task or borrow the foreign invoice.
+      const ownerTasks = await conn.query(
+        "SELECT count(*)::int AS n FROM tasks WHERE org_id = $1 AND source_workflow = 'ar-allocate' AND body = $2",
+        [org, `unallocated:${paymentId}`]
+      );
+      assert.equal(ownerTasks.rows[0].n, 0);
       assert.equal(await receiptCount(foreign.id), 0);
       assert.equal(await badTaskCount(), 0);
     });
@@ -133,10 +144,11 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
          RETURNING id`,
         [otherOrg, otherBuyer, `ar-foreign-conflict-${randomUUID()}`, foreign.id]
       )).rows[0].id;
+      const paymentId = randomUUID();
       const res = await allocatePayment(tx, received({
         payload: {
           product: "success_fee", amount: 25, invoiceId: local.id,
-          paymentLinkId: foreignLink, paymentId: randomUUID()
+          paymentLinkId: foreignLink, paymentId
         }
       }));
       assert.equal(res.reason, "invoice_mismatch");
@@ -144,6 +156,16 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
       assert.equal(await receiptCount(local.id), 0);
       assert.equal(await receiptCount(foreign.id), 0);
       assert.equal(await badTaskCount(), 0);
+      // A real signed receipt may need investigation, even though the checkout
+      // hint is foreign. Route exactly one review to the ORIGINAL local buyer.
+      const reviews = await conn.query(
+        `SELECT client_id FROM tasks
+          WHERE org_id = $1 AND source_workflow = 'ar-allocate' AND body = $2`,
+        [org, `checkout-identity-mismatch:${paymentId}`]
+      );
+      assert.equal(reviews.rows.length, 1, "receipt mismatch cannot silently disappear");
+      assert.equal(String(reviews.rows[0].client_id), String(buyer),
+        "foreign checkout cannot redirect review to another company's buyer");
     });
 
     test("replayed local receipt with a foreign checkout ID is refused as conflicting", async () => {
@@ -174,13 +196,17 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
       assert.equal(await receiptCount(foreign.id), 0);
     });
 
-    test("unknown invoice reference with a foreign customer ID cannot create an in-org task on that buyer", async () => {
-      const res = await allocatePayment(tx, received({
-        clientId: otherBuyer,
-        payload: { product: "success_fee", amount: 25, invoiceId: randomUUID(), paymentId: randomUUID() }
-      }));
-      assert.equal(res.allocated, false);
-      assert.equal(res.reason, "unresolved");
+    test("unknown invoice and foreign customer refuse acknowledgment when no safe review owner exists", async () => {
+      // No owned invoice or in-org buyer exists to attach a reconciliation task.
+      // Leave the delivery unacknowledged for the failed-event queue instead
+      // of falsely returning done:true or minting a cross-org task.
+      await assert.rejects(
+        () => allocatePayment(tx, received({
+          clientId: otherBuyer,
+          payload: { product: "success_fee", amount: 25, invoiceId: randomUUID(), paymentId: randomUUID() }
+        })),
+        { message: "ar_explicit_invoice_unknown_unroutable" }
+      );
       assert.equal(await badTaskCount(), 0, "review queue must never mix event org and foreign client");
     });
 
@@ -206,6 +232,52 @@ describe("A/R tenant-isolated invoice payment identity (rollback-only real Postg
         "review must attach to actual invoice owner");
       assert.notEqual(String(target.rows[0].client_id), String(secondBuyer),
         "forged callback customer must never be task owner");
+    });
+
+
+    test("foreign invoice named with a verified in-org buyer routes one local review only", async () => {
+      const foreign = await issue({ orgId: otherOrg, clientId: otherBuyer });
+      const paymentId = randomUUID();
+      const result = await allocatePayment(tx, received({
+        clientId: buyer,
+        payload: { product: "success_fee", amount: 25, invoiceId: foreign.id, paymentId }
+      }));
+      assert.equal(result.allocated, false);
+      assert.equal(result.reason, "invoice_mismatch");
+      assert.equal("invoiceId" in result, false, "foreign invoice cannot leak through review response");
+      const tasks = await conn.query(
+        `SELECT client_id FROM tasks
+           WHERE org_id = $1 AND source_workflow = 'ar-allocate' AND body = $2`,
+        [org, `foreign-invoice:${paymentId}`]
+      );
+      assert.equal(tasks.rows.length, 1);
+      assert.equal(String(tasks.rows[0].client_id), String(buyer));
+      assert.equal(await badTaskCount(), 0);
+      assert.equal(await receiptCount(foreign.id), 0);
+    });
+
+    test("unmatched signed success fee with no owned client must fail retryably, not disappear", async () => {
+      const paymentId = randomUUID();
+      await assert.rejects(
+        () => allocatePayment(tx, received({
+          clientId: null,
+          payload: {
+            product: "success_fee", amount: 25, paymentId,
+            fundingRoundId: randomUUID()
+          }
+        })),
+        { message: "ar_unmatched_success_fee_unroutable" }
+      );
+      const receipts = await conn.query(
+        "SELECT count(*)::int AS n FROM invoice_payments WHERE org_id = $1 AND external_ref = $2",
+        [org, paymentId]
+      );
+      assert.equal(receipts.rows[0].n, 0);
+      const reviews = await conn.query(
+        "SELECT count(*)::int AS n FROM tasks WHERE org_id = $1 AND source_workflow = 'ar-allocate' AND body = $2",
+        [org, `unallocated:${paymentId}`]
+      );
+      assert.equal(reviews.rows[0].n, 0, "a missing buyer must not produce an ownerless task");
     });
 
     test("valid same-organization invoice-only receipt still allocates normally", async () => {

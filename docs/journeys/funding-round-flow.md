@@ -200,6 +200,18 @@ application rows through `src/funding/success-fee.mjs`.
 
 ---
 
+## Calculator deposit credit
+
+The Funding Agreement credits the deposit once toward the success fee. The closer's
+GET deal-math read and POST finance model now report lifetime net cash after the
+paid deposit and only the remaining success fee. A $250,000 funding estimate at
+10% with $3,000 already paid has a $25,000 total fee, $22,000 remaining fee, and
+$225,000 net cash before debts. A larger credited deposit changes the balance due,
+not the total fee. A deposit above the estimated fee does not imply a refund.
+These are calculator estimates; the signed terms and confirmed approved access
+still determine an actual bill. No payment, invoice, or provider record is changed
+by using either calculator.
+
 ## A bank answer that changes after the bill
 
 The success fee is worked out when the round is funded (F-07,
