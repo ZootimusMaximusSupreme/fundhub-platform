@@ -493,6 +493,22 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   const salePaymentInsert = (db) => db.queries.find((q) => /INSERT INTO sale_payments/.test(q.text));
 
+  function feeCaptureDb(captureStatus) {
+    const db = feeDb();
+    const query = db.query.bind(db);
+    db.query = async (sql, params = []) => {
+      const text = String(sql);
+      if (/FROM transactions/.test(text) && /provider = 'commas' AND provider_ref/.test(text)) {
+        db.queries.push({ text, params });
+        // Model the row selected by the full SQL predicate: a missing or
+        // failed capture cannot satisfy lower(status) = 'succeeded'.
+        return { rows: captureStatus === "succeeded" ? [{ id: "tx-fee" }] : [] };
+      }
+      return query(sql, params);
+    };
+    return db;
+  }
+
   test("invoice payment never uses lead capture to edit a buyer's contact", async () => {
     const db = feeDb();
     const out = await feePayment(feeReceipt({
@@ -540,6 +556,35 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
       "the success fee landed on the newest funding sale instead of the sale its invoice bills");
     assert.equal(out.saleId, BILLED_SALE);
   });
+
+  test("a captured Commas success fee may allocate and credit its own invoice", async () => {
+    const db = feeCaptureDb("succeeded");
+    const out = await feePayment(feeReceipt({ source: "commas" }), db);
+    assert.equal(out.done, true, JSON.stringify(out));
+    const capture = db.queries.find(q => /provider = 'commas' AND provider_ref/.test(q.text));
+    assert.ok(capture);
+    assert.match(capture.text, /lower\(status\) = 'succeeded'/);
+    assert.deepEqual(capture.params, [ORG, CLIENT, "sim-pay-fee", 2500,
+      "Success fee INV-B4B9C768"]);
+    assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
+  });
+
+  for (const captureStatus of ["missing", "failed"]) {
+    test(`a ${captureStatus} Commas fee capture cannot allocate or credit a sale`, async () => {
+      const db = feeCaptureDb(captureStatus);
+      let allocations = 0;
+      const out = await feePayment(feeReceipt({ source: "commas" }), db, async () => {
+        allocations += 1;
+        return { allocated: true, invoiceId: INVOICE, appliedCents: 250000, surplusCents: 0 };
+      });
+      assert.equal(out.done, false);
+      assert.equal(out.reason, "success_fee_capture_unverified");
+      assert.equal(allocations, 0);
+      assert.equal(salePaymentInsert(db), undefined);
+      assert.equal(out.entitlements, undefined);
+      assert.ok(!db.queries.some(q => /INSERT INTO sale_attributions/.test(q.text)));
+    });
+  }
 
 
 

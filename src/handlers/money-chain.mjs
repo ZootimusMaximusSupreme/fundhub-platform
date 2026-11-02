@@ -1108,6 +1108,29 @@ export async function onPaymentReceivedMoney(event, db, { allocateFeePayment = a
       String(feeInvoice.sale_id) !== String(paymentPayload.saleId)) {
     return { done: false, reason: "success_fee_sale_conflict" };
   }
+  // A Commas fee event must have the captured money row from client-lifecycle.
+  // The event bus continues after that handler fails, so invoice identity and
+  // a valid event UUID alone cannot authorize fee allocation or sale credit.
+  if (feeInvoice && String(paymentPayload.source || "").toLowerCase() === "commas") {
+    const amount = Number(paymentPayload.amount);
+    const providerRef = paymentPayload.providerRef;
+    if (!providerRef || !Number.isFinite(amount) || amount <= 0) {
+      return { done: false, reason: "success_fee_capture_unverified", invoiceId: feeInvoice.id };
+    }
+    const captured = await db.query(
+      `SELECT id FROM transactions
+        WHERE org_id = $1 AND client_id = $2
+          AND provider = 'commas' AND provider_ref = $3
+          AND lower(status) = 'succeeded'
+          AND amount_paid = $4::numeric AND product_name = $5
+        LIMIT 1`,
+      [orgId, clientId, String(providerRef), amount,
+        paymentPayload.productName || paymentPayload.product || "unknown"]
+    );
+    if (!captured.rows[0]) {
+      return { done: false, reason: "success_fee_capture_unverified", invoiceId: feeInvoice.id };
+    }
+  }
   // A paid invoice accepts an *identical replay*, not a second processor
   // receipt for the same settled debt. The invoice allocator leaves new cash
   // unapplied once paid; money-chain must not separately pay commissions or

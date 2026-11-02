@@ -685,6 +685,23 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
         payload: { invoiceId, saleId: sale.id, product: "success_fee",
           productName: "Success fee", amount: 80, providerRef: ref, paymentId: ref,
           source: "commas" } });
+      const missingRef = `fee-missing-${randomUUID()}`;
+      const failedRef = `fee-failed-${randomUUID()}`;
+      await db.query(
+        `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                  status, provider, provider_ref, raw_payload)
+         VALUES ($1,$2,'Success fee',80,'failed','commas',$3,'{}'::jsonb)`,
+        [org, clientId, failedRef]
+      );
+      for (const ref of [missingRef, failedRef]) {
+        const held = await onPaymentReceivedMoney(receipt(ref), db);
+        assert.equal(held.done, false);
+        assert.equal(held.reason, "success_fee_capture_unverified");
+      }
+      const beforeCapture = (await db.query(
+        `SELECT count(*)::int AS n FROM invoice_payments WHERE invoice_id = $1`, [invoiceId]
+      )).rows[0].n;
+      assert.equal(beforeCapture, 0, "missing and failed captures cannot allocate invoice cash");
       // Two real checked-out connections start before either receipt commits.
       // The second allocator must wait on the invoice row lock.
       const runCapture = async (ref) => {
