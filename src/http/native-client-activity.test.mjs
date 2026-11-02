@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import nativeActivity from "../../api/native/client-activity.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
-import { accountSession, req, staffSession, ORG_ID } from "../testing/handler-harness.mjs";
+import { accountSession, req, staffSession, ORG_ID, OTHER_ORG_ID } from "../testing/handler-harness.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const OTHER = "c2000000-0000-4000-8000-000000000002";
@@ -49,4 +49,34 @@ test("native receipt endpoint is POST only", async () => {
   const { res, fake } = await callShared(nativeActivity, req("GET", { query: { client_id: CLIENT } }), signedIn());
   assert.equal(res.statusCode, 405);
   assert.equal(fake.find(/native_client_app_opens/).length, 0);
+});
+
+test("native receipts ignore forged body, query and header tenancy identifiers", async () => {
+  for (const [orgId, clientId] of [[ORG_ID, CLIENT], [OTHER_ORG_ID, OTHER]]) {
+    const { res, fake } = await callShared(nativeActivity, req("POST", {
+      body: { ...body, org_id: "forged-org", client_id: "forged-client",
+        account_id: "forged-account", session_id: "forged-session" },
+      query: { org_id: "query-org", client_id: "query-client", account_id: "query-account" },
+      headers: { "x-org-id": "header-org" }
+    }), [
+      ...accountSession({ kind: "client", orgId, clientId }),
+      [/INSERT INTO native_client_app_opens/, [{ first_authenticated_at: "2026-10-30T00:00:00Z" }]]
+    ]);
+    assert.equal(res.statusCode, 200);
+    const [write] = fake.find(/INSERT INTO native_client_app_opens/);
+    assert.deepEqual(write.params, [orgId, clientId, "ac000000-0000-4000-8000-000000000001", INSTALLATION]);
+  }
+});
+
+test("unsigned, affiliate and partner callers cannot record client native receipts", async () => {
+  const unsigned = await callShared(nativeActivity,
+    req("POST", { body, headers: { authorization: "" } }), []);
+  assert.equal(unsigned.res.statusCode, 401);
+  assert.equal(unsigned.fake.find(/native_client_app_opens/).length, 0);
+  for (const kind of ["affiliate", "partner"]) {
+    const { res, fake } = await callShared(nativeActivity, req("POST", { body }),
+      accountSession({ kind, clientId: CLIENT }));
+    assert.equal(res.statusCode, 403);
+    assert.equal(fake.find(/native_client_app_opens/).length, 0);
+  }
 });

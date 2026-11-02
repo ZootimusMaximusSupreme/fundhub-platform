@@ -3,20 +3,29 @@
 // A pre-deploy proof cannot read a route or table that has not shipped yet, so it
 // skips these live-only steps. The self-test runs every step with a real P-256 key.
 import crypto from "node:crypto";
+import { BOARD_CARDS_SQL, BOARD_READ_LIMIT, orgDemoModeEnabled } from "./lib/pipeline-boards-truth.mjs";
 
 export const id = "native-push";
 export const title = "Native iPhone push is ready";
 export const kind = "probe";
-export const covers = ["route:push/native-device", "route:push/preferences", "send:src/push/native-send.mjs"];
+export const covers = ["route:push/native-device", "route:push/preferences", "send:src/push/native-send.mjs", "route:native/client-activity"];
 export const box = false;
 export const reads = [{ host: "SITE", methods: ["GET"] }];
-export const steps = ["preference-door", "preference-shape", "signing-ready", "door-mounted", "device-owner", "recent-delivery-failure"];
+export const steps = ["preference-door", "preference-shape", "signing-ready", "door-mounted", "device-owner", "recent-delivery-failure", "native-open-receipts"];
+export const checkIds = ["crm-data:pipeline"];
 export const damp = 2;
 export const deadlineMs = 5000;
 
 const PATH = "/api/push/native-device";
 const PREFERENCE_PATH = "/api/push/preferences";
 const SITE = "https://fundhub.ai";
+const DEFAULT_ORG_SQL = "SELECT id FROM orgs WHERE is_default ORDER BY created_at LIMIT 1";
+export const NATIVE_APP_OPENS_SQL = `
+  SELECT client_id, MIN(first_authenticated_at) AS first_authenticated_at
+    FROM native_client_app_opens
+   WHERE org_id = $1 AND platform = 'ios' AND client_id = ANY($2::uuid[])
+   GROUP BY client_id
+`;
 const PREFERENCE_SQL = `
 SELECT count(*)::int AS invalid_preferences
   FROM clients
@@ -127,7 +136,34 @@ export async function run(ctx) {
     }
   });
 
-  return ctx.done("Push doors answer, saved marketing choices are boolean, native signing is ready, device owners match, and no recent APNs failure is recorded. This does not prove a banner reached an iPhone.");
+  await ctx.step("native-open-receipts", async () => {
+    try {
+      const orgId = (await ctx.read(DEFAULT_ORG_SQL)).rows[0]?.id;
+      if (!orgId) throw new Error("The default company was not returned.");
+      const db = { query: (sql, params) => ctx.read(sql, params) };
+      const demoOn = await orgDemoModeEnabled(db, orgId);
+      const cards = (await ctx.read(BOARD_CARDS_SQL, ["sales", orgId, BOARD_READ_LIMIT, demoOn])).rows;
+      if (!Array.isArray(cards)) throw new Error("The Sales card read returned no rows collection.");
+      const clientIds = [...new Set(cards.map((card) => card.client_id).filter(Boolean))];
+      const receipts = (await ctx.read(NATIVE_APP_OPENS_SQL, [orgId, clientIds])).rows;
+      if (!Array.isArray(receipts)) throw new Error("The native receipt read returned no rows collection.");
+      const saved = new Map(receipts.map((receipt) => [String(receipt.client_id), receipt.first_authenticated_at]));
+      for (const card of cards) {
+        if (!card.client_id) continue;
+        const expected = saved.get(String(card.client_id));
+        const shown = card.app_first_authenticated_at;
+        if (expected == null && shown == null) continue;
+        if (expected == null || shown == null || !Number.isFinite(new Date(expected).getTime()) ||
+            new Date(expected).getTime() !== new Date(shown).getTime()) {
+          throw new Error("A visible Sales card does not match its saved native app-open receipt.");
+        }
+      }
+    } catch (error) {
+      throw ctx.fail("native-open-receipts", `Native app-open proof failed: ${String(error?.message || error).slice(0, 160)}`);
+    }
+  });
+
+  return ctx.done("Push doors answer, choices are boolean, signing and device owners match, no recent APNs failure is recorded, and visible Sales cards match saved app-open receipts. This does not prove an iPhone banner or signed-in device journey.");
 }
 
 export const fixGuide = [
@@ -139,6 +175,7 @@ export const fixGuide = [
   "- door-mounted: the native route was not shipped, fell out of the route map, or the app cannot read sign-in state.",
   "- device-owner: the device table is missing, cannot be read, or a live row belongs to another client.",
   "- recent-delivery-failure: APNs rejected a send to a live device in the last two hours, or its receipt count could not be read.",
+  "- native-open-receipts: a saved app open is missing or wrong on the Sales card, or either read failed.",
   "Steps:",
   "- Run node scripts/pulse/run-beat.mjs native-push to see the first failed step.",
   "- Check both push routes, saved client choices, the live environment names, and device rows without printing keys or tokens.",
@@ -160,7 +197,11 @@ function goodAnswers() {
     },
     read: [
       { match: /FROM clients/, rows: [{ invalid_preferences: 0 }] },
-      { match: /FROM client_apns_devices/, rows: [{ active: 1, wrong_owner: 0, recent_failed: 0 }] }
+      { match: /FROM client_apns_devices/, rows: [{ active: 1, wrong_owner: 0, recent_failed: 0 }] },
+      { match: /SELECT id FROM orgs WHERE is_default/, rows: [{ id: "00000000-0000-4000-8000-000000000001" }] },
+      { match: /SELECT demo_mode_enabled FROM orgs/, rows: [{ demo_mode_enabled: false }] },
+      { match: /FROM cards cd/, rows: [{ client_id: "c1000000-0000-4000-8000-000000000001", app_first_authenticated_at: "2026-10-30T00:00:00Z" }] },
+      { match: /FROM native_client_app_opens/, rows: [{ client_id: "c1000000-0000-4000-8000-000000000001", first_authenticated_at: "2026-10-30T00:00:00Z" }] }
     ]
   };
 }

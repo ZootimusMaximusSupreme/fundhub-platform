@@ -12,7 +12,8 @@ export default async function handler(req, res) {
   }
   const principal = await requirePrincipal(req, res, ["client"], { db });
   if (!principal) return;
-  const { orgId, clientId, accountId, sessionId } = principal;
+  const orgId = principal.orgId;
+  const { clientId, accountId, sessionId } = principal;
   if (!orgId || !clientId || !accountId || !sessionId) {
     return res.status(403).json({ ok: false, error: "forbidden" });
   }
