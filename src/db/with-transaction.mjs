@@ -30,22 +30,29 @@
 // right end state and is a cross-module refactor: recorded as a finding on
 // ops/workflows/fundhub-beta-buildout.md rather than done as a drive-by.
 //
-// THE ORDER OF THE THREE BRANCHES IS THE WHOLE POINT:
-//   1. the handle has connect()      -> a real Pool, or a test double that wants
-//                                       to observe BEGIN/COMMIT/ROLLBACK.
+// THE ORDER OF THE BRANCHES IS THE WHOLE POINT:
+//   1. connect() and NOT release()   -> a real Pool, or a test double (even on
+//                                       sharedDb) that wants BEGIN/COMMIT/ROLLBACK.
 //   2. the handle IS the singleton   -> reach past it to the pool it wraps.
-//   3. anything else                 -> a plain fake in a unit test; run inline.
-// Getting 2 wrong is the bug. Removing 3 breaks every stubbed-db test in the repo.
+//   3. anything else                 -> a checked-out PoolClient (connect+release),
+//                                       or a plain fake; run inline on the handle.
+// A checked-out pg client still exposes connect(). Calling it again throws
+// "Client has already been connected" — release() is what separates pool from client.
+// Getting 2 wrong is the autocommit bug. Getting 1 vs 3 wrong breaks stubbed
+// endpoint tests. Getting 3 wrong breaks PG nested units of work.
 
 import { db as sharedDb, pool } from "../db.mjs";
 
 export async function withTransaction(db, fn) {
-  const acquire = typeof db?.connect === "function"
-    ? () => db.connect()
-    : (db === sharedDb ? () => pool().connect() : null);
+  const acquire =
+    typeof db?.connect === "function" && typeof db?.release !== "function"
+      ? () => db.connect()
+      : db === sharedDb
+        ? () => pool().connect()
+        : null;
 
-  // A plain fake with no connect() and not the singleton: a unit test's stub.
-  // Run inline rather than inventing a transaction it cannot honour.
+  // Checked-out PoolClient or plain fake: caller already owns the transaction,
+  // or the stub cannot honour BEGIN/COMMIT. Run inline on the handle given.
   if (!acquire) return fn(db);
 
   const client = await acquire();

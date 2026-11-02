@@ -18,6 +18,7 @@ import { upsertClientAdAttribution } from "../ads/store.mjs";
 import { ensureCrmContactId, config as crmConfig } from "../messaging/crm-contacts.mjs";
 import { adaptersBlocked } from "../lib/dry-run.mjs";
 import { upsertSurveyCarbonCopy } from "./client-custom-fields.mjs";
+import { stampQualificationBucket } from "../config/survey-qualification.mjs";
 import { addTags } from "../workflows/tags.mjs";
 import { demoFlagForEmail } from "../demo/test-identity.mjs";
 import { advanceCardToStage } from "../workflows/cards.mjs";
@@ -27,11 +28,24 @@ import { normalizePhone } from "../messaging/providers/bland-voice.mjs";
 import { syncSloClickfunnelsContact } from "../slo/cf-contact.mjs";
 import { surveyIsComplete } from "../survey/cf-question-map.mjs";
 import { creditTierFor } from "../config/survey-qualification.mjs";
+import { withTransaction } from "../db/with-transaction.mjs";
+import {
+  paymentFactsFromEvent,
+  paymentFactsFromRow,
+  reconcileProviderRefTransaction
+} from "./client-lifecycle-payment-ref.mjs";
+
+export { PaymentProviderRefConflictError } from "./client-lifecycle-payment-ref.mjs";
 
 // Last question on the CF apply survey (Available Capital).
 // marketing/landing-pages/clickfunnels/cf-survey-ground-truth.md — Survey Complete only when this lands.
 // The same rule decides when the ClickFunnels adapter emits survey.completed.
 const answersIncludeSurveyComplete = surveyIsComplete;
+
+const BUCKET_KEYS = ["cf_svy_self_reported_fico", "cf_svy_self_reported_fico_label", "svy_self_reported_fico"];
+function answersTouchBucket(answers) {
+  return BUCKET_KEYS.some((key) => Object.prototype.hasOwnProperty.call(answers, key));
+}
 
 // --- helpers ----------------------------------------------------------------
 
@@ -323,7 +337,8 @@ export async function onEntryCaptured(event, db) {
 }
 
 // survey.submitted — fold answers into clients.custom_fields (jsonb) and the
-// typed client_custom_fields carbon-copy (sales/agent joins). When the CF last
+// typed client_custom_fields carbon-copy (sales/agent joins). A score answer also
+// stamps the funding call bucket (qualification_bucket). When the CF last
 // question (cf_svy_available_capital) is present, advance to survey_complete.
 export async function onSurveySubmitted(event, db) {
   const clientId = await resolveClient(db, event);
@@ -334,6 +349,14 @@ export async function onSurveySubmitted(event, db) {
       await upsertSurveyCarbonCopy(db, { clientId, orgId: event.orgId, answers });
     }
     await saveCreditTier(db, clientId, answers);
+    // Bucket persistence cannot block survey answers or the stage move.
+    if (answersTouchBucket(answers)) {
+      try {
+        await stampQualificationBucket(db, clientId);
+      } catch (err) {
+        console.warn(`[client-lifecycle] qualification bucket not stamped for ${clientId}: ${String(err?.message || err)}`);
+      }
+    }
   }
   if (clientId && event.orgId && answersIncludeSurveyComplete(answers)) {
     await mergeCustomFields(db, clientId, { lifecycle_status: "Survey Complete" });
@@ -353,24 +376,102 @@ export async function onSurveySubmitted(event, db) {
    the live answer (tierBookingLink), so the two cannot disagree for long. */
 async function saveCreditTier(db, clientId, answers) {
   if (!Object.prototype.hasOwnProperty.call(answers, "cf_svy_self_reported_fico")
-    && !Object.prototype.hasOwnProperty.call(answers, "cf_svy_self_reported_fico_label")) return;
+    && !Object.prototype.hasOwnProperty.call(answers, "cf_svy_self_reported_fico_label")
+    && !Object.prototype.hasOwnProperty.call(answers, "svy_self_reported_fico")) return;
   const r = await db.query(`SELECT custom_fields FROM clients WHERE id = $1`, [clientId]);
   const fields = r.rows[0]?.custom_fields || {};
   const tier = creditTierFor(fields);
   if (tier && fields.credit_tier !== tier) await mergeCustomFields(db, clientId, { credit_tier: tier });
 }
 
+const TRANSACTION_INSERT_COLS =
+  `(org_id, client_id, product_name, amount_paid, status, provider, provider_ref, raw_payload)`;
+
+function transactionInsertParams(facts) {
+  return [
+    facts.orgId,
+    facts.clientId,
+    facts.productName,
+    facts.amountPaid,
+    facts.status,
+    facts.provider,
+    facts.providerRef,
+    JSON.stringify(facts.rawPayload)
+  ];
+}
+
+async function insertTransactionRow(tx, facts) {
+  await tx.query(
+    `INSERT INTO transactions ${TRANSACTION_INSERT_COLS}
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)`,
+    transactionInsertParams(facts)
+  );
+}
+
+async function tryInsertTransactionRow(tx, facts) {
+  const r = await tx.query(
+    `INSERT INTO transactions ${TRANSACTION_INSERT_COLS}
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)
+     ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL
+     DO NOTHING
+     RETURNING id, org_id, client_id, product_name, amount_paid, status, provider, provider_ref, raw_payload`,
+    transactionInsertParams(facts)
+  );
+  return r.rows[0] || null;
+}
+
+async function lockTransactionRow(tx, orgId, providerRef) {
+  const locked = await tx.query(
+    `SELECT id, org_id, client_id, product_name, amount_paid, status, provider, provider_ref, raw_payload
+       FROM transactions
+      WHERE org_id = $1 AND provider_ref = $2
+      FOR UPDATE`,
+    [orgId, providerRef]
+  );
+  return locked.rows[0] || null;
+}
+
 // Record a transaction row (deduped by provider_ref). Shared by the paid + failed
-// handlers — same shape, different status.
+// handlers — same shape, different status. Conflicting reuse of a provider_ref
+// throws PaymentProviderRefConflictError (retryable); a failed row may upgrade
+// atomically when the same ref later succeeds for the same verified facts.
 async function recordTransaction(event, db, status) {
   const clientId = await resolveClient(db, event);
-  const p = event.payload || {};
-  await db.query(
-    `INSERT INTO transactions (org_id, client_id, product_name, amount_paid, status, provider, provider_ref, raw_payload)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-     ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL DO NOTHING`,
-    [event.orgId, clientId, p.productName || p.product || "unknown", p.amount ?? null, status, p.source || "commas", p.providerRef || null, JSON.stringify(p)]
-  );
+  const incoming = paymentFactsFromEvent(event, clientId, status);
+  if (!incoming.providerRef) {
+    await insertTransactionRow(db, incoming);
+    return;
+  }
+
+  await withTransaction(db, async (tx) => {
+    if (await tryInsertTransactionRow(tx, incoming)) return;
+
+    let row = await lockTransactionRow(tx, incoming.orgId, incoming.providerRef);
+    if (!row) {
+      if (await tryInsertTransactionRow(tx, incoming)) return;
+      row = await lockTransactionRow(tx, incoming.orgId, incoming.providerRef);
+    }
+    if (!row) {
+      throw new Error(`payment provider_ref ${incoming.providerRef} missing after insert collision`);
+    }
+
+    const decision = reconcileProviderRefTransaction(paymentFactsFromRow(row), incoming);
+    if (decision.action === "noop") return;
+    if (decision.action === "upgrade") {
+      await tx.query(
+        `UPDATE transactions
+            SET status = 'succeeded',
+                raw_payload = raw_payload || $2::jsonb,
+                updated_at = now()
+          WHERE id = $1`,
+        [row.id, decision.rawPayloadPatch]
+      );
+      return;
+    }
+    if (decision.action === "insert") {
+      throw new Error(`payment provider_ref ${incoming.providerRef} reconcile returned insert on locked row`);
+    }
+  });
 }
 
 // payment.received — record the money-in as a succeeded transaction row.

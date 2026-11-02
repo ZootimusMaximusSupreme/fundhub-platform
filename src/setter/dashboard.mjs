@@ -5,7 +5,7 @@ import { advanceCardToStage } from "../workflows/cards.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
 import { queueCloserSetAlert } from "../staff/lead-alerts.mjs";
 import { tierBookingLink } from "../workflows/messaging.mjs";
-import { creditTierFor } from "../config/survey-qualification.mjs";
+import { creditTierFor, stampQualificationBucket } from "../config/survey-qualification.mjs";
 import { emit } from "../events/bus.mjs";
 
 const HANDOFF_FIELDS = new Set([
@@ -416,6 +416,9 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       if (creditTier && savedFields.credit_tier !== creditTier) {
         await persistCreditTier(writer, client_id, staff.org_id, creditTier);
       }
+      // Keep the saved call bucket in step with a setter correction. The booking
+      // trigger and stamp preserve every booking that already has a bucket.
+      await stampQualificationBucket(writer, client_id);
       if (previous.complete_at) {
         const closerStaffId = previous.closer_staff_id || client.closer_staff_id || (staff.role === "owner" ? staff.id : null);
         const closer = closerStaffId === staff.id ? staff : (await writer.query(
