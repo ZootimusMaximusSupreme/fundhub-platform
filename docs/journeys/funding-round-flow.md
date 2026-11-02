@@ -18,6 +18,32 @@ Every claim names the file that makes it true.
 
 ---
 
+## Paid funding handoff and inquiry return (2026-11-02)
+
+On a verified, net-paid funding purchase, S-06 links one active funding advisor to
+`clients.custom_fields.cf_funding_advisor_user_id` and assigns the intake task to that person.
+F-01 reuses the link for the pod task, and an inactive advisor's open funding tasks move to a
+new active advisor. The closer's Client Control Panel shows the named advisor, or explicitly
+says the file is unassigned. No active advisor leaves the role task open in the queue; it does
+not invent a staff member. A manual funding-task transfer moves the client link and all open
+funding tasks together. Files: `src/funding/assign-advisor.mjs`, `src/funding/transfer-advisor-task.mjs`,
+`src/workflows/s-06-post-call-funding-purchased.mjs`, `src/workflows/f-01-funding-intake.mjs`,
+`api/dashboard/client.mjs`, `public/app/client-control-panel.html`.
+
+C-03 waits for all active inquiry cases and open inquiry-log rows to clear, and preserves
+fraud, document and pause holds. A paid file then returns to its funding advisor, with the
+recently touched bureaus still protected. The advisor may apply on a clean bureau; the
+Oxylabs launch checks the chosen lender's bureau against current cases and inquiry history
+again and records refused protected or unknown-bureau attempts as failed proxy sessions.
+Mark cleared refuses while any inquiry on that case is still open; each inquiry must clear
+first. If there is no active advisor at handback, one unclaimed funding task remains in the
+role queue. Claiming it emits a new handback check; the file becomes Apply-ready only if
+the live holds still clear, and the recovery task closes when the next-round task is made.
+Files: `src/workflows/c-03-inquiry-removed-resume-or-hold.mjs`,
+`api/inquiry-cases.mjs`, `src/proxy/launch.mjs`.
+
+---
+
 ## The columns, and the event each one fires
 
 `STAGE_TO_EVENT` in `src/funding/card-stacking-rounds.mjs`:

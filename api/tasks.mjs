@@ -66,8 +66,10 @@ import { SUPER_ROLES } from "../src/http/middleware/requireRole.mjs";
 import { TASK_ROLES } from "../src/lib/create-task.mjs";
 import { isUuid, CLIENT_DATA_ERRORS, boundedLimit } from "../src/http/read-api.mjs";
 import { safeError } from "../src/http/health.mjs";
+import { transferFundingAdvisorTask } from "../src/funding/transfer-advisor-task.mjs";
+import { emit } from "../src/events/bus.mjs";
 
-export default async function handler(req, res) {
+export default async function handler(req, res, deps = {}) {
   // STAFF ONLY, named explicitly. A client or affiliate session reaching the
   // internal work queue would be a real leak, and requirePrincipal denies any
   // kind an endpoint does not list.
@@ -198,6 +200,28 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ ok: false, error: "id_required" });
 
     try {
+      if (claim === true || assignee_staff_id !== undefined) {
+        const existing = await db.query(`SELECT ${RET} FROM tasks WHERE id = $1 AND org_id = $2`, [id, orgId]);
+        const task = existing.rows[0];
+        if (!task) return res.status(404).json({ ok: false, error: "not_found" });
+        if (task.assignee_role === "funding_advisor" && task.client_id && !task.done) {
+          const moved = await transferFundingAdvisorTask(db, {
+            orgId, taskId: id, staffId: claim === true ? staff.id : assignee_staff_id,
+            claim: claim === true
+          });
+          if (!moved) return res.status(409).json({ ok: false,
+            error: claim === true ? "funding_advisor_already_assigned" : "funding_advisor_unavailable",
+            message: "Choose an active funding advisor for the whole file.", task });
+          if (moved.assignee_staff_id && moved.source_workflow === "c-03-inquiry-removed-resume-or-hold"
+              && moved.title === "Claim funding file and review clean bureaus") {
+            await (deps.emit || emit)(db, "inquiry.removed", { source: "funding_advisor_claimed", taskId: moved.id }, {
+              orgId, clientId: moved.client_id,
+              idempotencyKey: `funding-advisor-claim:${moved.id}:${moved.assignee_staff_id}`
+            });
+          }
+          return res.status(200).json({ ok: true, task: moved });
+        }
+      }
       // claim — take a task off the role queue. Deliberately conditional on
       // assignee_staff_id IS NULL: two people hitting Claim on the same row must
       // not both win, and the loser needs to be told, not silently overwritten.

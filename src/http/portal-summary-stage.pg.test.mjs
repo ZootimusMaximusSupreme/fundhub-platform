@@ -246,23 +246,32 @@ describe("/api/read/portal-summary — stage, advisor, dispute consent",
      A name a client is allowed to read, or a plain "nobody yet" — never a guess. */
   test("the advisor is named from the file, or is honestly absent", async () => {
     let body = await load();
-    /* NOTHING IN THIS REPOSITORY EVER WRITES AN ADVISOR ASSIGNMENT, so the
-       call_outcomes fallback is the only source a real client has. The closer
-       above IS a funding_advisor, so this file has one; a client whose only
-       logged call was a closer's would still get null, which is the point of
-       readAdvisor's third source being role-filtered. */
+    /* A call outcome still supplies an older file with no explicit assignment.
+       A closer-only outcome cannot fill this funding advisor card. */
     assert.ok(body.advisor && body.advisor.name === "Marcus Hale",
       "the funding advisor who logged the call is the advisor on the file");
     assert.equal(body.advisor.source, "call_outcome");
     assert.equal(body.advisor.email, undefined, "no contact details leave this endpoint");
 
-    // A typed name on the client record wins over every derived source.
+    // A typed name helps an older file when no named staff link exists.
     await db.query(
       `UPDATE clients SET custom_fields = jsonb_set(COALESCE(custom_fields,'{}'::jsonb),'{advisor_name}', '"Dana Reyes"')
         WHERE id = $1`, [client]);
     body = await load();
     assert.equal(body.advisor.name, "Dana Reyes");
     assert.equal(body.advisor.source, "custom_field");
+
+    // The assigned staff link wins over a stale typed name.
+    await db.query(
+      `UPDATE clients SET custom_fields = custom_fields || jsonb_build_object('cf_funding_advisor_user_id', $2::text)
+        WHERE id = $1`, [client, advisorStaffId]);
+    body = await load();
+    assert.equal(body.advisor.name, "Marcus Hale");
+    assert.equal(body.advisor.source, "staff_link");
+
+    await db.query(`UPDATE staff SET active = false WHERE id = $1`, [advisorStaffId]);
+    body = await load();
+    assert.equal(body.advisor, null, "a departed advisor must not appear from a stale typed name");
   });
 
   test("a client with nobody on the file gets null, not an invented name", async () => {

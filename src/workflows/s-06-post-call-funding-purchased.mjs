@@ -13,6 +13,7 @@ import { findClient, purchasedCategories } from "../handlers/purchase-routing.mj
 import { mergeCustomFields } from "./custom-fields.mjs";
 import { addTags, removeTags } from "./tags.mjs";
 import { createTask } from "../lib/create-task.mjs";
+import { assignFundingAdvisor } from "../funding/assign-advisor.mjs";
 
 const SOURCE_WORKFLOW = "s-06-post-call-funding-purchased";
 
@@ -27,7 +28,7 @@ function dueInHours(hours) {
   return new Date(Date.now() + hours * 60 * 60 * 1000);
 }
 
-async function createIntakeTaskOnce(db, { orgId, clientId, eventId }) {
+async function createIntakeTaskOnce(db, { orgId, clientId, eventId, advisorStaffId = null }) {
   const dup = await db.query(`SELECT 1 FROM tasks WHERE client_id = $1 AND source_workflow = $2 AND body = $3`, [clientId, SOURCE_WORKFLOW, eventId]);
   if (dup.rows[0]) return { created: false };
   await createTask(db, {
@@ -38,6 +39,7 @@ async function createIntakeTaskOnce(db, { orgId, clientId, eventId }) {
       // Fulfilment work, not sales work. Closers sell and close; funding
       // advisors deliver, and pulling the CRS is delivery.
       assigneeRole: "funding_advisor",
+      assigneeStaffId: advisorStaffId,
       dueAt: dueInHours(INTAKE_DUE_HOURS),
       eventId: eventId
     });
@@ -70,9 +72,12 @@ export async function handle({ event, db, step }) {
   if (!bought.repair) {
     await step.run("remove-client-repair-tag", () => removeTags(db, clientId, ["client:repair"]));
   }
-  const task = await step.run("create-intake-task", () => createIntakeTaskOnce(db, { orgId, clientId, eventId }));
-
-  return { done: true, task };
+  const advisor = await step.run("assign-funding-advisor", () =>
+    assignFundingAdvisor(db, { orgId, clientId }));
+  const task = await step.run("create-intake-task", () => createIntakeTaskOnce(db, {
+    orgId, clientId, eventId, advisorStaffId: advisor.staffId || null
+  }));
+  return { done: true, task, advisor };
 }
 
 export const s06PostCallFundingPurchased = inngest.createFunction(

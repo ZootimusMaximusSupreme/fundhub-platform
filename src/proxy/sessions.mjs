@@ -15,12 +15,12 @@ export async function insertProxySession(db, row) {
        org_id, client_id, staff_id, lender_id, application_id,
        requested_city, requested_state, granted_city, granted_region,
        targeting_level, exit_ip, sessid, proxy_username, application_url,
-       status, error_code, error_message, verification
+       status, error_code, error_message, verification, ended_at
      ) VALUES (
        $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
        $6, $7, $8, $9,
        $10, $11, $12, $13, $14,
-       $15, $16, $17, $18::jsonb
+       $15, $16, $17, $18::jsonb, $19::timestamptz
      )
      RETURNING *`,
     [
@@ -41,7 +41,8 @@ export async function insertProxySession(db, row) {
       row.status || "verifying",
       row.errorCode || null,
       row.errorMessage || null,
-      JSON.stringify(row.verification || {})
+      JSON.stringify(row.verification || {}),
+      row.endedAt || null
     ]
   );
   return r.rows[0];
