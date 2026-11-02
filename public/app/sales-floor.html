@@ -82,7 +82,7 @@
 <header class="topbar sf-toolbar">
   <div class="sf-intro">
     <h2>Team performance</h2>
-    <p>Today's pace, closer priorities and deposit follow-through.</p>
+    <p>Today's pace, setter and closer priorities, and deposit follow-through.</p>
   </div>
   <div class="hl sf-toolbar-actions">
     <span class="chip on" id="fh-floor-on-shift"><span class="cd"></span>— closers on shift</span>
@@ -93,6 +93,7 @@
 <main class="shell" id="fh-floor-main" aria-label="Sales floor performance" aria-busy="true">
   <div class="sf-state" id="fh-floor-status" role="status" aria-live="polite">Loading sales floor…</div>
   <nav class="sf-jumps" aria-label="Sales floor sections">
+    <a href="#fh-floor-setters">Your setters <span aria-hidden="true">↗</span></a>
     <a href="#fh-floor-team">Your closers <span aria-hidden="true">↗</span></a>
     <a href="#fh-offer-stack">Offer sales <span aria-hidden="true">↗</span></a>
     <a href="#fh-recordings">Recordings <span aria-hidden="true">↗</span></a>
@@ -128,6 +129,18 @@
     </div>
     <p class="say">Loading this month’s booked calls, deposits and funding outcomes.</p>
   </div>
+
+  <section class="sec" id="fh-floor-setters" aria-labelledby="fh-floor-setters-title">
+    <div class="sech"><div><h2 id="fh-floor-setters-title">Your setters</h2><p class="note">Logged dials, opt-in bookings, and call outcomes by setter.</p></div><span class="note">Today · Arizona</span></div>
+    <div class="setter-roster" role="region" aria-label="Setter performance today">
+      <div class="setter-head">
+        <span>Setter</span><span class="num">Logged dials</span><span class="num">Opt-in booked</span>
+        <span class="num">Shows</span><span class="num">No-shows</span><span class="num">Show rate</span>
+      </div>
+      <div class="setter-body"><div class="setter-row setter-skeleton" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+    </div>
+    <p class="note setter-method">Bookings are opt-in calls booked today. Show rate uses today's logged outcomes for each setter's leads. A dial log does not confirm a phone connection.</p>
+  </section>
 
   <section class="sec" id="fh-floor-team" aria-labelledby="fh-floor-team-title">
     <div class="sech"><div><h2 id="fh-floor-team-title">Your closers</h2><p class="note">Select a closer to review their numbers and next action.</p></div><span class="note">This month</span></div>
