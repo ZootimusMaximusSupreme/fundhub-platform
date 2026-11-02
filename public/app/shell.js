@@ -2531,6 +2531,7 @@
       '<div><strong>' + esc(name) + '</strong><span class="fh-account-role">' + esc(roleLabel) + '</span></div></div>' +
       payoutBankHtml +
       '<button id="fh-shell-out" type="button">Sign out</button>' +
+      '<a class="fh-account-privacy" href="/privacy/">Privacy policy</a>' +
       '<details class="fh-account-technical" id="fh-shell-account-diagnostics"><summary>Technical details</summary>' +
       '<p>' + esc(staff.email || "") + '</p><p>Arizona time · <span id="fh-workspace-clock"></span></p>' +
       '<p id="fh-shell-status-hint">Checking connection…</p><span id="fh-shell-src"></span></details></div>';
@@ -2650,6 +2651,11 @@
         if (!current(flow)) return;
         button.disabled = false;
         if (result && result.ok) { paint(result.account); return; }
+        if (result && result.error === "mfa_required") {
+          button.hidden = true;
+          status.textContent = "Sign in again to connect your payout bank.";
+          return;
+        }
         status.textContent = (result && result.message) || "The bank did not save. Open Plaid again.";
         button.textContent = "Link payout bank with Plaid";
       });
@@ -2684,6 +2690,11 @@
         if (!current(flow)) return;
         if (!result || !result.ok || !result.link_token) {
           button.disabled = false;
+          if (result && result.error === "mfa_required") {
+            button.hidden = true;
+            status.textContent = "Sign in again to connect your payout bank.";
+            return;
+          }
           button.textContent = "Link payout bank with Plaid";
           status.textContent = (result && result.message) || "Bank linking is unavailable right now. Try again later.";
           return;

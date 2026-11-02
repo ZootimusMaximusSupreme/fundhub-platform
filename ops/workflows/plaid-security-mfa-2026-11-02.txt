@@ -1,0 +1,42 @@
+Owner lane: finance-security
+Status: IN PROGRESS, 2026-11-02
+Goal: Make Fundhub staff payout bank onboarding require real app MFA, collect honest Plaid security evidence, and ship only after required checks.
+
+Plan gate
+Role: Fundhub staff (closer or sales manager) enrolling a payout bank; owner sees verification state.
+One job: Verify a second factor before a staff member can connect or change their payout bank.
+First question: Is my payout bank setup protected and ready?
+Reuse: existing staff password/session, payout bank setup, Plaid Link, and privacy page.
+Data: staff MFA secret/challenge state and session assurance; backend owner will specify exact routes and migration.
+Files: backend owner edits src/auth, payout bank gate, routes, migration, focused tests; UI owner edits public/app staff setup and focused browser tests; root owns this board, Plaid evidence, release checks.
+Risk: lockout or bank-link bypass. Proof: enrollment, login challenge, recovery, protected Link endpoints, role tests, UI clicks, scratch DB, and live read-only evidence.
+
+Parallel workflows
+1. Backend owner /root/mfa_backend: inspect existing auth and payout bank paths; implement server MFA with durable state and rate limits; send exact API contract to UI owner and root. Own only backend, migration, focused tests. No secrets in git.
+2. UI owner /root/mfa_ui: implement second-factor enrollment/challenge and clear bank setup state after backend contract; show privacy link where staff connect bank; UI tests and screenshots. Own only public/app and focused browser tests.
+3. Plaid evidence owner /root/plaid_evidence: read-only inspect exact questionnaire/evidence asks and compare to current repo/live proof; report truthfully answerable fields. No attestation/upload/blocked choice retry.
+4. Root: coordinate, check PR ownership and preflight, integrate/test, capture marked screenshots and Plaid upload after verified live, then ship through protected checks. Do not accept a Plaid contract/payment.
+
+Waits: UI implementation waits for backend contract. Plaid screenshot/upload waits for real deployment and verified MFA. Production deployment waits for required review and CI. No live money movement in this task.
+
+2026-11-02 findings
+- GitHub connector: open PR #380 owns funding handoff files; #381 owns native widget/funding parent; neither lists auth or payout files.
+- Current staff login uses password and issues a seven-day session. Staff payout routes use that session. No app MFA exists yet.
+- Backend contract: valid staff password returns a ten-minute MFA challenge without a session; setup returns authenticator URI; verification issues session. Dedicated new MFA_SECRET_ENC_KEY; MFA_REQUIRED stays off until production key and migration exist, then is enabled. Backup codes are one-use and shown once.
+- Plaid questionnaire accepts honest No/None answers for MFA and vulnerability controls. It asks for a screenshot if claiming critical-system MFA. Drive search found no Fundhub security policy or vulnerability-scan evidence. Repo retention has no automatic sweep. Do not select unverified claims or upload draft UI as proof.
+- Authenticated Netlify security page shows account 2FA off. Setup requires Chris to scan the QR code with an authenticator and save recovery codes; the page is open for him. GitHub account security page requires sign-in, so its MFA state is not verified.
+- Root wrote a truthful security-program section and evidence-gap log in existing docs/sops/RUNBOOK.md on isolated branch codex/plaid-security-ops-20261102, commit f388ff9b7. Cherry-pick into integration after backend/UI are ready.
+- UI lane complete in isolated branch codex/plaid-mfa-ui-20261102, commit 842baf796: staff login MFA enrollment/challenge/recovery, privacy link, focused browser tests 14/14, lint and TypeScript pass. Await backend integration and live proof.
+- Independent security review caught two high risks before release: a per-token challenge limit could be bypassed by opening many challenges, and global staff MFA would break two native iOS sign-in clients. Backend owner is changing to an aggregate attempt limit plus web payout MFA that the payout routes enforce; native sign-ins stay usable and cannot access payout-bank actions without MFA assurance.
+- New random MFA_SECRET_ENC_KEY was saved in Netlify production Functions as a secret; name presence verified, value not displayed. Key is unused until code deploys.
+- MFA_REQUIRED=1 is now saved for Netlify production Functions, and key name still exists. Netlify states changes require redeploy; current live code does not use this new flag. No deployment has occurred yet.
+- Security reviewer: no remaining high static bypass in scoped payout MFA after aggregate attempt and 15-minute stamp fixes. Scratch Postgres concurrency and live sign-in/payout proof are still required.
+- Backend committed as 48ec31033; final integration branch cherry-picked as e2f18f2b6. Focused backend tests 55 pass; scratch Postgres concurrency test exists but skipped because local scratch DB is unavailable. Lint and RLS shape pass in backend lane. UI final commits 842baf796 and 679b92203 passed 16 browser tests, lint, and TypeScript.
+- Integrated checks: 55 focused Node tests pass (one scratch-DB suite skipped); 16 browser checks pass; TypeScript passes; lint parses 4618 files. The new POST-only /api/auth/mfa route is explained in the pulse registry; registry tests now pass 9/9. Catalog report shows 0 changed rows.
+- Preflight exits 1 because active local branch meta-neutral-audience-labels-2026-11-02 owns three payout UI files. A full git merge-tree confirms real conflicts in public/app/shell.js, e2e/staff-payout-bank.spec.mjs, api/staff/payout-account.mjs and additional unrelated Meta/operations files. The owner lane has not handed them off. Completed source worktrees were removed after their commits were cherry-picked; their branches remain preserved. No PR or deployment yet.
+- The intended staff payout MFA path is recorded in existing docs/journeys/money-transfers-flow.md (no new Markdown file). Plaid Chrome inspection timed out twice through computer use, so no questionnaire fields were changed and no evidence was uploaded from this session.
+- Added checks: money/staff payout pulse tests pass 15 with 2 scratch-DB skips; rules:check passes. Combined focused test runs have 3 scratch-DB skips total (one MFA concurrency, two existing payout truth). No production database was used for tests.
+- Tested integration branch codex/plaid-mfa-integration-20261102 was pushed to GitHub at 0cff77388 without opening a PR or deploying. Owner decision requested: hand the overlapping payout files from active Meta lane to this MFA lane now, or wait for Meta lane to ship first. Until then, no PR, production deployment, or Plaid upload.
+- Owner decision received: MFA owns the overlapping payout files now; the active Meta branch will rebase afterward. Exact handoff: public/app/shell.js, public/app/workspace-ui.css, e2e/staff-payout-bank.spec.mjs, plus any bank route/test overlap discovered by rebase. Proceed with MFA PR and preserve the Meta branch's uncommitted work; do not edit that worktree.
+- Owner-authorized manual path: required preflight and ship-change --resume both stopped on the already-handed-off active Meta worktree. Created release branch codex/plaid-mfa-release-20261102 from latest main, pushed without rewriting the backup branch, and opened PR #382. Added its exact-head archive and ship-order/1 label; GitHub ownership check passes. No merge/deploy yet.
+- PR #382 CI found four focused gaps: generated actual journeys stale, login proof tests expect the old request body, role-route proof omits auth/mfa, and auth/mfa has no tripwire decision. Repaired the exact assertions, route classification, tripwire, and generated journeys without weakening tests. Focused local run passes 148/148 (localhost test required elevated sandbox); TypeScript and rules check pass. Real Postgres blocks passed in the initial PR run; browser job is still completing. Push repair and wait for a clean new CI run before merge.

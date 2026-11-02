@@ -301,6 +301,57 @@ Law: product-is-live (`.ai/rules/product-is-live.md`) - texts, email, and the me
 
 ---
 
+## Information security program
+
+**Owner:** Chris Stanbridge. **Scope:** Fundhub production code, hosting, databases,
+consumer and staff data, bank connections, and any employee or contractor device
+that can reach them. Review this section at least quarterly and after an incident
+or a material change to the system. Record the review date and any open gaps here.
+
+### Access and sign-in
+
+- Give each person their own account and only the role needed for their job.
+  Remove access when a person leaves or changes roles; review privileged access
+  each quarter.
+- Require a second sign-in factor for production-critical accounts and for staff
+  connecting a payout bank. Keep recovery codes in the account owner's password
+  manager, never in source, a ticket, or a shared chat.
+- Do not describe a control as enabled until a live sign-in and the account's
+  security settings prove it. As of November 2, 2026, the Netlify account shows
+  two-factor authentication **off**. Staff app MFA is in build and is not live
+  proof. The Plaid questionnaire must reflect those facts until fixed.
+
+### Data protection and incidents
+
+- Keep secrets in the provider's encrypted environment, never in git or a board.
+  The application encrypts Plaid access tokens before storage; confirm provider
+  encryption and backups before claiming all consumer data is encrypted at rest.
+- Use HTTPS for production traffic. Verify the deployed endpoint's TLS settings
+  before attesting to a minimum version.
+- For suspected unauthorized access, stop the exposed credential or session,
+  preserve logs and times, identify affected data and people, rotate the key,
+  and record the response and notifications. Follow the incident steps above.
+
+### Vulnerabilities and retention
+
+- Scan production dependencies and assets and employee/contractor devices on a
+  recurring schedule; track each finding with an owner and due date. Critical
+  findings target seven days, high findings thirty days, or an earlier provider
+  deadline. Recheck after repair. Do not claim all-device scanning until there
+  is a scan inventory and recent receipts for every in-scope device and asset.
+- Keep only the consumer data needed for the stated service and legal duties.
+  Review retention periods quarterly, execute the approved deletion schedule,
+  and record each run. The current database policy table alone does not run
+  deletion automatically; treat enforcement as an open gap until the job and
+  receipts exist.
+
+**Open evidence on November 2, 2026:** enable and verify Netlify MFA; prove app
+MFA in production; inventory device and production scans; confirm provider data
+encryption and TLS; set retention periods and prove scheduled deletion. Do not
+answer a Plaid control as completed from this written policy alone.
+
+---
+
 ## Quick reference
 
 | I see | It means | Do this |

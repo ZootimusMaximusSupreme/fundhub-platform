@@ -16,6 +16,7 @@ import { verifyPassword, verifyDecoy, needsRehash, hashPassword } from "./hash.m
 import { createSession, normalizeIp, verifySession } from "./session.mjs";
 import { resolveDefaultOrg } from "./org.mjs";
 import { demoLoginRefusal } from "./demo-logins.mjs";
+import { mfaRequired, mfaConfigured, createMfaChallenge } from "./mfa.mjs";
 
 // Failures are counted only since that identity's last SUCCESSFUL login, so a
 // clean login resets the counter for the person who owns the account.
@@ -75,7 +76,8 @@ export async function recordAttempt(db, { orgId, email, ip, successful }) {
 // login — the whole flow.
 //   → { ok: true,  token, expiresAt, staff: { id, org_id, role, roles, email, name } }
 //   → { ok: false, status, error }
-export async function login(db, { email, password, ip, userAgent, orgId, env = process.env } = {}) {
+export async function login(db, { email, password, ip, userAgent, orgId,
+  mfaForPayout = false, env = process.env } = {}) {
   const org = orgId || (await resolveDefaultOrg(db));
   const normEmail = normalizeEmail(email);
 
@@ -157,6 +159,18 @@ export async function login(db, { email, password, ip, userAgent, orgId, env = p
   }
 
   await recordAttempt(db, { orgId: org, email: normEmail, ip, successful: true });
+  // Staff bank linking requires an MFA-assured session. The web login requests
+  // this challenge; native clients keep their existing session path, but those
+  // sessions cannot start or complete a payout bank connection.
+  if (mfaRequired(env) && mfaForPayout === true) {
+    if (!mfaConfigured(env)) return { ok: false, status: 503, error: "mfa_unavailable" };
+    const challenge = await createMfaChallenge(db, {
+      staffId: staff.id, orgId: staff.org_id, ip, userAgent
+    });
+    if (challenge.limited) return { ok: false, status: 429, error: "too_many_mfa_attempts" };
+    return { ok: true, mfa_required: true, mfa_setup_required: challenge.setupRequired,
+      mfa_token: challenge.token };
+  }
   await db.query(`UPDATE staff SET last_login_at = now() WHERE id = $1`, [staff.id]);
 
   const session = await createSession(db, {

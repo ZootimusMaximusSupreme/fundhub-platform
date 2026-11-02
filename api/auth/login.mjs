@@ -1,4 +1,4 @@
-// POST /api/auth/login  { email, password }
+// POST /api/auth/login  { email, password, mfa_for_payout?: true }
 // → 200 { ok, token, expiresAt, staff }  + Set-Cookie fundhub_session
 // → 400/401/403/429 { ok:false, error }
 //
@@ -77,7 +77,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
   }
-  const { email, password } = req.body || {};
+  res.setHeader("Cache-Control", "no-store");
+  const { email, password, mfa_for_payout } = req.body || {};
   const ip = clientIp(req);
   const userAgent = req.headers?.["user-agent"] || null;
 
@@ -93,7 +94,8 @@ export default async function handler(req, res) {
      caller sees. Nothing about the HTTP response changes here. */
   let out;
   try {
-    out = await login(db, { email, password, ip, userAgent });
+    out = await login(db, { email, password, ip, userAgent,
+      mfaForPayout: mfa_for_payout === true });
   } catch (err) {
     console.error(
       `auth/login: staff lookup failed — ${safeError(err)}` +
@@ -110,7 +112,7 @@ export default async function handler(req, res) {
   // Order matters only for speed, not for correctness: the two token spaces are
   // separate tables. A 429 is NOT retried against accounts — a rate limit that
   // can be sidestepped by having the second lookup answer is not a rate limit.
-  if (!out.ok && out.status !== 429) {
+  if (!out.ok && out.status !== 429 && out.status !== 503) {
     let acct;
     try {
       acct = await loginAccount(db, { email, password, ip, userAgent });
@@ -162,6 +164,11 @@ export default async function handler(req, res) {
     return res.status(out.status || 401).json({
       ok: false, error: out.error, ...(out.message ? { message: out.message } : {})
     });
+  }
+
+  if (out.mfa_required) {
+    return res.status(200).json({ ok: true, mfa_required: true,
+      mfa_setup_required: out.mfa_setup_required, mfa_token: out.mfa_token });
   }
 
   const maxAge = Math.max(60, Math.floor((new Date(out.expiresAt).getTime() - Date.now()) / 1000));

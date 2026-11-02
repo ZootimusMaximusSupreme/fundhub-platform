@@ -95,6 +95,19 @@ test("createSession refuses without a staff id", async () => {
   await assert.rejects(() => createSession(fakeDb(), {}), /staffId required/);
 });
 
+test("ordinary staff login survives a short migration race without minting an unstamped MFA session", async () => {
+  _resetOrgCache();
+  const missing = Object.assign(new Error("column mfa_verified_at does not exist"), { code: "42703" });
+  const db = fakeDb([
+    [/INSERT INTO sessions[\s\S]*mfa_verified_at/, () => { throw missing; }],
+    [/INSERT INTO sessions/, [{ id: "old-schema-session", expires_at: new Date() }]]
+  ]);
+  const regular = await createSession(db, { staffId: "staff-1" });
+  assert.match(regular.token, /^[A-Za-z0-9_-]{43}$/);
+  await assert.rejects(() => createSession(db, { staffId: "staff-1", mfaVerified: true }),
+    (error) => error === missing);
+});
+
 test("verifySession rejects empty/garbage tokens without touching the db", async () => {
   const db = fakeDb();
   for (const t of [null, undefined, "", 12345, {}]) {
@@ -124,6 +137,20 @@ test("verifySession looks the session up by hash and slides expiry in one statem
     email: "a@b.com", name: "A", status: "active",
     avatarUrl: null
   });
+});
+
+test("staff session projects MFA assurance for payout route without closing native sign-in", async () => {
+  const db = fakeDb([[/WITH live AS/, [{
+    session_id: "sess-1", expires_at: new Date(), staff_id: "staff-1", org_id: "org-1",
+    role: "closer", email: "a@b.com", name: "A", status: "active", active_flag: null,
+    mfa_verified_at: null
+  }]]]);
+  const out = await verifySession(db, newToken(), { env: { MFA_REQUIRED: "1" } });
+  assert.ok(out);
+  assert.equal(out.session.mfaVerifiedAt, null);
+  const q = db.calls[0];
+  assert.match(q.sql, /live\.mfa_verified_at/);
+  assert.equal(q.params.length, 2);
 });
 
 test("verifySession stacks active assigned roles while retaining the primary role", async () => {

@@ -69,6 +69,7 @@
 #fh-workspace-header #fh-account-payout-choices button{border-color:var(--line);background:#fff;color:var(--ink)}
 #fh-workspace-header #fh-shell-avatar{min-width:40px;min-height:40px;width:40px;height:40px;border:1px solid var(--line);border-radius:50%;background:var(--soft);color:var(--gray);font:500 18px/1 var(--sans);object-fit:cover}
 #fh-workspace-header #fh-shell-out{width:100%;min-height:40px;display:flex;align-items:center;padding:10px 12px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:8px;font:500 13px/1 var(--sans);cursor:pointer;text-align:left}
+#fh-workspace-header .fh-account-privacy{display:flex;align-items:center;min-height:44px;margin-top:8px;padding:10px 12px;color:var(--ink);font:500 13px/1.3 var(--sans);text-underline-offset:3px}
 #fh-workspace-header .fh-account-technical{margin-top:14px;color:var(--gray);font:400 12px/1.5 var(--sans)}
 #fh-workspace-header .fh-account-technical summary{cursor:pointer;min-height:28px}
 #fh-workspace-header .fh-account-technical p{margin:8px 0 0}

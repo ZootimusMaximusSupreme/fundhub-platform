@@ -34,6 +34,7 @@ test("closer links their own payout bank from the account menu", async ({ page }
   });
   await gotoScreen(page, "closer-dashboard.html", "", CLOSER);
   await page.locator("#fh-shell-chip-show").click();
+  await expect(page.getByRole("link", { name: "Privacy policy" })).toHaveAttribute("href", "/privacy/");
   await expect(page.locator("#fh-account-payout-status")).toHaveText("No payout bank linked yet.");
   await page.locator("#fh-account-payout-link").click();
   await expect(page.locator("#fh-account-payout-status")).toContainText("Example Credit Union ··1234");
@@ -55,6 +56,21 @@ test("payout link stays hidden when Plaid Transfer is unavailable", async ({ pag
   await gotoScreen(page, "closer-dashboard.html", "", CLOSER);
   await page.locator("#fh-shell-chip-show").click();
   await expect(page.locator("#fh-account-payout-status")).toContainText("Plaid Transfer is enabled");
+  await expect(page.locator("#fh-account-payout-link")).toBeHidden();
+});
+
+test("expired payout MFA asks staff to sign in again", async ({ page }) => {
+  await wireApi(page, {
+    session: CLOSER,
+    handlers: {
+      "/api/read/staff-payout-account": () => ({ ok: true, account: null, linking_available: true }),
+      "/api/staff/payout-account": () => ({ ok: false, error: "mfa_required" })
+    }
+  });
+  await gotoScreen(page, "closer-dashboard.html", "", CLOSER);
+  await page.locator("#fh-shell-chip-show").click();
+  await page.locator("#fh-account-payout-link").click();
+  await expect(page.locator("#fh-account-payout-status")).toHaveText("Sign in again to connect your payout bank.");
   await expect(page.locator("#fh-account-payout-link")).toBeHidden();
 });
 
