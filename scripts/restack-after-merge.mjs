@@ -4,6 +4,7 @@
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -78,6 +79,35 @@ export function archiveHead(branch, run) {
   if (verified !== head) throw new Error(`Could not verify archive tag for ${branch}`);
 }
 
+// A merged child can contain two copies of the same commits. Linear rebase
+// replays both, even though its final delta is unambiguous. Apply only that
+// delta to main, with Git's strict index/context checks; never choose a side
+// of a content conflict or copy the old child's whole tree over main.
+export function restackMergedDelta({ base, head, branch, number, run = command }) {
+  if (run("git", ["status", "--porcelain"])) return false;
+  const mergeCount = Number(run("git", ["rev-list", "--count", "--min-parents=2", `${base}..${head}`]));
+  if (!Number.isSafeInteger(mergeCount) || mergeCount < 1) return false;
+  const archived = run("git", ["ls-remote", "--tags", "origin", `refs/tags/archive/${branch}`]).split(/\s+/)[0];
+  if (archived !== head) return false;
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-restack-delta-"));
+  try {
+    const patchFile = path.join(directory, "child.patch");
+    // command() trims stdout; write the patch directly so trailing spaces,
+    // missing final newlines and binary payloads survive byte for byte.
+    run("git", ["diff", "--binary", "--full-index", "--no-ext-diff", "--no-textconv", `--output=${patchFile}`, base, head, "--"]);
+    if (fs.statSync(patchFile).size === 0) return false;
+    run("git", ["switch", "-C", `restack-pr-${number}`, "origin/main"]);
+    run("git", ["apply", "--check", "--index", "--whitespace=nowarn", patchFile]);
+    run("git", ["apply", "--index", "--whitespace=nowarn", patchFile]);
+    run("git", ["commit", "-m", `Restack PR #${number} delta after merged-history replay conflict`]);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
 export function restackChild({ child, merged, repo, run = command }) {
   const branch = child.head.ref;
   const oldHead = child.head.sha;
@@ -136,9 +166,11 @@ export function restackChild({ child, merged, repo, run = command }) {
     run("git", ["rebase", "--onto", "origin/main", rebaseBase]);
   } catch {
     try { run("git", ["rebase", "--abort"]); } catch { /* no active rebase */ }
-    comment(repo, child.number,
-      `@ZootimusMaximusSupreme PR #${child.number} could not be restacked after #${merged.number} merged. The rebase conflicts with current main. I left the branch and PR unchanged for a manual fix.`, run);
-    return { number: child.number, state: "conflict" };
+    if (!restackMergedDelta({ base: rebaseBase, head: oldHead, branch, number: child.number, run })) {
+      comment(repo, child.number,
+        `@ZootimusMaximusSupreme PR #${child.number} could not be restacked after #${merged.number} merged. The rebase and strict child-delta application conflict with current main. I left the branch and PR unchanged for a manual fix.`, run);
+      return { number: child.number, state: "conflict" };
+    }
   }
 
   // A native GitHub restack or another agent may have moved the PR while this ran.
