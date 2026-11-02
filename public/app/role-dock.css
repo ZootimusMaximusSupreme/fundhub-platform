@@ -7,7 +7,9 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--dock-ink);outline-o
 .rail{position:absolute;right:0;top:0;width:var(--dock-width);height:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 7px 12px;background:var(--dock-paper);border:1px solid var(--dock-line);border-right:0;border-radius:14px 0 0 14px;overflow:hidden}
 .rail::after,.peek::after{content:"";position:absolute;bottom:0;left:0;right:0;height:4px;background:var(--dock-spectrum)}
 .rail button{position:relative;width:44px;height:44px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--dock-ink);display:grid;place-items:center;cursor:pointer}
+.rail button[hidden]{display:none}
 .rail button[aria-pressed="true"]{background:#fff;border-color:var(--dock-line)}
+.meta-mark{font-size:28px;line-height:1;font-weight:900;letter-spacing:-.08em}
 .rail img{width:42px;height:42px;border-radius:10px}
 .dock-mark{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;background:var(--dock-ink);color:#fff;font-size:24px;font-weight:900;letter-spacing:-.08em}
 .peek-head .dock-mark{width:28px;height:28px;border-radius:7px;font-size:16px;flex:none}
@@ -59,3 +61,28 @@ body[data-side="left"] .peek{left:calc(var(--dock-width) + 8px);right:auto}
 .state p,.item-label,.item-detail p{font-size:16px}
 .item-due,.peek-foot small{font-size:13px}
 .sop-link{display:inline-flex;align-items:center;min-height:44px;font-size:13px;color:var(--dock-ink);margin-bottom:4px}
+
+/* Personal call work stays in the same compact, role-scoped companion. */
+:root{--dock-peek-width:min(280px,calc(100vw - var(--dock-width) - 8px))}
+.closer-calendar{margin-bottom:16px;min-width:0}
+.closer-calendar h3{margin:0 0 8px;font-size:18px}
+.closer-calendar h4{margin:16px 0 8px;font-size:16px}
+.calendar-call{border-top:1px solid var(--dock-line);padding:8px 0}
+.call-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:48px;padding:4px 0;background:none;border:0;color:var(--dock-ink);text-align:left;cursor:pointer}
+.call-heading{min-width:0;display:grid;gap:4px;overflow-wrap:anywhere}
+.call-heading strong{font-size:16px}.call-time{font-size:13px;color:var(--dock-muted)}
+.call-chevron{font-size:20px}.call-toggle[aria-expanded=true] .call-chevron{transform:rotate(180deg)}
+.call-details[hidden]{display:none!important}
+.section .call-countdown{font-size:16px;font-variant-numeric:tabular-nums;margin:4px 0 8px}
+.call-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.calendar-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 12px;border:1px solid var(--dock-line);border-radius:8px;background:transparent;color:var(--dock-ink);font-size:16px;text-decoration:none;cursor:pointer}
+.calendar-present{background:var(--dock-ink);color:#fff}
+.call-facts{margin:0;display:grid;gap:4px;overflow-wrap:anywhere}
+.call-facts dt{font-size:13px;color:var(--dock-muted);margin-top:8px}
+.call-facts dd{font-size:16px;margin:0;line-height:1.4;white-space:pre-wrap}
+.section .call-presence,.section .call-notice,.section .calendar-state{font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.presentation-timer{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
+.presentation-timer span{font-size:13px}.presentation-timer strong{font-size:20px;font-variant-numeric:tabular-nums}
+.presentation-timer p{font-size:13px;line-height:1.4}
+
+.meet-checked{display:block;margin-top:4px;font-size:13px;color:var(--dock-muted)}

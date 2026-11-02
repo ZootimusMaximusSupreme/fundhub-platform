@@ -36,6 +36,7 @@ export function isPingId(id) {
 }
 
 export const TRIPWIRES = Object.freeze({
+  "route:read/meet-presence": { impact: "customer", checks: ["meet:read-door"] },
   ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/[^/]+\.html$/.test(file))
     .map((file) => [`page:${file}`, { impact: "customer", checks: ["slideshows:content"] }])),
   "route:bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
@@ -223,6 +224,8 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
+  "route:read/ad-preview":
+    "Staff-only read of the same-org client attribution and matched Meta ad preview; it is lazy and never sends a message or changes a customer or advertising record.",
   "job:ops-manager-review":
     "Staff-only KPI review creates a dated task for the routed sales manager or owner; it never sends to a customer. Its job receipt is monitored by the heartbeat.",
   "route:company-brain/library":

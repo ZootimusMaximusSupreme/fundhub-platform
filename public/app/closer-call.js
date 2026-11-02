@@ -207,9 +207,9 @@
          "present.html?contact=" to prove the deck is still deep-linked, and a
          split string silently defeats it. It also just reads better. */
       var href = id
-        ? "present.html?contact=" + encodeURIComponent(id)
-        : "present.html";
-      // New tab so the closer keeps the cockpit and can split-screen the deck.
+        ? "present.html?contact=" + encodeURIComponent(id) + "&audience=1"
+        : "present.html?audience=1";
+      // Share this separate audience tab; private call controls stay here.
       window.open(href, "_blank", "noopener,noreferrer");
     });
   }

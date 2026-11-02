@@ -239,7 +239,7 @@ const LADDER = [
   ["desc:fund", "Funding", "FUNDING_DFY", false, false, false],
   ["desc:diy", "Capital Blueprint", "UWIQ_DELIVERABLES", true, false, false],
   ["desc:dfy", "Repair DFY", "REPAIR_DFY", true, false, false],
-  ["desc:trial", "Repair trial round", "REPAIR_TRIAL", true, false, false],
+  ["desc:trial", "Repair trial · two rounds", "REPAIR_TRIAL", true, false, false],
   ["desc:eduTop", "Funding Mastery", "FUNDING_MASTERY", false, true, true],
   ["desc:eduLow", "Education deliverables", "UWIQ_DELIVERABLES", false, true, true]
 ];
@@ -256,7 +256,8 @@ test("Descent ladder: all six buttons are on S-19 and S-23, in order, with the c
   const priceOf = (key) => OFFERS.find((o) => o.key === key).priceDisplay;
   assert.ok(html.includes(`Funding · ${priceOf("FUNDING_DFY")} deposit`));
   assert.ok(html.includes(`Repair DFY · ${priceOf("REPAIR_DFY")}`));
-  assert.ok(html.includes(`Repair trial round · ${priceOf("REPAIR_TRIAL")}`));
+  assert.ok(html.includes(`Repair trial · two rounds · ${priceOf("REPAIR_TRIAL")}`));
+  assert.ok(!html.includes("Repair trial round ·"), "the $200 test run must not revert to a single-round offer");
   assert.ok(html.includes(`Capital Blueprint · ${priceOf("UWIQ_DELIVERABLES")}`));
   assert.ok(html.includes(`Funding Mastery · ${priceOf("FUNDING_MASTERY")}`));
   assert.ok(html.includes(`Education deliverables · ${priceOf("UWIQ_DELIVERABLES")}`));

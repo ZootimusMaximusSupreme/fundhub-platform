@@ -47,7 +47,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 165 routes]
+    WHO -->|Yes| CANT[Blocked — 166 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 6 blocked]
@@ -69,7 +69,7 @@ flowchart TD
     CANT --> B_partners[partners — 1 blocked]
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_push[push — 4 blocked]
-    CANT --> B_read[Reading data — 19 blocked]
+    CANT --> B_read[Reading data — 20 blocked]
     CANT --> B_repair[repair — 4 blocked]
     CANT --> B_social[social — 3 blocked]
     CANT --> B_staff[staff — 2 blocked]
@@ -79,7 +79,7 @@ flowchart TD
 
 ## What they can reach
 
-**177 of 342 routes.**
+**177 of 343 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -270,7 +270,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**165 of 342 routes.**
+**166 of 343 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -415,6 +415,7 @@ flowchart TD
 | `/api/read/eeo-aggregate` | GET | owner, admin |
 | `/api/read/failed-events` | GET | owner, admin |
 | `/api/read/invoices` | GET | owner, admin, sales_manager |
+| `/api/read/meet-presence` | GET | owner, admin, sales_manager, closer |
 | `/api/read/message-tests` | GET | owner, admin |
 | `/api/read/morning-brief` | GET | owner, admin |
 | `/api/read/my-numbers` | GET | owner, admin, closer, sales_manager |

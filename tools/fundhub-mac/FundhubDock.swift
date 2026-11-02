@@ -42,6 +42,7 @@ final class FundhubDock: NSObject, WKNavigationDelegate, WKScriptMessageHandler 
     }
 
     func hide() {
+        FundhubAudienceWindows.shared.closeAll()
         sessionGeneration += 1
         panel?.orderOut(nil)
         workspaceWebView = nil
@@ -137,6 +138,28 @@ final class FundhubDock: NSObject, WKNavigationDelegate, WKScriptMessageHandler 
             } else {
                 NSWorkspace.shared.open(url)
             }
+        case "present":
+            guard let href = body["href"] as? String, let url = URL(string: href),
+                  FundhubAudienceWindows.allows(url), let workspace = workspaceWebView,
+                  let rawRequestID = body["requestId"] as? String, let requestUUID = UUID(uuidString: rawRequestID) else { return }
+            let requestID = requestUUID.uuidString.lowercased()
+            let generation = sessionGeneration
+            Task {
+                let opened = await FundhubAudienceWindows.shared.open(url, from: workspace)
+                guard generation == sessionGeneration else { FundhubAudienceWindows.shared.closeAll(); return }
+                dockWebView?.evaluateJavaScript("window.dispatchEvent(new MessageEvent('message',{origin:location.origin,data:{type:'dock-present-result',requestId:'\(requestID)',ok:\(opened)}}))", completionHandler: nil)
+            }
+        case "joinMeet":
+            guard let href = body["href"] as? String, let url = URL(string: href),
+                  url.scheme == "https", url.host == "meet.google.com", url.user == nil, url.password == nil,
+                  url.path.range(of: "^/[a-z]{3}-[a-z]{4}-[a-z]{3}/?$", options: .regularExpression) != nil else { return }
+            NSWorkspace.shared.open(url)
+        case "sessionChanged": hide()
+        case "openExternal":
+            guard let href = body["href"] as? String,
+                  href == "https://adsmanager.facebook.com/adsmanager/manage/campaigns?business_id=1475597360226485&nav_entry_point=mbs_sub_nav&act=982103620742368#",
+                  let url = URL(string: href) else { return }
+            NSWorkspace.shared.open(url)
         case "authExpired": hide()
         default: break
         }
@@ -184,5 +207,99 @@ final class FundhubDock: NSObject, WKNavigationDelegate, WKScriptMessageHandler 
             Task { @MainActor in FundhubDock.shared.toggle() }
             return noErr
         }, 1, &eventType, nil, &hotKeyHandler)
+    }
+}
+
+// A client-only presentation gets its own window and the existing WebKit session.
+// The private workspace is never navigated to make room for it.
+@MainActor
+final class FundhubAudienceWindows: NSObject, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+    static let shared = FundhubAudienceWindows()
+    private var windows: [NSWindow: WKWebView] = [:]
+    private var generation = 0
+
+    static func allows(_ url: URL) -> Bool {
+        guard url.scheme == "https", url.host == "fundhub.ai", url.path == "/app/present.html",
+              url.user == nil, url.password == nil,
+              let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let items = parts.queryItems, items.count == 2,
+              items.filter({ $0.name == "audience" && $0.value == "1" }).count == 1,
+              let contact = items.first(where: { $0.name == "contact" })?.value,
+              UUID(uuidString: contact) != nil else { return false }
+        return items.allSatisfy { ["contact", "audience"].contains($0.name) }
+    }
+
+    func open(_ url: URL, from source: WKWebView) async -> Bool {
+        let generation = self.generation
+        guard Self.allows(url), let sourceURL = source.url,
+              sourceURL.scheme == "https", sourceURL.host == "fundhub.ai",
+              let token = (try? await source.evaluateJavaScript("localStorage.getItem('fh_token')")) as? String,
+              !token.isEmpty, token != "demo", token.utf8.count <= 4096 else { return false }
+        var request = URLRequest(url: URL(string: "https://fundhub.ai/api/auth/session")!)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 10
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              json["ok"] as? Bool == true, let staff = json["staff"] as? [String: Any],
+              let staffID = staff["id"] as? String, UUID(uuidString: staffID) != nil,
+              !staffID.isEmpty else { return false }
+        let finalToken = (try? await source.evaluateJavaScript("localStorage.getItem('fh_token')")) as? String
+        guard generation == self.generation, source.url == sourceURL, finalToken == token else { return false }
+        let controller = WKUserContentController()
+        for script in source.configuration.userContentController.userScripts { controller.addUserScript(script) }
+        controller.add(self, name: "audienceSession")
+        controller.addUserScript(WKUserScript(source: """
+        (() => { const bearer = localStorage.getItem('fh_token');
+          const check = () => { if (localStorage.getItem('fh_token') !== bearer)
+            window.webkit.messageHandlers.audienceSession.postMessage('changed'); };
+          window.addEventListener('storage', check); setInterval(check, 1000);
+        })();
+        """, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = source.configuration.websiteDataStore
+        configuration.processPool = source.configuration.processPool
+        configuration.userContentController = controller
+        let web = WKWebView(frame: .zero, configuration: configuration)
+        web.navigationDelegate = self; web.uiDelegate = self
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 800),
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.title = "Fundhub — Client presentation"
+        window.isReleasedWhenClosed = false; window.delegate = self
+        window.contentView = web; windows[window] = web
+        window.center(); window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+        web.load(URLRequest(url: url))
+        return true
+    }
+
+    func closeAll() { generation += 1; for window in Array(windows.keys) { window.close() } }
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, let web = windows.removeValue(forKey: window) else { return }
+        web.stopLoading(); web.navigationDelegate = nil; web.uiDelegate = nil
+        web.configuration.userContentController.removeScriptMessageHandler(forName: "audienceSession")
+        web.loadHTMLString("", baseURL: nil)
+    }
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "audienceSession", message.frameInfo.isMainFrame,
+              message.frameInfo.securityOrigin.protocol == "https", message.frameInfo.securityOrigin.host == "fundhub.ai",
+              windows.values.contains(where: { $0 === message.webView }) else { return }
+        closeAll()
+    }
+    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
+                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        guard let url = action.request.url else { decisionHandler(.cancel); return }
+        if action.targetFrame?.isMainFrame == false { decisionHandler(url.scheme == "https" ? .allow : .cancel); return }
+        decisionHandler(Self.allows(url) ? .allow : .cancel)
+    }
+    func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse,
+                 decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+        guard !response.isForMainFrame || response.response.url.map(Self.allows) == true else { decisionHandler(.cancel); return }
+        decisionHandler(.allow)
+    }
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+                 for action: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        guard let url = action.request.url, Self.allows(url) else { return nil }
+        Task { _ = await open(url, from: webView) }; return nil
     }
 }

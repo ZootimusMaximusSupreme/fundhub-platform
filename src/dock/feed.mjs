@@ -1,8 +1,8 @@
 // Read-only, role-scoped companion feed. Null means a number was not measured.
 import { computePulse } from "../ops/pulse.mjs";
 import { setterNumbers } from "../setter/dashboard.mjs";
-import { closerMyNumbers } from "../sales/metrics.mjs";
-import { closerNow } from "../sales/closer-now.mjs";
+import { closerMyNumbers, localDateString } from "../sales/metrics.mjs";
+import { CF_SURVEY_QUESTIONS } from "../survey/cf-question-map.mjs";
 import { salesFloor } from "../sales/metrics.mjs";
 import { readOutreach } from "../outreach/store.mjs";
 import { readClientProgress } from "../progress/read.mjs";
@@ -260,17 +260,20 @@ async function staffSection(db, staff, role, now, missing, shared) {
   } else if (role === "closer") {
     const [numbers, next] = await Promise.all([
       settled(() => closerMyNumbers(db, { orgId: staff.org_id, staffId: staff.id, now }), null),
-      settled(() => closerNow(db, { orgId: staff.org_id, staffId: staff.id, now }), null)
+      settled(() => closerDayCalendar(db, { orgId: staff.org_id, staffId: staff.id, now }), null)
     ]);
     section.metrics.push(metric("deposits", "Deposits", numbers.value?.pace?.deposits, "count", "this_month", asOf,
       numbers.failed ? "closer_read_failed" : "not_measured"));
     section.metrics.push(metric("cash_cents", "Cash collected", numbers.value?.pace?.cash_cents, "cents", "this_month", asOf,
       numbers.failed ? "closer_read_failed" : "not_measured"));
     if (numbers.failed) missing.push("closer:numbers");
-    if (next.failed) missing.push("closer:next_call");
-    for (const call of [next.value?.current, next.value?.next].filter(Boolean)) {
-      section.items.unshift(item(`call:${call.task_id}`, call.title || "Upcoming call", call.name,
-        call.due_at, "/app/closer-dashboard.html", urgencyFor(call.due_at, now)));
+    if (next.failed) missing.push("closer:calendar");
+    section.calendar = next.failed
+      ? {...closerDayWindow(now),status:"unavailable",asOf,viewer:{orgId:staff.org_id,staffId:staff.id},nextCallId:null,calls:null}
+      : next.value;
+    for (const call of next.value?.calls || []) {
+      section.items.push(item(`call:${call.taskId}`,call.title,call.name,call.startsAt,
+        call.clientHref,urgencyFor(call.startsAt,now)));
     }
   } else if (role === "sales_manager") {
     const floor = await (shared.floor ??= settled(() => salesFloor(db, { orgId: staff.org_id, now }), null));
@@ -296,6 +299,70 @@ async function staffSection(db, staff, role, now, missing, shared) {
   // Other production KPIs remain outside this read until a role-scoped source exists.
   sortItems(section.items, role);
   return section;
+}
+
+// Staff-only calendar detail. The Widget stores only its existing count whitelist.
+const HANDOFF_DETAIL_KEYS = ["problem","goal","computer_ready","time_confirmed","frame_warmed",
+  "app_on_phone","triage_personal_or_business","triage_problem","triage_goal","employment_status",
+  "employment_details","annual_personal_income","income_verification","complete_at"];
+function storedSurveyWords(value) {
+  if (Array.isArray(value)) return value.map(storedSurveyWords).filter(Boolean).join(", ") || null;
+  if (value == null || typeof value === "object") return null;
+  const text=String(value).trim();
+  if (!text || /^\d{5,}$/.test(text)) return null; // An option row ID is not an answer.
+  if (text.startsWith("[")) {try {const parsed=JSON.parse(text);if(Array.isArray(parsed))return storedSurveyWords(parsed);}catch { /* Plain saved answer. */ }}
+  return text;
+}
+function callSurvey(fields = {}) {
+  const edits=fields.setter_survey_edits && typeof fields.setter_survey_edits==="object" ? fields.setter_survey_edits : {};
+  return CF_SURVEY_QUESTIONS.filter(q=>q.type!=="contact").map(q=>{
+    const corrected=storedSurveyWords(edits[q.payloadKey]);
+    const original=storedSurveyWords(fields[`${q.payloadKey}_label`])
+      || storedSurveyWords(fields[`${q.payloadKey}_labels`]) || storedSurveyWords(fields[q.payloadKey]);
+    return {key:q.payloadKey,label:q.title,value:corrected || original,source:corrected ? "setter" : original ? "applicant" : null};
+  });
+}
+function safeMeetHref(value) {
+  try {const url=new URL(value);return url.protocol==="https:" && url.hostname==="meet.google.com"
+    && !url.username && !url.password && /^\/[a-z]{3}-[a-z]{4}-[a-z]{3}\/?$/.test(url.pathname)
+    ? `${url.origin}${url.pathname}` : null;}catch{return null;}
+}
+export function closerDayWindow(now = new Date()) {
+  const date=localDateString(now),start=new Date(`${date}T00:00:00-07:00`);
+  return {date,timeZone:"America/Phoenix",startAt:start.toISOString(),endAt:new Date(start.getTime()+86_400_000).toISOString()};
+}
+export async function closerDayCalendar(db,{orgId,staffId,now=new Date()}={}) {
+  if (!orgId || !staffId) throw new TypeError("closer_calendar_scope_required");
+  const day=closerDayWindow(now);
+  const result=await db.query(`SELECT t.id AS task_id,t.client_id,t.due_at,t.meeting_url,t.title,b.id AS booking_id,
+      c.first_name,c.last_name,c.custom_fields
+    FROM tasks t JOIN clients c ON c.id=t.client_id AND c.org_id=t.org_id
+    LEFT JOIN LATERAL (SELECT id FROM bookings
+      WHERE org_id=t.org_id AND client_id=t.client_id AND starts_at=t.due_at AND status IN ('booked','rescheduled')
+      ORDER BY created_at DESC,updated_at DESC LIMIT 1) b ON true
+    WHERE t.org_id=$1 AND t.assignee_role='closer' AND t.assignee_staff_id=$2
+      AND t.done IS NOT TRUE AND c.custom_fields->>'crm_archived_at' IS NULL
+      AND t.due_at >= $3::timestamptz AND t.due_at < $4::timestamptz
+      AND NOT EXISTS(SELECT 1 FROM call_outcomes o WHERE o.org_id=t.org_id AND o.client_id=t.client_id
+        AND (o.task_id=t.id OR (NULLIF(btrim(t.body),'') IS NOT NULL AND o.booking_ref=t.body)))
+    ORDER BY t.due_at ASC,t.id ASC`,[orgId,staffId,day.startAt,day.endAt]);
+  const calls=result.rows.map(row=>{
+    const fields=row.custom_fields && typeof row.custom_fields==="object" ? row.custom_fields : {};
+    const raw=fields.setter_handoff && typeof fields.setter_handoff==="object" ? fields.setter_handoff : {};
+    const handoff=Object.fromEntries(HANDOFF_DETAIL_KEYS.filter(key=>raw[key]!=null && raw[key]!=="" && ["string","boolean","number"].includes(typeof raw[key]))
+      .map(key=>[key,raw[key]]));
+    return {taskId:String(row.task_id),clientId:String(row.client_id),bookingId:row.booking_id ? String(row.booking_id) : null,
+      name:[row.first_name,row.last_name].filter(Boolean).join(" ").trim() || null,
+      title:row.title || "Booked call",startsAt:new Date(row.due_at).toISOString(),
+      secondsUntilStart:Math.floor((new Date(row.due_at)-now)/1000),
+      meetHref:safeMeetHref(row.meeting_url),
+      presentHref:`/app/present.html?contact=${encodeURIComponent(row.client_id)}&audience=1`,
+      clientHref:`/app/closer-dashboard.html?client_id=${encodeURIComponent(row.client_id)}&task_id=${encodeURIComponent(row.task_id)}`,
+      survey:callSurvey(fields),setterHandoff:Object.keys(handoff).length ? handoff : null,
+      presence:{state:"unavailable",reason:"not_measured"}};
+  });
+  return {...day,status:"available",asOf:now.toISOString(),viewer:{orgId,staffId},
+    nextCallId:calls.find(call=>new Date(call.startsAt)>=now)?.taskId || null,calls};
 }
 
 async function clientSection(db, principal, now, missing) {

@@ -8,6 +8,8 @@ The setter part is `02-setter.md`. This page starts when the setter hands off.
 
 **The idea:** find out where they are. Pull the file together. The file picks one door. Sell that door, and only that door.
 
+**Owner target, 2026-11-02: 30-minute sales call.** The pre-call slides teach the general process, fees and common questions. On the call, check what they understood, confirm saved facts, read their file, recommend one fitting service, and resolve what remains. Keep all 50 full objection replies available; use the ones the buyer needs. Track connected call length, whether they showed, whether they paid, and days from booking to payment. Record report/checkout delays so we can fix the cause of an overrun.
+
 The 2026-10-29 version is live on fundhub.ai. This 2026-11-01 rewrite remains on the sales-script branch until shipped. Chris's decisions are at the bottom, under **Open calls for Chris**.
 
 ## The call in spoken order
@@ -25,16 +27,17 @@ The 2026-10-29 version is live on fundhub.ai. This 2026-11-01 rewrite remains on
 | Part | About | The job | Present |
 |---|---|---|---|
 | 0. Before the call | 5 min | Read the setter note and the survey. Guess the door. | Closer Dashboard, cockpit |
-| 1. Open and frame | 3 min | Hello. How the call goes. The yes-or-no deal. | S-01, S-02 |
-| 2. Stuck part and goal | 10 to 15 min | Six boxes, in their words. | S-03, S-04 |
-| 3. Pull the file | 5 min | The first yes: the $32 pull. | S-05, S-06 |
-| 4. Read the file | 10 min | How much they qualify for today, after the fixes, and what is left on the table. | S-07, L-01 (the money levers) |
-| 5. Pick the door | 1 min | The file picks. They agree before any price. | S-08 (your path) |
-| 6. Show the door | 5 to 10 min | The promise, three steps, how it runs. | S-09 to S-16 and C-01 (more companies), or B-01 to B-04 (B-03 is the Blueprint dashboard) |
-| 7. The ask | 2 min | Check the plan. Then the price. Then quiet. | S-17 to S-22, or B-04 |
-| 8. Money | if needed | Same offer, different pay terms. | — |
-| 9. Objections | if needed | Lock the plan, isolate, answer, ask again. | — |
-| 10. Paperwork | 5 min | Agreement, pay link, paid on the call, log it. | S-23, S-24 |
+| 1. Open and frame | 0:00–2:00 · 2 min | Goal for the call, who decides, what the lessons left unclear. | S-01, S-02 |
+| 2. Stuck part and goal | 2:00–7:00 · 5 min | Confirm saved facts; find the missing fact or real blocker. | S-03, S-04 |
+| 3. Pull the file | 7:00–10:00 · 3 min | The $32 pull, or go straight to the result if already ready. | S-05, S-06 |
+| 4. Read the file | 10:00–15:00 · 5 min | Show the one or two findings that decide this buyer's path. | S-07, L-01 |
+| 5. Pick the door | 15:00–16:00 · 1 min | Recommend the fitting service. | S-08 |
+| 6. Show the door | 16:00–20:00 · 4 min | Show this file's plan and first step; explain its actual terms. | The matching path only |
+| 7. The ask | 20:00–21:00 · 1 min | Check the plan. State the price. Listen. | S-17 to S-22, or B-04 |
+| 8–9. Payment questions and objections | 21:00–26:00 · 5 min total | Answer their remaining concern with the matching full talk-off. | Matching proof or terms |
+| 10. Paperwork | 26:00–30:00 · 4 min | Review agreement, matching pay link, confirm payment and first step. | S-23, S-24 |
+
+The live rows total 30 minutes; the five-minute preparation happens before the call. Aim to reach the file by minute 10 and the recommended price by minute 21. If a question needs a full answer, give it and record the actual time. Keep the buyer's understanding and the paid result visible beside call length.
 
 ## The doors
 
@@ -70,13 +73,13 @@ flowchart TD
 7. Reset for two minutes. Breathe. Let go of the result. Your job is to find the truth about their file and say it straight.
 8. Have your note sheet open in call order: stuck part, numbers, why they can't fix it alone, cost of waiting, goal, who else decides, the door.
 
-## 1. Open and frame — 3 minutes
+## 1. Open and frame — 2 minutes
 
 Say it like a person. Keep your voice level. Do not let a line rise at the end unless it is a question.
 
 1. **Hello.** "Hey, is this [Name]? Hey [Name], it's [your name] with Fundhub. Good to finally meet you."
 2. **One light question.** "How's your week going?" Keep it short. No sports, no life stories.
-3. **Time and setup.** "We've got about [length] together. You still good on time? Are you at a computer? Grab a pen and paper, and have a card handy for the file pull."
+3. **Time and setup.** "We've got about 30 minutes together. You still good on time? Are you at a computer? Grab a pen and paper, and have a card handy for the file pull."
 4. **Recording.** "Quick heads up: this call is recorded, so nothing gets missed."
 5. **The frame.** "Here's how I run these, so this is worth your time. First, I want to hear what you're going for and what's been in the way. Then we pull your file together, right here on the call. It's a soft pull, so your score does not move. Then I show you what the file says: how much you qualify for based on where you're at right now, and what's holding the rest back. If we can help, I'll show you exactly how. If we can't, I'll tell you that too, and point you the right way. Sound fair?"
 6. **The end-of-call deal.** "At the end, I'll ask if you want to move forward. A yes is great. A no is fine. Just tell me straight either way. Deal?"
@@ -85,7 +88,9 @@ Say it like a person. Keep your voice level. Do not let a line rise at the end u
 
 Get "sounds fair" before you move on. It stops them from jumping straight to the price later.
 
-## 2. Find the stuck part and the goal — 10 to 15 minutes
+Ask: "Which of the Fundhub lessons did you get through, and what is still unclear?" If they already understand a point, move to their file. If they did not read them, give the key point as it becomes relevant; keep the call moving through their actual situation.
+
+## 2. Find the stuck part and the goal — 5 minutes
 
 By the end you know six things, in their words. Check each box on your sheet.
 
@@ -102,11 +107,13 @@ How to ask:
 
 - One short question at a time. After they stop, wait 2 to 4 seconds. They will keep going.
 - Do not coach. Do not fix it yet. That comes after the file.
-- Ask even when you think you know. Their words beat yours.
+- Confirm the saved answer in their words. Ask a follow-up when something is missing, changed or unclear.
 - The setter already got the basics. Say them back and confirm. Do not make them tell the whole story again.
 - Type the monthly cost into the cockpit's monthly-cost box. S-20 uses it. Put the incorporation date in its box too.
 
 Pick the order:
+
+These are follow-up options, not a list to ask every person. Be ready to pull the file by minute 7.
 
 - **Business owner who has been denied or stuck** (most calls): start with the stuck part.
 - **New business, a startup, or "I don't know where to start"**: start with the goal.
@@ -159,7 +166,7 @@ Then say it back: "So let me make sure I have it. You want [goal] so you can [wh
 
 Wait for the yes. If they fix something, write it down and say it back again.
 
-## 3. Pull the file together — 5 minutes
+## 3. Pull the file together — 3 minutes
 
 This is the first yes of the call.
 
@@ -173,9 +180,11 @@ This is the first yes of the call.
 
 If they already did the pull before the call, skip to section 4.
 
-## 4. Read the file together — 10 minutes
+## 4. Read the file together — 5 minutes
 
 Share your screen in Present. Go to S-07.
+
+Lead with the one or two findings that decide the path. Bring in another part of the report when it changes the recommendation or answers their question.
 
 The headline reads "How much you qualify for today." Lenders decide. Say it this way:
 
@@ -189,7 +198,7 @@ The headline reads "How much you qualify for today." Lenders decide. Say it this
 
 Read the amounts off the screen. Never round up. Never say they are approved. Never say a bank will give them an amount. Never name a bank as one that will approve them. If they ask if that means approved: "That's what your file supports today. The bank still decides."
 
-## 5. Pick the door
+## 5. Pick the door — 1 minute
 
 The file picks first. Then what they told you about the business. You sell **one** door. Always lead with the most expensive door that fits their goal, and step down only on a no.
 
@@ -219,7 +228,9 @@ The system never blocks a sale by tier. So the door is on you. The route buttons
 
 The **EDUCATION PATH** button on S-07 is Capital Academy. It is off until it is filmed (Chris, 2026-10-29). Do not use it.
 
-## 6. Show the door
+## 6. Show the door — 4 minutes
+
+Use the fitting path below. Open their first step and the proof behind it. Check which process details they still need explained after the pre-call lessons.
 
 Every door has the same shape. First the promise: the steps that get them from where they are to what they want. Then each step: their problem in their words, what Fundhub does, and what it gets them. Then how it runs after they pay. Check in after each step: "Make sense?"
 
@@ -293,7 +304,7 @@ Describe the process only. Never promise a removal, a score or a result.
 
 They keep the $32 report. Go to **If they do not buy today**.
 
-## 7. The ask
+## 7. The ask — 1 minute
 
 1. **Questions first.** "Before I show you how to start, what questions do you have?" If they ask one: "Good question. What made you ask?" Then answer.
 2. **Check the plan, not the price (S-17, S-18).** "How do you feel about this plan for your file?" A sure answer in a sure voice: move on. Anything else: "On a scale of 1 to 10, how sure are you this is the right plan for your file?" Under 8: "What would make it a 10?" Handle that. Ask again.
@@ -311,6 +322,8 @@ They keep the $32 report. Go to **If they do not buy today**.
 Quiet buyer who will not say yes or no: "If we lay out every step to get you to [goal], will you do your part and ask for help when you need it?"
 
 ## 8. Money
+
+Sections 8 and 9 share the 21:00–26:00 window. Use the branch needed for this buyer's concern.
 
 **Lock the plan before you talk money.** Cole's order. Never skip it.
 
@@ -361,6 +374,8 @@ As of 2026-10-29, nobody has closed a financed sale yet (`05-claritypay-financin
 The money steps come from a payment-plan video that sits in Cole's folder. The speaker is Alex Hormozi: he says he ran those payments at Gym Launch, his company. Cole's own docs add the rule at the top of this section: lock the plan first, then talk money.
 
 ## 9. Objections
+
+Keep the full replies below. Choose the concern the buyer raised, answer it, and check whether it is resolved. These 50 replies are a reference for different calls, not 50 steps in one call.
 
 Read these aloud after you have shown the buyer their file and the right offer. Answer a question directly; for a true objection, ask about their past result, show the relevant work, and return to the decision.
 
@@ -682,7 +697,7 @@ One other route I may not have explained: you do not always have to be the appli
 
 Separately, if you know business owners looking for funding, Fundhub has a referral program that can pay you when a qualifying person you introduce becomes a client. I'll show you the written terms before you refer anyone. Is either path useful, or should we leave it here? [If no, thank them and end the call.]
 
-## 10. Paperwork
+## 10. Paperwork — 4 minutes
 
 1. Check the five **Before you close** boxes in the cockpit: call is recorded, personal guarantee, month-14 cliff (intro rates end), bank decides, incorporation date verified.
 2. Pick the offer and the price in Present, on S-23. For Blueprint you set the whole-dollar price, $5,000 to $10,000. The default is $5,000.

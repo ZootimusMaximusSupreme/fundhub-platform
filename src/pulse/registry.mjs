@@ -361,6 +361,7 @@ const API_KEYS = [
   "read/closer-call",
   "read/closer-deck",
   "read/closer-now",
+  "read/meet-presence",
   "read/setter-dashboard",
   "read/commissions",
   "read/company-activity",

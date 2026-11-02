@@ -39,7 +39,7 @@ flowchart TD
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_public[public — 20 routes]
     CAN --> A_push[push — 1 route]
-    CAN --> A_read[Reading data — 51 routes]
+    CAN --> A_read[Reading data — 52 routes]
     CAN --> A_repair[repair — 4 routes]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 4 routes]
@@ -79,7 +79,7 @@ flowchart TD
 
 ## What they can reach
 
-**195 of 342 routes.**
+**196 of 343 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -244,6 +244,7 @@ flowchart TD
 | `/api/read/funnel-pages` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/inbox` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/lender-matches` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/meet-presence` | GET | owner, admin, sales_manager, closer |
 | `/api/read/message-templates` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/messages` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/money-map` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -288,7 +289,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**147 of 342 routes.**
+**147 of 343 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildDockFeed, staffRoles, ownerApprovals } from "./feed.mjs";
+import { buildDockFeed, staffRoles, ownerApprovals, closerDayCalendar, closerDayWindow } from "./feed.mjs";
 import handler from "../../api/read/dock.mjs";
 import { ROUTES } from "../../netlify/functions/api.mjs";
 
@@ -77,4 +77,33 @@ test("Owner approvals read three real waiting sources under staff RLS and the si
   assert.equal(scoped, true);
   assert.equal(approvals.total, 1);
   assert.equal(approvals.rows[0].source, "video");
+});
+
+
+test("closer calendar uses the whole Phoenix day, exact personal assignment and safe saved details",async()=>{
+ const now=new Date('2026-11-02T05:00:00Z');
+ assert.deepEqual(closerDayWindow(now),{date:'2026-11-01',timeZone:'America/Phoenix',startAt:'2026-11-01T07:00:00.000Z',endAt:'2026-11-02T07:00:00.000Z'});
+ let query,args;const fields={cf_svy_funding_target_amount:234567,cf_svy_funding_target_amount_label:'$100k - $200k',cf_svy_planned_use:123456,
+ cf_svy_has_business_label:'Yes, 2-5 years',cf_svy_annual_income_range:'$100k-$199k',setter_survey_edits:{cf_svy_planned_use:'Equipment'},secret:'never-return',
+ setter_handoff:{problem:'Inventory gap',goal:'Buy equipment',computer_ready:false,hidden_secret:'never-return',employment_details:{secret:'never-return'}}};
+ const db={async query(sql,binds){query=sql;args=binds;return{rows:Array.from({length:5},(_,i)=>({task_id:`task-${i}`,client_id:CLIENT,first_name:'Dana',last_name:'Client',title:'Booked call',due_at:new Date(now.getTime()+(i-2)*3600000),meeting_url:i?'https://outside.invalid/phish':'https://meet.google.com/abc-defg-hij?authuser=0',custom_fields:fields}))};}};
+ const out=await closerDayCalendar(db,{orgId:ORG,staffId:STAFF,now});
+ assert.equal(out.calls.length,5);assert.equal(out.nextCallId,'task-2');
+ assert.deepEqual(args,[ORG,STAFF,'2026-11-01T07:00:00.000Z','2026-11-02T07:00:00.000Z']);
+ assert.match(query,/t.assignee_staff_id=\$2/);assert.doesNotMatch(query,/assignee_staff_id IS NULL|LIMIT 2/);
+ assert.equal(out.calls[0].meetHref,'https://meet.google.com/abc-defg-hij');assert.equal(out.calls[1].meetHref,null);
+ assert.match(out.calls[0].presentHref,/contact=.*&audience=1$/);
+ assert.equal(out.calls[0].setterHandoff.computer_ready,false);
+ assert.equal(out.calls[0].survey.find(q=>q.key==='cf_svy_planned_use').source,'setter');
+ assert.equal(out.calls[0].survey.find(q=>q.key==='cf_svy_available_capital').value,null);
+ assert.equal(out.calls[0].survey.find(q=>q.key==='cf_svy_funding_target_amount').value,'$100k - $200k');
+ assert.equal(JSON.stringify(out).includes('never-return'),false);
+ assert.equal(out.calls[0].presence.state,'unavailable');
+});
+
+test("failed closer calendar read stays unavailable, never a false empty day",async()=>{
+ const db={async query(){throw new Error('read unavailable');}};
+ const feed=await buildDockFeed(db,{kind:'staff',staff:{id:STAFF,org_id:ORG,role:'closer'}},{now:NOW});
+ assert.equal(feed.sections[0].calendar.status,'unavailable');assert.equal(feed.sections[0].calendar.calls,null);
+ assert.ok(feed.missing.includes('closer:calendar'));assert.equal(feed.sections[0].metrics.find(m=>m.key==='deposits').value,null);
 });

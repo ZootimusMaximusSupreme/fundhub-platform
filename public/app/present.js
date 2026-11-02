@@ -250,6 +250,8 @@
 
   var q = new URLSearchParams(location.search);
   var contactId = q.get("contact") || q.get("client_id") || q.get("id") || q.get("client") || "";
+  // A launch contract, not a visibility toggle: never render private controls.
+  var audienceOnly = q.get("audience") === "1";
   var paymentStoreKey = "fh_call_payment_link:" + contactId;
   function savedPaymentLink(offerKey) {
     try {
@@ -263,7 +265,7 @@
   }
   var state = {
     idx: 0, tier: null, edu: false, forceRepair: false, rung: 0, temp: 0,
-    checks: {}, costNum: "", obj: null, showRef: false, showMoney: false, showRevenue: false, toast: "", clientOnly: false,
+    checks: {}, costNum: "", obj: null, showRef: false, showMoney: false, showRevenue: false, toast: "", clientOnly: audienceOnly,
     survey: {}, engine: { available: false, reason: "engine data unavailable", fico: {}, reasons: [] },
     offers: [], softPull: null, saleMotion: "", paymentLinkId: null, loaded: false, error: null,
     contractLink: "", contractMsg: "", blueprintAmountDollars: null, blueprintProvider: "commas",
@@ -1907,10 +1909,13 @@
     var markup;
     try {
       markup =
-        '<div class="topbar"><span class="mono">' + esc((state.survey && state.survey.name) || "Present") + "</span>" +
+        '<div class="topbar"><span class="mono">' + esc(audienceOnly ? "Fundhub" : ((state.survey && state.survey.name) || "Present")) + "</span>" +
         (state.engine && !state.engine.available ? '<span class="mono" style="color:var(--gray)">' + NOT_IN_YET + "</span>" : "") +
-        '<div class="sp"></div><button type="button" class="btn-ghost" data-act="client-only">' +
-        (state.clientOnly ? "Show cockpit" : "Client screen only") + "</button></div>" +
+        '<div class="sp"></div>' + (audienceOnly
+          ? '<button type="button" class="btn-ghost" data-act="back"' + (state.idx === 0 ? " disabled" : "") + '>Back</button>' +
+            '<button type="button" class="btn-ghost" data-act="next"' + (state.idx === DECK.length - 1 ? " disabled" : "") + '>Next screen</button>'
+          : '<button type="button" class="btn-ghost" data-act="client-only">' +
+            (state.clientOnly ? "Show cockpit" : "Client screen only") + "</button>") + "</div>" +
         '<div class="stage"><div class="client' + (state.clientOnly ? " solo" : "") + '">' + clientSlide() +
         '<div class="dots">' + dots + "</div></div>" +
         (state.clientOnly ? "" : '<div class="cockpit">' + cockpit() + "</div>") + "</div>";
@@ -2115,7 +2120,7 @@
      without re-reading the deck leaves the old price sitting there. */
   function applyDeck(d) {
     d = d || {};
-    state.setterHandoff = d.setter_handoff || null;
+    state.setterHandoff = audienceOnly ? null : (d.setter_handoff || null);
     state.survey = d.survey || {};
     state.businesses = Array.isArray(d.businesses) ? d.businesses : [];
     state.incomeEstimates = d.income_estimates || {};
@@ -2417,7 +2422,7 @@
        what produced two pay links for one sale on 2026-09-03, so the guard is
        here as well as on the element (F24). */
     if (sendLocked(a)) return;
-    if (a === "client-only") { state.clientOnly = !state.clientOnly; render(); return; }
+    if (a === "client-only") { if (!audienceOnly) state.clientOnly = !state.clientOnly; render(); return; }
     /* The course is off (COURSE_LIVE): its route and rungs do nothing, even from a stray click. */
     if (!COURSE_LIVE && (a === "edu" || a === "desc:eduTop" || a === "desc:eduLow")) return;
     if (a === "back") { go(-1); return; }
@@ -2532,7 +2537,7 @@
     state.rung = leadRung();
     state.loaded = true;
     render();
-    loadSharedContext();
+    if (!audienceOnly) loadSharedContext();
     if (typeof setInterval === "function") setInterval(refreshPullOnScreen, 3000);
   }
 

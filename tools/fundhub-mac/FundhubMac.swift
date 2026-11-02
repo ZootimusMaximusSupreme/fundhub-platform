@@ -219,7 +219,9 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         guard let url = navigationAction.request.url else { return nil }
         // target=_blank/window.open must not bypass the same rule.
         guard !isPublicMarketingHome(url) else { return nil }
-        if isFundhub(url) {
+        if FundhubAudienceWindows.allows(url) {
+            Task { _ = await FundhubAudienceWindows.shared.open(url, from: webView) }
+        } else if isFundhub(url) {
             webView.load(URLRequest(url: url))
         } else {
             openAllowedExternal(url)
