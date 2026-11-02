@@ -34,6 +34,7 @@ test("closer links their own payout bank from the account menu", async ({ page }
   });
   await gotoScreen(page, "closer-dashboard.html", "", CLOSER);
   await page.locator("#fh-shell-chip-show").click();
+  await expect(page.getByRole("link", { name: "Privacy policy" })).toHaveAttribute("href", "/privacy/");
   await expect(page.locator("#fh-account-payout-status")).toHaveText("No payout bank linked yet.");
   await page.locator("#fh-account-payout-link").click();
   await expect(page.locator("#fh-account-payout-status")).toContainText("Example Credit Union ··1234");
