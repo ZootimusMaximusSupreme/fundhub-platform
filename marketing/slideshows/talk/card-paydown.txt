@@ -1,75 +1,85 @@
 Card Paydown
 
-1. CP-01 / The balance the bank reads — Your card balance counts on the day your statement closes.
+1. CP-01 / The day that counts — The day your statement closes, your card reports the balance a bank reads.
 
-Your card balance counts on the day your statement closes. That's the day the bureau gets it.
+The day your statement CLOSES, your card reports its balance to the bureaus. That's the balance a bank reads, even if you pay in full on the due date.
 
-Look at this sample screen. The balance, $1,050, next to the limit. And the cards used tile, 13.1 percent, good, 30 percent or less.
+Your own file already shows which card to pay first and the exact balance to bring it to. The card company never tells you either one.
 
-That used column is what the bank reads. Card use is one of the things that sets how much you qualify for.
+This is a sample report. Credit One reports $1,490 on a $1,500 limit. Capital One reports $2,870, which is 96% of its limit.
 
-So two things matter. Which card you pay first, and what target you pay it to.
+Those reported balances are what a bank READS when you apply. Whatever you pay after the statement closes waits for next month's report.
 
-The system picks the card and the target off your own file. I'll show you both.
+Two things decide what this part of your file says. One is which card your money goes to first, and the other is the balance you pay it down to.
 
-2. CP-02 / Which card first — The fullest card goes first, because it's the fastest win on your whole report.
+The system works out both from your own report. Pay before the statement closes, and the next reported balance reflects that payment once the issuer updates the bureau.
 
-Which card first? The fullest one. The card using the biggest share of its limit.
+2. CP-02 / Which card first — Your first dollar goes on the card using the biggest share of its limit.
 
-The system ranks your cards by share used, highest first. Then it puts your cash on them in that order.
+Your first dollar goes where it changes your report the most. That's the card using the biggest SHARE of its limit.
 
-Look at the sentence from the credit analysis. It names the card, First Platypus Bank, the share used, and the target, $800.
+The system ranks your open cards from the fullest to the emptiest. Your money goes on them in that exact order, starting at the top.
 
-This is the fastest win on your entire report. That's the document's own line.
+On this sample, Credit One sits at 99% used, so it goes first, down to $150. Capital One sits at 96%, so it goes next, down to $300.
 
-If you've got several cards, enter the cash you have, and the tool shows which ones to pay first and by how much.
+Each target is the balance the system prints for that card. It's 10% of the card's own limit, worked out from your report.
 
-3. CP-03 / The target — The target is 10% of the card's limit, and every card gets under it before you apply.
+If you've got cash set aside, you enter it. The paydown tool splits it across your cards in that same ORDER, fullest first.
 
-Here's the target. 10 percent of the card's limit.
+A closed card that was charged off gets a dispute letter instead of a paydown step. That way your cash goes to the cards that are still open.
 
-Look at the bar. That's the card's whole limit. The target line sits at $800, 10 percent of it.
+3. CP-03 / Card use at 97% — At 97% used, this sample's cards fail our card check before any bank looks.
 
-The engine's fundable line is 30 percent or less. The plan goes further, to 10. Every card gets under it before any application.
+A full card costs you before any bank even looks. Our system checks whether your cards sit at 30% used or LESS, across the whole file.
 
-This sample card started at roughly 40 percent. By month three it was at $1,050, 13.1 percent. By month six it was at the target.
+This sample's open cards report $4,360 against $4,500 in limits. That's 97% used, so the file fails that check before a single application goes out.
 
-Same rule on every card. 10 percent of the limit.
+Every application sent while the cards report that high gets read at that HIGH balance. And the inquiry it leaves stays on the report after.
 
-4. CP-04 / When to pay — Pay the card before the statement closes, because that's the balance that reports.
+That's why the plan goes past 30%, all the way to 10% of each limit. On this sample, that's $450 or less in total.
 
-When do you pay? Before the statement closes. That's the balance that reports.
+Read the two bars. The top one sits at 97%, far past the dashed 30% line. The bottom one sits at 10%, well under it.
 
-Walk the strip with me. The statement closes on one day. That balance goes to the bureaus. The due date is a different day, and a different job.
+Every card on your file gets that same rule: 10% of its own limit. That gives each card its own target balance to pay toward.
 
-So the system tells you which day to pay each card before a round. And you get a text before each statement date.
+4. CP-04 / When to pay — You get a text before each statement date, while your payment still changes what reports.
 
-A big new balance raises your card use, and the bank reads that too. Card use is one of the things that sets how much you qualify for.
+We text you before each statement date with the card and its target. Pay before that date so the lower balance is the one your card issuer reports next.
 
-Your story: the month you paid on the due date and the balance still reported high.
+Walk the strip with me. You pay the card, then the statement closes, and on that day the balance goes to the bureaus. That's the one a bank reads.
 
-5. CP-05 / The step checks itself off — The step checks itself off when a new pull shows the balance at the target.
+Pay after the close, and that month's high balance has already gone out. The lower balance waits a whole cycle to show up.
 
-Here's the step on the real checklist. Pay First Platypus Bank down to $800.
+Your due date is a DIFFERENT day with a different job. It keeps the account current, and a separate reminder covers that one.
 
-You do not have to do it in one payment. Anything you put against the card moves the balance toward the target.
+A big new charge before the close raises your card use too. The bank reads that just the same as an old balance.
 
-When a new credit pull shows the lower balance, the step checks itself off. The new pull closes it.
+The text names the card, the balance on it, and about how much to pay to get under 10%, all before the statement closes.
 
-Look at this sample. Done, with the date. That's the proof the balance got there.
+5. CP-05 / The step closes itself — The step reads pay Credit One down to $150, and it closes once a pull shows $150.
 
-Fullest card first, to 10 percent of the limit, paid before the statement closes. That's the whole move.
+This is the checklist step on the sample file. It reads pay Credit One Bank down to $150, and it stays OPEN until a pull shows it.
 
-6. CP-06 / Your call — On your call, you see which card goes first on your own file, and its target.
+You split it into as many payments as you want. Every dollar moves the balance down toward the target, and nothing waits on one big check.
 
-On your call, you see which card goes first on your own file, and its target.
+You don't even have to report it. When a fresh pull shows the balance at $150 or less, the checklist closes that step on its own.
 
-We pull your file together right on the call. It's a soft pull, so your score does not move.
+While the step is open, an AI coach watches it and reminds you. The Fundhub team steps in whenever it takes a person.
 
-You see how much you qualify for based on where you're at right now, and what's holding the rest back.
+Picture both cards at their targets. The file that read 97% used reads 10%, and that's the card use a bank sees on your next application.
 
-Look at the screen. Your cards, each with its target mark. The fullest one sits at the top.
+Low use across every card is the part of your file you change with nothing but payments, one statement at a time.
 
-The cards and the targets get read off your own report. You leave knowing which card goes first and how far down.
+6. CP-06 / Your strategy call — Which of your cards gets paid first, and down to what balance?
 
-We want action takers who need a solution, not shoppers.
+Your first card and its target are already sitting on your report. Your strategy call puts them on the screen, by NAME and by dollar amount.
+
+A soft pull brings your report up while we talk. Your score stays put, and no bank ever sees that pull.
+
+Your open cards go up in order, fullest first. Each one shows its target at 10% of its own limit, so you see how far down each card goes.
+
+You also see how much you qualify for based on where you're at right now, and which card is holding the most of it back.
+
+You walk away with the first card picked out and its target balance in hand. The very next payment you make goes where it counts.
+
+The text before your next statement date tells you when to make that payment, so the lower balance is the one that reports.

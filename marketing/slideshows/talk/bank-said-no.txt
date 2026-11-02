@@ -1,83 +1,83 @@
 Why The Bank Said No
 
-1. BN-01 / The lines the bank read — When a bank says no, it read the reason off your credit report first.
+1. BN-01 / The reason on your report — Your credit report showed risk factors before the bank said no.
 
-When a bank says no, it read the reason off your credit report first. That's the whole point of this one.
+Your credit report showed risk factors before the bank said NO. The bank's letter gives its own reasons. We compare that letter with your report to find the next step.
 
-Look at this sample report. Experian, a 541. Right under the score, the bureau prints why, in its own words.
+Each issue on that report gets reviewed before another application goes out. We set the next step from the actual account and the bank's letter.
 
-The top line says serious delinquency and a collection filed. That's the line the bank reads.
+This is a sample Experian report. The score reads 541. Right below it, the bureau lists four reasons for that score, in its own words.
 
-Now look at the accounts. A collection, placed for collection. A charge-off, charged off account. A card that's 30 days late.
+The top reason reads serious delinquency and a collection filed. A bank can cite that risk factor when it explains a denial.
 
-When the bank sends you the letter, it gives you those same reasons. The report had them first.
+Read the accounts underneath. Midland placed a debt for collection. Synchrony charged off an account. And Capital One shows a payment 30 days late.
 
-A no is a fact about your file on that day. The file changes, and that's what the rest of this is about.
+Those three accounts put that top line on the report. Each one is a specific item with a specific FIX, and each fix is a step you can take.
 
-2. BN-02 / The three checks — Three checks come first: your score, your card balances, and your negative items.
+2. BN-02 / Three checks — This sample's 541 score, full card and collections fail all three funding checks.
 
-Here's what the review checks first, on every file. Three things.
+Our system runs THREE checks before it calls a file fundable. The ones your file misses tell you exactly what to fix before you apply.
 
-Walk the chart with me. The score has to be 700 or higher. The cards have to be used 30 percent or less. And the negative items have to be zero.
+The score has to sit at 700 or higher. The cards have to be 30% used or less. And the report can't show a single negative item.
 
-This sample misses all three. The scores sit in the 500s. Credit One is $1,490 on a $1,500 limit, nearly full. And there's a collection, a charge-off, and a 30-day late.
+This sample misses all three. The scores are in the 500s. Credit One is at $1,490 of $1,500. And there are two collections, a charge-off and a late.
 
-So this file doesn't go to a bank yet. It goes to credit optimization first.
+Every application sent on this file today is a HARD pull. The file isn't fundable yet, and that inquiry stays on the report after the no.
 
-Nothing else is worth doing until the personal file is prime. Funding comes after the file is ready.
+That's why this file goes to credit optimization first, before a single application. The personal file gets ready before anything else gets built on it.
 
-Each miss has its own fix, and the fixes go in order. That's the next one.
+Each of those misses has its own fix. The sample's credit analysis puts every one of them on one page, with a target or a letter beside each.
 
-3. BN-03 / The fix list — Every reason on the report has a fix, and the fixes go first.
+3. BN-03 / The fix list — The sample analysis puts the cards and disputed items on one page.
 
-Every reason on that report has a fix. And the fixes go first, before anything else.
+While these items sit on your file, the money for the hire, the ads or the bigger job stays OUT of reach. This one page shows what's in the way.
 
-Look at the list. A card with a high balance gets a paydown plan. The target is 10 percent of the card's limit. For this sample, Credit One goes down to $150 and Capital One goes down to $300.
+This is the sample's own credit analysis. It's the part that lists what's holding the file back. Everything on it falls into one of two groups.
 
-A collection, a charge-off, or a late payment gets a dispute letter. Four items on this file, and each one goes on the list.
+First, the cards. Credit One comes down to $150, and Capital One comes down to $300. Each target is 10% of that card's own limit.
 
-Nothing else is worth doing until the personal file is prime. So this list starts in month one.
+Second, the negative items. Two collections, a charge-off and a 30-day late each get a DISPUTE letter. Each letter is built for that account on that report.
 
-It is not permanent. That's the document's own line, and it's true.
+Both lists start in month one. The paydowns and the letters begin right away, side by side, so nothing on this page sits and waits.
 
-4. BN-04 / What happens to the negatives — Fundhub finds the items it can dispute on your report and carries out the rounds.
+This one page is your plan for the first month. Every target and every letter is already worked out for the file, down to the dollar.
 
-So what happens to the negatives? Here's the agreement, word for word.
+4. BN-04 / Who does the work — Fundhub prepares and tracks your disputes while you run the business.
 
-Fundhub reviews your credit files, finds the items it can dispute, prepares the dispute materials, and carries out the rounds.
+Done for you, the Fundhub team reviews the file, prepares the letters and tracks the replies. You give accurate facts, authorize the work and sign where needed. The team writes every letter, mails it and follows up with the bureau until it answers.
 
-Only items that really show on your report get disputed. Every application uses your true information.
+Fundhub reads your credit files and finds every negative item that looks wrong, incomplete or unproven. Then the team builds the disputes and runs the rounds.
 
-Done for you, Fundhub mails the letters. On the Capital Blueprint, you print and mail the same letters yourself, and you upload the proof.
+That gives you your hours back for the business. Each letter still cites the federal law that makes a bureau look into your dispute.
 
-Either way it's the same letters, the same rounds, and the same law under them.
+We only dispute items that really show on your report, and every letter uses your real details. You can read each letter and bureau reply in the portal.
 
-Your story: a file where the bank's reason was one item, and what disputing it did.
+On the Capital Blueprint, you mail that same pack yourself and upload the receipt. An AI coach keeps that step moving until it's done.
 
-5. BN-05 / Back through the review — A clean file goes back through the same review, and then into funding.
+Whichever way you go, each letter and each reply lands in your dashboard. You can dispute inaccurate items yourself for free. The paid work here is the file review, planned rounds, letters and follow-up. The bureau decides what changes on your report, and the next report shows the result.
 
-Here's the payoff. A clean file goes back through the same review, and then into funding.
+5. BN-05 / Where the money goes — Where does the money go when a file passes all three checks?
 
-A denial is based on how your file looked that day and which bank you chose. That's a fact about one day.
+The cards sit at their targets and the rounds have run. Then the whole file goes back through those same THREE checks.
 
-Walk the chart with me. Your file today, with the flags. Then the fix first: the paydown plan and the dispute rounds.
+Anything that still misses goes back on the fix list for the next round. A bank's no only describes the file on the day it read it.
 
-Then the same three checks run again. The score, the cards, the negatives.
+A file that passes goes to the banks that fit it, in order. That's you funding yourself, off your own file.
 
-Once your file is ready, the same team moves you into funding. The banks get picked for your file as it is now.
+The capital goes where the business needs it. That's the hire you've been putting off, an ad budget that actually runs, and the jobs you can't take today.
 
-That's the order. Fix first, review again, then apply where the file fits.
+That capital is the REASON to fix the file first. Every bank on your list gets picked from that file.
 
-6. BN-06 / Your call — On your call, you see what's holding your file back, on your real report.
+6. BN-06 / Your strategy call — Your strategy call shows what your file gets today next to what it gets cleaned up.
 
-On your call, you see what's holding your file back, on your real report.
+Every reason on your report points to one fix. Your strategy call shows which of your fixes comes FIRST, before a bank reads your file again.
 
-We pull your file together right on the call. It's a soft pull, so your score does not move.
+The pull on the call is a soft one, so your score doesn't budge and no bank sees it. Then we open your report together on one screen.
 
-You see how much you qualify for based on where you're at right now, and what's holding the rest back.
+This is that screen for the sample file. On the sample, cleaning the file is the one fix that changes what it gets.
 
-Look at the screen. Left side, what's holding you back. Right side, what the file shows once it's cleaned up. That difference is what's left on the table.
+On your own file, you see how much you qualify for based on where you're at right now, and right beside it, what the cleaned-up file projects to.
 
-Then you get the way to go: fund now, fix first, or both. We diagnose, and we tell you exactly what to do.
+Then you get the path for your file: fund what's there, fix it first, or both. Whichever it is, you leave with the next step set.
 
-We want action takers who need a solution, not shoppers.
+We take on action takers, not shoppers. This call is built for the person who's ready to start on that first fix.

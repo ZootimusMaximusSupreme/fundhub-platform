@@ -1,85 +1,77 @@
 Money On The Table
 
-1. MT-01 / On the table — A 762 middle score still leaves $22,150 on the table in this sample file.
+1. MT-01 / On the table — Four cards at 88% used hold this 706 sample file to $46,560.
 
-Look at this sample file. The middle score is 762. That's a strong file.
+Four cards at 88% used hold this sample file to $46,560. The middle score is a 706, a GOOD score, and the cards still decide the amount.
 
-Today it qualifies for $199,350. Once it's fixed, $221,500. That's $22,150 left on the table.
+Run the same file again with those cards paid down, and our system shows $174,600. That's $128,040 more, which is 3.75 times what it shows today.
 
-Nothing on this file is negative. The whole $22,150 is three card balances.
+Nothing on this file is negative. There are no late payments and no collections, and the score stays the SAME 706 in both runs of our system.
 
-A high balance on a revolving card is what lenders read first.
+The score never moved. Four card balances moved, and one cutoff inside our system decides how much of that money this file gets to see.
 
-So a strong score still leaves money on the table, and the file shows exactly where.
+With those balances unchanged, our model still shows $128,040 less available capacity than it shows after the paydown. Each lender makes its own decision.
 
-The bank still decides. This is what the file supports today, and what it supports once it's fixed.
+2. MT-02 / The cutoff — Why does the same 706 sample show $128,040 more after one fix to its cards?
 
-2. MT-02 / Where it comes from — On this sample, the whole $22,150 is one fix: card use.
+Our system ran this file TWICE: once as it is today, and once with the four cards paid down to 10% of each limit.
 
-Walk the chart with me. Today, $199,350.
+The short bar is today, at $46,560. The tall bar is after the paydown, at $174,600, with the same person, the same score and the same cards.
 
-One fix. Pay down the three open revolving cards. That's the plus $22,150 in the middle.
+The jump in the middle is the paydown, and it's worth $128,040. The bar on the right stands 3.75 times taller than the one on the left.
 
-After optimization, $221,500. Same person. Three balances lower.
+At 88% used, our system reads the cards as maxed out, and it holds this file to less than a QUARTER of what it's built for.
 
-A high balance on a revolving card is what lenders read first.
+The file is built off its own best card and an old car loan it paid off. In this model, card use is the input that changes between those two bars.
 
-Nothing on this file is negative, so there's nothing else holding it back. It's card use, and that's it.
+3. MT-03 / The four cards — This sample owes $37,100 on $42,000 of limits, spread over four cards.
 
-The difference between today and the cleaned-up file is what's left on the table right now.
+Those four balances are what this file is paying for right now. It owes $37,100 on $42,000 of limits, and every one of the four cards is close to MAXED.
 
-3. MT-03 / The three cards — On this sample, $3,350 in paydowns is the whole $22,150.
+American Express is the biggest, at $17,700 on a $20,000 limit. Chase, Capital One and Discover all sit at 88% too, every one of them right up near its limit.
 
-Here are the three cards on this sample file, the way the report prints them.
+Each card gets its own target, 10% of its limit. For the American Express, that's $2,000. Paying $32,900 gets all four cards to target.
 
-Chase at 18%. American Express at 19%. Capital One at 12%. Each one has its own target.
+Each balance reports on the day the statement closes, so the payment has to land BEFORE that day. On your call, you pick: fund what's there now, fix first, or both.
 
-The fullest card goes first. That's the American Express: $4,800 on a $25,000 limit. Get it to $2,500, and that's the fastest win on the whole report.
+Until that payment lands, every application this file sends goes out on a file our system holds to $46,560, with $128,040 more left on the table.
 
-All three together: $3,350 in paydowns to reach the plan's 10% target.
+4. MT-04 / Three gates — Our system's three gates: a 700 score, cards at 30% or less, and zero negatives.
 
-That $3,350 is the whole $22,150. Three balances, and the file shows $221,500.
+Our system has three gates: a score of 700 or more, cards used 30% or less, and zero negative items. That's the cutoff the whole $128,040 turns on.
 
-The bank still decides. But this is what the file supports once those three are paid down.
+This sample clears two of them. The score is a 706, and there's nothing negative anywhere on the file, on any of the three bureaus.
 
-4. MT-04 / Three gates — Your score is one gate of three, and a file has to clear all three.
+Card use is the gate it FAILS, and failing it keeps the file out of full funding, however good that 706 looks on paper.
 
-Your score is one gate of three. Look at the three.
+Paid down to 10%, card use clears that gate too. Now all three gates pass, and the very same file routes to full funding.
 
-Score 700 or more. Cards used 30% or less. Zero negative items. Our system counts a file as fundable only when it clears all three.
+That's what we do first. We review your file the way a lender does, find the gate it fails, and fix it BEFORE an application goes out.
 
-The sample file clears all three, and it still leaves $22,150 on the table, because the amount goes up again as card use comes down to the plan's target.
+5. MT-05 / The next round — Five banks turned this file down at 88% used, and its next round goes out at 10%.
 
-When you apply, a bank reads more than your score. Inquiries, old addresses, negative items like late payments.
+This sample paid for a business start-up on four personal cards, then applied around to spread the balance out, and five banks said NO.
 
-Small details in your file hold back even 800 scores from the maximum amount of funding.
+Three were credit card applications and two were personal loans, and every one of them came back declined, all inside the last six months.
 
-A bank reads the whole file, and so do we, before anything goes out.
+None of those five banks has an account on this file. Each of those inquiries gets disputed, and the one tied to the Chase card stays.
 
-5. MT-05 / The middle score — Lenders use your middle score, and your three bureaus don't match.
+Our system's amount moves on card use, so the disputes clean up what the next bank reads, and the paydown moves the whole $128,040.
 
-Three bureaus, three scores. On this sample: TransUnion 758, Experian 762, Equifax 770.
+The next round goes out after the paydown. The four personal cards sit at 10%, and the file our system routes to full funding shows $174,600.
 
-Line them up from lowest to highest. Lenders use the middle one. Here that's 762.
+After the paydown, the engine projects 3.75 times more capacity for this sample, with its four personal cards back at 10%. A bank still decides the actual offer. Each bank still makes its own call.
 
-They don't match because not every company reports to all three bureaus.
+6. MT-06 / Your levers — The same screen fills in from your file: today, after the fix, and the lever between them.
 
-Different banks pull different bureaus, so your information has to match on every report.
+This is the money levers screen from a Fundhub call, filled in from the sample. On your strategy call, the same screen fills in from YOUR file.
 
-When only one bureau passes our checks, our system counts a third of the amount. That's more money left on the table, and the score didn't change.
+We pull your report while you're on the line. It's a soft pull, which only you can see, and it leaves your score exactly where it is.
 
-Your story: the first time you saw three bureaus disagree about one person.
+You see how much you qualify for based on where you're at right now, and the lever your advisor taps shows what each fix adds to it.
 
-6. MT-06 / Your call — On your call, you see how much you qualify for today, and what's left on the table.
+On this sample, one lever carries the whole $128,040: paying the four cards down to their targets. Your file shows its own levers, in its own order.
 
-On your call, we pull your file together, right there. It's a soft pull, so your score does not move.
+Some files look like this sample, and some look different. Either way, you see the fix that's worth the most on yours, and the order the work goes in.
 
-You see how much you qualify for based on where you're at right now.
-
-Then you see what's holding the rest back, and the difference between today and the cleaned-up file is what's left on the table right now.
-
-From there it's three ways to go: fund what's there now, fix the file first, or both.
-
-Join from a computer somewhere quiet, because your advisor shares the screen and goes through your file with you.
-
-We're looking for action takers, not shoppers. Come ready to move.
+Join from a computer, because your advisor shares the screen with you. If you only need $20,000 now, we'll separate what you plan to spend from the credit you want available. Extra unused capacity can keep card use lower, but we only plan for an amount your file and repayment plan support. That is what we can work out together on the call.
