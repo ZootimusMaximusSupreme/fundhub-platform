@@ -217,17 +217,19 @@ export async function runShipChange(options, command = defaultCommand) {
         throw new Error(`Could not identify the previous tip of ${parent.headRefName}; leave this branch open for a safe restack.`);
       }
       const sourceHead = (await rootGit(['rev-parse', 'HEAD'])).trim();
+      const deltaBase = recorded || (adoptingLegacy ? basePoint : null);
       try {
         await rootGit(['rebase', '--onto', parentHead, basePoint, branch]);
       } catch (error) {
         await rootGit(['rebase', '--abort']).catch(() => {});
-        if (!existing || !recorded || (await rootGit(['status', '--porcelain'])).trim()) throw error;
+        if (!existing || !deltaBase || (await rootGit(['status', '--porcelain'])).trim()) throw error;
+        await rootGit(['merge-base', '--is-ancestor', deltaBase, sourceHead]);
         fallbackRemoteHead = (await rootGit(['rev-parse', `refs/remotes/origin/${branch}`])).trim();
         if (!/^[a-f0-9]{40}$/i.test(fallbackRemoteHead)) throw error;
         await rootGit(['merge-base', '--is-ancestor', fallbackRemoteHead, sourceHead]);
         const archived = (await rootGit(['ls-remote', '--tags', 'origin', `refs/tags/archive/${branch}`])).split(/\s+/)[0];
         if (archived !== fallbackRemoteHead) throw new Error('Original remote child archive is missing; branch was not pushed.');
-        await scoped('npm', ['run', 'preflight', '--', '--expected-base', recorded]);
+        await scoped('npm', ['run', 'preflight', '--', '--expected-base', deltaBase]);
         const sourcePr = JSON.parse(await rootGh(['pr', 'view', String(existing.number), '--repo', REPO, '--json', 'headRefOid,baseRefName']));
         const sourceParent = (await rootGit(['ls-remote', '--heads', 'origin', parent.headRefName])).split(/\s+/)[0];
         if (sourcePr.headRefOid !== fallbackRemoteHead || sourcePr.baseRefName !== existing.baseRefName
@@ -240,7 +242,7 @@ export async function runShipChange(options, command = defaultCommand) {
         try {
           await scoped(process.execPath, ['--input-type=module', '-e',
             'const {restackMergedDelta}=await import(process.argv[2]); if(!restackMergedDelta(JSON.parse(process.argv[1]))) process.exitCode=1;',
-            JSON.stringify({ base: recorded, head: sourceHead, branch, number: existing.number, target: parentHead }), helperUrl]);
+            JSON.stringify({ base: deltaBase, head: sourceHead, branch, number: existing.number, target: parentHead }), helperUrl]);
         } catch (deltaError) {
           if (!(await rootGit(['status', '--porcelain'])).trim()) await rootGit(['switch', branch]);
           throw deltaError;

@@ -293,7 +293,7 @@ test('resume retries an existing clean commit without making a second commit', a
   assert(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create'));
 });
 
-for (const scenario of ['clean', 'conflict', 'changed head', 'late changed head', 'deleted branch', 'preflight refusal', 'missing archive', 'invalid parent']) {
+for (const scenario of ['clean', 'conflict', 'legacy clean', 'legacy conflict', 'changed head', 'late changed head', 'deleted branch', 'preflight refusal', 'missing archive', 'invalid parent']) {
   test(`real Git open parent rewrite without reflog: ${scenario}`, async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ship-open-parent-'));
     const work = path.join(root, 'work');
@@ -301,14 +301,17 @@ for (const scenario of ['clean', 'conflict', 'changed head', 'late changed head'
     fs.mkdirSync(work);
     const git = (...args) => execFileSync('git', args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
     const write = (name, text) => fs.writeFileSync(path.join(work, name), text);
+    const legacy = scenario.startsWith('legacy ');
+    const contentConflict = scenario === 'conflict' || scenario === 'legacy conflict';
     try {
       execFileSync('git', ['init', '--bare', origin], { stdio: 'ignore' });
       git('init', '-b', 'main'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
       git('remote', 'add', 'origin', origin);
       write('base.txt', 'base\n'); git('add', '.'); git('commit', '-m', 'base');
       git('switch', '-c', 'old-parent'); write('parent.txt', 'parent feature\n');
-      if (scenario === 'conflict') write('child.txt', 'parent line\n');
+      if (contentConflict) write('child.txt', 'parent line\n');
       git('add', '.'); git('commit', '-m', 'old parent'); const oldParent = git('rev-parse', 'HEAD');
+      if (legacy) git('branch', '-f', 'main', oldParent);
       git('switch', '-c', 'original-child'); write('child.txt', 'draft\n'); git('add', '.'); git('commit', '-m', 'draft');
       const first = git('rev-parse', 'HEAD'); write('child.txt', 'final  '); git('add', '.'); git('commit', '-m', 'final');
       const original = git('rev-parse', 'HEAD');
@@ -320,11 +323,12 @@ for (const scenario of ['clean', 'conflict', 'changed head', 'late changed head'
       const sourceHead = git('rev-parse', 'HEAD');
       git('switch', 'main'); write('main-only.txt', 'current main\n'); git('add', '.'); git('commit', '-m', 'main update'); git('push', 'origin', 'main');
       git('switch', '-c', 'parent'); write('parent.txt', 'parent feature\n'); write('parent-new.txt', 'keep new parent delta\n');
-      if (scenario === 'conflict') write('child.txt', 'new parent decision\n');
+      if (contentConflict) write('child.txt', 'new parent decision\n');
       git('add', '.'); git('commit', '-m', 'rewritten open parent'); const parentHead = git('rev-parse', 'HEAD'); git('push', 'origin', 'parent');
       git('switch', 'child');
-      const prs = [member(41, 'parent', 'main', 1), { ...member(42, 'child', 'parent', 2),
-        body: `Owner lane: ci\nStack parent head: ${scenario === 'invalid parent' ? 'f'.repeat(40) : oldParent}` }];
+      const prs = [member(41, 'parent', 'main', 1), { ...member(42, 'child', legacy ? 'main' : 'parent', 2),
+        ...(legacy ? { labels: [] } : {}),
+        body: legacy ? 'Owner lane: ci' : `Owner lane: ci\nStack parent head: ${scenario === 'invalid parent' ? 'f'.repeat(40) : oldParent}` }];
       const calls = [];
       let rebaseFailed = false;
       let prReads = 0;
@@ -339,7 +343,7 @@ for (const scenario of ['clean', 'conflict', 'changed head', 'late changed head'
           if (args[0] === 'pr' && args[1] === 'view') {
             prReads += 1;
             if (scenario === 'deleted branch' && prReads === 2) git('push', 'origin', ':refs/heads/child');
-            return JSON.stringify({ headRefOid: scenario === 'changed head' || (scenario === 'late changed head' && prReads > 1) ? 'e'.repeat(40) : remoteHead, baseRefName: 'parent' });
+            return JSON.stringify({ headRefOid: scenario === 'changed head' || (scenario === 'late changed head' && prReads > 1) ? 'e'.repeat(40) : remoteHead, baseRefName: legacy ? 'main' : 'parent' });
           }
           return '';
         }
@@ -348,7 +352,7 @@ for (const scenario of ['clean', 'conflict', 'changed head', 'late changed head'
         catch (error) { if (program === 'git' && args[0] === 'rebase') rebaseFailed = true; throw error; }
       };
       const action = runShipChange({ message: 'CI fix', ownerLane: 'ci', files: [], resume: true }, command);
-      if (scenario === 'clean') {
+      if (scenario === 'clean' || scenario === 'legacy clean') {
         assert.equal((await action).number, 42);
         assert.equal(rebaseFailed, true);
         const published = git('ls-remote', '--heads', 'origin', 'child').split(/\s+/)[0];
@@ -363,6 +367,7 @@ for (const scenario of ['clean', 'conflict', 'changed head', 'late changed head'
         const preflights = calls.filter(c => c[0] === 'npm');
         assert.deepEqual(preflights.map(c => c.at(-1)), [oldParent, 'origin/parent']);
         assert.ok(calls.some(c => c.includes(`--force-with-lease=refs/heads/child:${remoteHead}`)));
+        if (legacy) assert.ok(calls.some(c => c[0] === 'gh' && c.includes('--base') && c.at(-1) === 'parent'));
       } else {
         await assert.rejects(action);
         assert.equal(git('ls-remote', '--heads', 'origin', 'child').split(/\s+/)[0], scenario === 'deleted branch' ? '' : remoteHead);
@@ -372,7 +377,7 @@ for (const scenario of ['clean', 'conflict', 'changed head', 'late changed head'
         if (scenario === 'changed head' || scenario === 'preflight refusal') {
           assert.equal(calls.some(c => c[0] === 'git' && c[1] === 'push'), false, 'source preflight/freshness refusal must precede all archive pushes');
         }
-        if (scenario === 'conflict') assert.equal(git('symbolic-ref', '--short', 'HEAD'), 'child');
+        if (contentConflict) assert.equal(git('symbolic-ref', '--short', 'HEAD'), 'child');
       }
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   });
