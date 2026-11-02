@@ -375,13 +375,13 @@ const APPLY_BIZ = [
   ["cf_svy_has_business", "Yes, 2-5 years"],
   ["cf_svy_business_revenue", "$250k - $499k"],
   ["cf_svy_revenue_verifiable", "Yes, tax returns"],
-  ["cf_svy_available_capital", "$5k - $25k"],
+  ["cf_svy_available_capital", "$5k - $9,999"],
 ];
 const APPLY_PERSONAL = [
   ["cf_svy_has_business", "No, personal funding only"],
   ["cf_svy_annual_income_range", "$100k-$199k"],
   ["cf_svy_income_verifiable", "Yes, W-2 or tax returns"],
-  ["cf_svy_available_capital", "$25k - $100k"],
+  ["cf_svy_available_capital", "$20k - $49,999"],
 ];
 
 function walkApply(rest) {
@@ -470,7 +470,7 @@ describe("/apply survey hooks (apply-survey.html)", () => {
     const done = JSON.parse(JSON.stringify(a.page.win.FH_SURVEY_PAYLOAD));
     assert.equal(done.email, "dana.rivers@example.com", "the finished survey carries the saved contact");
     assert.equal(done.answers.cf_svy_funding_target_amount, "$100k - $200k", "earlier answers are kept");
-    assert.equal(done.answers.cf_svy_available_capital, "$5k - $25k");
+    assert.equal(done.answers.cf_svy_available_capital, "$5k - $9,999");
   });
 
   test("a saved answer that is no longer a choice is asked again", async () => {
@@ -634,13 +634,13 @@ const HOME_BIZ = [
   ["has_business", "Yes, 1-2 years"],
   ["annual_business_revenue", "$100k - $249k"],
   ["verify_revenue", "Yes, both"],
-  ["available_capital", "$1k - $5k"],
+  ["available_capital", "$1k - $4,999"],
 ];
 const HOME_PERSONAL = [
   ["has_business", "No, personal funding only"],
   ["annual_personal_income", "$200k-$499k"],
   ["verify_income", "Yes, pay stubs"],
-  ["available_capital", "$100k+"],
+  ["available_capital", "$50k+"],
 ];
 const HOME_CONTACT = { name: "Homefirst Homelast", business: "Acme Test Co", email: "home.qa@example.com", phone: "(415) 555-0199" };
 

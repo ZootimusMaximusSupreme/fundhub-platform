@@ -77,3 +77,22 @@ test("surveyIsComplete: only the last answer (available capital) finishes the su
   assert.equal(surveyIsComplete(null), false);
   assert.equal(surveyIsComplete([]), false);
 });
+
+
+test("available capital separates zero and each owner-approved cash band", () => {
+  const capital = CF_SURVEY_QUESTIONS.find(q => q.id === "available_capital");
+  assert.deepEqual(capital.options, [
+    "$0", "$1 - $199", "$200 - $999", "$1k - $4,999",
+    "$5k - $9,999", "$10k - $19,999", "$20k - $49,999", "$50k+"
+  ]);
+  assert.deepEqual(CF_SURVEY_QUESTIONS.find(q => q.id === "current_score").options,
+    ["500-619", "620-699", "700-759", "760-850", "Not sure"]);
+});
+
+test("zero capital completes the survey and legacy answers retain their saved meaning", () => {
+  for (const value of ["$0", 0, "Less than $1k", "$5k - $25k", "$100k+"]) {
+    const answers = answersByPayloadKey({ available_capital: value });
+    assert.equal(answers.cf_svy_available_capital, value);
+    assert.equal(surveyIsComplete(answers), true);
+  }
+});
