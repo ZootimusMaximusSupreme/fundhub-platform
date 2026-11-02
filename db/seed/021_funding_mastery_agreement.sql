@@ -54,7 +54,7 @@ BEGIN
   -- spoken wrap script on the same sale (F23).
   INSERT INTO contract_templates
     (org_id, template_key, name, kind, subtype, body, manual_fields,
-     signature_required, signature_statement, created_by)
+     signature_required, signature_statement, active, created_by)
   VALUES (
     v_org,
     'FUNDING-MASTERY-AGREEMENT',
@@ -187,6 +187,7 @@ BEGIN
     '[]'::jsonb,
     true,
     'I have read this program agreement and I agree to it. Typing my name here is my signature.',
+    false, -- Decommissioned; retained for existing agreements and later owner review.
     v_staff
   )
   ON CONFLICT (org_id, template_key) DO NOTHING;

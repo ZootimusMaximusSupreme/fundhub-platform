@@ -53,10 +53,13 @@
 .setter-page .setter-status.error{color:#8f4939}
 .setter-page .setter-status.success{color:#34694a}
 .setter-page .setter-survey{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
-.setter-page .setter-survey div{padding:8px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.setter-page .setter-survey > :is(div,fieldset){min-width:0;margin:0;padding:8px 0;border:0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
 .setter-page .setter-survey b{display:block;color:var(--gray);font-size:var(--fs-caption);font-weight:600}
-.setter-page .setter-survey-field label{display:block;margin-bottom:6px;color:var(--gray);font-size:var(--fs-caption);font-weight:600}
-.setter-page .setter-survey-field textarea{display:block;width:100%;min-height:64px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font:inherit;resize:vertical}
+.setter-page .setter-survey-field > :is(label,legend){display:block;margin-bottom:6px;padding:0;color:var(--gray);font-size:var(--fs-caption);font-weight:600}
+.setter-page .setter-survey-field select{display:block;width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font:inherit}
+.setter-page .setter-survey-options{display:grid;gap:4px}
+.setter-page .setter-survey-options label{display:flex;align-items:center;gap:8px;min-height:44px;font-size:var(--fs-body)}
+.setter-page .setter-survey-options input{width:20px;height:20px;flex:none}
 .setter-page .setter-survey-field small{display:block;margin-top:6px;color:var(--gray);font-size:var(--fs-caption)}
 .setter-page .setter-script{padding:16px;border-left:3px solid var(--line);background:var(--soft);white-space:pre-wrap;overflow-wrap:anywhere}
 .setter-page .setter-skeleton{height:88px;border-bottom:1px solid var(--line);background:linear-gradient(100deg,var(--paper) 20%,var(--soft) 50%,var(--paper) 80%);background-size:200% 100%;animation:setter-pulse 1.7s infinite}

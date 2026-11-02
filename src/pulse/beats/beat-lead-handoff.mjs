@@ -15,6 +15,7 @@
 //
 // What it guards, and why each surface is on `covers`:
 //   job:s-01-new-lead-intake, job:s-02-incomplete-survey-nudge   handoff:lead-first-touches-missing
+//   job:s-nobook-chase (its first message and setter task)        handoff:lead-first-touches-missing
 //   job:slo-genuine-followup, job:slo-no-reply-197,
 //   job:slo-genuine-checkout-sms                                 handoff:contact-no-followup
 //   job:s-04b-booking-reminders                                  handoff:reminder-missing and handoff:booking-no-confirm
@@ -26,7 +27,7 @@
 import { laneSelfTest, runLaneBeat } from "./lib/money-hourly.mjs";
 import {
   CONFIRM_SQL, CONTACT_197_SQL, CONTACT_M1_SQL, NOBOOK_SQL, NUDGE_SQL, REMIND_24H_SQL, REMIND_2H_SQL,
-  WELCOME_SQL, runHandoffChecks
+  SETTER_TASK_SQL, WELCOME_SQL, runHandoffChecks
 } from "./lib/handoff-truth.mjs";
 import { DRIP_CHECK_ID, DRIP_SQL, judgeDrip, readDrip } from "./lib/email-truth.mjs";
 
@@ -44,7 +45,7 @@ export const READ_TIMEOUT_MS = 4000;
 
 const ZERO = Object.freeze([Object.freeze({ n: 0, newest: null, sample: null, silent_n: 0 })]);
 const PASS_ROWS = Object.freeze([
-  ...[WELCOME_SQL, NUDGE_SQL, NOBOOK_SQL, CONTACT_M1_SQL, CONTACT_197_SQL, CONFIRM_SQL, REMIND_24H_SQL, REMIND_2H_SQL]
+  ...[WELCOME_SQL, NUDGE_SQL, NOBOOK_SQL, SETTER_TASK_SQL, CONTACT_M1_SQL, CONTACT_197_SQL, CONFIRM_SQL, REMIND_24H_SQL, REMIND_2H_SQL]
     .map((sql) => Object.freeze([sql, ZERO])),
   Object.freeze([DRIP_SQL, Object.freeze([Object.freeze({ n: 0, missing: 0 })])])
 ]);
@@ -74,6 +75,7 @@ export const kind = "probe";
 export const covers = [
   "job:s-01-new-lead-intake",
   "job:s-02-incomplete-survey-nudge",
+  "job:s-nobook-chase",
   "job:slo-genuine-followup",
   "job:slo-no-reply-197",
   "job:slo-genuine-checkout-sms",

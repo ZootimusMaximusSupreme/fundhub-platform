@@ -74,7 +74,7 @@ export const RECORDER_FUNCTION_ID = "_recorder";
    ClickFunnels sends one post per survey screen. No run can carry the id of such an event, so it must not
    be counted as "never started". Copied from that file, not imported (it is not exported and pulls the whole
    adapter into the pulse); workflow-runs.test.mjs fails when the two stop matching. */
-export const REPEAT_SUPPRESSED_EVENTS = Object.freeze(["survey.submitted", "entry.captured"]);
+export const REPEAT_SUPPRESSED_EVENTS = Object.freeze(["survey.submitted", "survey.completed", "entry.captured"]);
 export const FUNNEL_REPEAT_WINDOW_MINUTES = 6 * 60;
 
 /* Workflows that are dark on purpose. Each needs a reason of 40+ characters.
@@ -104,7 +104,7 @@ const H = HOUR_MS;
 const D = DAY_MS;
 export const SLEEPERS = Object.freeze({
   "ai-set-01-josh-setter": 1 * D, // sleeps to the end of quiet hours (8 p.m. to 8 a.m.), at most one night
-  "ai-set-03-no-answer-cadence": 3 * H, // 30 minutes, then 2 hours
+  "ai-set-03-no-answer-cadence": 2 * D, // 30 minutes, then 2 hours; a follow-up due after 5 p.m. waits for 9 a.m. Arizona
   "ai-set-04-3way-handoff": 14 * D, // sleeps until 15 minutes before a booked call
   "ar-collections": 14 * D, // 7 days, then 7 days
   "bc-01-customer-responsiveness": 3 * D, // 24 hours, then 48 hours
@@ -113,10 +113,10 @@ export const SLEEPERS = Object.freeze({
   "dpc-05-no-progress-escalation": 3 * D, // 72 hours
   "f-02-portal-id-missing": 3 * D, // 3 hours, then 2 days
   "n-06-renewal-second-wave": 180 * D, // 180 days
-  "s-02-incomplete-survey-nudge": 1 * H, // 20 minutes
+  "s-02-incomplete-survey-nudge": 4 * D, // 20 minutes, the next 9 a.m., then 9 a.m. the day after (follow-up hours 9 to 5 Arizona)
   "s-04b-booking-reminders": 14 * D, // until 24 hours, then 2 hours, before a booked call
-  "s-nobook-chase": 5 * D, // 2 hours, 24 hours, then 72 hours
-  "s-05a-no-show-recovery": 8 * D, // 24 hours, 48 hours, then 96 hours
+  "s-nobook-chase": 8 * D, // 15 minutes (setter task), 2 hours, 24 hours, then 72 hours; each waits for 9 a.m. Arizona after 5 p.m.
+  "s-05a-no-show-recovery": 10 * D, // 24 hours, 48 hours, then 96 hours; each waits for 9 a.m. Arizona after 5 p.m.
   "slo-genuine-followup": 1 * H, // 15 minutes
   "slo-no-reply-197": 2 * D, // 24 hours
   "slo-paid-form-nudge": 1 * H // 15 minutes
@@ -156,7 +156,8 @@ export const EVENTS_SQL = `SELECT name,
  GROUP BY name`;
 
 /* A repeat funnel post: the app stored it and did not hand it to Inngest, so no run can carry its id. Same test
-   as isRepeatFunnelPost: an earlier events row, same org, name, address (any case) and funnel, inside the window.
+   as isRepeatFunnelPost: an earlier events row, same org, name, address (any case),
+   and matching funnel or a blank funnel on either post, inside the window.
    No address is never a repeat. */
 const REPEAT_POST_SQL = `e.name IN (${REPEAT_SUPPRESSED_EVENTS.map((n) => `'${n}'`).join(", ")})
      AND COALESCE(e.payload->>'email', '') <> ''
@@ -167,7 +168,9 @@ const REPEAT_POST_SQL = `e.name IN (${REPEAT_SUPPRESSED_EVENTS.map((n) => `'${n}
           AND p.created_at < e.created_at
           AND p.created_at > e.created_at - make_interval(mins => ${FUNNEL_REPEAT_WINDOW_MINUTES})
           AND lower(p.payload->>'email') = lower(e.payload->>'email')
-          AND COALESCE(p.payload->>'funnel', '') = COALESCE(e.payload->>'funnel', '')
+          AND (COALESCE(p.payload->>'funnel', '') = COALESCE(e.payload->>'funnel', '')
+            OR COALESCE(p.payload->>'funnel', '') = ''
+            OR COALESCE(e.payload->>'funnel', '') = '')
      )`;
 
 /* The runs read. Three kinds of row come back, told apart by `kind`:

@@ -24,6 +24,12 @@ const APP = path.join(ROOT, "public/app");
 // that drops contract-send.js or renames #app is a deck with no Copy button, and this test sees it.
 const HTML = fs.readFileSync(path.join(APP, "present.html"), "utf8");
 const SCRIPTS = [...HTML.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map((m) => m[1]);
+// The three slide visual files (ops/workflows/weekend-2026-10-24.md section 10.8) are named by the page before
+// they are built. A browser gets a 404 for a missing one and present.js keeps today's slide, so a missing visual
+// file is skipped here the same way. Every other script the page names must be in the site.
+const VISUAL_FILES = new Set(["/app/present-visuals.js", "/app/present-blueprint-demo.js", "/app/present-journey.js"]);
+// The course is off until it is filmed (COURSE_LIVE). The education route runs with the one switch on.
+const COURSE_OFF = "var COURSE_LIVE = false;";
 const PAGE_IDS = new Set([...HTML.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
 const OFFERS = offersForClient();
 const CONTACT = "33333333-3333-3333-3333-333333333333";
@@ -35,8 +41,8 @@ function payload(tier) {
     survey: { name: "Sam Sample" },
     businesses: [],
     income_estimates: {},
-    engine: { available: true, tier, label: tier, fico: { ex: 650, tu: 640, eq: 655 }, total: 20000, afterFix: 60000, negItems: 3, reasons: [], plan: [], totalBasis: "personal_only", sample: true },
-    soft_pull: null,
+    engine: { available: true, tier, label: tier, fico: { ex: 650, tu: 640, eq: 655 }, total: 20000, afterFix: 60000, negItems: 3, reasons: [], plan: [], totalBasis: "personal_only", sample: false },
+    soft_pull: { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "fin-b16-proof-result", sample: false },
     offers: OFFERS,
   };
 }
@@ -44,12 +50,12 @@ function payload(tier) {
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 /** present.js and contract-send.js against a stand-in page, with every server answer and clipboard write recorded. */
-async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = null } = {}) {
+async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = null, course = false } = {}) {
   const root = { innerHTML: "" };
   const writes = [];
   const reads = [];
   const copied = [];
-  let onClick = null;
+  const onClicks = [];
   const sandbox = {
     console,
     URLSearchParams,
@@ -70,7 +76,7 @@ async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = 
       readyState: "complete",
       getElementById: (id) => (id === "app" && PAGE_IDS.has("app") ? root : null),
       querySelectorAll: () => [],
-      addEventListener: (type, fn) => { if (type === "click") onClick = fn; },
+      addEventListener: (type, fn) => { if (type === "click") onClicks.push(fn); },
     },
     localStorage: { getItem: (k) => (k === "fh_role" ? "owner" : null) },
     FHData: {
@@ -98,16 +104,23 @@ async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = 
   // data.js is the stand-in FHData above; every other script the page names is run, in the page's order.
   for (const src of SCRIPTS.filter((name) => name !== "data.js")) {
     const file = src.startsWith("/") ? path.join(ROOT, "public", src.slice(1)) : path.join(APP, src);
-    vm.runInContext(fs.readFileSync(file, "utf8"), sandbox, { filename: file });
+    if (VISUAL_FILES.has(src) && !fs.existsSync(file)) continue;
+    let code = fs.readFileSync(file, "utf8");
+    if (course && src === "present.js") {
+      assert.ok(code.includes(COURSE_OFF), "present.js lost its one course switch");
+      code = code.replace(COURSE_OFF, "var COURSE_LIVE = true;");
+    }
+    vm.runInContext(code, sandbox, { filename: file });
   }
   await flush();
   await flush();
-  assert.ok(onClick, "present.js registered no click listener");
+  const presentClick = onClicks.find((fn) => fn.toString().includes("sendLocked(a)"));
+  assert.ok(presentClick, "present.js registered no click listener");
   const deck = {
     writes, reads, copied,
     html: () => root.innerHTML,
     text: () => root.innerHTML.replace(/<[^>]+>/g, " ").replace(/\s+/g, " "),
-    click(act) { onClick({ target: { closest: () => ({ getAttribute: () => act }) } }); return deck; },
+    click(act) { presentClick({ target: { closest: () => ({ getAttribute: () => act }) } }); return deck; },
     slide() {
       const m = /<div class="slide-hd"><span class="mono">([A-Z]-\d\d) \/ /.exec(root.innerHTML);
       return m ? m[1] : null;
@@ -125,7 +138,7 @@ async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = 
 test("Other actions opens a second row of actions on the close slide and Hide the other actions closes it", async () => {
   await proof.check(/^'Other actions' open\/close toggle \(S-23\)/, async () => {
     const deck = await openDeck("FULL_FUNDING");
-    deck.click("stack-go:S-23");
+    deck.click("phase:09");
     assert.equal(deck.slide(), "S-23");
     assert.equal(deck.label("more"), "Other actions");
     for (const word of ["Invoice this client", "Send contract", "Repair referral"]) {
@@ -149,7 +162,7 @@ test("Other actions opens a second row of actions on the close slide and Hide th
 test("Copy the sign link appears only once a contract was sent, with the link in a read-only box", async () => {
   await proof.check(/^'Copy the sign link' and the read-only sign-link box/, async () => {
     const deck = await openDeck("FULL_FUNDING");
-    deck.click("stack-go:S-23").click("more");
+    deck.click("phase:09").click("more");
     assert.equal(deck.has("contract-copy"), false, "no link, no copy button");
     assert.ok(!deck.html().includes('id="fh-contract-link"'));
 
@@ -189,7 +202,7 @@ test("Copy the sign link appears only once a contract was sent, with the link in
     const deck = await openDeck("FULL_FUNDING", { sendAnswer: async (url, body) => (body.action === "create_draft"
       ? { ok: true, data: { contract: { id: "contract-2" } } }
       : { ok: true, data: { links: [{ url: odd }], message: "Sent." } }) });
-    deck.click("stack-go:S-23").click("more").click("contract");
+    deck.click("phase:09").click("more").click("contract");
     await deck.settle();
     assert.ok(deck.html().includes('value="https://sign.example.test/c/a&quot;b&lt;c&gt;&amp;d"'), "the box value is escaped");
     assert.ok(!deck.html().includes('value="https://sign.example.test/c/a"b'), "no raw quote breaks out of the box");
@@ -199,7 +212,7 @@ test("Copy the sign link appears only once a contract was sent, with the link in
   await proof.check(/^'Copy the sign link' and the read-only sign-link box/, async () => {
     // A browser that refuses the clipboard is told so, and the link is still there to select.
     const deck = await openDeck("FULL_FUNDING", { copyWorks: false });
-    deck.click("stack-go:S-23").click("more").click("contract");
+    deck.click("phase:09").click("more").click("contract");
     await deck.settle();
     assert.ok(deck.html().includes(`value="${LINK}"`));
     deck.click("contract-copy");
@@ -211,7 +224,7 @@ test("Copy the sign link appears only once a contract was sent, with the link in
   await proof.check(/^'Copy the sign link' and the read-only sign-link box/, async () => {
     // A send the server refused leaves no link and no copy button.
     const deck = await openDeck("FULL_FUNDING", { sendAnswer: async () => ({ ok: false, error: "No such agreement." }) });
-    deck.click("stack-go:S-23").click("more").click("contract");
+    deck.click("phase:09").click("more").click("contract");
     await deck.settle();
     assert.equal(deck.has("contract-copy"), false);
     assert.ok(!deck.html().includes('id="fh-contract-link"'));
@@ -222,15 +235,17 @@ test("Copy the sign link appears only once a contract was sent, with the link in
 test("Show the full Blueprint stack opens section 06 from the Blueprint rung, and from no other offer", async () => {
   await proof.check(/^'Show the full Blueprint stack'/, async () => {
     const repair = await openDeck("REPAIR_ONLY");
-    repair.click("stack-go:S-19");
+    repair.click("phase:07").click("next").click("next");
     assert.equal(repair.slide(), "S-19");
-    // The repair route starts on the done-for-you rung: no Blueprint button there.
+    // The repair route starts on the Capital Blueprint rung, the most expensive door that fits (row 2).
     assert.equal(repair.has("rung:2"), true);
+    assert.equal(repair.has("stack-open"), true, "a file that is not ready starts on the Blueprint rung");
+    repair.click("rung:0");
     assert.equal(repair.has("stack-open"), false, "not on the full done-for-you rung");
     repair.click("rung:1");
     assert.equal(repair.has("stack-open"), false, "not on the trial rung");
     repair.click("rung:2");
-    assert.equal(repair.has("stack-open"), true, "on the DIY deliverables + course rung");
+    assert.equal(repair.has("stack-open"), true, "on the Capital Blueprint rung");
     assert.equal(repair.label("stack-open"), "Show the full Blueprint stack");
     assert.ok(repair.text().includes("Opens section 06: every piece, FinanceOS live, the price, and the FinanceOS downsell."));
     repair.click("stack-open");
@@ -238,8 +253,8 @@ test("Show the full Blueprint stack opens section 06 from the Blueprint rung, an
     repair.click("stack-leave");
     assert.equal(repair.slide(), "S-19", "and Leave brings the closer back to where they were");
 
-    // The education route's second course is the same Blueprint stack.
-    const edu = await openDeck("REPAIR_ONLY");
+    // The education route's second course is the same Blueprint stack (the course switch on).
+    const edu = await openDeck("REPAIR_ONLY", { course: true });
     edu.click("desc:eduLow");
     assert.equal(edu.slide(), "S-19");
     assert.equal(edu.has("stack-open"), true);
@@ -248,7 +263,7 @@ test("Show the full Blueprint stack opens section 06 from the Blueprint rung, an
 
     // A funding sale has no Blueprint rung at all.
     const funding = await openDeck("FULL_FUNDING");
-    funding.click("stack-go:S-19");
+    funding.click("phase:07").click("next").click("next");
     assert.equal(funding.slide(), "S-19");
     assert.equal(funding.has("stack-open"), false);
   });

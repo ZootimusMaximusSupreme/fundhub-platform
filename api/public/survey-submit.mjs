@@ -1,5 +1,6 @@
 // POST /api/public/survey-submit — homepage (and later) multi-step survey capture.
-// Emits entry.captured + survey.submitted, then returns classifySurvey redirect.
+// Emits entry.captured + survey.submitted (+ survey.completed when the last
+// answer is in), then returns classifySurvey redirect.
 
 import { db } from "../../src/db.mjs";
 import { emit } from "../../src/events/bus.mjs";
@@ -9,6 +10,7 @@ import { SURVEY_REDIRECTS } from "../../src/config/homepage-survey-steps.mjs";
 import {
   CF_SURVEY_QUESTIONS,
   answersByPayloadKey,
+  surveyIsComplete,
 } from "../../src/survey/cf-question-map.mjs";
 import { safeError } from "../../src/http/health.mjs";
 import { defaultOrgId } from "../../src/events/bus.mjs";
@@ -157,13 +159,32 @@ export async function runSurveySubmit(parsed, deps = {}) {
     },
     { idempotencyKey: `${idemBase}:survey`, clientId }
   );
+  // The whole survey arrives in one post here. Finished means the last answer is
+  // in it (surveyIsComplete); that is what starts the no-booking chase. A partial
+  // post (the climate page sends two answers) stays unfinished, so S-02 sends the
+  // person back to finish it.
+  const completed = surveyIsComplete(parsed.answers)
+    ? await emitFn(
+      database,
+      "survey.completed",
+      {
+        email: parsed.email,
+        name: parsed.name,
+        phone: parsed.phone,
+        business: parsed.business,
+        source: parsed.source,
+        answers: parsed.answers,
+      },
+      { idempotencyKey: `${idemBase}:completed`, clientId }
+    )
+    : null;
 
   return {
     ok: true,
     qualification,
     redirect,
     clientId,
-    deduped: !!(entry.deduped || survey.deduped),
+    deduped: !!(entry.deduped || survey.deduped || completed?.deduped),
   };
 }
 

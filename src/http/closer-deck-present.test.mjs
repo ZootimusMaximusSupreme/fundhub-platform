@@ -180,9 +180,11 @@ test("Present asks for the incorporation month and year", () => {
 });
 
 test("the ask sits on discovery, inside slides 1 to 12", () => {
-  const discovery = presentJs.indexOf('if (ph === "02 Discovery")');
+  /* Part 2 of the call script, "2 Your goal" (S-03 and S-04), is the discovery
+     part; part 3 is the pull (2026-10-29: the strip uses the script's parts). */
+  const discovery = presentJs.indexOf('if (pk === "02")');
   assert.ok(discovery > -1);
-  const softPull = presentJs.indexOf('if (ph === "03 Soft pull"');
+  const softPull = presentJs.indexOf('if (pk === "03"');
   assert.ok(presentJs.indexOf("incorporationAsk()", discovery) > discovery);
   assert.ok(presentJs.indexOf("incorporationAsk()", discovery) < softPull,
     "the ask must render during discovery, not after the pull");

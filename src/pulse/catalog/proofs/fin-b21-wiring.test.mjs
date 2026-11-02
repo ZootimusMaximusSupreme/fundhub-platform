@@ -42,10 +42,10 @@ const shippedSite = async (url, init) => {
   return new Response(fs.readFileSync(file, "utf8"), { status: 200 });
 };
 
-test("32 rows: 15 live checks, 15 practice tests, 2 nothing to judge, no row twice", () => {
-  assert.equal(LIVE.length, 15);
+test("32 rows: 14 live checks, 15 practice tests, 3 removed controls, no row twice", () => {
+  assert.equal(LIVE.length, 14);
   assert.equal(PRACTICE.length, 15);
-  assert.equal(REMOVED.length, 2);
+  assert.equal(REMOVED.length, 3);
   assert.equal(NOT_ATTACHABLE.length, 0);
   const all = [...LIVE, ...PRACTICE, ...REMOVED, ...NOT_ATTACHABLE].map((r) => idFor(r.surface, r.control));
   assert.equal(all.length, 32);

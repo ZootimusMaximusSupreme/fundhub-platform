@@ -6,7 +6,7 @@
 
 import { db } from "../../src/db.mjs";
 import { requireRole } from "../../src/http/middleware/requireRole.mjs";
-import { suspendStaff } from "../../src/auth/invite.mjs";
+import { suspendStaff, removeStaff } from "../../src/auth/invite.mjs";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -20,7 +20,9 @@ export default async function handler(req, res) {
   const staffId = String((req.body || {}).staff_id || "").trim();
   if (!staffId) return res.status(400).json({ ok: false, error: "staff_id_required" });
 
-  const result = await suspendStaff(db, { actor: staff, staffId });
+  const result = req.body?.action === "remove"
+    ? await removeStaff(db, { actor: staff, staffId })
+    : await suspendStaff(db, { actor: staff, staffId });
   if (!result.ok) {
     return res.status(result.status || 400).json({ ok: false, error: result.error });
   }

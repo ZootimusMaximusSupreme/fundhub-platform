@@ -18,6 +18,7 @@ import {
 import { cleanSql, selectList, projectRow, evalSql, orderRows, keep, whereOf, orderOf } from "../testing/fin-b26-sql.mjs";
 
 const CV = (n) => `cc00000${n}-0000-4000-8000-00000000000${n}`;
+const ARCHIVED_CLIENT = "c9000000-0000-4000-8000-000000000009";
 const MS = (n) => `dd0000${String(n).padStart(2, "0")}-0000-4000-8000-0000000000${String(n).padStart(2, "0")}`;
 const at = (n) => `2026-10-${String(n).padStart(2, "0")}T12:00:00.000Z`;
 
@@ -27,6 +28,7 @@ function world({ reuseThreadId = false } = {}) {
       { id: CLIENT, org_id: ORG_ID, first_name: "Dana", last_name: "Whitfield" },
       { id: OTHER_CLIENT, org_id: ORG_ID, first_name: "Eli", last_name: "Park" },
       { id: FOREIGN_CLIENT, org_id: OTHER_ORG_ID, first_name: "Far", last_name: "Away" },
+      { id: ARCHIVED_CLIENT, org_id: ORG_ID, first_name: "Old", last_name: "File", custom_fields: { crm_archived_at: "2026-10-20T00:00:00Z" } },
     ],
     conversations: [
       // activity: c1 spoke last on the 13th (inbound), c2 on the 12th (we answered), c3 has no messages, c5 other company.
@@ -36,6 +38,8 @@ function world({ reuseThreadId = false } = {}) {
       { id: CV(5), org_id: OTHER_ORG_ID, client_id: FOREIGN_CLIENT, channel: "sms", summary: "foreign", sentiment: null, last_pulse_at: at(14), created_at: at(1) },
       // A thread whose client is in another company is never shown, whatever the thread's own company says.
       { id: CV(6), org_id: ORG_ID, client_id: FOREIGN_CLIENT, channel: "sms", summary: "mismatch", sentiment: null, last_pulse_at: at(5), created_at: at(1) },
+      // An archived buyer has a real thread, but must not appear in the staff reply queue.
+      { id: CV(7), org_id: ORG_ID, client_id: ARCHIVED_CLIENT, channel: "sms", summary: "archived", sentiment: null, last_pulse_at: at(14), created_at: at(1) },
     ],
     messages: [
       { id: MS(1), org_id: ORG_ID, conversation_id: CV(1), client_id: CLIENT, direction: "outbound", channel: "sms", rendered_body: "We can help.", subject: null, status: "sent", provider: "twilio", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: STAFF_ID, created_at: at(11), to_address: "+16025550100", provider_ref: "ref-1" },
@@ -75,6 +79,14 @@ function rulesFor(t) {
       const whereFrom = clause(text, /FROM conversations c WHERE /i, "the page read");
       const orderIdx = text.lastIndexOf(" ORDER BY ", limitAt.index);
       let where = text.slice(whereFrom.index + whereFrom[0].length, orderIdx);
+      // Preserve the handler's correlated org/archival restriction in the
+      // stand-in: evaluate the actual saved SQL, not a hardcoded list of ids.
+      const active = clause(where,
+        /\bAND EXISTS\s*\(\s*SELECT 1 FROM clients active_client WHERE ([\s\S]*?)\s*\)/i,
+        "same-org non-archived client predicate");
+      where = where.replace(active[0], "");
+      const hasActiveClient = (c) => t.clients.some((active_client) =>
+        evalSql(active[1], { params: p, rows: { active_client, c } }) === true);
       const pageOrder = text.slice(orderIdx + " ORDER BY ".length, limitAt.index).trim();
       const offsetAt = limitAt[2];
       // The "newest message on this thread" subselect, evaluated per thread from its own text.
@@ -89,7 +101,7 @@ function rulesFor(t) {
       const lateralItems = selectList(sql, /^m\.id,/);
       const finalItems = selectList(sql, /^page\.id,/);
       const cvCtx = (c) => ({ params: p, rows: { c, newest_direction: undefined }, row: { newest_direction: newestDirection(c) } });
-      let page = t.conversations.filter((c) => evalSql(where, { ...cvCtx(c), rows: { c } }) === true);
+      let page = t.conversations.filter((c) => hasActiveClient(c) && evalSql(where, { ...cvCtx(c), rows: { c } }) === true);
       page = orderRows(page, pageOrder, (c) => ({ params: p, rows: { c } }));
       page = page.slice(p[Number(offsetAt) - 1], p[Number(offsetAt) - 1] + p[Number(limitAt[1]) - 1]);
       const pageRows = page.map((c) => projectRow(pageItems, { params: p, rows: { c } }));

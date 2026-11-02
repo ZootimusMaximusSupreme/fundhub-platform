@@ -1,4 +1,4 @@
-// Closer deck (present.html), section 07 Close: "Send pay link",
+// Closer deck (present.html), part 9 Paperwork (S-23; it was "07 Close" before 2026-10-29): "Send pay link",
 // "Invoice this client" and "Log disposition and close" (finish-the-853, batch 01).
 //
 // Each is pressed in the real page against fake answers and judged on the exact
@@ -24,7 +24,7 @@ const DECK = (tier = "REPAIR_ONLY") => ({
   income_estimates: {},
   engine: { available: true, tier, fico: { experian: 640, equifax: 632, transunion: 651 }, reasons: [], total: 0 },
   offers: offersForClient(),
-  soft_pull: null,
+  soft_pull: { consent_valid: true, diagnostic_paid: true, pull_status: "complete", crs_result_id: "crs-fixture", sample: false },
 });
 
 async function open(page, { tier, deck, invoices, outbound } = {}) {
@@ -55,13 +55,42 @@ async function open(page, { tier, deck, invoices, outbound } = {}) {
       return outbound ? outbound(route) : json(route, { ok: true });
     },
   });
-  await page.waitForSelector('[data-act="phase:07"]');
-  await page.locator('[data-act="phase:07"]').click();
+  await page.waitForSelector('[data-act="phase:09"]');
+  await page.locator('[data-act="phase:09"]').click();
   await page.waitForSelector('[data-act="pay"]');
   return calls;
 }
 
 const toast = (page) => page.locator(".toast");
+
+test("client Present shows live assessment progress at phone width and waits for a real result", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let pull = { consent_valid: false, diagnostic_paid: false, pull_status: null, crs_result_id: null, sample: false };
+  await openScreen(page, `/app/present.html?contact=${CLIENT_ID}`, CLOSER, {
+    "/api/read/closer-deck": (route) => json(route, { ...DECK("FULL_FUNDING"), soft_pull: pull }),
+    "/api/read/agent-context": { ok: true, context: {} }
+  });
+  await page.locator('[data-act="phase:03"]').click();
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .h1")).toHaveText("Waiting for your authorization");
+  await expect(page.locator(".client")).not.toContainText("scanning experian");
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-06");
+  await page.locator('[data-act="phase:05"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-06");
+  await expect(page.locator(".client")).not.toContainText("Recommended path");
+  await page.locator('[data-act="phase:04"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-07");
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-06");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  pull = { consent_valid: true, diagnostic_paid: true, pull_status: "processing", crs_result_id: null, sample: false };
+  await expect(page.locator(".client .h1")).toHaveText("Your report is being prepared", { timeout: 7000 });
+  pull = { ...pull, pull_status: "complete", crs_result_id: "crs-test" };
+  await expect(page.locator(".client .h1")).toHaveText("Your report is ready", { timeout: 7000 });
+  await page.locator('[data-act="next"]').click();
+  await expect(page.locator(".client .slide-hd")).toContainText("S-07");
+});
 
 test.describe("closer deck: Send pay link", () => {
   test("it sends this client with the offer the deck chose and no sale motion, once", async ({ page }) => {
@@ -71,7 +100,8 @@ test.describe("closer deck: Send pay link", () => {
     const body = calls.deck[0];
     expect(body.action).toBe("send_pay_link");
     expect(body.client_id).toBe(CLIENT_ID);
-    expect(body.offer_key).toBe("REPAIR_DFY");
+    // The completed repair file leads with the Capital Blueprint (2026-10-29).
+    expect(body.offer_key).toBe("UWIQ_DELIVERABLES");
     expect(body.sale_motion).toBe(null);
     await expect(toast(page)).toHaveText("Pay link sent.");
     expect(calls.context[0].client_id).toBe(CLIENT_ID);
@@ -89,7 +119,7 @@ test.describe("closer deck: Send pay link", () => {
     const calls = await open(page);
     // Descend to the Blueprint rung: an alternate offer, so a motion is asked for.
     await page.locator('[data-act="desc:diy"]').click();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.waitForSelector("#fh-sale-motion");
     await page.locator("#fh-sale-motion").selectOption("upsell");
     await page.locator('[data-act="pay"]').click();
@@ -103,11 +133,11 @@ test.describe("closer deck: Send pay link", () => {
   test("a downsell or upsell chosen for an alternate offer is dropped when the deck goes back to a primary offer", async ({ page }) => {
     const calls = await open(page);
     await page.locator('[data-act="desc:diy"]').click();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.waitForSelector("#fh-sale-motion");
     await page.locator("#fh-sale-motion").selectOption("downsell");
     await page.locator('[data-act="desc:dfy"]').click();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.waitForSelector('[data-act="pay"]');
     await expect(page.locator("#fh-sale-motion")).toHaveCount(0);
     await page.locator('[data-act="pay"]').click();
@@ -237,7 +267,7 @@ test.describe("closer deck: Log disposition and close", () => {
     await expect.poll(() => calls.deck.length).toBe(1);
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem(`fh_call_payment_link:${new URLSearchParams(location.search).get("contact")}`) || "null")?.id)).toBe("link-this-call");
     await page.reload();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.locator('[data-act="disp"]').click();
     await expect.poll(() => calls.deck.length).toBe(2);
     expect(calls.deck[1].payment_link_id).toBe("link-this-call");
@@ -263,12 +293,12 @@ test.describe("closer deck: Log disposition and close", () => {
     await page.locator('[data-act="check:Pain"]').click();
     await page.locator('[data-act="check:Trust"]').click();
     await page.locator("#fh-cost").fill("$4,000 a month");
-    // Commit: their number out of ten (S-18 is the second slide of that phase).
-    await page.locator('[data-act="phase:05"]').click();
+    // The ask: their number out of ten (S-18 is the second slide of that part).
+    await page.locator('[data-act="phase:07"]').click();
     await page.keyboard.press("ArrowRight");
     await page.waitForSelector('[data-act="temp:9"]');
     await page.locator('[data-act="temp:9"]').click();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.waitForSelector('[data-act="disp"]');
     await page.locator('[data-act="disp"]').click();
     await expect.poll(() => calls.deck.length).toBe(1);
@@ -301,7 +331,7 @@ test.describe("closer deck: Log disposition and close", () => {
   test("a downsell to the trial rung writes that offer, not the first one", async ({ page }) => {
     const calls = await open(page);
     await page.locator('[data-act="desc:trial"]').click();
-    await page.locator('[data-act="phase:07"]').click();
+    await page.locator('[data-act="phase:09"]').click();
     await page.waitForSelector('[data-act="disp"]');
     await page.locator('[data-act="disp"]').click();
     await expect.poll(() => calls.deck.length).toBe(1);

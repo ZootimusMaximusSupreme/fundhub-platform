@@ -27,7 +27,7 @@ You find the real order. You do not fix the app.
 - Bland call **under ~8 seconds** (0.13s is FAIL)
 - Funded tile **0** while `funding_rounds` has funded rows
 - Intended file has **no talk order** and you still score sequence PASS
-- Live AG-04 is 169 letters; vendor Josh is 3,750 and unused (measured 2026-08-26; re-measure before quoting) — do not roleplay the disk file and call production done
+- Live AG-04 is 169 letters; the vendor setter prompt is 3,750 and unused (measured 2026-08-26; re-measure before quoting) — do not roleplay the disk file and call production done
 
 ## If intended has no talk / event list
 

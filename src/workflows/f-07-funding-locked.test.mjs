@@ -90,7 +90,10 @@ test("two verified funded rounds create two separate bills and a replay creates 
   // fee-source PG suite exercises its full SQL against disposable Postgres.
   const query = db.query.bind(db);
   db.query = async (sql, params) => {
-    if (/FROM funding_rounds fr/.test(sql)) {
+    // Only intercept the standalone funding-round lookup. createInvoice now
+    // embeds a nested funding_rounds ownership SELECT inside an INSERT; that
+    // must reach pgFake's invoice writer instead of this round-query stub.
+    if (/^\s*SELECT\b[\s\S]*?\bFROM funding_rounds fr\b/i.test(sql)) {
       assert.deepEqual(params.slice(1), ["org-1", "cl-1", saleId]);
       return { rows: [round1, round2].includes(params[0]) ? [{ id: params[0] }] : [] };
     }

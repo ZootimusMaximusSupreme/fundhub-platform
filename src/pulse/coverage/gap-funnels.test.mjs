@@ -92,9 +92,10 @@ const GOOD = {
   "/watch": "Get Started <!-- fh-watch-lede:start -->",
   "/thank-you": "You're All Set <script src=\"https://fundhub.ai/funnel/thankyou-sort.js\"></script>",
   "/roadmap-thank-you": "You're All Set <section id=\"fh-expect\"></section>",
-  "/apply": "cf_svy_funding_target_amount fetch('https://fundhub.ai/api/webhooks/clickfunnels', { method: 'POST' })",
+  "/apply": "cf_svy_funding_target_amount fetch('https://fundhub.ai/api/webhooks/clickfunnels', { method: 'POST' }) data-src-unqualified=\"https://apply.fundhub.ai/funding-book-call--02424\"",
   "/roadmap-book": '<iframe id="fh-book-frame" src="https://apply.fundhub.ai/funding-book-call"></iframe>',
   "/funding-book-call": "Book Your Funding Call <div id=\"cronofy-date-time-picker\"></div><div id=\"formContainer\"></div>",
+  "/funding-book-call--02424": "Book Your Funding Call <div id=\"cronofy-date-time-picker\"></div><div id=\"formContainer\"></div>",
   "/partner/": '<span data-price="partner"></span><script src="/partner/funnel.js"></script>',
   "/partner/menu/": 'Four Ways In <span data-price-label="partner"></span><script src="/partner/funnel.js"></script>',
   "/partner/trial/": '<form data-checkout="trial"></form><script src="/partner/funnel.js"></script>',
@@ -178,9 +179,10 @@ const byId = (rows, id) => rows.find((item) => item.id === id);
 test("gap funnels: every live door passes when markers are present", async () => {
   const calls = [];
   const rows = await gapChecks(ctx(GOOD, calls));
-  // The 21 doors plus the Tier 1 widget checks (2026-10-09).
+  // The 22 doors plus the Tier 1 widget checks (2026-10-09). The 22nd is the
+  // unqualified-credit calendar (owner-set 2026-10-29).
   assert.equal(rows.length, GAP_DOORS.length + GAP_WIDGET_CHECKS.length);
-  assert.equal(GAP_DOORS.length, 21);
+  assert.equal(GAP_DOORS.length, 22);
   assert.equal(GAP_WIDGET_CHECKS.length, 6);
   for (const row of rows) {
     assert.deepEqual(Object.keys(row).sort(), ["detail", "id", "status", "suggestedFix"]);
@@ -267,6 +269,18 @@ test("gap funnels: the booking page loses its calendar picker", async () => {
   const row = byId(await gapChecks(ctx(pages)), "funnel:funding-book-call");
   assert.equal(row.status, "FAIL");
   assert.match(row.detail, /calendar picker cronofy-date-time-picker/);
+});
+
+test("gap funnels: the second calendar loses its picker, or /apply stops routing to it", async () => {
+  const lost = { ...GOOD, "/funding-book-call--02424": "Book Your Funding Call <div id=\"formContainer\"></div>" };
+  const row = byId(await gapChecks(ctx(lost)), "funnel:funding-book-call-unqualified");
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /calendar picker cronofy-date-time-picker/);
+
+  const unrouted = { ...GOOD, "/apply": "cf_svy_funding_target_amount fetch('https://fundhub.ai/api/webhooks/clickfunnels', { method: 'POST' })" };
+  const apply = byId(await gapChecks(ctx(unrouted)), "funnel:apply-form");
+  assert.equal(apply.status, "FAIL");
+  assert.match(apply.detail, /second calendar for unqualified credit/);
 });
 
 test("gap funnels: the watch lede block counts only as the real head block", async () => {

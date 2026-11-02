@@ -292,7 +292,7 @@ test("the real source docs parse to the counts the docs themselves claim", async
 
      This used to assert the opening sentence as a hardcoded string
      ("Fundhub update, ..."). The copy was rewritten on 2026-08-21 to
-     "Update from Josh, ..." and this line was not, so it sat red ever after -
+     "Update from Chris, ..." and this line was not, so it sat red ever after -
      the parser was fine and the sentence describing it was stale. A test that
      pins marketing copy breaks every time marketing copy changes, which trains
      everyone to ignore it.
@@ -310,4 +310,10 @@ test("the real source docs parse to the counts the docs themselves claim", async
   /* The opt-out line is a compliance requirement, not copy, so it IS pinned. */
   assert.ok(f03.body.endsWith("Reply STOP to opt out."));
   assert.equal(f03.compliancePassed, true);
+
+  const noShow = seedable.find((x) => x.templateKey === "SMS-S05A-NOSHOW-RECOVERY");
+  assert.ok(noShow, "the missed-call text must remain in the source doc");
+  assert.doesNotMatch(noShow.body, /appointment\.start_time|at \./);
+  const restore = fs.readFileSync(path.join(HERE, "..", "..", "..", "db", "seed", "300_sms_noshow_copy_restore.sql"), "utf8");
+  assert.ok(restore.includes(noShow.body), "the live copy restore must match future source-doc reseeds");
 });

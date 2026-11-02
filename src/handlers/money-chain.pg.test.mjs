@@ -346,9 +346,9 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
         WHERE funding_round_id = $1 AND basis = 'back_end'`,
       [rounds[0].id]
     )).rows;
-    assert.equal(back.length, 2, "closer and advisor each earn their configured funded rate");
+    assert.equal(back.length, 1, "only the advisor earns on the funded amount");
     assert.equal(Number(back.find((row) => row.staff_id === advisorId)?.amount), 125);
-    assert.equal(Number(back.find((row) => row.staff_id === closerId)?.amount), 125);
+    assert.equal(back.some((row) => row.staff_id === closerId), false);
 
     await replay(db, {});
     assert.equal(
@@ -360,7 +360,7 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
         `SELECT count(*)::int n FROM commission_ledger WHERE funding_round_id = $1 AND basis = 'back_end'`,
         [rounds[0].id]
       )).rows[0].n,
-      2
+      1
     );
 
     const frRes = await call(`/api/read/funding-rounds?client_id=${client.id}`);

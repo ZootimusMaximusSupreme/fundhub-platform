@@ -34,6 +34,7 @@ import { isInterviewBooking } from "../insights/meet.mjs";
 import { addTags } from "../workflows/tags.mjs";
 import { mergeCustomFields } from "../workflows/custom-fields.mjs";
 import { advanceCardToStage } from "../workflows/cards.mjs";
+import { queueStaffBookedAlerts } from "../staff/booked-call-alert.mjs";
 import { threadMessage as threadStoredMessage } from "../conversations/store.mjs";
 import { completedCallBody } from "../lib/outbound-calls.mjs";
 // One phone-matching rule for the whole repo — see the note on the export.
@@ -525,6 +526,18 @@ async function onBookingCreatedLocked(event, db, p, uid) {
   // remains in the event ledger for later reconciliation.
   if (uid) {
     if (!event.orgId) return { skipped: "booking_identity_unavailable" };
+    // A cancellation may have arrived before its create. It intentionally
+    // leaves no booking row, so consult the immutable event ledger as well.
+    const terminal = await db.query(
+      `SELECT 1 FROM events WHERE org_id = $1
+         AND name IN ('booking.cancelled','booking.noshow')
+         AND payload->>'bookingUid' = $2
+         AND ($3::timestamptz IS NULL OR payload->>'providerOccurredAt' IS NULL
+           OR (payload->>'providerOccurredAt')::timestamptz >= $3::timestamptz)
+       LIMIT 1`,
+      [event.orgId, uid, p.providerOccurredAt || null]
+    );
+    if (terminal.rows[0]) return { skipped: "terminal_booking_event" };
     let existing;
     try {
       existing = await findByProviderUid(db, { orgId: event.orgId, providerUid: uid });
@@ -605,7 +618,10 @@ async function onBookingCreatedLocked(event, db, p, uid) {
       orgId: event.orgId,
       clientId,
       pipelineKey: "sales",
-      stageKey: "booked"
+      stageKey: "booked",
+      allowRebookFromLost: !(taskKey && dup.rows[0]) &&
+        Number.isFinite(new Date(accepted.starts_at).getTime()) &&
+        new Date(accepted.starts_at).getTime() > Date.now()
     });
   }
   if (isSloPostPurchaseEnabled()) {
@@ -686,20 +702,41 @@ function bookingChangeLock(db, event, p, handler) {
   return withBookingUidLock(db, event.orgId, identity, handler);
 }
 
-export async function onBookingRescheduled(event, db) {
+export async function onBookingRescheduled(event, db, alertImpl = db === platformDb ? queueStaffBookedAlerts : null,
+  now = () => Date.now()) {
   const p = event.payload || {};
-  return bookingChangeLock(db, event, p, async (tx) => {
+  let alertClientId = null;
+  const result = await bookingChangeLock(db, event, p, async (tx) => {
     const gate = await bookingChangeIdentity(tx, event, p);
     if (gate) return gate;
+    const uid = bookingUid(p);
+    if (uid && event.id) {
+      const latest = await tx.query(
+        `SELECT id FROM events WHERE org_id = $1
+           AND name IN ('booking.rescheduled','booking.cancelled','booking.noshow')
+           AND payload->>'bookingUid' = $2
+         ORDER BY COALESCE(NULLIF(payload->>'providerOccurredAt', '')::timestamptz, created_at) DESC,
+           created_at DESC, id DESC LIMIT 1`,
+        [event.orgId, uid]
+      );
+      if (latest.rows[0] && String(latest.rows[0].id) !== String(event.id)) {
+        return { skipped: "superseded_booking_change" };
+      }
+    }
     const clientId = await resolveClient(tx, event);
     if (!clientId) return;
     // Persist/validate appointment ownership before touching closer tasks.
     // A rejected UID conflict or failed booking write cannot invent a handoff.
+    const previous = uid ? await findByProviderUid(tx, { orgId: event.orgId, providerUid: uid }) : null;
+    const previousStartMs = previous ? new Date(previous.starts_at).getTime() : null;
     const accepted = await recordBooking(tx, event, p, clientId, BOOKING_STATUS.RESCHEDULED, { strict: true });
     if (!accepted || String(accepted.client_id) !== String(clientId)) {
       return { skipped: "booking_not_accepted" };
     }
-    const uid = bookingUid(p);
+    if (p.startTime && (!previous || previousStartMs !== new Date(p.startTime).getTime()) &&
+        new Date(p.startTime).getTime() > now()) {
+      alertClientId = clientId;
+    }
     if (uid) {
       const upd = await tx.query(
         `UPDATE tasks
@@ -718,6 +755,7 @@ export async function onBookingRescheduled(event, db) {
       );
       if (upd.rows[0]) {
         await mergeCustomFields(tx, clientId, { call_outcome: "rescheduled", call_confirmed: false });
+        if (alertClientId) await advanceCardToStage(tx, { orgId: event.orgId, clientId, pipelineKey: "sales", stageKey: "booked", allowRebookFromLost: true });
         return;
       }
     }
@@ -727,7 +765,14 @@ export async function onBookingRescheduled(event, db) {
       dueAt: p.startTime || null, eventId: uid, meetingUrl: p.meetingUrl || null
     });
     await mergeCustomFields(tx, clientId, { call_outcome: "rescheduled", call_confirmed: false });
+    if (alertClientId) await advanceCardToStage(tx, { orgId: event.orgId, clientId, pipelineKey: "sales", stageKey: "booked", allowRebookFromLost: true });
   });
+  // The booking transaction has committed before a provider can receive a text.
+  if (alertClientId && alertImpl) {
+    await alertImpl(db, { orgId: event.orgId, clientId: alertClientId,
+      eventId: event.id, eventName: "booking.rescheduled", payload: p });
+  }
+  return result;
 }
 
 // Cancellation and no-show must never update another buyer's appointment or

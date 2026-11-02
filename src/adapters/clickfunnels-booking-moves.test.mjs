@@ -167,9 +167,13 @@ function bookingDb() {
       }
       if (/UPDATE bookings\s+SET provider_uid/.test(sql)) {
         // promoteBookingUid
-        const [nextUid, meetingUrl, orgId, id] = params;
+        const [nextUid, meetingUrl, orgId, id, eventType] = params;
         const b = bookings.find((b) => b.org_id === orgId && b.id === id);
-        if (b) { b.provider_uid = nextUid; b.meeting_url = meetingUrl ?? b.meeting_url; }
+        if (b) {
+          b.provider_uid = nextUid ?? b.provider_uid;
+          b.meeting_url = meetingUrl ?? b.meeting_url;
+          b.event_type_slug = b.event_type_slug ?? eventType ?? null;
+        }
         return { rows: [] };
       }
       if (/UPDATE bookings\s+SET status/.test(sql)) {

@@ -263,11 +263,11 @@ const FLAG = "'Flag <belief>' button: stores a belief x source row for marketing
 const note = (label, now, last) => `Flagged from sales floor \u2014 ${label} this period ${now} vs last ${last}`;
 const PERIOD_END = "2026-11-01T00:00:00.000Z";
 
-// A client of ORG with one logged call, cut by utm_campaign "meta" and setter "josh": the source and setter
+// A client of ORG with one logged call, cut by utm_campaign "meta" and setter "chris": the source and setter
 // a flag may honestly name. A second client is cut by the channel only, and a third by nothing at all.
 function seedCalls(s) {
   s.insert("clients", { id: "k1", org_id: ORG, is_demo: 0, custom_fields: "{}", channel_source: "organic" });
-  s.insert("client_custom_fields", { client_id: "k1", org_id: ORG, utm_campaign: "meta", utm_source: "facebook", cf_setter_user_id: "josh" });
+  s.insert("client_custom_fields", { client_id: "k1", org_id: ORG, utm_campaign: "meta", utm_source: "facebook", cf_setter_user_id: "chris" });
   s.insert("call_outcomes", { id: "o1", org_id: ORG, client_id: "k1", logged_at: "2026-10-05T10:00:00.000Z", belief_failed: "cost" });
   s.insert("clients", { id: "k2", org_id: ORG, is_demo: 0, custom_fields: "{}", channel_source: "referral" });
   s.insert("call_outcomes", { id: "o2", org_id: ORG, client_id: "k2", logged_at: "2026-10-06T10:00:00.000Z", belief_failed: "trust" });
@@ -275,7 +275,7 @@ function seedCalls(s) {
   s.insert("call_outcomes", { id: "o3", org_id: ORG, client_id: "k3", logged_at: "2026-10-07T10:00:00.000Z", belief_failed: "cost" });
 }
 const flagRow = (id, extra = {}) => ({
-  id, org_id: ORG, flagged_by: "st-1", belief: "cost", lead_source: "meta", setter_label: "josh", outcome_count: 5,
+  id, org_id: ORG, flagged_by: "st-1", belief: "cost", lead_source: "meta", setter_label: "chris", outcome_count: 5,
   period_start: "2026-10-01T00:00:00.000Z", period_end: PERIOD_END, note: note('Cost \u00b7 "not right now"', 5, 2), is_demo: 0, ...extra,
 });
 
@@ -314,13 +314,13 @@ test("Flag: quiet with none, green on a flag that names its own belief, count an
   await bad("f10", { lead_source: "invented-campaign" }, "made-up source");
   await bad("f11", { setter_label: "nobody" }, "made-up setter");
   // A real source with a setter from a different call is a pair no call has.
-  await bad("f12", { lead_source: "referral", setter_label: "josh" }, "a pair no call has");
+  await bad("f12", { lead_source: "referral", setter_label: "chris" }, "a pair no call has");
   // The "unknown" source and setter are real when a call has no campaign, source, channel or setter.
   s.insert("marketing_flags", flagRow("f13", { lead_source: "unknown", setter_label: "unknown" }));
   assert.deepEqual(await stats(FLAG, s), { sample_count: 2, bad_count: 0 }, "calls with nothing recorded are cut by unknown");
   s.db.prepare("DELETE FROM marketing_flags WHERE id = 'f13'").run();
   // A call only counts when it was logged before the period ended: a source first seen after is not one.
-  // (Both flags of "meta" and "josh" lose their only call, so both go red.)
+  // (Both flags of "meta" and "chris" lose their only call, so both go red.)
   s.db.prepare("UPDATE call_outcomes SET logged_at = '2026-12-01T00:00:00.000Z' WHERE id = 'o1'").run();
   s.insert("marketing_flags", flagRow("f14"));
   assert.deepEqual(await stats(FLAG, s), { sample_count: 2, bad_count: 2 }, "the only call with that source came after the period");

@@ -6,6 +6,7 @@ import {
   listThreads,
   getThread,
   createThread,
+  deleteThread,
   appendMessage
 } from "./threads.mjs";
 
@@ -147,6 +148,39 @@ test("getThread returns not_found for another staff member's thread", async () =
 
   const theirs = await getThread(db, { orgId: ORG, staffId: OTHER_STAFF, threadId: THREAD });
   assert.equal(theirs.ok, true);
+});
+
+test("deleteThread only removes a thread owned by this org and staff member", async () => {
+  const db = fakeDb((sql, params) => {
+    if (/DELETE FROM brain_threads/.test(sql) &&
+        params[0] === THREAD && params[1] === ORG && params[2] === OTHER_STAFF) {
+      return { rows: [{ id: THREAD }] };
+    }
+    return { rows: [] };
+  });
+
+  const mine = await deleteThread(db, { orgId: ORG, staffId: STAFF, threadId: THREAD });
+  assert.deepEqual(mine, { ok: false, reason: "not_found" });
+
+  const theirs = await deleteThread(db, { orgId: ORG, staffId: OTHER_STAFF, threadId: THREAD });
+  assert.deepEqual(theirs, { ok: true });
+  assert.equal(db.calls.length, 2);
+  for (const call of db.calls) {
+    assert.match(call.sql, /^DELETE FROM brain_threads/);
+    assert.match(call.sql, /WHERE id = \$1 AND org_id = \$2 AND staff_id = \$3/);
+    assert.deepEqual(call.params.slice(0, 2), [THREAD, ORG]);
+  }
+});
+
+test("deleteThread refuses an incomplete scope without querying", async () => {
+  const db = fakeDb();
+  assert.deepEqual(await deleteThread(db, { orgId: ORG, threadId: THREAD }), {
+    ok: false, reason: "org_staff_and_thread_required"
+  });
+  assert.deepEqual(await deleteThread(db, { staffId: STAFF, threadId: THREAD }), {
+    ok: false, reason: "org_staff_and_thread_required"
+  });
+  assert.equal(db.calls.length, 0);
 });
 
 test("getThread refuses an incomplete scope", async () => {

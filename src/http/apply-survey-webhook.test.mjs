@@ -181,7 +181,10 @@ test("POST /api/webhooks/clickfunnels: contact step is entry.captured with attri
 test("POST /api/webhooks/clickfunnels: cf_svy_* labels emit survey.submitted", async () => {
   const { out, db } = await post(SURVEY);
   assert.equal(out.status, 200);
-  assert.deepEqual(out.body.emitted.map((e) => e.name), ["entry.captured", "survey.submitted"]);
+  // SURVEY carries the last answer, so it also finishes the survey (2026-10-31).
+  assert.deepEqual(out.body.emitted.map((e) => e.name), ["entry.captured", "survey.submitted", "survey.completed"]);
+  const completed = db.store.find((r) => r.name === "survey.completed");
+  assert.equal(completed.payload.answers.cf_svy_available_capital, "Less than $1k");
   const survey = db.store.find((r) => r.name === "survey.submitted");
   assert.equal(survey.payload.answers.cf_svy_has_business, "No, personal funding only");
   assert.equal(survey.payload.answers.cf_svy_available_capital, "Less than $1k");

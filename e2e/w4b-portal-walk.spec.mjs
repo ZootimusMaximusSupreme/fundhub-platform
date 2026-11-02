@@ -52,7 +52,7 @@ const MANIFEST = path.join(OUT_ROOT, `shots-${PHASE}`, "shot-marks.json");
 fs.mkdirSync(RAW, { recursive: true });
 
 const CLIENT_SESSION = {
-  ok: true,
+  ok: true, principal: "client",
   staff: {
     id: CLIENT_ID, name: "Sim Five-Academy", email: "sim.five@example.com",
     role: "client", org_id: "org-1", status: "active"
@@ -93,6 +93,9 @@ async function openPortal(page, { entitlements = [], summary = {} } = {}) {
     const url = route.request().url();
     if (url.includes("/api/auth/session") || /\/api\/session\b/.test(url)) {
       return json(route, CLIENT_SESSION);
+    }
+    if (url.includes("/api/chat/portal-message")) {
+      return json(route, { ok: true, conversation_id: null, messages: [] });
     }
     if (url.includes("/api/read/portal-summary")) {
       return json(route, {
@@ -327,20 +330,19 @@ test.describe(`client portal — W4B ROUND 2 rows 14-18 (${PHASE})`, () => {
 
   /* ── ROW 18 / F36 ─────────────────────────────────────────────────────── */
 
-  test("18 · the Messages tab shows exactly one empty state", async ({ page }) => {
+  test("18 · authenticated empty chat shows exactly one scoped honest state", async ({ page }) => {
     await openPortal(page, { entitlements: [], summary: { stage: WALK_STAGE } });
     await page.locator("#acct > summary").click();
     await page.locator('[data-tab="msg"]').click();
-    await page.waitForTimeout(200);
+    const rows = page.locator("#tp-msg .timeline-item");
+    await expect(rows).toHaveCount(1);
+    await expect(rows).toContainText(["No saved portal chat messages yet"]);
+    await expect(page.locator("#tp-msg")).toContainText("Other texts and emails may not appear here.");
+    await expect(page.locator("#tp-msg")).not.toContainText("Loading your portal chat messages");
     await shot(page, "18-messages-one-empty.png",
-      "F36 — one empty row, not two", [
-        { selector: "#tp-msg", caption: "one empty row, and it makes no false claim" }
+      "F36 — one authenticated empty-chat state, not two", [
+        { selector: "#tp-msg", caption: "one scoped saved-chat empty state, never a claim about all SMS/email" }
       ]);
-    /* Walkthrough-4 defect 18: a client gets no messages read, so the pane
-       must not tell them "No messages yet." — it says where messages go. */
-    const empties = page.locator("#tp-msg #msg-empty");
-    await expect(empties).toHaveCount(1);
-    await expect(empties).toContainText("arrive on your phone and in your inbox");
     await expect(page.locator("#tp-msg .timeline-item", { hasText: "No messages yet." })).toHaveCount(0);
   });
 });

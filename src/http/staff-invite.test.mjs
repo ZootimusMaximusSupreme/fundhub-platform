@@ -54,8 +54,8 @@ test("staff-teams persists a role change and tells how many people are hidden", 
   assert.ok(html.includes("/api/auth/staff-update"));
   assert.ok(html.includes("hiddenLine"));
   assert.ok(html.includes("notify_email"));
-  assert.ok(html.includes("ed_booked_sms"));
-  assert.ok(html.includes("notify_booked_call_sms"));
+  assert.ok(html.includes("Lead alerts"));
+  assert.ok(!html.includes("ed_booked_sms"));
   assert.ok(html.includes("7 days"));
   assert.ok(html.includes("1 hour"));
 });

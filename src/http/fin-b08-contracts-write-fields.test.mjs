@@ -7,7 +7,7 @@
 //     company even when the body names another;
 //   - a send keeps the signature rule, mints one link per signer that names that signer and lives 30 days,
 //     stamps the document as sent through the portal, and queues the email to the signer whose turn it is;
-//   - every template write (save, archive, upload, boxes) is owner/admin only;
+//   - every template write (save, archive, upload, boxes) is owner only;
 //   - a voided contract can no longer be signed, and another company cannot void it.
 // Practice test, fake data, no network, no database; outbound fences held up and the network refused.
 import { test, describe, before, after, beforeEach } from "node:test";
@@ -245,7 +245,7 @@ describe("POST /api/contracts: what a send keeps and mints", () => {
 });
 
 describe("POST /api/contracts: who may write the words", () => {
-  test("save, archive, upload and the boxes are owner and admin only: every other staff role is refused 403 and nothing changes", async () => {
+  test("save, archive, upload and the boxes are owner only: every other staff role is refused 403 and nothing changes", async () => {
     const file = await pdfBase64();
     const attempts = (fake) => ({
       save_template: { action: "save_template", id: IDS.template, name: "Renamed by someone", body: "Words someone else wrote." },
@@ -264,7 +264,7 @@ describe("POST /api/contracts: who may write the words", () => {
         const res = await call(body, fake, [staffSession({ role })]);
         if (res.statusCode === 403) {
           assert.equal(res.body.error, "forbidden", `${role} ${action}`);
-          assert.deepEqual(res.body.required, ["owner", "admin"]);
+          assert.deepEqual(res.body.required, ["owner"]);
         } else {
           letIn[action].push(role);
           assert.equal(res.statusCode, 200, `${role} ${action}: ${JSON.stringify(res.body)}`);
@@ -274,7 +274,7 @@ describe("POST /api/contracts: who may write the words", () => {
         assert.equal(JSON.stringify([fake.tables.contract_templates, fake.tables.documents]), before, `${role}: nothing was written`);
       }
     }
-    for (const [action, roles] of Object.entries(letIn)) assert.deepEqual(roles.sort(), ["admin", "owner"], action);
+    for (const [action, roles] of Object.entries(letIn)) assert.deepEqual(roles.sort(), ["owner"], action);
   });
 
   test("a new template asks for a signature unless it says otherwise", async () => {

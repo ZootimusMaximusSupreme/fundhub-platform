@@ -55,8 +55,15 @@ describe("A/R collection tenant ownership is verified against real PostgreSQL", 
       return sent;
     }
     ownedInvoice = await issued(orgA, buyerA);
-    // 017's legacy client FK only checks clients(id), not clients.org_id.
-    contradictoryInvoice = await issued(orgA, buyerB);
+    // The historical schema permits mismatched org/buyer rows. Seed one with
+    // direct rollback-only SQL because createInvoice now refuses to create it.
+    const historical = (await conn.query(
+      `INSERT INTO invoices (org_id,client_id,amount_due,source)
+       VALUES ($1,$2,325,'funding_success_fee') RETURNING id`,
+      [orgA, buyerB]
+    )).rows[0];
+    contradictoryInvoice = await markSent(conn, { invoiceId: historical.id });
+    assert.ok(contradictoryInvoice?.id);
   });
 
   after(async () => {

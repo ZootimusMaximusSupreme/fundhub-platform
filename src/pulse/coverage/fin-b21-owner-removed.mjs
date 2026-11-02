@@ -1,6 +1,7 @@
-// Teleprompter controls the owner took off the phone on purpose (finish-the-853, batch 21).
+// Controls the owner deliberately removed: the staff booked-text switch and two
+// teleprompter controls (finish-the-853, batch 21).
 //
-// The coverage map still lists two controls of the teleprompter page that the owner removed:
+// The coverage map retains the removed teleprompter controls:
 //
 //   - the edit bar ("Put back", "History", "Done", the X and Save of a cursor edit). The owner call of
 //     2026-10-13 made editing on the phone copy-and-paste only: "we just edit and copy and paste",
@@ -36,6 +37,20 @@ const times = (pattern) => (text) => (text.match(pattern) || []).length;
 const HISTORY_BUTTON = { name: "a History button", test: /["'>]\s*History\s*["'<]/ };
 
 export const OWNER_REMOVED = Object.freeze([
+  {
+    sourceFile: SOURCE_FILE,
+    surface: "staff-teams.html",
+    control: "Editor switch: 'Text when a call is booked' (sends the client's name, phone, email, typed score and survey answers to this person's phone)",
+    removed: "the owner made booked and new-lead texts automatic for setters and owner, so the old per-person booked-call switch was removed",
+    pages: Object.freeze([{
+      path: "/app/staff-teams.html",
+      mustHave: /id="editor"/,
+      mustLack: Object.freeze([
+        { name: "the retired booked-call text switch", test: /id="ed_booked_sms"/ },
+        { name: "the old booked-call text choice", test: /Text when a call is booked/ },
+      ]),
+    }]),
+  },
   {
     sourceFile: SOURCE_FILE,
     surface: SURFACE,

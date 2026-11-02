@@ -35,18 +35,27 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
     @Published var loadedOnce = false
     @Published var canGoBack = false
     @Published var loadFailed = false
+    @Published private(set) var signingOut = false
+    @Published private(set) var logoutNotice: String?
 
-    lazy var view: WKWebView = {
+    // Discard the entire browsing history on return-home. Clearing only
+    // cookies while reusing the same WKWebView can expose cached prior pages.
+    private var currentView: WKWebView?
+    var view: WKWebView {
+        if let currentView { return currentView }
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
-        let view = WKWebView(frame: .zero, configuration: configuration)
-        view.navigationDelegate = self
-        view.uiDelegate = self
-        view.allowsBackForwardNavigationGestures = true
-        return view
-    }()
+        let created = WKWebView(frame: .zero, configuration: configuration)
+        created.navigationDelegate = self
+        created.uiDelegate = self
+        created.allowsBackForwardNavigationGestures = true
+        currentView = created
+        return created
+    }
 
     func open(_ route: SignInRoute) {
+        guard !signingOut else { return }
+        logoutNotice = nil
         self.route = route
         loadFailed = false
         loadedOnce = false
@@ -64,11 +73,74 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         }
     }
 
-    func goHome() {
+    // Home is an account boundary, never a shortcut back to a shared
+    // selector with the previous client's WebKit cookie/history intact.
+    func goHome() async {
+        guard !signingOut else { return }
+        signingOut = true
         view.stopLoading()
-        route = nil
-        loading = false
+        // A server acknowledgement is best effort; we ALWAYS erase local data.
+        let logoutAcknowledged = await revokeCurrentSession()
+        await WKWebsiteDataStore.default().removeData(
+            ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
+            modifiedSince: .distantPast
+        )
+        currentView?.stopLoading()
+        currentView?.navigationDelegate = nil
+        currentView?.uiDelegate = nil
+        currentView = nil
+        loadedOnce = false
+        canGoBack = false
         loadFailed = false
+        loading = false
+        route = nil
+        logoutNotice = logoutAcknowledged ? nil :
+            "Signed out on this Mac. Fundhub could not confirm the server sign-out. The old session may remain active until it expires."
+        signingOut = false
+    }
+
+    // The web login writes fh_token and an HttpOnly fundhub_session cookie.
+    // Read only these scoped credentials, then POST them to Fundhub's fixed
+    // logout endpoint. Never put a bearer in a browser URL or debug output.
+    private func revokeCurrentSession() async -> Bool {
+        var bearers = Set<String>()
+        if let page = currentView?.url, isFundhub(page),
+           let stored = try? await view.evaluateJavaScript("window.localStorage.getItem('fh_token')"),
+           let token = stored as? String,
+           !token.isEmpty, token.utf8.count <= 4096 {
+            bearers.insert(token)
+        }
+        let cookies = await withCheckedContinuation { (continuation: CheckedContinuation<[HTTPCookie], Never>) in
+            WKWebsiteDataStore.default().httpCookieStore.getAllCookies {
+                continuation.resume(returning: $0)
+            }
+        }
+        for cookie in cookies {
+            let cookieDomain = cookie.domain.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
+            if cookie.name == "fundhub_session",
+               cookieDomain == "fundhub.ai",
+               !cookie.value.isEmpty, cookie.value.utf8.count <= 4096 {
+                bearers.insert(cookie.value)
+            }
+        }
+        guard !bearers.isEmpty else { return false }
+        let logoutURL = URL(string: "https://fundhub.ai/api/auth/logout")!
+        var acknowledged = true
+        for bearer in bearers {
+            var request = URLRequest(url: logoutURL)
+            request.httpMethod = "POST"
+            request.timeoutInterval = 8
+            request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                if (response as? HTTPURLResponse)?.statusCode != 200 {
+                    acknowledged = false
+                }
+            } catch {
+                acknowledged = false
+            }
+        }
+        return acknowledged
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -240,6 +312,7 @@ private struct FundhubMark: View {
 
 private struct WelcomeView: View {
     let open: (SignInRoute) -> Void
+    let logoutNotice: String?
 
     var body: some View {
         ZStack {
@@ -292,6 +365,15 @@ private struct WelcomeView: View {
                 .frame(maxWidth: 420)
                 .padding(.top, 48)
 
+                if let logoutNotice {
+                    Text(logoutNotice)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Brand.muted)
+                        .frame(maxWidth: 420, alignment: .leading)
+                        .padding(.top, 16)
+                        .accessibilityIdentifier("macLogoutNotice")
+                }
+
                 Spacer(minLength: 48)
                 HStack(spacing: 20) {
                     Link("Privacy", destination: URL(string: "https://fundhub.ai/privacy/")!)
@@ -335,11 +417,14 @@ private struct ContentView: View {
                         }
                             .help("Reload")
                             .accessibilityLabel("Reload")
-                        Button { browser.goHome() } label: {
+                        Button {
+                            Task { await browser.goHome() }
+                        } label: {
                             Image(systemName: "house").frame(width: 32, height: 32)
                         }
-                            .help("Home")
-                            .accessibilityLabel("Home")
+                            .help("Home and sign out")
+                            .accessibilityLabel("Home and sign out")
+                            .disabled(browser.signingOut)
                     }
                     .buttonStyle(.borderless)
                     .foregroundStyle(Brand.ink)
@@ -382,17 +467,29 @@ private struct ContentView: View {
                     SpectrumBar()
                 }
             } else {
-                WelcomeView(open: browser.open)
+                WelcomeView(open: browser.open, logoutNotice: browser.logoutNotice)
             }
         }
         .frame(minWidth: 900, minHeight: 640)
+        .overlay {
+            if browser.signingOut {
+                ZStack {
+                    Brand.paper.opacity(0.98)
+                    ProgressView("Signing out and clearing this Mac")
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
     }
 }
 
 @main
 private struct FundhubMacApp: App {
     var body: some Scene {
-        WindowGroup("Fundhub") {
+        // Exactly one workspace window. WindowGroup allows independent browsers
+        // to keep old client/staff pages visible while sharing WebKit cookies.
+        // A singleton keeps account switching behind Home and sign out.
+        Window("Fundhub", id: "main") {
             ContentView()
         }
         .windowStyle(.titleBar)

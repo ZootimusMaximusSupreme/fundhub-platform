@@ -162,6 +162,43 @@ test('permission refusal is actionable and preserves the draft', async ({ page }
   await wire(page, { sendStatus: 403 }); await page.goto('/app/messaging.html'); await page.locator('.convo').first().click(); await page.locator('#composeBody').fill('Still signed in?'); await page.locator('#sendBtn').click(); await expect(page.locator('#sendStatus')).toContainText('signed in and clocked in'); await expect(page.locator('#composeBody')).toHaveValue('Still signed in?');
 });
 
+test('sending keeps the conversation open when it leaves Needs reply', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const options = { sendResult: { ok: true, outcome: 'sent', conversation_id: ID, message: { id: 'new', status: 'sent' } } };
+  await wire(page, options);
+  await page.goto('/app/messaging.html');
+  await page.locator('.convo').first().click();
+  await expect(page.locator('#thread .msg')).toHaveCount(3);
+  options.inbox = EMPTY; // A sent reply no longer belongs in the server's Needs reply result.
+  options.thread = { ...THREAD, count: 4, items: [{ id: 'new', direction: 'outbound', channel: 'sms', rendered_body: 'Thanks, Dana.', status: 'sent', created_at: '2026-10-18T15:13:00Z' }, ...THREAD.items] };
+  await page.locator('#composeBody').fill('Thanks, Dana.');
+  await page.locator('#sendBtn').click();
+  await expect(page.locator('#convoList')).toContainText('Nothing is waiting on a reply');
+  await expect(page.locator('#messagingWorkspace')).toHaveClass(/thread-open/);
+  await expect(page.locator('#thName')).toHaveText('Dana Whitfield');
+  await expect(page.locator('#thread')).toContainText('Thanks, Dana.');
+  await expect(page.locator('#composeBody')).toBeEnabled();
+});
+
+test('inbox refresh cannot strand a sent conversation on its loading screen', async ({ page }) => {
+  const options = { sendResult: { ok: true, outcome: 'sent', conversation_id: ID, message: { id: 'new', status: 'sent' } } };
+  const { reads } = await wire(page, options);
+  await page.goto('/app/messaging.html');
+  await page.locator('.ctab[data-filter="all"]').click();
+  await page.locator('.convo').first().click();
+  await expect(page.locator('#thread .msg')).toHaveCount(3);
+  let releaseThread;
+  options.threadGate = new Promise(resolve => { releaseThread = resolve; });
+  await page.locator('#composeBody').fill('Thanks, Dana.');
+  await page.locator('#sendBtn').click();
+  await expect.poll(() => reads.filter(url => url.startsWith('/api/read/inbox')).length).toBeGreaterThan(2);
+  await expect(page.locator('#refreshInbox')).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('#thread')).toContainText('Loading this conversation');
+  releaseThread();
+  await expect(page.locator('#thread .msg')).toHaveCount(3);
+  await expect(page.locator('#thName')).toHaveText('Dana Whitfield');
+});
+
 test('client/channel and old conversation deep links still open the requested conversation', async ({ page }) => {
   const { reads } = await wire(page); await page.goto(`/app/messaging.html?client_id=${CLIENT}&channel=email`); await expect(page.locator('#thName')).toHaveText('Dana Whitfield'); await expect(page.locator('#thSub')).toContainText('EMAIL'); await expect(page.locator('#composeTo')).toHaveValue('dana@example.test');
   const old = '99999999-9999-4999-8999-999999999999'; await page.goto(`/app/messaging.html?conversation_id=${old}`); await expect(page.locator('#thread .msg')).toHaveCount(3); expect(reads.some(u => u.includes('conversation_id=' + old))).toBe(true);

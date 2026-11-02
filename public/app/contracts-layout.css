@@ -17,16 +17,18 @@ html:not(.fh-page-access-confirmed) body{visibility:hidden}
 .contracts-page .page-intro h2{font:650 32px/1.13 var(--sans);letter-spacing:-.045em;margin:0}
 .contracts-page .intro-copy{margin:11px 0 0;color:var(--gray,#6d7474);font-size:14px;line-height:1.5}
 .contracts-page .page-actions{display:flex;gap:10px;flex:0 0 auto}
+.contracts-page [hidden]{display:none!important}
 .contracts-page .btn{min-height:44px;border:1px solid var(--line,#dfe2dd);border-radius:11px;background:#fff;padding:10px 16px;font-size:13px;font-weight:550;line-height:1.35;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:background .14s,border-color .14s}
 .contracts-page .btn:hover{background:var(--soft,#f0f2ee);border-color:#a4aaa3}
 .contracts-page .btn.dark{background:var(--ink,#101416);border-color:var(--ink,#101416);color:#fff}
 .contracts-page .btn.dark:hover{background:#303638;border-color:#303638}
 .contracts-page .btn.sm{min-height:40px;padding:8px 12px;font-size:12px}
 .contracts-page .workflow-note{display:flex;align-items:flex-start;gap:11px;margin-bottom:27px;padding:14px 0 0;border-top:1px solid var(--line);color:var(--gray);font-size:13px;line-height:1.65}
-.contracts-page .workflow-note p{margin:0}
+.contracts-page .workflow-note p{margin:0;min-width:0;overflow-wrap:anywhere}
 .contracts-page .workflow-note strong{font-weight:550;color:var(--ink)}
 .contracts-page .workflow-note a{display:inline-block;margin-left:5px;text-decoration:underline;text-underline-offset:3px;color:var(--ink)}
 .contracts-page .note-mark{font-size:19px;line-height:1.3;color:var(--gray)}
+.contracts-page .library-tabs{margin:0 0 24px;scrollbar-width:thin}
 .contracts-page .layout{display:grid;grid-template-columns:minmax(300px,.42fr) minmax(0,1fr);gap:22px;align-items:start;min-width:0}
 .contracts-page .card{background:#fff;border:1px solid var(--line,#e2e5df);border-radius:19px;box-shadow:none;min-width:0;overflow:hidden}
 .contracts-page .card-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:21px 22px;border-bottom:1px solid var(--line);min-height:88px}
@@ -93,6 +95,10 @@ html:not(.fh-page-access-confirmed) body{visibility:hidden}
 .contracts-page .msg:not(:empty){margin-top:16px}
 .contracts-page .msg .badge{margin-right:5px}
 .contracts-page .pdf-intro{display:flex;flex-direction:column;gap:15px;margin-bottom:16px}
+.contracts-page #pdfEditor.read-only .pdf-actions,.contracts-page #pdfEditor.read-only .tools{display:none}
+.contracts-page #pdfEditor.read-only .pdfwrap{grid-template-columns:minmax(0,1fr)}
+.contracts-page #pdfEditor.read-only .pg,.contracts-page #pdfEditor.read-only .box{cursor:default}
+.contracts-page #pdfEditor.read-only .box .h{display:none}
 .contracts-page .pdf-file{display:block;font-size:13px;font-weight:550;overflow-wrap:anywhere;margin-bottom:7px}
 .contracts-page .pdf-actions{display:flex;gap:8px}
 .contracts-page .signer-roles{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:17px}

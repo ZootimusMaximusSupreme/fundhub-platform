@@ -112,7 +112,8 @@ export const GAP_DOORS = [
     need: [
       { name: "survey cf_svy_funding_target_amount", re: /cf_svy_funding_target_amount/ },
       { name: "form post webhooks/clickfunnels", re: /webhooks\/clickfunnels/ },
-      { name: "form post method POST", re: /method:\s*["']POST["']/ }
+      { name: "form post method POST", re: /method:\s*["']POST["']/ },
+      { name: "second calendar for unqualified credit", re: /data-src-unqualified=["']https:\/\/apply\.fundhub\.ai\/funding-book-call--02424["']/ }
     ]
   },
   {
@@ -132,6 +133,21 @@ export const GAP_DOORS = [
     path: "/funding-book-call",
     morning: "none",
     passDetail: "booking offer copy, the calendar picker and the booking form",
+    need: [
+      { name: "booking offer copy", re: /Book Your Funding Call/ },
+      { name: "calendar picker cronofy-date-time-picker", re: /id=["']cronofy-date-time-picker["']/ },
+      { name: "booking form formContainer", re: /id=["']formContainer["']/ }
+    ]
+  },
+  {
+    // The unqualified-credit calendar (owner-set 2026-10-29): the copy of the booking
+    // page in funnel 994750, same hosts and hours. /apply frames it for every score
+    // answer below 700.
+    id: "funnel:funding-book-call-unqualified",
+    host: "funnel",
+    path: "/funding-book-call--02424",
+    morning: "none",
+    passDetail: "second calendar: booking offer copy, the calendar picker and the booking form",
     need: [
       { name: "booking offer copy", re: /Book Your Funding Call/ },
       { name: "calendar picker cronofy-date-time-picker", re: /id=["']cronofy-date-time-picker["']/ },

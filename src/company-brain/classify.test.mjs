@@ -354,6 +354,18 @@ test("classifyAndApply queues affiliate and keeps live tier owner", async () => 
   assert.equal(listed.reviews[0].proposed_tier, "affiliate");
 });
 
+test("listPendingReviews pages the queue and reports the full count", async () => {
+  let seen;
+  const out = await listPendingReviews({ query: async (sql, params) => {
+    seen = { sql, params };
+    return { rows: [{ id: "review-26", pending_total: "57" }] };
+  } }, { orgId: "org", limit: 25, offset: 25 });
+  assert.deepEqual(seen.params, ["org", 25, 25]);
+  assert.match(seen.sql, /COUNT\(\*\) OVER\(\)/);
+  assert.equal(out.pendingCount, 57);
+  assert.equal(out.reviews.length, 1);
+});
+
 test("decideClassificationReview approve is owner-only", async () => {
   const db = reviewDb();
   db.files.set("f3", { id: "f3", org_id: "org", access_tier: "owner" });

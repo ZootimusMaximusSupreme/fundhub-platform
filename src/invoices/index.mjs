@@ -54,12 +54,29 @@ export async function createInvoice(db, {
   if (!invoiceType && !source) {
     throw new Error("createInvoice: pass source (preferred) or invoiceType — invoices.source is NOT NULL");
   }
+  // Identity is checked within this INSERT: legacy FKs validate only IDs.
+  // A wrong-tenant buyer, another client's sale or round, or an unlinked
+  // sale-round pair must never become a collectible invoice.
   const result = await db.query(
     `INSERT INTO invoices
        (org_id, client_id, invoice_type, source, source_event_id, amount_due, currency,
         sale_id, funding_round_id, due_at,
         provider, external_ref, idempotency_key, notes)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+     SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
+       FROM clients buyer
+      WHERE buyer.id = $2 AND buyer.org_id = $1
+        AND ($8::uuid IS NULL OR EXISTS (
+          SELECT 1 FROM sales s
+           WHERE s.id = $8 AND s.org_id = $1 AND s.client_id = buyer.id
+        ))
+        AND ($9::uuid IS NULL OR EXISTS (
+          SELECT 1 FROM funding_rounds fr
+           WHERE fr.id = $9 AND fr.org_id = $1 AND fr.client_id = buyer.id
+        ))
+        AND ($8::uuid IS NULL OR $9::uuid IS NULL OR EXISTS (
+          SELECT 1 FROM funding_round_sales frs
+           WHERE frs.org_id = $1 AND frs.funding_round_id = $9 AND frs.sale_id = $8
+        ))
      -- Bare DO NOTHING, not a targeted one. 031 defines THREE unique dimensions
      -- on this table — idempotency_key, source_event_id and (provider,
      -- external_ref) — and naming only the first means a replay that collides on

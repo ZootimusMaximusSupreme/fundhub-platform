@@ -150,6 +150,7 @@ const API_KEYS = [
   "commission-rules",
   "commissions",
   "company-brain/reviews",
+  "company-brain/library",
   "company-brain/sync",
   "company-brain/threads",
   "company-brain/upload",
@@ -308,6 +309,10 @@ const API_KEYS = [
   /* The /roadmap widget's status read after the soft pull. A plain GET with no
      ref or client_id answers 400, which counts as up, and reads nothing. */
   "public/slo-status",
+  /* The come-back link's door (S-00 and S-02 messages, the /apply page). A plain GET
+     with no link code answers 400 token_required and reads nothing, which counts as up.
+     The 6 a.m. deep check survey:resume-link-opens proves a real code opens nothing (gap-survey-resume.mjs). */
+  "public/survey-resume",
   "public/survey-submit",
   "public/unsubscribe",
   /* Web push for the client portal. Both answer a plain GET — push/key with the
@@ -581,7 +586,7 @@ const DESK_FILES = [
 
 /** Static HTML under public/ (not public/app desks) that the morning ping GETs.
     A file on disk that is not in this list must be in ALLOWED_UNMONITORED. */
-const PUBLIC_STATIC_FILES = [
+export const PUBLIC_STATIC_FILES = [
   "affiliates/index.html",
   "careers.html",
   "climate/index.html",
@@ -613,6 +618,50 @@ const PUBLIC_STATIC_FILES = [
   "privacy/index.html",
   "progress.html",
   "reset-password.html",
+  "slideshows/after-you-say-yes.html",
+  "slideshows/film/after-you-say-yes.html",
+  "slideshows/apply-yourself.html",
+  "slideshows/film/apply-yourself.html",
+  "slideshows/bank-said-no.html",
+  "slideshows/film/bank-said-no.html",
+  "slideshows/blueprint-12-months.html",
+  "slideshows/film/blueprint-12-months.html",
+  "slideshows/blueprint-in-action.html",
+  "slideshows/film/blueprint-in-action.html",
+  "slideshows/blueprint-value.html",
+  "slideshows/film/blueprint-value.html",
+  "slideshows/business-one-two.html",
+  "slideshows/film/business-one-two.html",
+  "slideshows/card-paydown.html",
+  "slideshows/film/card-paydown.html",
+  "slideshows/cost-of-waiting.html",
+  "slideshows/film/cost-of-waiting.html",
+  "slideshows/credit-optimization.html",
+  "slideshows/film/credit-optimization.html",
+  "slideshows/credit-partner.html",
+  "slideshows/film/credit-partner.html",
+  "slideshows/funding-sequence.html",
+  "slideshows/film/funding-sequence.html",
+  "slideshows/money-on-the-table.html",
+  "slideshows/film/money-on-the-table.html",
+  "slideshows/pre-underwriting.html",
+  "slideshows/film/pre-underwriting.html",
+  "slideshows/soft-pull.html",
+  "slideshows/film/soft-pull.html",
+  "slideshows/the-call.html",
+  "slideshows/film/the-call.html",
+  "slideshows/the-maximum.html",
+  "slideshows/film/the-maximum.html",
+  "slideshows/the-money-talk.html",
+  "slideshows/film/the-money-talk.html",
+  "slideshows/thirteen-points.html",
+  "slideshows/film/thirteen-points.html",
+  "slideshows/tried-before.html",
+  "slideshows/film/tried-before.html",
+  "slideshows/who-we-are.html",
+  "slideshows/film/who-we-are.html",
+  "slideshows/your-data-is-safe.html",
+  "slideshows/film/your-data-is-safe.html",
   "roadmap/pay.html",
   "roadmap/pull.html",
   "start.html",

@@ -59,6 +59,7 @@ test("Account drawer tabs: each tab shows only its own list and says which tab i
 
     const tabs = await page.$$eval("#acct-tabs .tab", (els) => els.map((e) => [e.dataset.tab, e.textContent.trim(), e.getAttribute("aria-controls")]));
     assert.deepEqual(tabs, [
+      ["soft-pull", "Soft pull", "tp-soft-pull"],
       ["pay", "Payments", "tp-pay"], ["agree", "Agreements", "tp-agree"], ["docs", "Documents", "tp-docs"],
       ["act", "Activity", "tp-act"], ["msg", "Messages", "tp-msg"],
     ]);

@@ -180,3 +180,33 @@ test("a concurrent pass with the same saved monthly key cannot make another requ
   assert.equal(tally.skipped[0].reason, "replay");
   assert.equal(db.calls.some(({ text }) => /INSERT INTO soft_pull_requests/.test(text)), false);
 });
+
+test("Blueprint real mode can recover from a completed simulation without replaying its request key", async () => {
+  const now = new Date("2026-09-09T00:00:00Z");
+  const db = fakeDb([[]]);
+  await dueClients(db, now, { realPull: true });
+  assert.equal(db.calls[0].params[3], true);
+  assert.match(db.calls[0].text, /cr\.provider = 'crs_softview_simulated'/);
+  assert.match(db.calls[0].text, /cr\.org_id = r\.org_id AND cr\.client_id = r\.client_id/);
+  assert.match(db.calls[0].text, /r\.status <> 'fulfilled'/);
+  const row = { subscription_id: SUB_A, current_period_start: now };
+  const rehearsal = monthlyPullKey(row, now);
+  const live = monthlyPullKey(row, now, { realPull: true });
+  assert.equal(rehearsal, `finance-os-monthly:${SUB_A}:0`);
+  assert.equal(live, `finance-os-monthly:${SUB_A}:0:real`);
+  assert.notEqual(live, rehearsal, "simulated request cannot steal the live replay key");
+});
+
+test("live flags affect both the due check and the new real request key", async () => {
+  const db = fakeDb([
+    [{ subscription_id: SUB_A, org_id: ORG, client_id: CLIENT_A }],
+    [consentRow()], [], [{ id: "new-live-request", requested_by_kind: "system", status: "queued" }]
+  ]);
+  const now = new Date("2026-09-09T00:00:00Z");
+  const tally = await sweep(db, { now, env: { FINANCE_OS_SYSTEM_PULL_LIVE: "1", CRS_ALLOW_LIVE: "1" },
+    fulfil: async () => ({ checked: 0, fulfilled: 0 }) });
+  assert.equal(tally.requested, 1);
+  assert.equal(db.calls[0].params[3], true);
+  const inserted = db.calls.find(c => /INSERT INTO soft_pull_requests/.test(c.text));
+  assert.equal(inserted.params[8], `finance-os-monthly:${SUB_A}:0:real`);
+});

@@ -83,21 +83,27 @@ html:not(.fh-page-access-confirmed) body{visibility:hidden}
     <div class="topbar" aria-hidden="true" hidden><span id="liveChip"><span id="liveTxt">Loading templates</span></span></div>
     <main class="content fh-astra-page" id="contractsContent">
       <div class="page-intro">
-        <div><p class="eyebrow">Agreement setup</p><h2>Template library</h2><p class="intro-copy">Create and maintain the wording staff use for new agreements.</p></div>
-        <div class="page-actions"><button class="btn" id="btnUpload" type="button"><span aria-hidden="true">↑</span> Upload a PDF</button><button class="btn dark" id="btnNewTpl" type="button"><span aria-hidden="true">+</span> New wording</button><input type="file" id="fileInput" accept="application/pdf,.pdf" hidden></div>
+        <div><p class="eyebrow">Agreement setup</p><h2>Template library</h2><p class="intro-copy" id="introCopy">Create and maintain the wording staff use for new agreements.</p></div>
+        <div class="page-actions" id="authorActions" hidden><button class="btn" id="btnUpload" type="button"><span aria-hidden="true">↑</span> Upload a PDF</button><button class="btn dark" id="btnNewTpl" type="button"><span aria-hidden="true">+</span> New wording</button><input type="file" id="fileInput" accept="application/pdf,.pdf" hidden></div>
       </div>
-      <div class="workflow-note" id="explainCard"><span class="note-mark" aria-hidden="true">↗</span><p><strong>Staff pick it later.</strong> Saved templates are available when sending from a client’s screen. <a href="documents.html">View sent agreements in Documents <span aria-hidden="true">↗</span></a></p></div>
-      <section class="template-workspace" id="tplCard" aria-label="Contract wording">
+      <div class="workflow-note" id="explainCard"><span class="note-mark" aria-hidden="true">↗</span><p id="workflowDescription"><strong>Staff pick it later.</strong> Saved templates are available when sending from a client’s screen. <a href="documents.html">View sent agreements in Documents <span aria-hidden="true">↗</span></a></p></div>
+      <div class="library-tabs fh-astra-tabs" role="tablist" aria-label="Agreement library">
+        <button class="library-tab fh-astra-tab" id="tabClient" type="button" role="tab" aria-selected="true" aria-controls="tplCard" data-library-tab="client">Client agreements</button>
+        <button class="library-tab fh-astra-tab" id="tabEmployee" type="button" role="tab" aria-selected="false" aria-controls="tplCard" data-library-tab="employee">Employee agreements</button>
+        <button class="library-tab fh-astra-tab" id="tabForms" type="button" role="tab" aria-selected="false" aria-controls="tplCard" data-library-tab="forms">Required forms</button>
+        <button class="library-tab fh-astra-tab" id="tabDecommissioned" type="button" role="tab" aria-selected="false" aria-controls="tplCard" data-library-tab="decommissioned">Decommissioned</button>
+      </div>
+      <section class="template-workspace" id="tplCard" role="tabpanel" aria-labelledby="tabClient">
         <div class="layout">
           <section class="card template-library" aria-labelledby="libraryTitle">
-            <div class="card-hd"><div><h3 id="libraryTitle">Your templates</h3><p id="libraryCount" class="section-caption">Loading library…</p></div><span class="badge b-gray">Owner &amp; admin</span></div>
+            <div class="card-hd"><div><h3 id="libraryTitle">Client agreements</h3><p id="libraryCount" class="section-caption">Loading library…</p></div><span class="badge b-gray" id="permissionBadge">Owner edits only</span></div>
             <div class="library-scroll" id="libraryScroll" aria-busy="true"><table><thead><tr><th scope="col">Template</th><th scope="col">Status</th></tr></thead><tbody id="tplList"><tr><td colspan="2"><div class="list-state"><span class="loading-line"></span><span class="loading-line short"></span><p>Loading your templates…</p></div></td></tr></tbody></table></div>
             <div class="library-foot"><span aria-hidden="true">⌁</span> Updates apply to new agreements. Sent copies stay locked.</div>
           </section>
           <section class="card template-detail" aria-labelledby="editorTitle">
             <div class="card-hd editor-heading"><div><p class="editor-kicker" id="editorKicker">Wording &amp; signature fields</p><h3 id="editorTitle" tabindex="-1">Template workspace</h3></div><span class="badge b-gray" id="editorState">No selection</span></div>
             <div class="card-bd">
-              <div class="editor-empty" id="editorEmpty"><div class="document-icon" aria-hidden="true"><svg viewBox="0 0 40 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M25 2H5a3 3 0 0 0-3 3v38a3 3 0 0 0 3 3h30a3 3 0 0 0 3-3V15L25 2Z"/><path d="M25 2v13h13M10 25h20M10 32h20M10 39h12"/></svg></div><h4>Choose a template to edit</h4><p>Open wording from your library, or start with a new wording or an existing PDF.</p><div class="empty-hint"><span aria-hidden="true">✓</span> Existing signed and sent agreements stay unchanged.</div></div>
+              <div class="editor-empty" id="editorEmpty"><div class="document-icon" aria-hidden="true"><svg viewBox="0 0 40 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M25 2H5a3 3 0 0 0-3 3v38a3 3 0 0 0 3 3h30a3 3 0 0 0 3-3V15L25 2Z"/><path d="M25 2v13h13M10 25h20M10 32h20M10 39h12"/></svg></div><h4 id="editorEmptyTitle">Choose an agreement to view</h4><p id="editorEmptyText">Open an agreement from this list.</p><div class="empty-hint"><span aria-hidden="true">✓</span> Existing signed and sent agreements stay unchanged.</div></div>
               <div id="tplEditor" style="display:none">
                 <div class="form-section"><h4>Template details</h4><div class="grid2">
                   <div class="field"><label for="tName">Name</label><input id="tName" type="text" placeholder="Funding Agreement"></div>
@@ -111,7 +117,7 @@ html:not(.fh-page-access-confirmed) body{visibility:hidden}
                 <div class="editor-actions"><button class="btn archive-action" id="btnArchive" type="button">Archive</button><div class="spacer"></div><button class="btn" id="btnCancelTpl" type="button">Cancel</button><button class="btn dark" id="btnSaveTpl" type="button">Save wording</button></div>
               </div>
               <div id="pdfEditor" style="display:none">
-                <div class="pdf-intro"><div><span class="pdf-file" id="pdfName">document.pdf</span><p class="note">Drag or tap the page to add a box. Select a box to edit it. Arrow keys move a selected box; Shift + arrow resizes it.</p></div><div class="pdf-actions"><button class="btn sm" id="btnAddSigner" type="button">Add a signer</button><button class="btn dark sm" id="btnSaveFields" type="button">Save boxes</button></div></div>
+                <div class="pdf-intro"><div><span class="pdf-file" id="pdfName">document.pdf</span><p class="note" id="pdfInstructions">Drag or tap the page to add a box. Select a box to edit it. Arrow keys move a selected box; Shift + arrow resizes it.</p></div><div class="pdf-actions"><button class="btn sm" id="btnAddSigner" type="button">Add a signer</button><button class="btn dark sm" id="btnSaveFields" type="button">Save boxes</button></div></div>
                 <div id="signerRoles" class="signer-roles"></div>
                 <div class="pdfwrap"><div class="pdfpages" id="pdfPages" aria-label="PDF pages"></div><div class="tools"><h4>New box</h4><div class="chips" id="typeChips" aria-label="Box type"></div><div class="row"><label for="newSigner">Belongs to</label><select id="newSigner"></select></div><div class="row"><label for="newSource">Filled from</label><select id="newSource"></select></div><hr><h4>Selected box</h4><div id="boxProps" class="note">Nothing selected.</div></div></div>
                 <div class="msg" id="fieldMsg" role="status" aria-live="polite"></div>
@@ -144,6 +150,19 @@ window.dispatchEvent(new Event("pdfjs-ready"));
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
 
   var templates = [], editing = null, libraryStatus = "loading";
+  var selectedTab = "client", canEdit = false;
+  var TAB_TITLES = {
+    client: "Client agreements", employee: "Employee agreements",
+    forms: "Required forms", decommissioned: "Decommissioned"
+  };
+  var REQUIRED_FORM_KEYS = {
+    "CREDIT-FILE-RIGHTS-DISCLOSURE": true,
+    "SOFT-PULL-CONSENT": true
+  };
+  var LIBRARY_LABELS = {
+    "REPAIR-TRIAL-AGREEMENT": "$200 Repair Trial Agreement",
+    "CREDIT-REPAIR-AGREEMENT": "$1,000 Credit Repair Agreement"
+  };
 
   /* The uploaded-PDF editor's own state. `boxes` is the working copy; nothing
      is written until Save boxes is pressed, so dragging things around cannot
@@ -176,17 +195,63 @@ window.dispatchEvent(new Event("pdfjs-ready"));
 
   /* ── the wording library ───────────────────────────────────────────────── */
 
+  function tabForTemplate(t) {
+    if (!t.active) return "decommissioned";
+    var key = String(t.template_key || "").toUpperCase();
+    if (/^EMPLOYEE-/.test(key)) return "employee";
+    if (REQUIRED_FORM_KEYS[key]) return "forms";
+    return "client";
+  }
+
+  function libraryName(t) {
+    return LIBRARY_LABELS[String(t.template_key || "").toUpperCase()] || t.name;
+  }
+
+  function canCreateHere() {
+    return canEdit && (selectedTab === "client" || selectedTab === "employee");
+  }
+
+  function setCurrentTab(tab) {
+    if (!TAB_TITLES[tab]) return;
+    selectedTab = tab;
+    $("authorActions").hidden = !canCreateHere();
+    $("tplCard").setAttribute("aria-labelledby", "tab" + tab.charAt(0).toUpperCase() + tab.slice(1));
+    $("workflowDescription").innerHTML = {
+      client: '<strong>Staff pick it later.</strong> Saved templates are available when sending from a client’s screen. <a href="documents.html">View sent agreements in Documents <span aria-hidden="true">↗</span></a>',
+      employee: '<strong>Employee agreements stay here.</strong> They are kept apart from client agreements.',
+      forms: '<strong>These forms stay available.</strong> Give the separate Consumer Credit File Rights disclosure before a repair agreement. Use Soft Pull Authorization for credit pulls.',
+      decommissioned: '<strong>These templates are off.</strong> Sent copies stay in Documents, and the owner can turn a template back on.'
+    }[tab];
+    Array.prototype.forEach.call(document.querySelectorAll("[data-library-tab]"), function (button) {
+      button.setAttribute("aria-selected", String(button.getAttribute("data-library-tab") === tab));
+    });
+  }
+
+  function selectTab(tab) {
+    if (!TAB_TITLES[tab]) return;
+    setCurrentTab(tab);
+    editing = null;
+    $("tplEditor").style.display = "none";
+    $("pdfEditor").style.display = "none";
+    editorHeading("idle", null, false);
+    renderTplList();
+  }
+
   function renderTplList() {
     if (libraryStatus !== "loaded") return;
     $("libraryScroll").setAttribute("aria-busy", "false");
-    $("libraryCount").textContent = templates.length + (templates.length === 1 ? " template" : " templates");
-    $("tplList").innerHTML = templates.map(function (t) {
+    var visible = templates.filter(function (t) { return tabForTemplate(t) === selectedTab; });
+    $("libraryTitle").textContent = TAB_TITLES[selectedTab];
+    $("libraryCount").textContent = visible.length + (visible.length === 1 ? " template" : " templates");
+    $("tplList").innerHTML = visible.map(function (t) {
       var selected = !!(editing && editing.id === t.id);
       return '<tr class="rowlink' + (selected ? " sel" : "") + '" data-tid="' + esc(t.id) + '"><td>' +
-        '<button class="template-select" type="button" aria-pressed="' + selected + '" title="' + esc(t.name) + '"><span class="template-name">' + esc(t.name) + '</span><span class="template-code">' + esc(t.template_key) +
+        '<button class="template-select" type="button" aria-pressed="' + selected + '" title="' + esc(libraryName(t)) + '"><span class="template-name">' + esc(libraryName(t)) + '</span><span class="template-code">' + esc(t.template_key) +
         (t.source_kind === "pdf" ? ' · PDF · ' + (t.page_count == null ? "?" : t.page_count) + 'p' : ' · Wording') + '</span></button></td><td>' +
-        (t.active ? '<span class="badge b-ok">in use</span>' : '<span class="badge b-gray">archived</span>') + '</td></tr>';
-    }).join("") || '<tr><td colspan="2"><div class="list-state empty-state"><h4>No templates yet</h4><p>Upload a PDF or choose New wording to add your first template.</p></div></td></tr>';
+        (t.active ? '<span class="badge b-ok">in use</span>' : '<span class="badge b-gray">off</span>') + '</td></tr>';
+    }).join("") || '<tr><td colspan="2"><div class="list-state empty-state"><h4>' +
+      (selectedTab === "decommissioned" ? "No decommissioned templates" : "No " + esc(TAB_TITLES[selectedTab].toLowerCase())) +
+      '</h4><p>Nothing is in this section.</p></div></td></tr>';
     Array.prototype.forEach.call($("tplList").querySelectorAll("tr[data-tid]"), function (tr) {
       tr.onclick = function () { editTemplate(tr.getAttribute("data-tid")); };
     });
@@ -194,12 +259,56 @@ window.dispatchEvent(new Event("pdfjs-ready"));
 
   function editorHeading(mode, template, focus) {
     $("editorEmpty").hidden = mode !== "idle";
+    $("editorEmptyTitle").textContent = canEdit ? "Choose a template to edit" : "Choose a template to view";
+    $("editorEmptyText").textContent = canEdit
+      ? "Open wording from this list, or start with new wording or a PDF."
+      : "Open wording from this list. Only the owner can make changes.";
     $("editorTitle").textContent = mode === "idle" ? "Template workspace" : (template ? template.name : "New wording");
     $("editorKicker").textContent = mode === "pdf" ? "PDF & signature fields" : "Wording & signature fields";
-    $("editorState").textContent = mode === "idle" ? "No selection" : (template ? (template.active ? "In use" : "Archived") : "Unsaved");
+    $("editorState").textContent = mode === "idle" ? "No selection" : (template ? (template.active ? "In use" : "Decommissioned") : "Unsaved");
     $("tplMsg").textContent = "";
     if (focus) $(mode === "new" ? "tKey" : "editorTitle").focus({ preventScroll: true });
     if (focus && window.matchMedia("(max-width: 1000px)").matches) $("editorTitle").scrollIntoView({ block: "start", behavior: "instant" });
+  }
+
+  function applyEditorAccess() {
+    $("authorActions").hidden = !canCreateHere();
+    $("permissionBadge").textContent = canEdit ? "Owner can edit" : "Owner edits only";
+    $("introCopy").textContent = canEdit
+      ? "Create and maintain the wording staff use for new agreements."
+      : "View agreement wording. Only the owner can change it.";
+    $("btnSaveTpl").hidden = !canEdit;
+    $("btnArchive").hidden = !canEdit;
+    $("btnAddField").hidden = !canEdit;
+    $("btnAddSigner").hidden = !canEdit;
+    $("btnSaveFields").hidden = !canEdit;
+    $("btnCancelTpl").textContent = canEdit ? "Cancel" : "Close";
+    $("pdfEditor").classList.toggle("read-only", !canEdit);
+    $("pdfInstructions").textContent = canEdit
+      ? "Drag or tap the page to add a box. Select a box to edit it. Arrow keys move a selected box; Shift + arrow resizes it."
+      : "The signing fields are shown here. Only the owner can change them.";
+    Array.prototype.forEach.call($("tplEditor").querySelectorAll("input, select, textarea, button[data-del]"), function (control) {
+      control.disabled = !canEdit || control.id === "tKey" && !!editing;
+    });
+    lockPdfControls();
+    editorHeading(editing ? (editing.source_kind === "pdf" ? "pdf" : "text") : "idle", editing, false);
+  }
+
+  function lockPdfControls() {
+    Array.prototype.forEach.call($("pdfEditor").querySelectorAll("button, input, select"), function (control) {
+      control.disabled = !canEdit;
+    });
+  }
+
+  function resolveOwnerAccess() {
+    var token = localStorage.getItem("fh_token") || "";
+    return fetch("/api/auth/session", {
+      headers: token ? { authorization: "Bearer " + token } : {}
+    }).then(function (response) { return response.ok ? response.json() : null; }).then(function (session) {
+      canEdit = !!(session && session.ok && session.staff &&
+        String(session.staff.role || "").trim().toLowerCase() === "owner");
+      applyEditorAccess();
+    }).catch(function () { applyEditorAccess(); });
   }
 
   function renderFieldRows(fields) {
@@ -217,6 +326,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
         renderFieldRows(f);
       };
     });
+    applyEditorAccess();
   }
 
   function readFieldRows() {
@@ -241,7 +351,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
     $("tplEditor").style.display = isPdf ? "none" : "";
     $("pdfEditor").style.display = isPdf ? "" : "none";
     editorHeading(isPdf ? "pdf" : "text", editing, true);
-    if (isPdf) { openPdfEditor(editing); renderTplList(); return; }
+    if (isPdf) { applyEditorAccess(); openPdfEditor(editing); renderTplList(); return; }
     $("tKey").value = editing.template_key;
     $("tKey").disabled = true;
     $("tKeyHint").textContent = "The short name cannot be changed — contracts already sent record it.";
@@ -251,19 +361,23 @@ window.dispatchEvent(new Event("pdfjs-ready"));
     $("tBody").value = editing.body;
     $("tStatement").value = editing.signature_statement;
     renderFieldRows(editing.manual_fields || []);
-    $("btnArchive").textContent = editing.active ? "Archive" : "Turn back on";
+    $("btnArchive").textContent = editing.active ? "Decommission" : "Turn back on";
     $("btnArchive").style.display = "";
     $("tplMsg").textContent = "";
     renderTplList();
     showTags();
+    applyEditorAccess();
   }
 
   function newTemplate() {
+    if (!canCreateHere()) return;
     editing = null;
     $("tplEditor").style.display = "";
     $("pdfEditor").style.display = "none";
-    $("tKey").value = ""; $("tKey").disabled = false;
-    $("tKeyHint").textContent = "Letters, numbers and hyphens. Cannot be changed later.";
+    $("tKey").value = selectedTab === "employee" ? "EMPLOYEE-" : ""; $("tKey").disabled = false;
+    $("tKeyHint").textContent = selectedTab === "employee"
+      ? "Employee names start with EMPLOYEE-. This short name cannot be changed later."
+      : "Letters, numbers and hyphens. Cannot be changed later.";
     $("tName").value = ""; $("tKind").value = "contract"; $("tSubtype").value = "";
     $("tBody").value = "";
     $("tStatement").value = "I have read this document and I agree to it. Typing my name here is my signature.";
@@ -284,6 +398,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
   }
 
   function saveTemplate() {
+    if (!canEdit) return;
     var payload = {
       name: $("tName").value, kind: $("tKind").value,
       subtype: $("tSubtype").value || null, body: $("tBody").value,
@@ -291,24 +406,35 @@ window.dispatchEvent(new Event("pdfjs-ready"));
     };
     $("tplMsg").textContent = "saving…";
     if (editing) { payload.action = "save_template"; payload.id = editing.id; }
-    else { payload.action = "create_template"; payload.template_key = $("tKey").value; }
+    else {
+      payload.action = "create_template";
+      var key = $("tKey").value.trim().toUpperCase();
+      if (selectedTab === "employee") {
+        key = key.replace(/^EMPLOYEE[-_ ]?/, "");
+        if (!key) { say($("tplMsg"), "b-alert", "Add a short name after EMPLOYEE-."); return; }
+        key = "EMPLOYEE-" + key;
+      }
+      payload.template_key = key;
+    }
     FHData.write("/api/contracts", payload).then(function (res) {
       if (!res.ok) { say($("tplMsg"), "b-alert", res.error || "could not save"); return; }
       say($("tplMsg"), "b-ok", (res.data && res.data.message) || "Saved.");
       editing = res.data.template;
+      if (editing) setCurrentTab(tabForTemplate(editing));
       if (editing) { $("tKey").disabled = true; $("tKeyHint").textContent = "The short name cannot be changed — contracts already sent record it."; $("btnArchive").style.display = ""; }
       loadTemplates();
     });
   }
 
   function archiveTemplate() {
-    if (!editing) return;
+    if (!canEdit || !editing) return;
     FHData.write("/api/contracts", {
       action: "archive_template", id: editing.id, active: !editing.active
     }).then(function (res) {
       if (!res.ok) { say($("tplMsg"), "b-alert", res.error || "could not change it"); return; }
       say($("tplMsg"), "b-ok", (res.data && res.data.message) || "Done.");
       editing = res.data.template;
+      setCurrentTab(tabForTemplate(editing));
       loadTemplates();
     });
   }
@@ -378,10 +504,13 @@ window.dispatchEvent(new Event("pdfjs-ready"));
       wrap.className = "pg";
       wrap.style.width = vp.width + "px";
       wrap.setAttribute("data-page", n - 1);
-      wrap.tabIndex = 0;
-      wrap.setAttribute("role", "button");
-      wrap.setAttribute("aria-label", "Page " + n + ". Press Enter to add a box in the center.");
+      wrap.tabIndex = canEdit ? 0 : -1;
+      wrap.setAttribute("role", canEdit ? "button" : "img");
+      wrap.setAttribute("aria-label", canEdit
+        ? "Page " + n + ". Press Enter to add a box in the center."
+        : "Page " + n + " of this agreement.");
       wrap.addEventListener("keydown", function (event) {
+        if (!canEdit) return;
         if (event.target !== wrap || (event.key !== "Enter" && event.key !== " ")) return;
         event.preventDefault();
         var type = currentType();
@@ -407,6 +536,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
      the contract. */
   function wireDrawing(wrap, pageIndex) {
     wrap.addEventListener("pointerdown", function (ev) {
+      if (!canEdit) return;
       if (ev.target !== wrap && ev.target.tagName !== "CANVAS") return;
       ev.preventDefault();
       var r = wrap.getBoundingClientRect();
@@ -483,10 +613,13 @@ window.dispatchEvent(new Event("pdfjs-ready"));
       el.style.left = (b.x * 100) + "%"; el.style.top = (b.y * 100) + "%";
       el.style.width = (b.w * 100) + "%"; el.style.height = (b.h * 100) + "%";
       el.setAttribute("data-id", b.id);
-      el.tabIndex = 0;
-      el.setAttribute("role", "button");
-      el.setAttribute("aria-label", b.label + ". Use arrow keys to move, Shift and arrow keys to resize, Delete to remove.");
+      el.tabIndex = canEdit ? 0 : -1;
+      el.setAttribute("role", canEdit ? "button" : "img");
+      el.setAttribute("aria-label", canEdit
+        ? b.label + ". Use arrow keys to move, Shift and arrow keys to resize, Delete to remove."
+        : b.label + " field.");
       el.addEventListener("keydown", function (event) {
+        if (!canEdit) return;
         var keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
         if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pdfState.selected = b.id; renderBoxes(); renderTools(); $("bpLabel").focus(); return; }
         if (keys.indexOf(event.key) === -1 && event.key !== "Delete" && event.key !== "Backspace") return;
@@ -512,6 +645,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
 
   function wireBox(el, b, wrap, handle) {
     el.addEventListener("pointerdown", function (ev) {
+      if (!canEdit) return;
       ev.stopPropagation(); ev.preventDefault();
       pdfState.selected = b.id; renderBoxes(); renderTools();
       el = wrap.querySelector('[data-id="' + b.id + '"]');
@@ -560,7 +694,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
     }).join("");
 
     var b = pdfState.boxes.filter(function (x) { return x.id === pdfState.selected; })[0];
-    if (!b) { $("boxProps").innerHTML = "Nothing selected."; return; }
+    if (!b) { $("boxProps").innerHTML = "Nothing selected."; lockPdfControls(); return; }
     $("boxProps").innerHTML =
       '<div class="row"><label for="bpLabel">Name on screen</label><input type="text" id="bpLabel" value="' + esc(b.label) + '"></div>' +
       '<div class="row"><label for="bpType">Kind</label><select id="bpType">' +
@@ -598,6 +732,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
       pdfState.boxes = pdfState.boxes.filter(function (x) { return x.id !== b.id; });
       pdfState.selected = null; renderBoxes(); renderTools();
     };
+    lockPdfControls();
   }
 
   function renderRoles() {
@@ -608,7 +743,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
   }
 
   function saveFields() {
-    if (!editing) return;
+    if (!canEdit || !editing) return;
     $("fieldMsg").textContent = "saving…";
     FHData.write("/api/contracts", {
       action: "save_fields", id: editing.id,
@@ -622,9 +757,12 @@ window.dispatchEvent(new Event("pdfjs-ready"));
   }
 
   function uploadPdf(file) {
-    var name = window.prompt("Give this document a short name (letters, numbers and hyphens):",
-      file.name.replace(/\.pdf$/i, "").toUpperCase().replace(/[^A-Z0-9]+/g, "-").slice(0, 40));
+    if (!canCreateHere()) return;
+    var suggested = file.name.replace(/\.pdf$/i, "").toUpperCase().replace(/[^A-Z0-9]+/g, "-").slice(0, 40);
+    if (selectedTab === "employee" && !/^EMPLOYEE-/.test(suggested)) suggested = "EMPLOYEE-" + suggested;
+    var name = window.prompt("Give this document a short name (letters, numbers and hyphens):", suggested);
     if (name == null || !name.trim()) return;
+    if (selectedTab === "employee") name = "EMPLOYEE-" + name.trim().toUpperCase().replace(/^EMPLOYEE[-_ ]?/, "");
     var reader = new FileReader();
     $("tplMsg").textContent = "uploading…";
     reader.onload = function () {
@@ -664,9 +802,9 @@ window.dispatchEvent(new Event("pdfjs-ready"));
       $("liveTxt").textContent = "Templates loaded";
       if (editing) {
         for (var i = 0; i < templates.length; i++) if (templates[i].id === editing.id) editing = templates[i];
-        $("editorState").textContent = editing.active ? "In use" : "Archived";
+        $("editorState").textContent = editing.active ? "In use" : "Decommissioned";
         $("editorTitle").textContent = editing.name;
-        $("btnArchive").textContent = editing.active ? "Archive" : "Turn back on";
+        $("btnArchive").textContent = editing.active ? "Decommission" : "Turn back on";
       }
       return "live wordings · " + templates.length;
     }).catch(function () {
@@ -679,26 +817,31 @@ window.dispatchEvent(new Event("pdfjs-ready"));
 
   /* ── boot ──────────────────────────────────────────────────────────────── */
 
-  $("btnUpload").onclick = function () { $("fileInput").click(); };
+  $("btnUpload").onclick = function () { if (canCreateHere()) $("fileInput").click(); };
   $("fileInput").onchange = function () {
     if (this.files && this.files[0]) uploadPdf(this.files[0]);
     this.value = "";
   };
   $("btnSaveFields").onclick = saveFields;
   $("btnAddSigner").onclick = function () {
+    if (!canEdit) return;
     pdfState.roles.push({ index: pdfState.roles.length, label: "Signer " + (pdfState.roles.length + 1) });
     renderRoles(); renderTools();
   };
   $("btnNewTpl").onclick = newTemplate;
   $("btnSaveTpl").onclick = saveTemplate;
   $("btnArchive").onclick = archiveTemplate;
-  $("btnCancelTpl").onclick = function () { $("tplEditor").style.display = "none"; editing = null; renderTplList(); editorHeading("idle", null, false); $("btnNewTpl").focus({ preventScroll: true }); };
+  $("btnCancelTpl").onclick = function () { $("tplEditor").style.display = "none"; editing = null; renderTplList(); editorHeading("idle", null, false); $(canCreateHere() ? "btnNewTpl" : "tab" + selectedTab.charAt(0).toUpperCase() + selectedTab.slice(1)).focus({ preventScroll: true }); };
   $("btnAddField").onclick = function () {
+    if (!canEdit) return;
     var f = readFieldRows();
     f.push({ key: "", label: "", required: false });
     renderFieldRows(f);
   };
   $("tBody").addEventListener("input", showTags);
+  Array.prototype.forEach.call(document.querySelectorAll("[data-library-tab]"), function (button) {
+    button.onclick = function () { selectTab(button.getAttribute("data-library-tab")); };
+  });
 
   // data.js carries `defer` (see its tag above), so FHData does not exist yet
   // while this script is being parsed — calling it here threw, and the throw
@@ -706,6 +849,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
   // Every deferred script runs before DOMContentLoaded, so the first read waits
   // for that event.
   document.addEventListener("DOMContentLoaded", function () {
+    resolveOwnerAccess();
     loadTemplates();
   });
 })();

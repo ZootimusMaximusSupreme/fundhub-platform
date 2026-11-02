@@ -299,6 +299,7 @@ const ALLOWED_RAW_FETCH = {
   "src/pulse/coverage/gap-contracts.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-crm-links.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-funnels.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-slideshows.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-inquiry.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-marketing-queue.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-msg.mjs": PULSE_GAP_READS,

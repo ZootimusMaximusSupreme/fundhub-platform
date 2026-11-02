@@ -52,8 +52,15 @@ describe("staff AR list enforces same-org invoice buyer (real PostgreSQL)", {
       return sent.id;
     };
     validA = await issue(orgA, buyerA, 125);
-    // The legacy FK intentionally allows an A invoice pointing to B's buyer.
-    contradictory = await issue(orgA, buyerB, 999);
+    // Existing malformed rows must remain invisible. Seed this *legacy* case
+    // directly in disposable PostgreSQL; production createInvoice now refuses it.
+    contradictory = (await conn.query(
+      `INSERT INTO invoices (org_id,client_id,amount_due,source)
+       VALUES ($1,$2,999,'funding_success_fee') RETURNING id`,
+      [orgA, buyerB]
+    )).rows[0].id;
+    const badSent = await markSent(conn, { invoiceId: contradictory });
+    assert.equal(badSent?.status, "sent");
     validB = await issue(orgB, buyerB, 600);
   });
 

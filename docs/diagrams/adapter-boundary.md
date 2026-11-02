@@ -79,7 +79,7 @@ flowchart TB
 |---|---|---|---|---|
 | `bland` | inbound webhook | `verifyBlandSignature` (HMAC-SHA256) | `call.completed` | ⚠️ **no** — carries a CONFIRM banner |
 | `clarity-export` | outbound call | none — not a webhook | — | yes |
-| `clickfunnels` | inbound webhook | `verifyClickFunnelsSignature` (HMAC-SHA256) | `entry.captured`<br/>`survey.submitted`<br/>`booking.created`<br/>`booking.rescheduled`<br/>`booking.cancelled` | ⚠️ **no** — carries a CONFIRM banner |
+| `clickfunnels` | inbound webhook | `verifyClickFunnelsSignature` (HMAC-SHA256) | `entry.captured`<br/>`survey.submitted`<br/>`survey.completed`<br/>`booking.created`<br/>`booking.rescheduled`<br/>`booking.cancelled` | ⚠️ **no** — carries a CONFIRM banner |
 | `commas` | inbound webhook | `verifyCommasSignature` (HMAC-SHA256) | `diagnostic.paid`<br/>`deposit.paid`<br/>`sale.closed`<br/>`payment.received`<br/>`payment.failed`<br/>`payment.expired`<br/>`payment.canceled`<br/>`payment.refunded`<br/>`payment.disputed`<br/>`subscription.started`<br/>`subscription.renewed`<br/>`subscription.past_due`<br/>`subscription.canceled`<br/>`subscription.completed` | ⚠️ **no** — carries a CONFIRM banner |
 | `crs` | direct call | none — not a webhook | `analysis.completed`<br/>`decision.rendered` | yes |
 | `hubstaff` | direct call | none — not a webhook | — | yes |

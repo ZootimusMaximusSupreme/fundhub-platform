@@ -85,7 +85,13 @@ describe("client A/R totals are owned and issued-only (disposable PostgreSQL)", 
     await make(orgA, draftOnlyBuyer, 45, { dueAt: past });
     foreign = await make(orgB, buyerB, 830, { status: "sent", dueAt: past });
     // Legacy ID-only invoice FK permits a cross-tenant buyer. Reports must not.
-    contradictory = await make(orgA, buyerB, 999, { status: "sent", dueAt: past });
+    // Historical malformed row for the view's legacy-data isolation test.
+    // The canonical createInvoice helper now rejects this mismatched buyer.
+    contradictory = (await db.query(
+      `INSERT INTO invoices (org_id,client_id,amount_due,source,due_at,status)
+       VALUES ($1,$2,999,'funding_success_fee',$3,'sent') RETURNING *`,
+      [orgA, buyerB, past]
+    )).rows[0];
   });
 
   after(async () => {

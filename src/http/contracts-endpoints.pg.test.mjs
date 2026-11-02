@@ -229,23 +229,21 @@ describe("/api/contracts endpoints", { skip: !HAVE_DB ? "no DATABASE_URL" : fals
   // ── the two gates ─────────────────────────────────────────────────────────
 
   describe("who may write contract wording", () => {
-    test("an owner may, and an admin may", async () => {
-      for (const role of ["owner", "admin"]) {
-        n += 1;
-        const r = await post({
-          action: "create_template", template_key: `CTHTTP-G${n}`, name: `Gate ${n}`, body: "Words."
-        }, staff[role].token);
-        assert.equal(r.code, 200, `${role} was refused: ${JSON.stringify(r.body)}`);
-      }
+    test("only an owner may write agreement templates", async () => {
+      n += 1;
+      const r = await post({
+        action: "create_template", template_key: `CTHTTP-G${n}`, name: `Gate ${n}`, body: "Words."
+      }, staff.owner.token);
+      assert.equal(r.code, 200, JSON.stringify(r.body));
     });
 
-    test("a setter and a closer may NOT — they are ROLE_SETS.STAFF, which is not enough", async () => {
-      for (const role of ["setter", "closer"]) {
+    test("an admin, setter and closer may not write agreement templates", async () => {
+      for (const role of ["admin", "setter", "closer"]) {
         const r = await post({
           action: "create_template", template_key: "CTHTTP-NOPE", name: "Nope", body: "Words."
         }, staff[role].token);
         assert.equal(r.code, 403, `${role} got through`);
-        assert.deepEqual(r.body.required, ["owner", "admin"]);
+        assert.deepEqual(r.body.required, ["owner"]);
       }
       const rows = (await db.query(
         `SELECT count(*)::int AS n FROM contract_templates WHERE template_key = 'CTHTTP-NOPE'`)).rows[0].n;

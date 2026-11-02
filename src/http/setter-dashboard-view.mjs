@@ -50,7 +50,7 @@ function setterMissing(item, handoff) {
   if (item && (item.lead_type === "opt_in" || h.lead_type === "opt_in")) {
     if (!String(h.triage_problem || "").trim()) missing.push("triage problem");
     if (!String(h.triage_goal || "").trim()) missing.push("triage goal");
-    if (h.triage_personal_or_business !== "personal" && h.triage_personal_or_business !== "business") missing.push("personal or business");
+    if (!["personal", "business", "both"].includes(h.triage_personal_or_business)) missing.push("funding path");
   }
   return missing;
 }

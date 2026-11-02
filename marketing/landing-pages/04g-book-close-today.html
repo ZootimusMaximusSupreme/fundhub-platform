@@ -1,0 +1,82 @@
+<!-- fh-book-close-today:start v1 -->
+<!--
+  /funding-book-call — block new bookings for today (America/Phoenix).
+  Cronofy drives open slots on this page; Google Calendar blocks alone do not
+  remove times here. Appended via footer_code (manifest apply-book).
+-->
+<script>
+(function(){
+  try{ if(window.__fhBookCloseToday) return; window.__fhBookCloseToday=1; }catch(e){ return; }
+  var TZ='America/Phoenix', SCHED='[data-page-element="AppointmentScheduler/V1"]';
+  function todayYmd(){
+    return new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date());
+  }
+  function ymdFromIso(iso){
+    if(!iso) return '';
+    var d=new Date(String(iso));
+    if(isNaN(d.getTime())) return '';
+    return new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(d);
+  }
+  function schedRoot(){ return document.querySelector(SCHED); }
+  function startEl(){ var r=schedRoot(); return r?r.querySelector('#appointment_schedule_request_start_on'):null; }
+  function clearTodayPick(){
+    var s=startEl();
+    if(!s||!s.value) return;
+    if(ymdFromIso(s.value)!==todayYmd()) return;
+    s.value='';
+    var r=schedRoot();
+    if(r){
+      var e=r.querySelector('#appointment_schedule_request_end_on');
+      if(e) e.value='';
+      var fc=document.getElementById('formContainer');
+      if(fc) fc.style.display='none';
+    }
+  }
+  function banner(show){
+    var r=schedRoot();
+    if(!r) return;
+    var id='fh-book-close-today-banner';
+    var el=document.getElementById(id);
+    if(!show){ if(el) el.remove(); return; }
+    if(el) return;
+    el=document.createElement('p');
+    el.id=id;
+    el.setAttribute('role','status');
+    el.textContent='No new call times left today. Please pick a day starting tomorrow.';
+    el.style.cssText='margin:12px 0;padding:12px 14px;border-radius:8px;background:#FDF1E1;color:#7C2D12;font:600 15px/1.4 system-ui,sans-serif;';
+    r.insertBefore(el,r.firstChild);
+  }
+  function dayLooksToday(){
+    var h=document.querySelector('#cronofy-date-time-picker h3, #cronofy-date-time-picker h2');
+    if(!h) return false;
+    var t=(h.textContent||'').toLowerCase();
+    if(t.indexOf('today')>=0) return true;
+    var now=new Date();
+    var day=new Intl.DateTimeFormat('en-US',{timeZone:TZ,day:'numeric'}).format(now);
+    var month=new Intl.DateTimeFormat('en-US',{timeZone:TZ,month:'long'}).format(now).toLowerCase();
+    return t.indexOf(day)>=0 && t.indexOf(month)>=0;
+  }
+  function scrubSlots(){
+    var pick=document.getElementById('cronofy-date-time-picker');
+    if(!pick) return;
+    var close=dayLooksToday();
+    banner(close);
+    if(!close) return;
+    pick.querySelectorAll('button,[role="listitem"] button').forEach(function(btn){
+      var label=(btn.getAttribute('aria-label')||btn.textContent||'').trim();
+      if(/select time|am|pm/i.test(label)) btn.style.display='none';
+    });
+    clearTodayPick();
+  }
+  document.addEventListener('cf:form_submitted',function(ev){
+    var s=startEl();
+    if(s&&ymdFromIso(s.value)===todayYmd()){
+      try{ ev.stopImmediatePropagation(); ev.preventDefault(); }catch(e){}
+      banner(true);
+    }
+  },true);
+  document.addEventListener('click',function(){ setTimeout(scrubSlots,50); },true);
+  setInterval(function(){ scrubSlots(); clearTodayPick(); },800);
+})();
+</script>
+<!-- fh-book-close-today:end -->

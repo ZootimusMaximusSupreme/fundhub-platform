@@ -116,6 +116,7 @@ import companyBrainReviews from "../../api/company-brain/reviews.mjs";
 import companyBrainSync from "../../api/company-brain/sync.mjs";
 import companyBrainUpload from "../../api/company-brain/upload.mjs";
 import companyBrainThreads from "../../api/company-brain/threads.mjs";
+import companyBrainLibrary from "../../api/company-brain/library.mjs";
 import readWorkflows from "../../api/read/workflows.mjs";
 import readTransactions from "../../api/read/transactions.mjs";
 import readCloserCall from "../../api/read/closer-call.mjs";
@@ -197,6 +198,7 @@ import partnerMarketingGenerateLogo from "../../api/partner-marketing/generate-l
 import messageBlasterGift from "../../api/gifts/message-blaster.mjs";
 import publicPartnerPage from "../../api/public/partner-page.mjs";
 import publicSurveySubmit from "../../api/public/survey-submit.mjs";
+import publicSurveyResume from "../../api/public/survey-resume.mjs";
 import publicEducationEnroll from "../../api/public/education-enroll.mjs";
 import publicOptimize from "../../api/public/optimize.mjs";
 import publicClimateMatch from "../../api/public/climate-match.mjs";
@@ -679,6 +681,7 @@ export const ROUTES = {
 
   // Saved conversations, scoped to one org AND one staff member.
   "company-brain/threads": companyBrainThreads,
+  "company-brain/library": companyBrainLibrary,
 
   // read/workflows introspects the live src/workflows/index.mjs `functions`
   // array — the actual Inngest registry — rather than a hand-authored list, so
@@ -848,6 +851,12 @@ export const ROUTES = {
   "gifts/message-blaster": messageBlasterGift,
   "public/partner-page": publicPartnerPage,
   "public/survey-submit": publicSurveySubmit,
+  /* Where a lead stopped on /apply. GET only, read only. The signed token in the
+     text or email link (?r=) is the whole credential: a bad, expired or unknown
+     one is the same 404, and the body is the saved contact, the saved answers (as
+     words, never option ids) and the next question. No token answers 400, which
+     the pulse counts as up. Answers OPTIONS for apply.fundhub.ai — never "*". */
+  "public/survey-resume": publicSurveyResume,
   /* The /education/enroll/ form. No auth — same class as survey-submit. */
   "public/education-enroll": publicEducationEnroll,
   /* Hidden referral page at /optimize. GET = Smart Credit gate. POST = Audit

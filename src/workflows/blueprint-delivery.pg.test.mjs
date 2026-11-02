@@ -125,3 +125,29 @@ test("a saved successful pull with failed delivery creates owner work and is not
     assert.equal(calls, 1, "delivery recovery must reuse the saved credit result");
   });
 });
+
+test("Blueprint: a fulfilled rehearsal cannot consume a real monthly refresh, but genuine and unresolved requests still block", options, async () => {
+  await fixture([], async (db) => {
+    // Minimal transaction-local shadows run the actual dueClients SQL on Postgres.
+    // No migrated production tables are changed and no bureau can be contacted.
+    await db.query("CREATE TEMP TABLE subscriptions (id uuid,org_id uuid,client_id uuid,tier text,status text,effective_from timestamptz,effective_to timestamptz,current_period_start timestamptz,current_period_end timestamptz) ON COMMIT DROP");
+    await db.query("CREATE TEMP TABLE soft_pull_requests (org_id uuid,client_id uuid,requested_by_kind text,requested_at timestamptz,status text,crs_result_id uuid) ON COMMIT DROP");
+    await db.query("CREATE TEMP TABLE crs_results (id uuid,org_id uuid,client_id uuid,provider text,result jsonb) ON COMMIT DROP");
+    const org = randomUUID(), client = randomUUID(), sub = randomUUID(), sim = randomUUID(), genuine = randomUUID();
+    await db.query("INSERT INTO subscriptions (id,org_id,client_id,tier,status,effective_from,current_period_start,current_period_end) VALUES ($1,$2,$3,'finance-os','active','2026-10-01','2026-10-01','2026-12-31')", [sub,org,client]);
+    await db.query("INSERT INTO crs_results (id,org_id,client_id,provider,result) VALUES ($1,$2,$3,'crs_softview_simulated',$4::jsonb)", [sim,org,client,JSON.stringify({ simulated:true, environment:"sandbox" })]);
+    await db.query("INSERT INTO soft_pull_requests (org_id,client_id,requested_by_kind,requested_at,status,crs_result_id) VALUES ($1,$2,'system','2026-10-10','fulfilled',$3)",[org,client,sim]);
+    const at = new Date("2026-10-12T00:00:00Z");
+    assert.deepEqual(await dueClients(db,at), [], "rehearsal mode must not create repeated simulations every day");
+    assert.deepEqual((await dueClients(db,at,{realPull:true})).map(r=>r.subscription_id),[sub], "real request due despite past simulated fulfillment");
+    await db.query("INSERT INTO crs_results (id,org_id,client_id,provider,result) VALUES ($1,$2,$3,'crs_softview',$4::jsonb)",[genuine,org,client,JSON.stringify({ simulated:false, environment:"production" })]);
+    await db.query("INSERT INTO soft_pull_requests (org_id,client_id,requested_by_kind,requested_at,status,crs_result_id) VALUES ($1,$2,'system','2026-10-11','fulfilled',$3)",[org,client,genuine]);
+    assert.deepEqual(await dueClients(db,at,{realPull:true}),[], "one actual fresh result prevents duplicate bureau requests");
+    await db.query("DELETE FROM soft_pull_requests WHERE crs_result_id = $1",[genuine]);
+    await db.query("INSERT INTO soft_pull_requests (org_id,client_id,requested_by_kind,requested_at,status,crs_result_id) VALUES ($1,$2,'system','2026-10-11','failed',NULL)",[org,client]);
+    assert.deepEqual(await dueClients(db,at,{realPull:true}),[], "failed outcome demands recovery instead of silent redial");
+    await db.query("DELETE FROM soft_pull_requests WHERE status='failed'");
+    assert.deepEqual((await dueClients(db,at,{realPull:true})).map(r=>r.subscription_id),[sub]);
+    assert.deepEqual(await dueClients(db,new Date("2027-01-01T00:00:00Z"),{realPull:true}),[], "expired included access cannot order next year's pull");
+  });
+});

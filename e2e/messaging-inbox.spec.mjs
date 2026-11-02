@@ -385,7 +385,8 @@ test.describe("the page does not lie about who said what", () => {
     });
     await page.goto(SCREEN);
     await page.locator(".convo").first().click();
-    await expect(page.locator(".msg").first()).toContainText("Automatic");
+    await expect(page.locator(".msg .msg-sender .nm").first()).toHaveText("Automatic");
+    await expect(page.locator(".msg .msg-sender .agent-tag")).toHaveCount(0);
   });
 
   test("a client's message is escaped, not run", async ({ page }) => {

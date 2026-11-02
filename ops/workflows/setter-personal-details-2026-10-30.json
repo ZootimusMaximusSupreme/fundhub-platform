@@ -1,0 +1,16 @@
+{
+  "task": "Add optional personal and employment details to the setter call while keeping the applicant survey unchanged",
+  "workflows": [
+    {
+      "owner": "primary",
+      "prompt": "Update setter dashboard data and call UI to save funding paths discussed (business, personal, or both), employment, personal income, and income verification separately from survey answers. Add focused tests and verify the UI. Do not change the closer dashboard or applicant survey.",
+      "status": "implemented; 26 focused unit tests, 5 browser tests, lint, and TypeScript pass; GitHub release pending"
+    },
+    {
+      "owner": "setter_script",
+      "prompt": "Update the existing setter SOP spoken script for booked and opt-in calls to verify business details and optionally ask about personal funding, employment, income and proof. Preserve the short call and do not promise approval or edit the survey.",
+      "status": "implemented; script reviewed against the saved setter fields"
+    }
+  ],
+  "leftover": "Closer dashboard display is being handled in another chat and is outside this task. An automatic approval check rejected adding personal income and employment to the outgoing closer text; the text remains unchanged."
+}

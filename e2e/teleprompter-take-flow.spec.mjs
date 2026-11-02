@@ -1466,9 +1466,14 @@ for (const wpm of [200, 205, 210, 215]) {
       function tick(at) {
         const y = new DOMMatrix(el.style.transform).m42;
         const last = points[points.length - 1];
-        // Two identical frame observations have no elapsed time or movement.
-        // Ignore only that duplicate; changed-position or backward frames still fail.
-        if (!last || last.at !== at || last.y !== y) points.push({ at, y });
+        // requestAnimationFrame can observe a new timestamp a few microseconds
+        // after the scroll loop's preceding callback, before the transform moves.
+        // Treat only that sub-frame, same-position observation as a duplicate.
+        // A real stalled frame (>= 4ms), backwards step or changed position is
+        // still measured and will fail the forward/smooth-speed assertions.
+        if (!last || last.y !== y || !Number.isFinite(at - last.at) || at - last.at < 0 || at - last.at >= 4) {
+          points.push({ at, y });
+        }
         if (at - started < 1000) requestAnimationFrame(tick);
         else resolve(points);
       }

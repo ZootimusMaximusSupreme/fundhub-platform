@@ -126,10 +126,11 @@ test("editing saves by id with no short name; Archive and Turn back on post the 
 
   await proof.check(/^Archive \/ Turn back on/, async () => {
     await page.locator(`tr[data-tid="${TPL}"]`).click();
-    assert.equal(await page.locator("#btnArchive").innerText(), "Archive");
+    assert.equal(await page.locator("#btnArchive").innerText(), "Decommission");
     await page.locator("#btnArchive").click();
     await waitFor(() => writes.length === 2);
     assert.deepEqual(writes[1], { action: "archive_template", id: TPL, active: false });
+    await page.locator("#tabDecommissioned").click();
     await page.locator(`tr[data-tid="${OLD}"]`).click();
     assert.equal(await page.locator("#btnArchive").innerText(), "Turn back on");
     await page.locator("#btnArchive").click();

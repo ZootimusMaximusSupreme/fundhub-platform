@@ -56,9 +56,14 @@ describe("portal invoice due excludes drafts and terminal invoices (real Postgre
     assert.equal(settled?.status, "paid");
     const foreignRow = await invoice(orgB, buyerB, 830);
     foreign = await markSent(conn, { invoiceId: foreignRow.id });
-    // Legacy invoice FK permits org A to reference a buyer owned by org B.
-    // This must NEVER display as A's debt or expose its saved payment link.
-    const badRow = await invoice(orgA, buyerB, 999);
+    // Legacy ID-only FK allows contradictory historical rows. The canonical
+    // createInvoice writer now refuses this pair, so seed the legacy anomaly
+    // directly inside our rollback-only scratch transaction for the read guard.
+    const badRow = (await conn.query(
+      `INSERT INTO invoices (org_id,client_id,amount_due,source)
+       VALUES ($1,$2,999,'funding_success_fee') RETURNING id`,
+      [orgA, buyerB]
+    )).rows[0];
     contradictory = await markSent(conn, { invoiceId: badRow.id });
     assert.equal(contradictory?.status, "sent");
   });

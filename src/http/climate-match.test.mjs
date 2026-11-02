@@ -105,7 +105,8 @@ test("climate-match: an unanswered business question stays unknown, never false"
 
 test("climate-match: an unrecognised score band is dropped rather than stored as typed", () => {
   assert.equal(parseClimateMatchBody({ home_state: "AZ", score_band: "800ish" }).scoreBand, null);
-  assert.equal(parseClimateMatchBody({ home_state: "AZ", score_band: "650-699" }).scoreBand, "650-699");
+  assert.equal(parseClimateMatchBody({ home_state: "AZ", score_band: "650-699" }).scoreBand, "650-699", "an older range is kept");
+  assert.equal(parseClimateMatchBody({ home_state: "AZ", score_band: "620-699" }).scoreBand, "620-699");
 });
 
 test("climate-match: the five ad tags survive the submit — this is the homepage bug not repeated", () => {

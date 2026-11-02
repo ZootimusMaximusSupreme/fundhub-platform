@@ -163,12 +163,14 @@ function clusterTable() {
 /** Runs before the page: records, for the latest frame, every word and every glow the sky draws. */
 const SKY_HOOK = () => {
   const proto = CanvasRenderingContext2D.prototype;
-  const state = { frame: { texts: [], grads: [] } };
+  const state = { frame: { texts: [], grads: [], seq: 0 } };
   window.__fhSky = state;
   const clear = proto.fillRect;
   proto.fillRect = function (x, y, w, h) {
     // the page clears the whole sky once, at the start of every frame
-    if (x === 0 && y === 0 && w > 300 && h > 200) state.frame = { texts: [], grads: [] };
+    if (x === 0 && y === 0 && w > 300 && h > 200) {
+      state.frame = { texts: [], grads: [], seq: state.frame.seq + 1 };
+    }
     return clear.call(this, x, y, w, h);
   };
   const write = proto.fillText;
@@ -266,12 +268,17 @@ async function workerSpot(page, geometry) {
 }
 
 /** Wait until the camera stops: the biggest glow of the cluster stops changing. */
-async function settled(page, name) {
+async function settled(page, name, minRadius = 0) {
   let last = -1;
+  let lastSeq = -1;
   let still = 0;
   await waitFor(async () => {
-    const now = drawn(await frameOf(page), name);
+    const frame = await frameOf(page);
+    if (frame.seq === lastSeq) return false;
+    lastSeq = frame.seq;
+    const now = drawn(frame, name);
     if (!now) return false;
+    if (now.radius < minRadius) { still = 0; last = now.radius; return false; }
     still = last >= 0 && Math.abs(now.radius - last) < 0.4 ? still + 1 : 0;
     last = now.radius;
     return still >= 4;
@@ -307,7 +314,7 @@ test("Sky: all five clusters can be clicked where they are shown and zoom on the
           `${cluster.name}: its own name in the trail`, 8000);
         assert.equal(breadcrumb(await frameOf(page)).hint, true, `${cluster.name}: the pull-back hint appears once zoomed`);
 
-        const zoomed = await settled(page, cluster.name);
+        const zoomed = await settled(page, cluster.name, rest.radius * 1.8);
         const grew = zoomed.radius / rest.radius;
         assert.ok(grew > 1.8 && grew < 2.5, `${cluster.name}: zoomed in about 2x (it grew ${grew.toFixed(2)}x)`);
         assert.ok(Math.abs(zoomed.x - geometry.drawnW / 2) < 45 && Math.abs(zoomed.y - geometry.drawnH / 2) < 45,

@@ -51,7 +51,8 @@ import { isOptedOut } from "../lib/opt-out.mjs";
 import { loadRules, appliesTo, toRegex } from "../compliance/screen.mjs";
 import { createTask } from "../lib/create-task.mjs";
 import { BANK_EMAIL_KEYS } from "../outreach/mail.mjs";
-import { isStaffText, staffTextRecipient, usesSetterContactHours } from "../staff/message-recipient.mjs";
+import { isImmediateStaffAlert, isStaffText, staffTextRecipient, usesSetterContactHours } from "../staff/message-recipient.mjs";
+import { sendTiming, inDripWindow, DRIP_START_HOUR, DRIP_END_HOUR } from "./send-window.mjs";
 
 /* Who owns a held message.
    `admin` rather than a client-facing role: the fix is editing a template, which
@@ -335,9 +336,22 @@ async function run(db, message, { now = () => new Date(), timeZone = QUIET_HOURS
   //
   // Prove/sim plus-tag files are outside this rule so a night fire can be
   // proven. Real customers still wait. Not a force / skipCompliance option.
+  //
+  // Customer send hours (owner-set 2026-10-31, src/messaging/send-window.mjs):
+  // an instant message tied to what the person just did (welcome, booking
+  // confirmation) goes out at any hour; a drip goes out only 9 a.m. to 5 p.m.
+  // Arizona, email too; every other message keeps the quiet hours here.
+  const timing = sendTiming(templateKey);
   const setterHours = usesSetterContactHours(messageKind);
   const quiet = setterHours ? inSetterContactQuietHours(now(), timeZone) : inQuietHours(now(), timeZone);
-  if (QUIET_HOURS_CHANNELS.has(channel) && quiet) {
+  if (timing === "drip" && !inDripWindow(now(), timeZone)) {
+    const skip = staffText ? false : await recipientSkipsQuietHours(db, clientId);
+    if (!skip) {
+      reasons.push(r("drip_hours", "tcpa",
+        `Follow-up messages are only sent between ${DRIP_START_HOUR}:00 and ${DRIP_END_HOUR}:00 Arizona time. This one is being held until ${DRIP_START_HOUR}:00.`,
+        { retryable: true }));
+    }
+  } else if (timing !== "instant" && QUIET_HOURS_CHANNELS.has(channel) && quiet && !isImmediateStaffAlert(messageKind)) {
     const skip = staffText ? false : await recipientSkipsQuietHours(db, clientId);
     if (!skip) {
       reasons.push(r("quiet_hours", "tcpa",

@@ -26,6 +26,8 @@
 // own checks (src/pulse/daily-pulse.mjs). The pulse may prefix a gap id with its lane on the
 // scorecard; the id named here is the one written in the lane file.
 
+import { PUBLIC_STATIC_FILES } from "./registry.mjs";
+
 export const TRIPWIRE_IMPACTS = Object.freeze(["money", "customer"]);
 
 /** Ids that only prove a door answers or a clock ran. Never enough on their own. */
@@ -34,6 +36,8 @@ export function isPingId(id) {
 }
 
 export const TRIPWIRES = Object.freeze({
+  ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/[^/]+\.html$/.test(file))
+    .map((file) => [`page:${file}`, { impact: "customer", checks: ["slideshows:content"] }])),
   "route:bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
   "route:read/bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product"] },
   "desk:bank-outreach.html": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
@@ -46,6 +50,8 @@ export const TRIPWIRES = Object.freeze({
   "page:roadmap/index.html": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "funnel:card-box-script-loads"] },
   "route:public/slo-interest": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:contact-no-followup"] },
   "route:public/survey-submit": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:lead-first-touches-missing"] },
+  // 2026-10-31: the come-back link in the welcome and the S-02 messages. A broken door sends the lead to the top.
+  "route:public/survey-resume": { impact: "customer", checks: ["survey:resume-link-opens", "survey:resume-door-answers", "survey:resume-links-signed"] },
   "route:payment-links": { impact: "money", checks: ["payments:pay-link-webhook", "payments:checkout-started-no-link", "payments:whop-paid-no-access"] },
   "job:finance-os-pull-sweeper": { impact: "customer", checks: ["blueprint:monthly-delivery"] },
   "job:waypoint-nudge-sweeper": { impact: "customer", checks: ["blueprint:coach-call-delivery", "gap:sms-sending-stuck"] },
@@ -53,6 +59,8 @@ export const TRIPWIRES = Object.freeze({
   "job:invoice-sent-recovery": { impact: "money", checks: ["payments:invoice-sent-recovery"] },
   "job:s-01-new-lead-intake": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
   "job:s-02-incomplete-survey-nudge": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
+  // 2026-10-31: the chase's first message and its setter call task are both judged by this check.
+  "job:s-nobook-chase": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
   "job:slo-genuine-followup": { impact: "money", checks: ["handoff:contact-no-followup"] },
   "job:slo-no-reply-197": { impact: "money", checks: ["handoff:contact-no-followup"] },
   "job:slo-genuine-checkout-sms": { impact: "money", checks: ["handoff:contact-no-followup"] },
@@ -210,6 +218,8 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
+  "route:company-brain/library":
+    "Staff-only approved instruction index: it reads company files allowed for the signed-in employee's role and never serves a customer directly. Its door is watched by reg:company-brain/library.",
   "page:leads/c01cb7592c8bb994130158e897e99bf1/index.html":
     "Private staff scratchpad: it stores blank lead notes only in this browser's localStorage, sends nothing to Fundhub, and is marked noindex.",
   "desk:morning-brief.html":
@@ -230,6 +240,8 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
     "Owner-only: the 5-minute watch texts Chris's own number when a critical door is down. It never reaches a customer. Its heartbeat is job pulse-instant-watch.",
   "send:src/pulse/notify.mjs":
     "Owner-only: the morning pulse texts Chris's own number its report. It never reaches a customer. Its heartbeat is job daily-pulse.",
+  ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/film\/[^/]+\.html$/.test(file))
+    .map((file) => [`page:${file}`, "Internal film board for Chris to screen-record under his camera video. Customers receive the phone deck instead."])),
   "send:src/staff/blake-lead-watch.mjs":
     "Owner-only: texts Chris the name and phone of a lead Blake referred. Its own header says it never texts the lead. Its heartbeat is job blake-lead-watch.",
   "send:src/auth/staff-mail.mjs":

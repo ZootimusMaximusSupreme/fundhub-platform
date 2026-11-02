@@ -978,6 +978,111 @@ describe("soft pull ledger", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () 
       assert.deepEqual(await tradelineRows(), []);
     });
 
+
+    test("two real Postgres workers cannot order the same bureau request twice", async () => {
+      await wipeLedger();
+      await db.query(`DELETE FROM crs_results WHERE client_id = $1`, [client]);
+      const request = (await requestSoftPull(db, {
+        orgId: org, clientId: client, requestedBy: { kind: "staff", id: staffId },
+        reason: "two-worker provider claim collision"
+      })).request;
+
+      // Both transactions read QUEUED before either tries the real database CAS.
+      // The provider is mocked, and the first fake order waits while the loser
+      // has time to prove it cannot reach the provider at all.
+      let reads = 0;
+      let releaseReads;
+      const sameSnapshot = new Promise((resolve) => { releaseReads = resolve; });
+      const competingDb = {
+        query: async (sql, params) => {
+          if (String(sql).includes("FROM soft_pull_requests WHERE id = $1") && reads < 2) {
+            const snapshot = await db.query(sql, params);
+            if (++reads === 2) releaseReads();
+            await sameSnapshot;
+            return snapshot;
+          }
+          return db.query(sql, params);
+        }
+      };
+
+      let releaseProvider;
+      const providerHold = new Promise((resolve) => { releaseProvider = resolve; });
+      let signalProviderStarted;
+      const providerStarted = new Promise((resolve) => { signalProviderStarted = resolve; });
+      const called = [];
+      const mockCrs = {
+        host: "api-sandbox.stitchcredit.com", config: { missing: [] },
+        isConfigured: () => true,
+        async orderPrequal({ bureau }) {
+          called.push(bureau);
+          if (called.length === 1) {
+            signalProviderStarted();
+            await providerHold;
+          }
+          return {
+            ok: true, requestId: `PG-CLAIM-${request.id}-${bureau}`,
+            report: sandboxReport("tu.json")
+          };
+        }
+      };
+      const args = {
+        orgId: org, clientId: client, requestId: request.id,
+        client: mockCrs, bureaus: ["TU"]
+      };
+      const promises = [runCrsPull(competingDb, args), runCrsPull(competingDb, args)];
+      const settled = promises.map((p) => p.then(
+        (value) => ({ ok: true, value }),
+        (error) => ({ ok: false, error })
+      ));
+      try {
+        await providerStarted;
+        const loser = await Promise.race(settled);
+        assert.equal(loser.ok, false, "only the database UPDATE winner may cross the provider fence");
+        assert.equal(loser.error.status, 409);
+      } finally {
+        releaseProvider?.();
+      }
+      const outcomes = await Promise.all(settled);
+      assert.equal(reads, 2);
+      assert.deepEqual(called, ["TU"]);
+      assert.equal(outcomes.filter((out) => out.ok).length, 1);
+      assert.equal(outcomes.filter((out) => !out.ok && out.error.status === 409).length, 1);
+      assert.equal((await ledgerRows())[0].status, "fulfilled");
+      assert.equal(Number((await db.query(
+        `SELECT count(*) n FROM crs_results WHERE client_id = $1`, [client]
+      )).rows[0].n), 1);
+      const stored = outcomes.find((out) => out.ok).value;
+      assert.equal(Number((await db.query(
+        `SELECT count(*) n FROM events WHERE client_id = $1 AND idempotency_key = $2`,
+        [client, `crs-result:${stored.crsResultId}:analysis.completed:v1`]
+      )).rows[0].n), 1);
+    });
+
+    test("an already processing Postgres request requires reconciliation, never redials", async () => {
+      await wipeLedger();
+      const request = (await requestSoftPull(db, {
+        orgId: org, clientId: client, requestedBy: { kind: "staff", id: staffId },
+        reason: "preclaimed provider order requires review"
+      })).request;
+      const claimed = await claimSoftPull(db, { requestId: request.id, orgId: org, clientId: client });
+      assert.equal(claimed.claimed, true);
+      const calls = [];
+      const mockCrs = {
+        host: "api-sandbox.stitchcredit.com", config: { missing: [] },
+        isConfigured: () => true,
+        async orderPrequal(payload) { calls.push(payload); throw new Error("must not reach bureau"); }
+      };
+      await assert.rejects(
+        () => runCrsPull(db, {
+          orgId: org, clientId: client, requestId: request.id,
+          client: mockCrs, bureaus: ["TU"]
+        }),
+        (error) => error instanceof SoftPullError && error.status === 409
+      );
+      assert.deepEqual(calls, []);
+      assert.equal((await ledgerRows())[0].status, "processing");
+    });
+
     test("runCrsPull stores one anchored row and replays before ordering again", async () => {
       await wipeLedger();
       await db.query(`DELETE FROM crs_results WHERE client_id = $1`, [client]);

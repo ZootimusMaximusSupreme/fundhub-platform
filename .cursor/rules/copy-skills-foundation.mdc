@@ -1,0 +1,1 @@
+../../.ai/rules/copy-skills-foundation.md

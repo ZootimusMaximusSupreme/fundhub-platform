@@ -47,6 +47,7 @@ function fakeDb({
         return { rows: r ? [r] : [] };
       }
       if (sql.includes("FROM message_templates")) return { rows: [{ subject: "Your file" }] };
+      if (sql.includes("ORDER BY created_at DESC OFFSET 1 LIMIT 1")) return { rows: [] };
       if (sql.includes("SELECT custom_fields FROM clients")) return { rows: [{ custom_fields: null }] };
       /* The dispatcher asks whether an authorized representative should get the
          message instead (src/auth/authorized-rep.mjs destinationAddress, added

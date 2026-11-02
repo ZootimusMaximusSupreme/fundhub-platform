@@ -29,7 +29,7 @@ import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { requestSoftPull, SoftPullError } from "../finance/soft-pulls.mjs";
 import { FINANCE_OS_TIER } from "../finance/finance-os-entitlement.mjs";
-import { fulfilQueuedSystemPulls } from "../finance/finance-os-pull-fulfil.mjs";
+import { fulfilQueuedSystemPulls, systemPullUsesSimulation } from "../finance/finance-os-pull-fulfil.mjs";
 
 export const SWEEP_CRON = "0 6 * * *"; // 06:00 UTC daily — matches the other daily sweepers' quiet-hours-safe slot
 export const SOURCE_WORKFLOW = "finance-os-pull-sweeper";
@@ -38,10 +38,14 @@ export const MONTHLY_PULL_DAYS = 30;
 export const SCHEDULED_PULL_REASON =
   "Finance OS monthly optimization pull — included with the client's finance-os subscription, requested automatically.";
 
-/** Every active finance-os subscriber with no system request in 30 days.
+/** Every active finance-os subscriber with no meaningful system request in 30 days.
+ * When a real pull is authorized, already-completed simulations cannot spend
+ * the buyer's included monthly credit refresh. A pending or failed request
+ * still blocks auto-redial and requires normal recovery; permission and consent
+ * are checked again by requestSoftPull at request time.
  *  One row per (org, client, subscription) — a client cannot hold
  *  two active finance-os subscriptions at once (075's window constraint). */
-export async function dueClients(conn, now) {
+export async function dueClients(conn, now, { realPull = false } = {}) {
   const res = await conn.query(
     `SELECT s.id AS subscription_id, s.org_id, s.client_id, s.current_period_start
        FROM subscriptions s
@@ -59,27 +63,43 @@ export async function dueClients(conn, now) {
              AND r.org_id = s.org_id
              AND r.requested_by_kind = 'system'
              AND r.requested_at > $2::timestamptz - ($3::int * interval '1 day')
+             AND (
+               -- A rehearsal is not a monthly credit result. Only a REAL
+               -- run may ignore an already-FULFILLED simulated request.
+               -- Queued, failed, unknown and genuine results remain blockers.
+               NOT $4::boolean OR r.status <> 'fulfilled' OR NOT EXISTS (
+                 SELECT 1 FROM crs_results cr
+                  WHERE cr.id = r.crs_result_id
+                    AND cr.org_id = r.org_id AND cr.client_id = r.client_id
+                    AND (
+                      cr.provider = 'crs_softview_simulated'
+                      OR cr.result->>'simulated' = 'true'
+                      OR cr.result->>'environment' = 'sandbox'
+                    )
+               )
+             )
         )`,
-    [FINANCE_OS_TIER, now, MONTHLY_PULL_DAYS]
+    [FINANCE_OS_TIER, now, MONTHLY_PULL_DAYS, !!realPull]
   );
   return res.rows;
 }
 
-export function monthlyPullKey(row, now) {
+export function monthlyPullKey(row, now, { realPull = false } = {}) {
   const start = new Date(row.current_period_start).getTime();
   const at = new Date(now).getTime();
   if (!Number.isFinite(start) || !Number.isFinite(at) || at < start) {
     throw new Error("The monthly pull needs a valid open access period");
   }
   const window = Math.floor((at - start) / (MONTHLY_PULL_DAYS * 86400000));
-  return `finance-os-monthly:${row.subscription_id}:${window}`;
+  return `finance-os-monthly:${row.subscription_id}:${window}${realPull ? ':real' : ''}`;
 }
 
 /** sweep — one pass. `db` and the clock are arguments so tests drive it
     without Inngest. Returns a tally rather than throwing. */
 export async function sweep(conn = db, { now = new Date(), env = process.env, fulfil = fulfilQueuedSystemPulls } = {}) {
   const tally = { checked: 0, requested: 0, skipped: [], errored: [], fulfil: null };
-  const rows = await dueClients(conn, now);
+  const realPull = !systemPullUsesSimulation(env);
+  const rows = await dueClients(conn, now, { realPull });
   tally.checked = rows.length;
 
   for (const row of rows) {
@@ -90,7 +110,7 @@ export async function sweep(conn = db, { now = new Date(), env = process.env, fu
         requestedBy: { kind: "system" },
         reason: SCHEDULED_PULL_REASON,
         subscriptionId: row.subscription_id,
-        idempotencyKey: monthlyPullKey(row, now),
+        idempotencyKey: monthlyPullKey(row, now, { realPull }),
         provider: "internal"
       });
       if (out.created) {

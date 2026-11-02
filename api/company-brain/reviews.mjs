@@ -33,7 +33,9 @@ export default async function handler(req, res, deps = {}) {
 
   if (req.method === "GET") {
     const list = deps.listPendingReviews || listPendingReviews;
-    const out = await list(database, { orgId, limit: 100 });
+    const limit = Math.max(1, Math.min(100, Number(req.query?.limit) || 25));
+    const offset = Math.max(0, Math.min(10000, Math.floor(Number(req.query?.offset) || 0)));
+    const out = await list(database, { orgId, limit, offset });
     const rows = out.reviews || [];
     // Every field already on the row is kept exactly as it was — a screen is
     // built against them. The camelCase keys below are additions only.
@@ -59,6 +61,7 @@ export default async function handler(req, res, deps = {}) {
     return res.status(200).json({
       ok: true,
       reviews,
+      pendingCount: Number(out.pendingCount) || reviews.length,
       uploadCount: reviews.filter((r) => r.isUpload).length
     });
   }

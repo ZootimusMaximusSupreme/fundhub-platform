@@ -45,7 +45,7 @@ test("duplicate delivery: replaying does not double-send or double-task", async 
  * — link: ." The template asks for the meeting location; this workflow sent no
  * context, so the tag rendered as nothing.
  */
-const HANDOFF_BODY = "Josh here. Your call starts in 15 minutes — link: {{appointment.meeting_location}}. Reply STOP to opt out.";
+const HANDOFF_BODY = "Chris here. Your call starts in 15 minutes — link: {{appointment.meeting_location}}. Reply STOP to opt out.";
 
 const handoffTemplates = () => [
   { org_id: "org-1", template_key: SMS_TEMPLATE_KEY, channel: "sms", body: HANDOFF_BODY, compliance_passed: true }

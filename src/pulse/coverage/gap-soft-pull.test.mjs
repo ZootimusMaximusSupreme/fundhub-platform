@@ -291,7 +291,8 @@ function signedDb({ client = [{ id: CLIENT, first_name: "Pat", last_name: "Doe",
       if (text.includes("gap:soft-pull-client")) return { rows: pick };
       if (/FROM clients WHERE id = \$1 AND org_id = \$2/.test(text)) return { rows: client };
       if (text.includes("FROM client_consents")) return { rows: [] };
-      if (text.includes("FROM events") || text.includes("FROM payment_links")) return { rows: [] };
+      if (text.includes("FROM events") || text.includes("FROM payment_links") ||
+          text.includes("FROM soft_pull_requests") || text.includes("FROM crs_results")) return { rows: [] };
       throw new Error(`unexpected sql: ${text.slice(0, 80)}`);
     }
   };
@@ -1316,7 +1317,8 @@ test("the lane returns the door rows and then the ledger rows, red ones carry a 
   });
   const rows = await gapChecks({ fetchImpl, db: both, scope: (fn) => fn(both), orgId: ORG, env: ENV, now: NOW });
   assertShape(rows);
-  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS", "FAIL", "FAIL", "FAIL"]);
+  assert.deepEqual(rows.map((r) => r.status),
+    ["PASS", "PASS", ACCOUNT_GATED_APPROVE ? "skip" : "PASS", "FAIL", "FAIL", "FAIL"]);
   assert.deepEqual(rows.map((r) => r.id), [...ALL_CHECK_IDS]);
 });
 

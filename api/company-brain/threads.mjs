@@ -3,6 +3,7 @@
 // GET                    — this staff member's own threads, newest first, 50 max
 // GET ?thread_id=<uuid>  — one thread and its messages, oldest first
 // POST { title }         — start a thread
+// DELETE ?thread_id=<uuid> — delete this staff member's own thread
 //
 // Board: ops/workflows/company-brain-chat-2026-08-17.md §3.3 (W4).
 //
@@ -19,6 +20,7 @@ import {
   listThreads,
   getThread,
   createThread,
+  deleteThread,
   titleFromQuestion
 } from "../../src/company-brain/threads.mjs";
 
@@ -78,6 +80,19 @@ export default async function handler(req, res, deps = {}) {
     return res.status(200).json({ ok: true, thread: out.thread });
   }
 
-  res.setHeader("allow", "GET, POST");
+  if (req.method === "DELETE") {
+    const raw = String((req.query && req.query.thread_id) || "").trim();
+    if (!isUuid(raw)) {
+      return res.status(400).json({ ok: false, error: "invalid_thread_id" });
+    }
+    const remove = deps.deleteThread || deleteThread;
+    const out = await remove(database, { ...scope, threadId: raw });
+    if (!out.ok) {
+      return res.status(404).json({ ok: false, error: "thread_not_found" });
+    }
+    return res.status(200).json({ ok: true });
+  }
+
+  res.setHeader("allow", "GET, POST, DELETE");
   return res.status(405).json({ ok: false, error: "method_not_allowed" });
 }

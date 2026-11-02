@@ -1,0 +1,124 @@
+<title>Pre-Underwriting Slideshow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one phone-sized card at a time, a growing process map under it, tap or swipe to move. Fundhub blue. */
+:root{
+  --bg:#eef2f8; --card:#ffffff; --fg:#0d1830; --muted:#5b6782; --line:#dbe2ee; --soft:#f3f6fb;
+  --accent:#3d86f0; --accent-soft:#e4eefd; --red:#d4483b; --red-soft:#fbe7e4; --green:#1f8a5b; --green-soft:#e2f3ea;
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0a1020; --card:#131b2d; --fg:#e9eef8; --muted:#9ba7c0; --line:#253049; --soft:#0f1627;
+  --accent:#6ea6f5; --accent-soft:#18294a; --red:#f07a6e; --red-soft:#3a1915; --green:#4cc38d; --green-soft:#12301f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0a1020; --card:#131b2d; --fg:#e9eef8; --muted:#9ba7c0; --line:#253049; --soft:#0f1627;
+  --accent:#6ea6f5; --accent-soft:#18294a; --red:#f07a6e; --red-soft:#3a1915; --green:#4cc38d; --green-soft:#12301f; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--sans);margin:0}
+.wrap{max-width:460px;margin:0 auto;min-height:100%;padding-block:16px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.top{display:flex;justify-content:space-between;align-items:center;font:600 12px var(--mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.dots{display:flex;gap:6px}
+.dots i{width:22px;height:4px;border-radius:2px;background:var(--line)}
+.dots i.on{background:var(--accent)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 22px;display:flex;flex-direction:column;gap:16px;min-height:430px;box-shadow:0 10px 30px rgba(13,24,48,.07);touch-action:pan-y}
+.step{font:700 12px var(--mono);color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
+h1{font-size:30px;line-height:1.1;font-weight:900;letter-spacing:-.025em;margin:0;text-wrap:balance}
+.lead{font-size:18px;line-height:1.45;margin:0;color:var(--fg)}
+.lead + .lead{color:var(--muted)}
+.vis{margin-top:auto}
+.ex{font:500 10px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+/* letter */
+.letter{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:14px;display:flex;flex-direction:column;gap:6px}
+.letter .h{font-weight:800;font-size:13px;color:var(--muted)}
+.reason{display:inline-block;background:var(--red-soft);color:var(--red);font-weight:700;padding:6px 10px;border-radius:8px;font-size:14px}
+/* report */
+.report{border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+.report .bar{background:var(--fg);color:var(--card);padding:8px 12px;font:700 12px var(--mono);letter-spacing:.06em}
+.report .row{padding:10px 12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+.report .row.hl{background:var(--red-soft)}
+.report .row.hl b{color:var(--red)}
+.report .row span{color:var(--muted)}
+/* timeline */
+.tl{display:flex;flex-direction:column;gap:0}
+.tl div{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;align-items:start;padding-bottom:12px;position:relative;font-size:15px}
+.tl div::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--muted);margin-top:5px;margin-left:5px}
+.tl div::after{content:"";position:absolute;left:10px;top:20px;bottom:0;width:2px;background:var(--line)}
+.tl div:last-child::after{display:none}
+.tl div.bad::before{background:var(--red)}
+/* flow */
+.flow{display:flex;flex-direction:column;gap:8px}
+.flow .n{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:15px;background:var(--soft)}
+.flow .n.hl{border:2px solid var(--accent);background:var(--accent-soft);font-weight:700}
+.flow .ar{text-align:center;color:var(--muted);font-size:14px;line-height:1}
+.banks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.bank{border:1px solid var(--line);border-radius:10px;padding:10px 6px;text-align:center;font-size:13px;font-weight:700}
+.bank.ok{border-color:var(--green);background:var(--green-soft);color:var(--green)}
+.bank.no{color:var(--muted);text-decoration:line-through;opacity:.7}
+/* guarantee */
+.g{border:2px solid var(--accent);border-radius:16px;padding:18px;text-align:center;display:flex;flex-direction:column;gap:6px}
+.g .big{font-size:44px;font-weight:900;letter-spacing:-.03em;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.g .u{font:700 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.g p{margin:0;font-size:15px}
+/* map */
+.map{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.map span{font:600 10px var(--mono);text-align:center;padding:6px 2px;border-radius:6px;color:var(--muted);background:var(--card);border:1px solid var(--line);text-transform:uppercase;letter-spacing:.03em}
+.map span.done{color:var(--accent);border-color:var(--accent)}
+.map span.now{background:var(--accent);color:#fff;border-color:var(--accent)}
+.nav{display:flex;gap:10px}
+.nav button{flex:1;font:700 16px var(--sans);padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+.nav button.next{background:var(--accent);border-color:var(--accent);color:#fff}
+.nav button:disabled{opacity:.35;cursor:default}
+.nav button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.note{font-size:12px;color:var(--muted);text-align:center}
+@media (prefers-reduced-motion: no-preference){.card{animation:in .25s ease}@keyframes in{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}}
+</style>
+
+<div class="wrap">
+  <div class="top"><span>Fundhub</span><div class="dots" id="dots"></div></div>
+  <div class="card" id="card" aria-live="polite"></div>
+  <div class="map" id="map" aria-hidden="true">
+    <span>Letter</span><span>Report</span><span>Pre-check</span><span>Banks</span><span>72 hrs</span>
+  </div>
+  <div class="nav">
+    <button id="prev" type="button">Back</button>
+    <button id="next" class="next" type="button">Next</button>
+  </div>
+  <p class="note">Draft for Chris. Tap Next or swipe.</p>
+</div>
+
+<script>
+const S=[
+ {map:0,step:"Why the bank said no",h:"The bank already told you why.",l:["When a bank turns you down, it mails you a letter.","That letter lists the exact reasons."],
+  v:`<div class="ex">Example letter</div><div class="letter"><span class="h">Your application was not approved.</span><span>Main reason:</span><span><span class="reason">Revolving balances too high</span></span></div>`},
+ {map:1,step:"Where the reasons live",h:"Those reasons were on your report first.",l:["The same reasons sit at the top of your credit report.","They were there before you ever applied."],
+  v:`<div class="ex">Example report</div><div class="report"><div class="bar">CREDIT REPORT · KEY FACTORS</div><div class="row hl"><b>Revolving balances too high</b><span>top factor</span></div><div class="row"><span>Payment history</span><span>on time</span></div></div>`},
+ {map:1,step:"How most people do it",h:"Most people apply first and find out later.",l:["They apply. They wait. Then the letter shows up.","Now there's a new inquiry on the file and nothing to show for it. That's wasted time."],
+  v:`<div class="tl"><div>You apply</div><div>You wait</div><div class="bad">The no shows up in the mail</div><div class="bad">The inquiry stays on your file</div></div>`},
+ {map:2,step:"What we do instead",h:"We read the reasons first. That's pre-underwriting.",l:["We use the same kind of models the banks use to underwrite.","So we see what a bank sees before anyone applies."],
+  v:`<div class="flow"><div class="n">Your credit report</div><div class="ar">↓</div><div class="n hl">Pre-underwriting: read it the way a bank does</div><div class="ar">↓</div><div class="n">Red flags found before a bank finds them</div></div>`},
+ {map:3,step:"Then the right banks",h:"Your file only goes to banks it's ready for.",l:["If something on your file is a red flag, we handle it first.","Then you go to the banks that approve files like yours. No guessing."],
+  v:`<div class="ex">Which banks get your file</div><div class="banks"><div class="bank ok">Ready ✓</div><div class="bank no">Not yet</div><div class="bank ok">Ready ✓</div><div class="bank no">Not yet</div><div class="bank ok">Ready ✓</div><div class="bank ok">Ready ✓</div></div>`},
+ {map:4,step:"How fast it moves",h:"Applications go out within 72 business hours.",l:["That's our guarantee, and it's in your contract.","That typically means approvals come very shortly after."],
+  v:`<div class="g"><span class="big">72</span><span class="u">business hours</span><p>Applications out. In your contract.</p></div>`},
+ {map:4,step:"On your call",h:"Bring your file. We'll read it with you.",l:["On your call, we go through your report the way a bank would.","You'll know where you stand before anyone applies."],
+  v:`<div class="flow"><div class="n hl">Your call: we read your file together</div></div>`}
+];
+let i=0;const card=document.getElementById("card"),dots=document.getElementById("dots"),map=[...document.querySelectorAll("#map span")],prev=document.getElementById("prev"),next=document.getElementById("next");
+dots.innerHTML=S.map(()=>"<i></i>").join("");
+function render(){
+  const s=S[i];
+  card.innerHTML=`<span class="step">${i+1} of ${S.length} · ${s.step}</span><h1>${s.h}</h1>${s.l.map(x=>`<p class="lead">${x}</p>`).join("")}<div class="vis">${s.v}</div>`;
+  [...dots.children].forEach((d,k)=>d.classList.toggle("on",k<=i));
+  map.forEach((m,k)=>{m.classList.toggle("done",k<s.map);m.classList.toggle("now",k===s.map)});
+  prev.disabled=i===0;next.textContent=i===S.length-1?"Start over":"Next";
+}
+next.onclick=()=>{i=i===S.length-1?0:i+1;render()};
+prev.onclick=()=>{if(i>0){i--;render()}};
+let x0=null;card.addEventListener("touchstart",e=>{x0=e.touches[0].clientX},{passive:true});
+card.addEventListener("touchend",e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0;if(Math.abs(dx)>50){if(dx<0&&i<S.length-1)i++;else if(dx>0&&i>0)i--;render()}x0=null});
+document.addEventListener("keydown",e=>{if(e.key==="ArrowRight"&&i<S.length-1){i++;render()}if(e.key==="ArrowLeft"&&i>0){i--;render()}});
+render();
+</script>

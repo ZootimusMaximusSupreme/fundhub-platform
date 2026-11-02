@@ -4,6 +4,10 @@ export const CANONICAL_EVENTS = [
   // journey spine
   "entry.captured",
   "survey.submitted",
+  /* survey.submitted fires on every answered screen. survey.completed fires once,
+     when the last question (cf_svy_available_capital) is answered. The follow-up
+     workflows key on it (owner-set 2026-10-31, funnel workflows fix). */
+  "survey.completed",
   "diagnostic.paid", // $32
   "analysis.completed",
   "booking.created",
@@ -11,6 +15,8 @@ export const CANONICAL_EVENTS = [
   "booking.cancelled",
   "booking.noshow",
   "call.completed",
+  /* The setter saved "No answer" on the setter desk. Starts AI-SET-03. */
+  "setter.no_answer",
   "decision.rendered", // 6-tier outcome
   "deposit.paid",
   "sale.closed",

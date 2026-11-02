@@ -43,6 +43,7 @@ async function hiddenCountFor(database, staff) {
     `SELECT count(*)::int AS n
        FROM staff s
       WHERE s.org_id = $1::uuid
+        AND s.removed_at IS NULL
         AND ($3::uuid IS NULL OR s.id <> $3::uuid)
         AND (
           s.role = 'owner'
@@ -78,12 +79,19 @@ export default async function handler(req, res) {
              WHERE t.assignee_staff_id = s.id AND t.done = false) AS open_tasks,
            (SELECT count(*)::int FROM shifts sh
              WHERE sh.staff_id = s.id AND sh.ended_at IS NULL) AS open_shift,
+           (s.status = 'active' AND EXISTS (
+             SELECT 1 FROM sessions sess
+              WHERE sess.staff_id = s.id AND sess.org_id = s.org_id
+                AND sess.revoked_at IS NULL AND sess.expires_at > now()
+                AND sess.last_seen_at >= now() - interval '2 minutes'
+           )) AS online_now,
            (SELECT count(*)::int FROM staff_events se
              WHERE se.staff_id = s.id
                AND se.kind IN ('monitor_activity','monitor_screenshot')
                AND se.created_at >= date_trunc('day', now())) AS monitor_events_today
       FROM staff s
      WHERE s.org_id = $4::uuid
+       AND s.removed_at IS NULL
        AND ($3::text IS NULL OR s.role = $3)
        /* The caller's OWN row always comes back, whatever the filters below
           say. Without it the owner could never see a clock in/out button on

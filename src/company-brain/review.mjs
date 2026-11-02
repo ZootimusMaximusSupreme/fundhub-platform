@@ -178,21 +178,24 @@ export async function classifyAndApply(db, {
  * Every column the screen already reads is still here; the upload columns
  * (kind, source, approval_status, size_bytes, original_name) are additions.
  */
-export async function listPendingReviews(db, { orgId, limit = 50 } = {}) {
+export async function listPendingReviews(db, { orgId, limit = 50, offset = 0 } = {}) {
   const lim = Math.max(1, Math.min(200, Number(limit) || 50));
+  const skip = Math.max(0, Math.min(10000, Math.floor(Number(offset) || 0)));
   const res = await db.query(
     `SELECT r.id, r.org_id, r.file_id, r.drive_file_id, r.proposed_tier,
             r.rationale, r.status, r.created_at, r.kind,
+            COUNT(*) OVER() AS pending_total,
             f.name AS file_name, f.web_view_link, f.mime_type, f.access_tier,
             f.source, f.approval_status, f.size_bytes, f.original_name
        FROM brain_classification_reviews r
        JOIN brain_files f ON f.id = r.file_id
       WHERE r.org_id = $1 AND r.status = 'pending'
       ORDER BY r.created_at ASC
-      LIMIT $2`,
-    [orgId, lim]
+      LIMIT $2 OFFSET $3`,
+    [orgId, lim, skip]
   );
-  return { ok: true, reviews: res.rows || [] };
+  const reviews = res.rows || [];
+  return { ok: true, reviews, pendingCount: Number(reviews[0]?.pending_total) || reviews.length };
 }
 
 /**
