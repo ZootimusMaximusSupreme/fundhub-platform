@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert";
 import {
   handle as actualHandle, gridCells, resolveCellKey, runDeckDrip as actualRunDeckDrip,
-  currentDeckBooking, deckContentReady, deckTime, DECK_SLOTS, DECK_TITLES,
+  currentDeckBooking, deckContentReady, deckTime, DECK_SLOTS, DECK_TITLES, DECK_INTROS,
   FUNDING_PREFIX, REPAIR_PREFIX, DAYS, SLOTS, DAILY_SLOTS, KICKOFF_SLOT, KICKOFF_WAIT,
   SMS_BS01_BOOKED, SMS_BS01_PRECALL, SMS_BS01_DAYOF
 } from "./bs-01-precall-launcher.mjs";
@@ -42,7 +42,10 @@ test("deck plan covers both lanes and selects a distinct lesson for each slot", 
   for (const lane of ["funding", "blueprint"]) {
     const slugs = DECK_SLOTS.map((slot) => slot[lane]).filter(Boolean);
     assert.equal(new Set(slugs).size, slugs.length, "a person never sees the same lesson twice");
-    for (const slug of slugs) assert.ok(DECK_TITLES[slug], slug);
+    for (const slug of slugs) {
+      assert.ok(DECK_TITLES[slug], slug);
+      assert.ok(DECK_INTROS[slug], slug);
+    }
   }
   assert.equal(new Set(DECK_SLOTS.flatMap((slot) => [slot.funding, slot.blueprint]).filter(Boolean)).size, 22);
   assert.equal(DECK_SLOTS.filter((slot) => slot.channel === "push").length, 3);
@@ -55,7 +58,7 @@ test("deck emails use the saved survey lane and live URL", async () => {
     clients: [{ ...fundingClient(), custom_fields: { cf_svy_self_reported_fico: "700-759" } }],
     templates: [
       { org_id: "org-1", template_key: "EMAIL-BS-DECK-LESSON", channel: "email",
-        subject: "{{deck_title}}", body: "{{deck_url}}", compliance_passed: true },
+        subject: "{{deck_title}}", body: "{{deck_intro}}\n{{deck_url}}", compliance_passed: true },
       { org_id: "org-1", template_key: "SMS-BS-DECK", channel: "sms",
         body: "{{deck_url}}", compliance_passed: true }
     ]
@@ -69,6 +72,7 @@ test("deck emails use the saved survey lane and live URL", async () => {
   assert.equal(pushes.length, 3);
   assert.ok(db.messages.some((message) => /\/slideshows\/pre-underwriting\.html/.test(message.rendered_body)));
   assert.ok(db.messages.some((message) => /\/slideshows\/funding-sequence\.html/.test(message.rendered_body)));
+  assert.ok(db.messages.some((message) => /strong score can still meet a bank rule/.test(message.rendered_body)));
 });
 
 test("push lessons fall back to email when app push is unavailable", async () => {
