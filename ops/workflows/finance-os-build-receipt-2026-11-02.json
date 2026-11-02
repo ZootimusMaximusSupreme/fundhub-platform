@@ -1,0 +1,35 @@
+{
+  "task": "Employee payout-bank link and paid-commission iPhone alert",
+  "state": "integrated_source_for_next_protected_release_not_live",
+  "base": "origin/main bde2d939a688e155cf34d1a4937c627ba707d8d5 (PR #378 merged)",
+  "proof": {
+    "staff_bank_unit_and_http_with_push_payload_and_comp_alerts": "71 passed, 0 failed, 0 skipped",
+    "employee_and_owner_browser": "18 combined setter + employee/owner bank browser cases passed,0retry; 7 Finance,11 setter",
+    "pulse_registry": "9 passed, 0 failed",
+    "lint": "4606 files and inline scripts parse clean",
+    "typescript": "npx tsc --noEmit passed",
+    "rules": "rules:check passed",
+    "journeys": "journeys:check passed after regenerating 9 actual files",
+    "preflight": "exit 0; warned about other local worktrees and unavailable gh network; GitHub connector showed 0 open PRs after #378 merge",
+    "postgres": "Root 3 real fundhub_app Postgres cases passed, 0 skipped; loopback scratch only, synthetic orgs rolled back and zero leftovers; migrations541/542 applied only to scratch",
+    "native_simulator": "Combined native source: 38 actual XCTest passed,0failed,0skipped; includes payout routing + staff SMS link tests; no physical delivery or public build claim",
+    "live": "no bank link, transfer, APNs delivery, or authenticated production user path observed"
+  },
+  "external_gate": "Plaid account is Trial with Transactions and Balance only; production Transfer and separate STAFF_PLAID_* configuration are required before real recipient linking can be enabled.",
+  "money_movement": "none",
+  "owner_note": "Dots from Commas is connected to personal account and needs business account; no connection was changed.",
+  "handoff_patch_preservation": [
+    {
+      "path": "ops/workflows/build-evidence/finance-release-20261102/finance-os-native-handoff-2026-11-02.patch",
+      "sha256": "fdb14e7cb5ca923b7093aa5bc27925e03f0c82ed7e41d5c244015b6f34b60e75"
+    },
+    {
+      "path": "ops/workflows/build-evidence/finance-release-20261102/finance-os-shell-handoff-2026-11-02.patch",
+      "sha256": "16948336ee0b1a9faae9bc3b2ac4d8d6c9377850df41054ad222a409894eb6ed"
+    },
+    {
+      "path": "ops/workflows/build-evidence/finance-release-20261102/finance-os-release-handoff-2026-11-02.patch",
+      "sha256": "efa70a31df172f6a20ee4a599dccd6d4b645405bfe74b1cfccec992840775f2f"
+    }
+  ]
+}

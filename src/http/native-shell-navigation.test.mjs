@@ -245,3 +245,30 @@ test("client portal notification reload stays bound to the verified bearer", () 
   assert.match(tests, /testClientPortalTapCannotCrossSessions/);
   assert.match(tests, /testDelayedClientPortalTapRejectsAccountSwitchAfterIdentityRefresh/);
 });
+
+
+test("staff SMS universal links are exact-scope app associations with post-refresh session guards", () => {
+  const association = JSON.parse(readFileSync(new URL("../../public/.well-known/apple-app-site-association", import.meta.url), "utf8"));
+  const details = association.applinks.details;
+  assert.equal(details.length, 1);
+  assert.deepEqual(details[0].appIDs, ["8VDXL37RR6.ai.fundhub.app"]);
+  assert.deepEqual(details[0].components.map(c => c["/"]).sort(), ["/app/closer-dashboard.html", "/app/setter-dashboard.html"]);
+  for (const c of details[0].components) assert.deepEqual(c["?"], { client_id: "????????-????-????-????-????????????" });
+  for (const name of ["Fundhub.entitlements", "Fundhub.Release.entitlements"]) {
+    const entitlements = readFileSync(new URL(`../../tools/fundhub-ios/Fundhub/${name}`, import.meta.url), "utf8");
+    assert.match(entitlements, /com\.apple\.developer\.associated-domains/);
+    assert.match(entitlements, /<string>applinks:fundhub\.ai<\/string>/);
+    assert.doesNotMatch(entitlements, /applinks:\*/);
+  }
+  const models = readFileSync(new URL("../../tools/fundhub-ios/Fundhub/Core/Models.swift", import.meta.url), "utf8");
+  assert.match(models, /parts\.user == nil, parts\.password == nil, parts\.port == nil, parts\.fragment == nil/);
+  assert.match(models, /items\.count == 1, items\[0\]\.name == "client_id"/);
+  assert.match(models, /bearerAfterRefresh == bearerAtStart/);
+  assert.match(models, /generation == expected/);
+  assert.match(iosApp, /\.onOpenURL \{ url in store\.receiveStaffLink\(url\) \}/);
+  assert.match(iosApp, /\.onContinueUserActivity\(NSUserActivityTypeBrowsingWeb\)/);
+  const resolver = iosApp.split("func resolvePendingStaffLink() async -> StaffDashboardLink.Resolution? {")[1].split("func restore() async")[0];
+  assert.ok(resolver.indexOf("await refreshSession()") < resolver.indexOf("staffLinks.consume("));
+  const logout = iosApp.split("func signOut(revoke: Bool = true) async {")[1].split("private struct RootView")[0];
+  assert.ok(logout.indexOf("staffLinks.clear()") < logout.indexOf("await NativePushCenter.shared.revokeBeforeSignOut()"));
+});

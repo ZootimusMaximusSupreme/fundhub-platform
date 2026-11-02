@@ -1,0 +1,27 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "8VDXL37RR6.ai.fundhub.app"
+        ],
+        "components": [
+          {
+            "/": "/app/setter-dashboard.html",
+            "?": {
+              "client_id": "????????-????-????-????-????????????"
+            },
+            "comment": "Staff lead link; app validates exact UUID and rejects all other parameters."
+          },
+          {
+            "/": "/app/closer-dashboard.html",
+            "?": {
+              "client_id": "????????-????-????-????-????????????"
+            },
+            "comment": "Staff booked-call link; app validates exact UUID and rejects all other parameters."
+          }
+        ]
+      }
+    ]
+  }
+}

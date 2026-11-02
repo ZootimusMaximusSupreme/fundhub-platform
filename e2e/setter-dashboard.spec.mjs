@@ -254,3 +254,28 @@ test("correcting a lead's score on the call moves both booking links to the othe
   await expect(page.locator("#setter-survey-status")).toHaveText("Survey answers saved.");
   await expect(move).toHaveAttribute("href", Q);
 });
+
+
+test("an SMS link asks for its older selected lead and preserves selection after refresh", async ({ page }) => {
+  const target = { ...queue.items[0], client_id: "ffffffff-6666-4666-8666-666666666666", client_name: "Older linked lead" };
+  const requests = [];
+  await openScreen(page, `/app/setter-dashboard.html?client_id=${target.client_id}`, SETTER, {
+    "/api/read/setter-dashboard": (_route, { url }) => {
+      requests.push(new URL(url).searchParams.get("client_id"));
+      return { ...queue, items: new URL(url).searchParams.get("client_id") === target.client_id ? [target, queue.items[0]] : queue.items };
+    }
+  });
+  await expect(page.locator("#setter-detail h2")).toHaveText("Older linked lead");
+  await page.getByRole("button", { name: "Refresh queue" }).click();
+  await expect.poll(() => requests.length).toBeGreaterThanOrEqual(2);
+  expect(requests.every(id => id === target.client_id)).toBe(true);
+  await expect(page.locator("#setter-detail a[href='tel:+14702920106']")).toBeVisible();
+});
+
+test("a denied linked lead never selects the first different client", async ({ page }) => {
+  await openScreen(page, "/app/setter-dashboard.html?client_id=ffffffff-6666-4666-8666-666666666666", SETTER, {
+    "/api/read/setter-dashboard": queue
+  });
+  await expect(page.locator("#setter-detail [role=alert]")).toContainText("not in the setter queue");
+  await expect(page.locator("#setter-detail h2")).toHaveCount(0);
+});

@@ -164,3 +164,25 @@ describe("a signed-in client is NOT bounced", () => {
       "a signed-in client was sent to sign in again: " + JSON.stringify(navigations));
   });
 });
+
+
+describe("signed-out staff alert links retain only the selected work item", () => {
+  const id = "aaaaaaaa-1111-4111-8111-111111111111";
+  for (const page of ["setter-dashboard.html", "closer-dashboard.html"]) {
+    test(`${page} keeps client selection through sign-in`, async () => {
+      const { navigations } = await runShell({ page, search: `?client_id=${id}&token=do-not-carry&email=private`, role: "setter" });
+      const next = new URLSearchParams(last(navigations).split("?")[1]).get("next");
+      assert.equal(next, `/app/${page}?client_id=${id}`);
+    });
+    test(`${page} rejects malformed and ambiguous client ids`, async () => {
+      for (const search of ["?client_id=https://evil.invalid", `?client_id=${id}&client_id=${id}`]) {
+        const { navigations } = await runShell({ page, search });
+        assert.equal(last(navigations), `/login.html?next=/app/${page}`);
+      }
+    });
+  }
+  test("other staff pages retain their existing bare return path", async () => {
+    const { navigations } = await runShell({ page: "pipeline.html", search: `?client_id=${id}` });
+    assert.equal(last(navigations), "/login.html?next=/app/pipeline.html");
+  });
+});

@@ -4,11 +4,54 @@ import {
   buildPayoutEmailContext,
   buildDealCloseBody,
   notifyCommissionPaid,
+  notifyCommissionPaidPush,
   notifyDealCloseWin,
   recipientsForSale,
   EMAIL_COMMISSION_PAID,
   SMS_DEAL_CLOSE_WIN
 } from "./comp-alerts.mjs";
+
+test("paid commission pushes only to its attributed staff member and client", async () => {
+  const calls = [];
+  const db = { async query() { return { rows: [{ id: "closer-1" }] }; } };
+  const event = {
+    orgId: "org-1", clientId: "client-1",
+    payload: { staff_id: "closer-1", ledger_id: "ledger-1" }
+  };
+  const pushImpl = async (_db, args) => { calls.push(args); return { sent: 1 }; };
+  const sent = await notifyCommissionPaidPush(db, event, { pushImpl });
+  assert.equal(sent.sent, 1);
+  assert.deepEqual(calls, [{
+    orgId: "org-1", staffId: "closer-1", clientId: "client-1",
+    kind: "payout", key: "commission.paid:ledger-1"
+  }]);
+  const withoutClient = await notifyCommissionPaidPush(db, { ...event, clientId: null }, { pushImpl });
+  assert.equal(withoutClient.reason, "missing_ids");
+  assert.equal(calls.length, 1);
+  const ineligible = await notifyCommissionPaidPush(
+    { async query() { return { rows: [] }; } }, event, { pushImpl }
+  );
+  assert.equal(ineligible.reason, "not_eligible");
+  assert.equal(calls.length, 1);
+});
+
+test("historical closer duty on an external primary role cannot receive payout push", async () => {
+  let pushed = false;
+  const db = { async query(sql) {
+    assert.match(sql, /lower\(btrim\(s\.role\)\) NOT IN/);
+    for (const role of ["owner", "admin", "partner", "client", "affiliate", "outbound_rep"]) {
+      assert.match(sql, new RegExp(`'${role}'`));
+    }
+    // A partner with an old closer assignment is excluded by the query.
+    return { rows: [] };
+  } };
+  const result = await notifyCommissionPaidPush(db, {
+    orgId: "org-1", clientId: "client-1",
+    payload: { staff_id: "partner-1", ledger_id: "ledger-1" }
+  }, { pushImpl: async () => { pushed = true; } });
+  assert.equal(result.reason, "not_eligible");
+  assert.equal(pushed, false);
+});
 
 test("payout email context formats amount and first name", () => {
   const ctx = buildPayoutEmailContext({

@@ -54,6 +54,7 @@ export const ALLOWED_UNMONITORED = {
   "public/ad-video-approve": "The approval token in Chris's phone notification is the whole credential, so a GET without one answers 404 on purpose — and it answers that identically for a made-up token, an expired one and a spent one, so the door cannot be used to find out which tokens exist. A ping would read that correct refusal as an outage every single time. Pinging it with a body is worse: a POST is the decision, and it would approve or reject a filmed take that nobody watched. The monitored door for this surface is ad-videos, the staff queue, which answers GET and reports how many takes are waiting.",
   "affiliates/payouts": "POST only, finance staff. A GET answers 405 by design, and pinging it with a body would send a payout through Plaid, mark one paid, hold, release or cancel one, or stamp an affiliate's paperwork. Its read sibling read/affiliate-payouts answers GET and is the monitored door; partners:payout-overdue reads the saved runs every morning.",
   "affiliates/payout-account": "POST only, affiliate session. A GET answers 405 by design, and pinging it with a body would open a Plaid link or save a bank onto an affiliate's payouts. Its read sibling read/affiliate-portal is the monitored door; partners:payout-overdue goes red if payouts stop going out.",
+  "staff/payout-account": "POST only, signed-in closer or sales manager. A GET answers 405 by design, and a POST would open Plaid Link or change that employee's payout destination. Its read sibling read/staff-payout-account is the monitored door.",
   "404.html": "This is the missing-page file. Opening it is what a bad link does. A morning ping of the not-found page does not watch a product door.",
   "climate/404.html": "Climate site missing-page file. A morning ping of the not-found page does not watch the climate door. climate/index.html is the page the pulse pings.",
   "climate/404/index.html": "Same missing-page file as climate/404.html, at the folder URL. The pulse watches climate/index.html instead of this file.",
@@ -82,7 +83,7 @@ export const SEND_PATHS = {
   "src/push/native-send.mjs": { watch: "push/native-device" },
   "src/staff/blake-lead-watch.mjs": { watch: "blake-lead-watch" },
   "src/staff/comp-alerts.mjs": {
-    reason: "Fires on commission.paid, sale.closed, and deposit.paid. There is no schedule and no GET door. A morning ping cannot send a payout email. The commissions desk is the page a person opens for this."
+    reason: "Fires on commission.paid, sale.closed, and deposit.paid. There is no schedule and no GET door. A morning ping cannot send a payout email or iPhone push. The commissions desk is the page a person opens for this."
   },
   "src/workflows/ad-video-sweeper.mjs": { watch: "ad-video-sweeper" }
 };
@@ -416,6 +417,7 @@ const API_KEYS = [
   "read/search",
   "read/slo-connections",
   "read/staff",
+  "read/staff-payout-account",
   "read/tradelines",
   "read/transactions",
   "read/underwrite",

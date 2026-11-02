@@ -121,6 +121,101 @@ enum FundhubRole {
     }
 }
 
+// HTTPS staff SMS links carry context, never authority or a bearer token.
+// The existing dashboard APIs still enforce role, tenant and lead assignment.
+enum StaffDashboardLink {
+    static let lifetime: TimeInterval = 5 * 60
+
+    struct Target: Equatable {
+        let path: String
+        let clientId: String
+        var workspacePath: String { "\(path)?client_id=\(clientId)" }
+
+        func permits(principal: String, role: String?) -> Bool {
+            guard principal == "staff", let role else { return false }
+            switch path {
+            case "/app/setter-dashboard.html": return ["owner", "admin", "setter"].contains(role)
+            case "/app/closer-dashboard.html": return ["owner", "admin", "sales_manager", "closer"].contains(role)
+            default: return false
+            }
+        }
+    }
+
+    static func parse(_ url: URL) -> Target? {
+        guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              parts.scheme == "https", parts.host?.lowercased() == "fundhub.ai",
+              parts.user == nil, parts.password == nil, parts.port == nil, parts.fragment == nil,
+              ["/app/setter-dashboard.html", "/app/closer-dashboard.html"].contains(parts.percentEncodedPath),
+              let items = parts.queryItems, items.count == 1, items[0].name == "client_id",
+              let rawId = items[0].value, rawId.count == 36, let id = UUID(uuidString: rawId),
+              parts.percentEncodedQuery == "client_id=\(rawId)" else { return nil }
+        return Target(path: parts.percentEncodedPath, clientId: id.uuidString.lowercased())
+    }
+
+    struct Resolution {
+        let target: Target
+        let bearer: String
+        let generation: Int
+        var path: String { target.workspacePath }
+
+        func isCurrent(bearer current: String?, generation currentGeneration: Int,
+                       principal: String?, role: String?, verified: Bool,
+                       taskCancelled: Bool) -> Bool {
+            !taskCancelled && verified && current == bearer && currentGeneration == generation &&
+                target.permits(principal: principal ?? "", role: role)
+        }
+    }
+
+    struct Pending {
+        let id: UUID
+        let target: Target
+        let receivedAt: Date
+        let bearerAtReceipt: String?
+    }
+
+    struct Queue {
+        private(set) var generation = 0
+        private(set) var pending: Pending?
+        private var lastDelivery: Pending?
+
+        @discardableResult
+        mutating func receive(_ url: URL, bearer: String?, now: Date = Date()) -> Bool {
+            guard let target = StaffDashboardLink.parse(url) else { return false }
+            // SwiftUI can deliver the same OS event to both URL/activity hooks.
+            if let lastDelivery, lastDelivery.target == target,
+               lastDelivery.bearerAtReceipt == bearer,
+               (0...1).contains(now.timeIntervalSince(lastDelivery.receivedAt)) { return true }
+            generation &+= 1
+            let request = Pending(id: UUID(), target: target, receivedAt: now, bearerAtReceipt: bearer)
+            pending = request
+            lastDelivery = request
+            return true
+        }
+
+        mutating func clear() {
+            generation &+= 1
+            pending = nil
+            lastDelivery = nil
+        }
+
+        mutating func consume(requestId: UUID, generation expected: Int,
+                              bearerAtStart: String, bearerAfterRefresh: String?,
+                              principal: String?, role: String?, verified: Bool,
+                              taskCancelled: Bool, now: Date = Date()) -> Resolution? {
+            guard let request = pending, request.id == requestId, generation == expected else { return nil }
+            // One attempt only, including a refused role. Never resurrect it on a later sign-in.
+            pending = nil
+            let age = now.timeIntervalSince(request.receivedAt)
+            guard !taskCancelled, verified, !bearerAtStart.isEmpty,
+                  bearerAfterRefresh == bearerAtStart,
+                  request.bearerAtReceipt == nil || request.bearerAtReceipt == bearerAtStart,
+                  age >= 0, age <= StaffDashboardLink.lifetime,
+                  request.target.permits(principal: principal ?? "", role: role) else { return nil }
+            return Resolution(target: request.target, bearer: bearerAtStart, generation: generation)
+        }
+    }
+}
+
 enum MagicLink {
     static func token(from pasted: String) -> String? {
         guard let url = URL(string: pasted.trimmingCharacters(in: .whitespacesAndNewlines)),

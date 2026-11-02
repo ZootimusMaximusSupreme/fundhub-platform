@@ -36,3 +36,18 @@
 - Production acceptance remains **NOT LIVE PROVED** until read-only role screen and verified deployment show the expected results. No intentional test write on live data.
 
 **Priority:** a later UX enhancement, not a precondition to claim separate high-priority customer-to-paid-fulfillment acceptance. Urgent booking, client isolation, payment truth, and client communication defects take precedence. Do not conflate a passing browser/unit suite with a real customer handoff.
+
+
+## Staff SMS and selected lead repair — 2026-11-02
+
+Owner request: booked setter text lost survey context; a small link must open the correct setter/closer work item for call, entry and handoff. Root owns release/native work. This worker owns only SMS builders, existing setter selected-client read/screen, narrow staff sign-in return selection and their tests. No branch, Git, provider, role or real customer writes by this worker.
+
+Observed source cause: PR #366 (8b55e5afe) set `custom_fields: {}` in the booked setter builder and a test required the missing survey. SMS builders had no dashboard URL. The setter screen searched only the first 50 queue rows and signed-out shell return URLs dropped client selection. The existing setter screen and saved original/corrected answers were still present.
+
+Browser repair: use existing HTTPS `/app/setter-dashboard.html?client_id=<uuid>` for lead/booked setter alerts and `/app/closer-dashboard.html?client_id=<uuid>` for existing closer set/upcoming alerts. Only UUID is in the link. Booked context reads the same saved survey/corrections as the established lead text. Queue selection stays behind existing org/task/claim/archive gates and prioritizes the selected accessible row before paging. Invalid or denied links never pick a different lead; single valid UUID survives password sign-in on only these two staff pages. Original survey and corrections remain separate. No recipient/fanout, external send, new route or shortener.
+
+Proof packet: `/private/tmp/fundhub-staff-sms-browser-20261102/`. Focused Node 80/80, real allocated nonprivileged `fundhub_app` Postgres 1/1 with 55 newer leads and wrong-org/other-assignee/foreign-handoff-claim/archive/done negatives; original/correction distinction and owner access checked; entire synthetic transaction rolled back, final orgs zero. Browser 11/11 zero retries after repairing the actual unavailable-message paint bug; original failure kept in `playwright.log`, fixed receipt in `playwright-fixed.log`. Full lint/check receipts and source hashes follow in the packet. Local proof is separate from protected deployment, real SMS and native installed-app delivery.
+
+Independent reviewer prompt: Review only this worker's exact source manifest/patch for saved survey correction precedence, UUID-only correct-desk SMS links, unchanged recipients/replay gates, selected-client query tenant/assignment/archive constraints, first-50 recovery and sign-in client carry. Reproduce focused Node/browser proof and inspect rollback-only PG evidence. Do not send texts, touch root phone/native files or self-approve production.
+
+Release owner prompt: Preserve the root phone commit and Finance menu delta; integrate only reviewed SMS manifest through the existing one release. Native universal links are a separate coordinated native/AASA patch. Require real protected CI/Ship and read-only authenticated live/device evidence; do not call source tests delivery proof.

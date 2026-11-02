@@ -193,11 +193,11 @@ export function buildAlertBody({ client = {}, booking = {}, commissionRules = []
   return lines.join("\n");
 }
 
-export function buildSetterAlertBody({ client = {}, booking = {}, label = "Booked call" } = {}) {
+export function buildSetterAlertBody({ client = {}, clientId = client.client_id || client.id, booking = {}, label = "Booked call" } = {}) {
   return buildStaffLeadText({
     client: { ...client, first_name: client.first_name || clean(booking.name).split(/\s+/)[0],
-      phone: client.phone || booking.phone, email: client.email || booking.email, custom_fields: {} },
-    startTime: booking.startTime
+      phone: client.phone || booking.phone, email: client.email || booking.email },
+    clientId, startTime: booking.startTime
   }).replace(/^New lead:/, `${label}:`);
 }
 
@@ -257,7 +257,7 @@ export async function queueStaffBookedAlerts(db, {
     : false;
   const label = eventName === "booking.rescheduled" ? "Rescheduled call"
     : prior ? "Rebooked call" : "Booked call";
-  const setterBody = renderTemplate(row.body, { alert_body: buildSetterAlertBody({ client, booking, label }) });
+  const setterBody = renderTemplate(row.body, { alert_body: buildSetterAlertBody({ client, clientId, booking, label }) });
 
   let queued = 0;
   let sent = 0;

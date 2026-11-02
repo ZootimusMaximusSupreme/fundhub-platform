@@ -8,14 +8,16 @@ import { BOARD_CARDS_SQL, BOARD_READ_LIMIT, orgDemoModeEnabled } from "./lib/pip
 export const id = "native-push";
 export const title = "Native iPhone push is ready";
 export const kind = "probe";
-export const covers = ["route:push/native-device", "route:push/preferences", "send:src/push/native-send.mjs", "route:native/client-activity"];
+export const covers = ["route:push/native-device", "route:push/preferences", "send:src/push/native-send.mjs", "route:native/client-activity", "page:.well-known/apple-app-site-association"];
 export const box = false;
 export const reads = [{ host: "SITE", methods: ["GET"] }];
-export const steps = ["preference-door", "preference-shape", "signing-ready", "door-mounted", "device-owner", "recent-delivery-failure", "native-open-receipts"];
+export const steps = ["preference-door", "preference-shape", "signing-ready", "door-mounted", "device-owner", "recent-delivery-failure", "native-open-receipts", "staff-link-association"];
 export const checkIds = ["crm-data:pipeline"];
 export const damp = 2;
 export const deadlineMs = 5000;
 
+export const STAFF_LINK_ASSOCIATION = {"applinks":{"details":[{"appIDs":["8VDXL37RR6.ai.fundhub.app"],"components":[{"/":"/app/setter-dashboard.html","?":{"client_id":"????????-????-????-????-????????????"},"comment":"Staff lead link; app validates exact UUID and rejects all other parameters."},{"/":"/app/closer-dashboard.html","?":{"client_id":"????????-????-????-????-????????????"},"comment":"Staff booked-call link; app validates exact UUID and rejects all other parameters."}]}]}};
+const ASSOCIATION_PATH = "/.well-known/apple-app-site-association";
 const PATH = "/api/push/native-device";
 const PREFERENCE_PATH = "/api/push/preferences";
 const SITE = "https://fundhub.ai";
@@ -113,6 +115,15 @@ export async function run(ctx) {
     }
   });
 
+  await ctx.step("staff-link-association", async () => {
+    const res = await ctx.http.get(`${ctx.siteUrl}${ASSOCIATION_PATH}`);
+    let body;
+    try { body = JSON.parse(String(res.body ?? res.bodySnippet ?? "")); } catch { body = null; }
+    if (res.status !== 200 || JSON.stringify(body) !== JSON.stringify(STAFF_LINK_ASSOCIATION)) {
+      throw ctx.fail("staff-link-association", "The exact staff dashboard app association is missing or has changed. This does not prove an installed app opens SMS links.");
+    }
+  });
+
   let deviceRow;
   await ctx.step("device-owner", async () => {
     let row;
@@ -179,6 +190,7 @@ export const fixGuide = [
   "- device-owner: the device table is missing, cannot be read, or a live row belongs to another client.",
   "- recent-delivery-failure: a recent device send failed, a companion push has no result after 15 minutes, or the count could not be read. Review unknown attempts before resending.",
   "- native-open-receipts: a saved app open is missing or wrong on the Sales card, or either read failed.",
+  "- staff-link-association: the static Apple association must name only this app and the two staff dashboard paths; Messages/device opening is a separate proof.",
   "Steps:",
   "- Run node scripts/pulse/run-beat.mjs native-push to see the first failed step.",
   "- Check both push routes, saved client choices, the live environment names, and device rows without printing keys or tokens.",
@@ -196,7 +208,8 @@ function goodAnswers() {
     },
     http: {
       [`GET ${SITE}${PREFERENCE_PATH}`]: { status: 401, body: JSON.stringify({ ok: false, error: "unauthorized" }) },
-      [`GET ${SITE}${PATH}`]: { status: 401, body: JSON.stringify({ ok: false, error: "unauthorized" }) }
+      [`GET ${SITE}${PATH}`]: { status: 401, body: JSON.stringify({ ok: false, error: "unauthorized" }) },
+      [`GET ${SITE}${ASSOCIATION_PATH}`]: { status: 200, body: JSON.stringify(STAFF_LINK_ASSOCIATION) }
     },
     read: [
       { match: /FROM clients/, rows: [{ invalid_preferences: 0 }] },

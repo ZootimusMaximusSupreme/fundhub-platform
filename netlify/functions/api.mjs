@@ -84,6 +84,8 @@ import readPartnerTraining from "../../api/read/partner-training.mjs";
 import readMessageTemplates from "../../api/read/message-templates.mjs";
 import readMessageTests from "../../api/read/message-tests.mjs";
 import readStaff from "../../api/read/staff.mjs";
+import readStaffPayoutAccount from "../../api/read/staff-payout-account.mjs";
+import staffPayoutAccount from "../../api/staff/payout-account.mjs";
 import staffTelemetry from "../../api/staff/telemetry.mjs";
 import staffMonitoringConsent from "../../api/staff/monitoring-consent.mjs";
 import staffAvatar from "../../api/staff/avatar.mjs";
@@ -551,6 +553,8 @@ export const ROUTES = {
   "read/message-templates": readMessageTemplates,
   "read/message-tests": readMessageTests,
   "read/staff": readStaff,
+  "read/staff-payout-account": readStaffPayoutAccount,
+  "staff/payout-account": staffPayoutAccount,
   "staff/telemetry": staffTelemetry,
   "staff/monitoring-consent": staffMonitoringConsent,
   "staff/avatar": staffAvatar,

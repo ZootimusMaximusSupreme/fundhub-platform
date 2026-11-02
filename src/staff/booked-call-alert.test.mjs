@@ -78,15 +78,18 @@ test("buildAlertBody: passing survey lane runs funding first", () => {
   assert.match(body, /RUN FIRST: Funding, done-for-you/);
 });
 
-test("setter booking alert gives call facts without closer price or commission copy", () => {
+test("setter booking alert includes saved survey and its desk link without commission copy", () => {
   const body = buildSetterAlertBody({
-    client: { first_name: "Pat", phone: "+15551234567", custom_fields: { cf_svy_planned_use_label: "Expansion" } },
+    client: { id: "11111111-1111-4111-8111-111111111111", first_name: "Pat", phone: "+15551234567",
+      custom_fields: { cf_svy_planned_use_label: "Expansion", setter_survey_edits: { cf_svy_planned_use: "Equipment" } } },
     booking: { startTime: "2026-10-28T21:00:00Z", timezone: "America/Phoenix" }
   });
   assert.match(body, /Pat/);
   assert.match(body, /Booked call: Pat/);
   assert.match(body, /Booked:/);
+  assert.match(body, /Planned Use: Equipment/);
   assert.doesNotMatch(body, /Expansion/);
+  assert.match(body, /https:\/\/fundhub\.ai\/app\/setter-dashboard\.html\?client_id=11111111-1111-4111-8111-111111111111/);
   assert.doesNotMatch(body, /deposit|commission|Funding, done-for-you/i);
 });
 
@@ -115,7 +118,7 @@ test("fundingPayFromRules uses live closer deposit percent", () => {
   assert.equal(pay.closerDepositCents, 50000);
 });
 
-test("queueStaffBookedAlerts: owner and setter get contact-only booking alerts, never the closer", async () => {
+test("queueStaffBookedAlerts: owner and setter get saved-context booking alerts, never the closer", async () => {
   const messages = [];
   const drains = [];
   const refs = new Set();
@@ -134,7 +137,7 @@ test("queueStaffBookedAlerts: owner and setter get contact-only booking alerts, 
       if (/FROM clients/.test(sql)) {
         return { rows: [{
           first_name: "Pat", last_name: "Lee", email: "pat@x.com", phone: "480",
-          channel_source: "clickfunnels", custom_fields: {}
+          channel_source: "clickfunnels", custom_fields: { cf_svy_planned_use_label: "Expansion" }
         }] };
       }
       if (/FROM commission_rules/.test(sql)) {
@@ -155,7 +158,7 @@ test("queueStaffBookedAlerts: owner and setter get contact-only booking alerts, 
     }
   };
   const out = await queueStaffBookedAlerts(db, {
-    orgId: "org-1", clientId: "cl-1", eventId: "evt-1",
+    orgId: "org-1", clientId: "11111111-1111-4111-8111-111111111111", eventId: "evt-1",
     payload: { startTime: "2026-08-25T21:00:00.000Z", name: "Pat Lee" },
     drainNowImpl: async (_db, id, options) => {
       drains.push({ id, orgId: options.orgId });
@@ -176,18 +179,20 @@ test("queueStaffBookedAlerts: owner and setter get contact-only booking alerts, 
   assert.equal(messages[1].to, "+15553333");
   assert.match(messages[1].body, /Booked call: Pat/);
   assert.match(messages[1].body, /Booked:/);
+  assert.match(messages[1].body, /Planned Use: Expansion/);
+  assert.match(messages[1].body, /setter-dashboard\.html\?client_id=11111111-1111-4111-8111-111111111111/);
   assert.doesNotMatch(messages[1].body, /deposit|commission/i);
   assert.match(messages[1].ref, /st-3/);
 
   const replay = await queueStaffBookedAlerts(db, {
-    orgId: "org-1", clientId: "cl-1", eventId: "evt-1",
+    orgId: "org-1", clientId: "11111111-1111-4111-8111-111111111111", eventId: "evt-1",
     drainNowImpl: async () => { throw new Error("replay must not drain"); }
   });
   assert.deepEqual(replay, { queued: 0, sent: 0 });
   assert.equal(messages.length, 2);
 
   const deferred = await queueStaffBookedAlerts(db, {
-    orgId: "org-1", clientId: "cl-1", eventId: "evt-2",
+    orgId: "org-1", clientId: "11111111-1111-4111-8111-111111111111", eventId: "evt-2",
     drainNowImpl: async () => ({ ran: false, reason: "paused", sent: 0 })
   });
   assert.deepEqual(deferred, { queued: 2, sent: 0 });

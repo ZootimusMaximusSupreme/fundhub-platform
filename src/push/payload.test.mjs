@@ -39,8 +39,21 @@ import {
   GENERIC_BODIES,
   PUSH_KINDS,
   DEFAULT_URL,
+  buildStaffPushPayload,
   PushPayloadRefused
 } from "./payload.mjs";
+
+test("staff payout push uses fixed copy and rejects account details on a lock screen", () => {
+  const base = {
+    audience: "staff", kind: "payout",
+    clientId: "4e462f3b-a87b-47cc-baf3-f428b7b5f8b5",
+    key: "commission.paid:48b5ab40-2397-444d-bba6-96b979d425a1"
+  };
+  const payload = JSON.parse(buildStaffPushPayload(base));
+  assert.match(payload.body, /payout/i);
+  assert.doesNotMatch(JSON.stringify(payload), /\$|account|routing|48b5ab40/i);
+  assert.throws(() => buildStaffPushPayload({ ...base, body: "Paid $500 to account 1234" }), PushPayloadRefused);
+});
 import { send as webPushSend } from "../messaging/providers/web-push.mjs";
 import { generateVapidKeys, b64u, decryptPayload } from "./crypto.mjs";
 

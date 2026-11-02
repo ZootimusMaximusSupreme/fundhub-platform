@@ -70,11 +70,12 @@ flowchart TD
     CANT --> B_staff[staff — 3 blocked]
     CANT --> B_top_level[Everything else — 36 blocked]
     CANT --> B_trials[trials — 3 blocked]
+    WHO -->|Yes| UNV[UNVERIFIED — 2 routes whose gate could not be traced]
 ```
 
 ## What they can reach
 
-**83 of 343 routes.**
+**83 of 345 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -169,7 +170,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**260 of 343 routes.**
+**260 of 345 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -436,7 +437,13 @@ flowchart TD
 
 ## UNVERIFIED
 
-_None — every route's gate was traced to its source._
+The gate on these could not be traced from the code, so this page does not claim
+either way whether this journey reaches them. Each one is a question for a human.
+
+| Route | Methods | Who the code lets in |
+|---|---|---|
+| `/api/read/staff-payout-account` | GET | — |
+| `/api/staff/payout-account` | POST | — |
 
 ## How to check this yourself
 
