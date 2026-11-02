@@ -173,9 +173,9 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   const leadEmail = (event.payload || {}).email || null;
   const stepsAside = async (n) => !finished
     && step.run(`check-handed-over-${n}`, () => surveyCompleted(db, clientId, leadEmail, orgId));
-  const alreadyGot = async (n, keys) => finished
+  const alreadyGot = async (n, key) => finished
     && step.run(`check-already-sent-${n}`, () =>
-      sentRecently(db, { orgId, clientId, keys, sinceMs: now().getTime() - RECENT_SEND_MS }));
+      sentRecently(db, { orgId, clientId, keys: [key], sinceMs: now().getTime() - RECENT_SEND_MS }));
   const HANDED_OVER = "handed-to-finished-chase";
   const SKIPPED = Object.freeze({ skipped: "sent_by_an_earlier_run" });
 
@@ -233,14 +233,16 @@ export async function handle({ event, db, step, now = () => new Date() }) {
     return { done: true, exitedAt: "replied", task };
   }
   if (await stepsAside(1)) return { done: true, exitedAt: HANDED_OVER, task };
-  const msg1 = await alreadyGot(1, [SMS_NOBOOK_01, EMAIL_NOBOOK_01]) ? SKIPPED : await step.run("send-nobook-1", async () => {
+  const skip1Sms = await alreadyGot("1-sms", SMS_NOBOOK_01);
+  const skip1Email = await alreadyGot("1-email", EMAIL_NOBOOK_01);
+  const msg1 = await step.run("send-nobook-1", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
-    sms: await sendTemplated(db, {
+    sms: skip1Sms ? SKIPPED : await sendTemplated(db, {
       orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_01,
       eventId: `${cohortId}:1`
     }),
-    email: await sendTemplated(db, {
+    email: skip1Email ? SKIPPED : await sendTemplated(db, {
       orgId, clientId, channel: "email", templateKey: EMAIL_NOBOOK_01,
       eventId: `${cohortId}:1e`
     })
@@ -255,14 +257,16 @@ export async function handle({ event, db, step, now = () => new Date() }) {
     return { done: true, exitedAt: "replied", task, msg1 };
   }
   if (await stepsAside(2)) return { done: true, exitedAt: HANDED_OVER, task, msg1 };
-  const msg2 = await alreadyGot(2, [SMS_NOBOOK_02, EMAIL_NOBOOK_02]) ? SKIPPED : await step.run("send-nobook-2", async () => {
+  const skip2Sms = await alreadyGot("2-sms", SMS_NOBOOK_02);
+  const skip2Email = await alreadyGot("2-email", EMAIL_NOBOOK_02);
+  const msg2 = await step.run("send-nobook-2", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
-    sms: await sendTemplated(db, {
+    sms: skip2Sms ? SKIPPED : await sendTemplated(db, {
       orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_02,
       eventId: `${cohortId}:2`
     }),
-    email: await sendTemplated(db, {
+    email: skip2Email ? SKIPPED : await sendTemplated(db, {
       orgId, clientId, channel: "email", templateKey: EMAIL_NOBOOK_02,
       eventId: `${cohortId}:2e`
     })
@@ -277,14 +281,16 @@ export async function handle({ event, db, step, now = () => new Date() }) {
     return { done: true, exitedAt: "replied", task, msg1, msg2 };
   }
   if (await stepsAside(3)) return { done: true, exitedAt: HANDED_OVER, task, msg1, msg2 };
-  const msg3 = await alreadyGot(3, [SMS_NOBOOK_03, EMAIL_NOBOOK_03]) ? SKIPPED : await step.run("send-nobook-3", async () => {
+  const skip3Sms = await alreadyGot("3-sms", SMS_NOBOOK_03);
+  const skip3Email = await alreadyGot("3-email", EMAIL_NOBOOK_03);
+  const msg3 = await step.run("send-nobook-3", async () => {
     const cohortId = await messageCohortId(db, { eventId, orgId, clientId, name: trigger });
     return {
-    sms: await sendTemplated(db, {
+    sms: skip3Sms ? SKIPPED : await sendTemplated(db, {
       orgId, clientId, channel: "sms", templateKey: SMS_NOBOOK_03,
       eventId: `${cohortId}:3`
     }),
-    email: await sendTemplated(db, {
+    email: skip3Email ? SKIPPED : await sendTemplated(db, {
       orgId, clientId, channel: "email", templateKey: EMAIL_NOBOOK_03,
       eventId: `${cohortId}:3e`
     })

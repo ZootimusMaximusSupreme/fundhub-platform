@@ -509,9 +509,24 @@ test("nobook: a survey.completed run skips a text the person already got from an
   db.messages.push({ org_id: "org-1", client_id: "cl-1", channel: "email", template_key: EMAIL_NOBOOK_01, provider_ref: "workflow:EMAIL-NOBOOK-01:evt-old:1e" });
   const res = await handle({ event: finishedEvent({ id: "evt-new-finish" }), db, step: recordingStep() });
   assert.equal(res.exitedAt, "completed");
-  assert.deepEqual(res.msg1, { skipped: "sent_by_an_earlier_run" });
+  assert.deepEqual(res.msg1, {
+    sms: { skipped: "sent_by_an_earlier_run" },
+    email: { skipped: "sent_by_an_earlier_run" }
+  });
   assert.deepEqual(db.messages.filter((m) => m.provider_ref.includes("evt-new-finish")).map((m) => m.template_key).sort(),
     [EMAIL_NOBOOK_02, EMAIL_NOBOOK_03, SMS_NOBOOK_02, SMS_NOBOOK_03].sort(), "texts and emails 2 and 3, once each");
+});
+
+test("nobook: one old-trigger channel does not suppress the other channel", async () => {
+  const db = withRecentSends(makeDb({
+    clients: [{ ...PERSON }], templates: templates(),
+    events: [{ id: "evt-old-sms", org_id: "org-1", client_id: "cl-1", name: "survey.submitted", payload: {}, created_at: "2026-10-30T10:00:00Z" }]
+  }));
+  db.messages.push({ org_id: "org-1", client_id: "cl-1", channel: "sms", template_key: SMS_NOBOOK_01, provider_ref: "workflow:SMS-NOBOOK-01:evt-old-sms:1" });
+  const res = await handle({ event: finishedEvent({ id: "evt-partial-old" }), db, step: recordingStep() });
+  assert.deepEqual(res.msg1.sms, { skipped: "sent_by_an_earlier_run" });
+  assert.ok(db.messages.some((m) => m.template_key === EMAIL_NOBOOK_01 && m.provider_ref?.includes("evt-partial-old")));
+  assert.equal(db.messages.filter((m) => m.template_key === SMS_NOBOOK_01).length, 1);
 });
 
 /* ── Every link follows the person's score ────────────────────────────────────
