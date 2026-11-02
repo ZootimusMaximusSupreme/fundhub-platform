@@ -2,11 +2,16 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { launchProxySession, ProxySessionError } from "./launch.mjs";
 
-function fakeDb({ client, lender, application, businesses = [] } = {}) {
+function fakeDb({ client, lender, application, businesses = [], cases = [], inquiries = [], fraudCase = false } = {}) {
   const sessions = [];
   return {
     sessions,
     query(sql, params) {
+      if (/SELECT tags FROM clients/.test(sql)) return { rows: [{ tags: client?.tags || [] }] };
+      if (/SELECT 1 FROM inquiry_removal_cases/.test(sql)) return { rows: fraudCase ? [{ exists: 1 }] : [] };
+      if (/SELECT \*\s+FROM inquiry_removal_cases/.test(sql)) return { rows: cases };
+      if (/SELECT bureau, status, created_at FROM inquiry_log/.test(sql)) return { rows: inquiries };
+      if (/SELECT bureaus_pulled FROM lenders/.test(sql)) return { rows: lender ? [{ bureaus_pulled: lender.bureaus_pulled }] : [] };
       if (/FROM clients/.test(sql)) {
         return { rows: client ? [client] : [] };
       }
@@ -211,4 +216,46 @@ test("launchProxySession fails when lender has no application_url", async () => 
     }),
     (err) => err instanceof ProxySessionError && err.code === "application_url_missing"
   );
+});
+
+const baseClient = () => ({ id: "c1", org_id: "o1", custom_fields: { city: "Mesa", state: "AZ" } });
+const baseLender = (bureaus_pulled) => ({ id: "l1", org_id: "o1", name: "B", application_url: "https://x.test", bureaus_pulled });
+const launch = (db) => launchProxySession(db, { orgId: "o1", staffId: "s1", clientId: "c1", lenderId: "l1", env: {} });
+
+test("direct Apply launch refuses a lender pulling an active bureau", async () => {
+  const db = fakeDb({ client: baseClient(), lender: baseLender("EX"), cases: [{ selected_bureaus_raw: "EX", case_status: "In Progress" }] });
+  await assert.rejects(launch(db), (err) => err.code === "lender_bureau_on_hold" && err.status === 409);
+  assert.equal(db.sessions.length, 0);
+});
+
+test("clean bureau can start Apply while another bureau is protected", async () => {
+  const db = fakeDb({ client: baseClient(), lender: baseLender("TU"), cases: [{ selected_bureaus_raw: "EX", case_status: "In Progress" }] });
+  await assert.rejects(launch(db), (err) => err.code === "oxylabs_credentials_missing");
+  assert.equal(db.sessions.length, 1);
+});
+
+test("multi-bureau lender and unmapped lender cannot bypass protection", async () => {
+  for (const pulled of ["EX,TU", null]) {
+    const db = fakeDb({ client: baseClient(), lender: baseLender(pulled), inquiries: [{ bureau: "EX", status: "Removed", created_at: new Date().toISOString() }] });
+    await assert.rejects(launch(db), (err) => err.code === (pulled ? "lender_bureau_on_hold" : "lender_bureau_unknown"));
+    assert.equal(db.sessions.length, 0);
+  }
+});
+
+test("owner case override allows that bureau when no inquiry log still protects it", async () => {
+  const db = fakeDb({ client: baseClient(), lender: baseLender("EX"), cases: [{ selected_bureaus_raw: "EX", case_status: "In Progress", gate_override_by: "owner", gate_override_at: new Date().toISOString() }] });
+  await assert.rejects(launch(db), (err) => err.code === "oxylabs_credentials_missing");
+  assert.equal(db.sessions.length, 1);
+});
+
+test("fraud, document, and paused holds block Apply even on a clean bureau", async () => {
+  for (const reason of ["Fraud Alert", "Documents Pending Approval", "Funding Paused"]) {
+    const client = baseClient();
+    client.custom_fields.round_hold_reason = reason;
+    const db = fakeDb({ client, lender: baseLender("TU") });
+    await assert.rejects(launch(db), (err) => err.code === "funding_on_hold");
+    assert.equal(db.sessions.length, 0);
+  }
+  const db = fakeDb({ client: baseClient(), lender: baseLender("TU"), fraudCase: true });
+  await assert.rejects(launch(db), (err) => err.code === "funding_on_hold");
 });

@@ -18,6 +18,26 @@ Every claim names the file that makes it true.
 
 ---
 
+## Paid funding handoff and inquiry return (2026-11-02)
+
+On a verified, net-paid funding purchase, S-06 links one active funding advisor to
+`clients.custom_fields.cf_funding_advisor_user_id` and assigns the intake task to that person.
+F-01 reuses the link for the pod task, and an inactive advisor's open funding tasks move to a
+new active advisor. The closer's Client Control Panel shows the named advisor, or explicitly
+says the file is unassigned. No active advisor leaves the role task open in the queue; it does
+not invent a staff member. Files: `src/funding/assign-advisor.mjs`,
+`src/workflows/s-06-post-call-funding-purchased.mjs`, `src/workflows/f-01-funding-intake.mjs`,
+`api/dashboard/client.mjs`, `public/app/client-control-panel.html`.
+
+C-03 waits for all active inquiry cases and open inquiry-log rows to clear, and preserves
+fraud, document and pause holds. A paid file then returns to its funding advisor, with the
+recently touched bureaus still protected. The advisor may apply on a clean bureau; the
+Oxylabs launch checks the chosen lender's bureau against current cases and inquiry history
+again and refuses protected or unknown-bureau lenders when protection is active. Files:
+`src/workflows/c-03-inquiry-removed-resume-or-hold.mjs`, `src/proxy/launch.mjs`.
+
+---
+
 ## The columns, and the event each one fires
 
 `STAGE_TO_EVENT` in `src/funding/card-stacking-rounds.mjs`:

@@ -91,6 +91,16 @@ export default async function handler(req, res) {
     }
 
     const client = rows.client;
+    const advisorId = client.custom_fields?.cf_funding_advisor_user_id;
+    const advisor = advisorId && isUuid(advisorId)
+      ? (await db.query(
+        `SELECT name FROM staff
+          WHERE id = $1::uuid AND org_id = $2::uuid
+            AND role = 'funding_advisor' AND status = 'active'
+            AND active = true AND is_demo = false`,
+        [advisorId, orgId]
+      )).rows[0] || null
+      : null;
     const inquiry_removal_case = await readActiveInquiryCase(db, { orgId, clientId: id });
 
     // The step, the safe blocker labels and the detail extras — one work-out,
@@ -105,6 +115,7 @@ export default async function handler(req, res) {
     res.status(200).json(redact({
       ok: true,
       client,
+      funding_advisor: advisor,
       transactions:  txRes.rows,
       crs_results:   rows.crsResults,
       messages:      msgRes.rows,

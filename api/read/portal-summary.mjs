@@ -578,10 +578,10 @@ function readInvoiceDue(orgId, clientId) {
  * blank name (walk finding F34). The name has to come from a read the client is
  * allowed to make, which is this one.
  *
- * THREE SOURCES, MOST EXPLICIT FIRST, and `source` says which one answered:
- *   custom_field  — a name typed onto the client record
+ * THREE SOURCES, NAMED ASSIGNMENT FIRST, and `source` says which one answered:
  *   staff_link    — clients.custom_fields.cf_funding_advisor_user_id, the column
  *                   db/schema/005 defines for exactly this, resolved to a staff row
+ *   custom_field  — a name typed onto the client record
  *   call_outcome  — the funding advisor who logged a call on this file
  *
  * A CLOSER IS NOT A FUNDING ADVISOR and is deliberately not a fourth source.
@@ -595,11 +595,6 @@ function readInvoiceDue(orgId, clientId) {
  */
 function readAdvisor(orgId, clientId, cf) {
   return safeRead("advisor", null, async () => {
-    const typed = firstNonEmpty([
-      cf.advisor_name, cf.assigned_advisor, cf.funding_advisor
-    ]);
-    if (typed) return { name: typed, role: "funding_advisor", source: "custom_field" };
-
     const linked = firstNonEmpty([cf.cf_funding_advisor_user_id]);
     if (linked) {
       const r = await db.query(
@@ -610,6 +605,11 @@ function readAdvisor(orgId, clientId, cf) {
       const s = r.rows[0];
       if (s && s.name) return { name: s.name, role: s.role || null, source: "staff_link" };
     }
+
+    const typed = firstNonEmpty([
+      cf.advisor_name, cf.assigned_advisor, cf.funding_advisor
+    ]);
+    if (typed) return { name: typed, role: "funding_advisor", source: "custom_field" };
 
     const r = await db.query(
       `SELECT s.name, s.role

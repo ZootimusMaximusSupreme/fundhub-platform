@@ -27,6 +27,31 @@ test("happy path: funding-path deposit.paid tags + sets lifecycle, creates intak
   assert.deepEqual(db.clients[0].tags, ["client:funding"]);
 });
 
+test("paid funding names an active advisor on the client and intake task", async () => {
+  const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }] });
+  const query = db.query.bind(db);
+  db.query = async (sql, params) => {
+    if (sql.includes("SELECT DISTINCT pr.category AS category")) {
+      return { rows: [{ category: "funding" }] };
+    }
+    if (sql.includes("LEFT JOIN staff s") && sql.includes("cf_funding_advisor_user_id")) {
+      return { rows: [{ staff_id: db.clients[0].custom_fields.cf_funding_advisor_user_id || null,
+        active_staff_id: db.clients[0].custom_fields.cf_funding_advisor_user_id || null }] };
+    }
+    if (sql.includes("FROM staff s") && sql.includes("ORDER BY")) return { rows: [{ id: "advisor-1" }] };
+    if (sql.includes("UPDATE clients c") && sql.includes("cf_funding_advisor_user_id")) {
+      db.clients[0].custom_fields.cf_funding_advisor_user_id = params[2];
+      return { rows: [{ id: "cl-1" }] };
+    }
+    if (sql.includes("UPDATE tasks SET assignee_staff_id")) return { rows: [] };
+    return query(sql, params);
+  };
+  const out = await handle({ event: ev("deposit.paid", {}, { clientId: "cl-1" }), db, step: fakeStep() });
+  assert.equal(out.advisor.staffId, "advisor-1");
+  assert.equal(db.clients[0].custom_fields.cf_funding_advisor_user_id, "advisor-1");
+  assert.equal(db.tasks[0].assignee_staff_id, "advisor-1");
+});
+
 test("a verified funding deposit reaches the advisor even when the earlier assessment says repair only", async () => {
   const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "REPAIR_ONLY", custom_fields: {} }] });
   stubPaidCategories(db);
