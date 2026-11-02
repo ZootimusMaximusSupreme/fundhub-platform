@@ -199,7 +199,7 @@ async function attempt(message, { fetchImpl, timeoutMs, signal, env = process.en
 
   // Fence held it, or the transport never reached the push service. Retryable.
   if (res.blocked) return failure(res.error || "web push held by the messaging fence");
-  if (res.status === 0) return failure(res.error || "web push request failed");
+  if (res.status === 0) return { ...failure(res.error || "web push request failed"), unknown: true };
 
   /* GONE FOR GOOD. 404 = the push service never heard of this endpoint;
      410 = it did and the subscription has been removed. Both are terminal, and

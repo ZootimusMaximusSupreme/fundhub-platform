@@ -66,6 +66,7 @@ export async function sendToClient(db, {
       ttlSeconds
     }, { env, fetchImpl, timeoutMs });
 
+    if (result.unknown) out.unknown = (out.unknown || 0) + 1;
     if (result.gone) {
       await markExpired(db, sub.id, { reason: result.error });
       out.expired += 1;

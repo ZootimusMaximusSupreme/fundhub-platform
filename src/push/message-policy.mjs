@@ -136,9 +136,15 @@ export async function claimMarketingPush(db, message, notification, { now = new 
 export async function recordMarketingPush(db, id, results) {
   const delivered = results.reduce((total, result) => total +
     (result.status === "fulfilled" ? Number(result.value?.sent || 0) : 0), 0);
+  const unknown = results.some(result => result.status !== "fulfilled"
+    || !result.value || !Number.isFinite(result.value.sent) || result.value.sent < 0
+    || Number(result.value.unknown || 0) > 0);
+  const state = delivered > 0 ? "sent" : unknown ? "sending" : "failed";
   await db.query(`UPDATE messages SET status = $2, provider = 'apns_web_push',
     last_error = $3, updated_at = now() WHERE id = $1`,
-  [id, delivered > 0 ? "sent" : "failed", delivered > 0 ? null : "No push device accepted this alert."]);
+  [id, state, delivered > 0 ? null : unknown
+    ? "Push outcome unknown; review before resending."
+    : "No push device accepted this alert."]);
 }
 
 export default { notificationForSentMessage };

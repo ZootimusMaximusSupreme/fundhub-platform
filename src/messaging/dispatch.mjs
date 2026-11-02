@@ -804,10 +804,8 @@ export async function dispatchOne(db, message, options = {}) {
             if (marketing && !claimId) return { id: message.id, outcome: OUTCOME.SENT, detail: result.providerMessageId };
             const target = { orgId: message.org_id, clientId: message.client_id, notification, env };
             const sends = [];
-            if (nativePushReady(env)) sends.push(Promise.resolve().then(() => sendNative(db, target))
-              .catch((error) => console.warn(`[dispatch] native alert failed for message ${message.id}: ${error?.name || "Error"}`)));
-            if (webPushReady(env)) sends.push(Promise.resolve().then(() => sendWeb(db, target))
-              .catch((error) => console.warn(`[dispatch] web alert failed for message ${message.id}: ${error?.name || "Error"}`)));
+            if (nativePushReady(env)) sends.push(Promise.resolve().then(() => sendNative(db, target)));
+            if (webPushReady(env)) sends.push(Promise.resolve().then(() => sendWeb(db, target)));
             const deliveries = await Promise.allSettled(sends);
             if (marketing) await recordMarketingPush(db, claimId, deliveries);
           }

@@ -137,3 +137,13 @@ describe("native iPhone device lifecycle", () => {
     assert.equal(result.reason, "no_native_device_on_file");
   });
 });
+
+test("native client aggregate retains uncertain transport count without inventing acceptance",async()=>{
+ const db=memoryDB();await registerNativeDevice(db,{orgId,clientId:firstClient,accountId:firstAccount,sessionId:firstSession,installationId,token,environment:'production',env});
+ for(const send of [async()=>({status:'failed',gone:false,unknown:true}),async()=>{throw new Error('response lost');}]){
+ const out=await sendNativeToClient(db,{orgId,clientId:firstClient,notification:{kind:'test'},env,send});
+ assert.equal(out.unknown,1);assert.equal(out.sent,0);assert.equal(out.expired,0);
+ }
+ const denied=await sendNativeToClient(db,{orgId,clientId:firstClient,notification:{kind:'test'},env,send:async()=>({status:'failed',gone:false})});
+ assert.equal(denied.sent,0);assert.equal(denied.failed,1);assert.equal(denied.unknown || 0,0);
+});

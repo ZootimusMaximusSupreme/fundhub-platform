@@ -1187,3 +1187,12 @@ describe("customer send hours: instant any hour, drips 9 a.m. to 5 p.m. Arizona"
     assert.equal(f.calls.length, 1);
   });
 });
+
+test("companion transport uncertainty cannot free its claim or retry the delivered source message",async()=>{
+ for(const [sendNative,state] of [[async()=>{throw new Error('accepted then timeout');},'sending'],[async()=>undefined,'sending'],[async()=>({sent:0,unknown:1}),'sending'],[async()=>({sent:0,attempted:0}),'failed'],[async()=>({sent:1}),'sent']]){
+ const db=fakeDb({customFields:{marketing_push_enabled:true},routing:{sms:{provider:"twilio",enabled:true}}});
+ const out=await dispatchOne(db,claimed({channel:'sms',template_key:'SMS-BS01-02-PRECALL'}),{fetchImpl:spy(),env:APNS_ENV,now:MIDDAY,sendNative});
+ assert.equal(out.outcome,OUTCOME.SENT);
+ const receipt=db.updates.find(q=>q.sql.includes("provider = 'apns_web_push'"));assert.ok(receipt);assert.equal(receipt.params[1],state);
+ }
+});

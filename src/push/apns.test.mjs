@@ -74,3 +74,11 @@ describe("native APNs transport", () => {
     assert.equal(calls.length, 1);
   });
 });
+
+test("APNs transport timeout after possible acceptance is unknown; explicit HTTP denial is known",async()=>{
+ let accepted=false;
+ const timeout=await sendAPNS({token,environment:'production',notification:{kind:'test'}},{env,post:async()=>{accepted=true;throw new Error('reply lost after acceptance');}});
+ assert.equal(accepted,true);assert.equal(timeout.unknown,true);assert.equal(timeout.gone,false);
+ const denied=await sendAPNS({token,environment:'production',notification:{kind:'test'}},{env,post:async()=>({status:403,body:'{"reason":"Forbidden"}'})});
+ assert.equal(denied.status,'failed');assert.notEqual(denied.unknown,true);
+});

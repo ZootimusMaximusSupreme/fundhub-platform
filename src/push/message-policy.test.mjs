@@ -122,7 +122,7 @@ test("marketing push claims share a day key and delivery receipts reflect actual
   assert.match(queries[0].sql, /ON CONFLICT \(org_id, provider_ref\)/);
   assert.match(queries[0].sql, /WHERE messages\.status = 'failed'/);
   await recordMarketingPush(db, id, [{ status: "fulfilled", value: { sent: 0 } }, { status: "rejected" }]);
-  assert.equal(queries[1].params[1], "failed");
+  assert.equal(queries[1].params[1], "sending", "rejected transport promise has an unknown delivery outcome");
   await recordMarketingPush(db, id, [{ status: "fulfilled", value: { sent: 1 } }]);
   assert.equal(queries[2].params[1], "sent");
 });
@@ -146,4 +146,15 @@ test("a malformed, wrong-client, unselected or night-time lesson never becomes p
   assert.equal(await notificationForSentMessage(db, source,
     { now: new Date("2026-11-03T03:00:00Z") }), null);
   assert.equal(db.queries.length, 0);
+});
+
+test("marketing receipt holds every unknown result, frees definite failures, and preserves confirmed delivery",async()=>{
+ let params;const db={async query(_sql,args){params=args;return{rows:[]};}};
+ for(const results of [[{status:'rejected',reason:new Error('timeout')}],[{status:'fulfilled',value:undefined}],[{status:'fulfilled',value:{sent:0,unknown:1}}]]){
+ await recordMarketingPush(db,'claim',results);assert.equal(params[1],'sending');assert.match(params[2],/review before resending/);
+ }
+ for(const result of [{sent:0,attempted:0,reason:'no_device'},{sent:0,failed:1,unknown:0}]){
+ await recordMarketingPush(db,'claim',[{status:'fulfilled',value:result}]);assert.equal(params[1],'failed');
+ }
+ await recordMarketingPush(db,'claim',[{status:'fulfilled',value:{sent:1}},{status:'rejected'}]);assert.equal(params[1],'sent');
 });

@@ -77,6 +77,12 @@ test("lesson push uses the current booking and persisted device results on scrat
     await db.query("UPDATE messages SET updated_at = now() - interval '16 minutes' WHERE id = $1", [id]);
     assert.equal((await db.query(NATIVE_PUSH_OWNERS_SQL)).rows[0].recent_failed, 1,
       "an interrupted attempt becomes a read-only alert instead of an automatic duplicate send");
+    for (const result of [{status:"rejected",reason:new Error("timeout after possible acceptance")},
+      {status:"fulfilled",value:undefined},{status:"fulfilled",value:{sent:0,unknown:1}}]) {
+      await recordMarketingPush(db,id,[result]);
+      assert.equal((await db.query("SELECT status FROM messages WHERE id=$1",[id])).rows[0].status,"sending");
+      assert.equal(await claimMarketingPush(db,source,notification,{now}),null,"an unknown attempt cannot be automatically reclaimed");
+    }
     await recordMarketingPush(db, id, [{ status: "fulfilled", value: { sent: 0 } }]);
     assert.equal((await db.query(NATIVE_PUSH_OWNERS_SQL)).rows[0].recent_failed, 0);
     assert.equal((await db.query("SELECT status FROM messages WHERE id = $1", [id])).rows[0].status, "failed");

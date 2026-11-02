@@ -12,11 +12,14 @@ export async function sendNativeToClient(db, {
   const result = { attempted: devices.length, sent: 0, expired: 0, failed: 0 };
   if (!devices.length) return { ...result, reason: "no_native_device_on_file" };
   for (const device of devices) {
-    const delivery = await send({
-      token: device.token,
-      environment: device.environment,
-      notification
-    }, { env });
+    let delivery;
+    try {
+      delivery = await send({token:device.token,environment:device.environment,notification},{env});
+    } catch {
+      delivery = {status:"failed",gone:false,unknown:true};
+    }
+    if (!delivery || delivery.unknown) result.unknown = (result.unknown || 0) + 1;
+    delivery ||= {status:"failed",gone:false,unknown:true};
     const state = delivery.gone ? "expired" : delivery.status === "sent" ? "sent" : "failed";
     await markNativeDevice(db, device.id, state);
     result[state] += 1;
