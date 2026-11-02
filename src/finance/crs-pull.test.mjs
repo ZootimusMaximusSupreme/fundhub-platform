@@ -242,6 +242,58 @@ test("runCrsPull stores one tri-bureau result and replays without another order"
   assert.equal(db.events.length, 2, "replay must not emit a second analysis/decision pair");
 });
 
+test("a second worker cannot order on an active claim while the first stores its result", async () => {
+  const db = fakeDb(request("request-concurrent", {
+    requested_by_kind: "system", requested_by_staff_id: null
+  }));
+  let entered, release;
+  const providerEntered = new Promise((resolve) => { entered = resolve; });
+  const providerRelease = new Promise((resolve) => { release = resolve; });
+  const firstClient = fakeClient({ TU: { ok: true, requestId: "FIRST-TU", report: report(700) } });
+  const firstOrder = firstClient.orderPrequal;
+  firstClient.orderPrequal = async (args) => {
+    entered();
+    await providerRelease;
+    return firstOrder(args);
+  };
+  const secondClient = fakeClient({ TU: { ok: true, requestId: "SECOND-TU", report: report(710) } });
+  const run = (client) => runCrsPull(db, {
+    orgId: ORG, clientId: CLIENT, requestId: "request-concurrent", client, bureaus: ["TU"]
+  }).then((value) => ({ value }), (error) => ({ error }));
+  const first = run(firstClient);
+  await providerEntered;
+  const second = await run(secondClient);
+  release();
+  const original = await first;
+  assert.equal(second.error?.code, "request_already_claimed");
+  assert.deepEqual(secondClient.calls, [], "second worker must not contact the bureau");
+  assert.equal(original.value?.ok, true, "claim owner still stores the bureau result");
+  assert.equal(db.requests.get("request-concurrent").status, "fulfilled");
+  assert.equal(db.results.length, 1);
+});
+
+test("a claim lost between reading queued and claiming cannot order a bureau", async () => {
+  const db = fakeDb(request("request-claim-race", {
+    requested_by_kind: "system", requested_by_staff_id: null
+  }));
+  const query = db.query.bind(db);
+  let firstRead = true;
+  db.query = async (sql, params) => {
+    if (firstRead && /FROM soft_pull_requests WHERE id = \$1/.test(sql)) {
+      firstRead = false;
+      const snapshot = { ...db.requests.get("request-claim-race") };
+      db.requests.get("request-claim-race").status = "processing";
+      return { rows: [snapshot] };
+    }
+    return query(sql, params);
+  };
+  const client = fakeClient({ TU: { ok: true, requestId: "UNSAFE-TU", report: report(700) } });
+  await assert.rejects(() => runCrsPull(db, {
+    orgId: ORG, clientId: CLIENT, requestId: "request-claim-race", client, bureaus: ["TU"]
+  }), (error) => error.code === "request_already_claimed");
+  assert.deepEqual(client.calls, []);
+});
+
 test("runCrsPull stores a partial bureau result when one RequestID exists", async () => {
   const db = fakeDb(request("request-partial"));
   const client = fakeClient({
@@ -767,7 +819,7 @@ test("a pre-claimed processing request never starts another bureau order", async
     () => runCrsPull(raceDb, {
       orgId: ORG, clientId: CLIENT, requestId, client: bureau, bureaus: ["TU"]
     }),
-    (error) => error.status === 409 && /processing/.test(error.message)
+    (error) => error.status === 409 && error.code === null && /processing/.test(error.message)
   );
   assert.deepEqual(bureau.calls, []);
   assert.equal(raceDb.requests.get(requestId).status, "processing", "preserve manual reconciliation evidence");

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { fakeDb } from "../testing/handler-harness.mjs";
 import {
-  prepareBlueprintCoachTurn, applyBlueprintCoachAction, blueprintCoachReminder,
+  isBlueprintCoachClient, prepareBlueprintCoachTurn, applyBlueprintCoachAction, blueprintCoachReminder,
   blueprintCoachCallTask, parseBlueprintCoachReply, BLUEPRINT_COACH_INSTRUCTIONS, blueprintCoachQuestion
 } from "./coach.mjs";
 
@@ -18,8 +18,41 @@ function context(over = {}) {
 }
 function deps(ctx = context()) {
   return { isBuyerImpl: async (_db, ids) => { assert.deepEqual(ids, { orgId: ORG, clientId: CLIENT }); return true; },
+    serviceYearActiveImpl: async (_db, ids) => { assert.deepEqual(ids, { orgId: ORG, clientId: CLIENT }); return true; },
     fetchContextImpl: async (_db, ids) => { assert.deepEqual(ids, { orgId: ORG, clientId: CLIENT, conversationId: "thread", channel: "sms" }); return ctx; } };
 }
+
+test("paid Blueprint coach service checks a same-transaction grant and exact calendar-year boundary", async () => {
+  const paid = Date.parse("2026-10-29T00:00:00Z");
+  const end = Date.parse("2027-10-29T00:00:00Z");
+  const database = fakeDb([[/FROM entitlements e/, (_sql, params) =>
+    params[0] === ORG && params[1] === CLIENT
+      && Date.parse(params[2]) >= paid && Date.parse(params[2]) < end
+      ? [{ id: "active-licensed-purchase" }] : []]]);
+  assert.equal(await isBlueprintCoachClient(database, { orgId: ORG, clientId: CLIENT,
+    asOf: "2027-10-28T00:00:00Z" }), true);
+  assert.equal(await isBlueprintCoachClient(database, { orgId: ORG, clientId: CLIENT,
+    asOf: "2027-10-29T00:00:00Z" }), false);
+  assert.equal(await isBlueprintCoachClient(database, { orgId: "other-org", clientId: CLIENT,
+    asOf: "2026-11-01T00:00:00Z" }), false);
+  const { sql, params } = database.find(/FROM entitlements e/)[0];
+  assert.deepEqual(params.slice(0, 2), [ORG, CLIENT]);
+  for (const guard of ["t.id = e.source_transaction_id", "t.org_id = e.org_id",
+    "t.client_id = e.client_id", "e.revoked_at IS NULL", "t.created_at <= $3",
+    "interval '12 months'"]) {
+    assert.ok(sql.includes(guard), guard);
+  }
+});
+
+test("the AI coach refuses service after month 12 before fetching context or performing an action", async () => {
+  let fetched = false;
+  const gone = await prepareBlueprintCoachTurn(fakeDb(), scope, { ...deps(),
+    serviceYearActiveImpl: async (_db, ids) => { assert.deepEqual(ids, { orgId: ORG, clientId: CLIENT }); return false; },
+    fetchContextImpl: async () => { fetched = true; return context(); } });
+  assert.equal(gone.ok, false);
+  assert.equal(gone.reason, "blueprint_access_inactive");
+  assert.equal(fetched, false);
+});
 
 test("coach reads the actual saved org/client, current step and prior call without a provider call", async () => {
   const result = await prepareBlueprintCoachTurn(fakeDb(), scope, deps());
