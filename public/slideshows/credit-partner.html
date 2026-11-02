@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub Credit Partner</title>
-<meta name="description" content="You don't have to qualify alone. One spouse or business partner can join your Capital Blueprint as a second file.">
+<meta name="description" content="A willing partner adds a second file to review alongside your own. On the Capital Blueprint, a credit partner's amount adds to yours.">
 <!--
   Deck CP · Credit partner
   Lane: Blueprint and Repair (everyone under 700)
@@ -12,6 +12,13 @@
   Belief: I don't have to qualify alone. One spouse or business partner can
           join my Capital Blueprint as a second file, with their own consent
           and their own checklist, and the two amounts add together.
+
+  Rewritten 2026-10-31 on Chris's slide framework (see pre-underwriting.html).
+  Review fixes the same day: a sample pair run through UnderwriteIQ
+  (samples/credit-partner-file.mjs, run-credit-partner-file.mjs, .result.json):
+  owner $5,280 + partner $233,500 = $238,780, added by credit-partner.mjs's own
+  rule. CP-01 shows the owner file, CP-03 the sum. The offers card moved to
+  CP-02 beside the soft pull form's line 1. CP-04 shows you and one partner.
 
   Chris's direction (2026-10-31): his call-slide style, more copy, real first
   (the written offer), branded diagrams where nothing real shows the point.
@@ -742,11 +749,49 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </defs>
   </svg>
 
-  <section class="slide dark" data-src="Low-credit people need to bring somebody in: Chris 2026-10-30, ops/workflows/backend-selling-lanes-2026-10-30.md:152. It raises capital when you don't qualify yet, and it still works when you do: Chris 2026-10-31, :212. One spouse or business partner can join as a second applicant; they give their own consent, and their file gets its own checklist: public/app/present.js:987-988 (client-facing line). One partner file is included with the Blueprint: present.js:1044; docs/sops/weekend-2026-10-24/04-sales-call-script.md:261. The two amounts add: src/blueprint/credit-partner.mjs:8-14. The picture is Chris's own offers overview, word for word: marketing/offers/fundhub-offers-2026-10-10.pdf p.5 and p.9.">
-    <p class="eyebrow">CP-01 / The second file</p>
-    <h2>When your own file holds your funding down, you bring in a partner with good credit.</h2>
-    <p class="lede">One spouse or business partner joins your Capital Blueprint as a second applicant. Their file gets its own checklist, and what you qualify for and what they qualify for are added together.</p>
+  <section class="slide dark" data-src="Low-credit people need to bring somebody in: Chris 2026-10-30, ops/workflows/backend-selling-lanes-2026-10-30.md:152. It raises capital when you don't qualify yet, and it still works when you do: Chris 2026-10-31, :212. One spouse or business partner can join as a second applicant; they give their own consent, and their file gets its own checklist: public/app/present.js:987-988 (client-facing line). One partner file is included with the Blueprint: present.js:1044; docs/sops/weekend-2026-10-24/04-sales-call-script.md. The two amounts add: src/blueprint/credit-partner.mjs:8-14. The picture is Chris's own offers overview, word for word: marketing/offers/fundhub-offers-2026-10-10.pdf p.5 and p.9. Every amount comes from one person's file, and the plan adds a partner's: src/blueprint/credit-partner.mjs:8-14 and :118-153. What the money is for, jobs, ads and a hire: docs/sops/weekend-2026-10-24/04-sales-call-script.md. One partner file is included: 04-sales-call-script.md. The Fundhub team, never your advisor: db/migrations/498_waypoint_steps_fundhub_team.sql:1-7. The picture and the $5,280 are the owner file of the credit-partner sample pair as UnderwriteIQ printed it: marketing/slideshows/samples/credit-partner-file.result.json (owner: median 648, cards 86% used, one collection on Equifax and TransUnion, funding_total 5280), built by marketing/slideshows/samples/credit-partner-file.mjs and run by run-credit-partner-file.mjs.">
+    <p class="eyebrow">CP-01 / A second file</p>
+    <h2>A willing partner adds a second file to review alongside your own.</h2>
+    <p class="lede">The Capital Blueprint includes a review of one willing partner's file while you work on yours.</p>
+    <ul class="lines">
+      <li>Your plan starts with an estimate from your own report.</li>
+      <li>This sample owner has a $5,280 engine estimate. A willing partner adds a second estimate after signing their own permission form.</li>
+    </ul>
     <figure class="pic">
+      <div class="panel doc" role="img" aria-label="Sample owner file, run through UnderwriteIQ: median score 648, cards 86% used, one collection reported to Equifax and TransUnion. How much this file qualifies for today: $5,280.">
+        <div class="doc-head"><span>Sample owner file</span><span>UnderwriteIQ</span></div>
+        <div class="doc-row"><span>Middle score</span><span class="v">648</span></div>
+        <div class="doc-row"><span>Cards used</span><span class="v">86%</span></div>
+        <div class="doc-row"><span>Collections</span><span class="v">1, on two bureaus</span></div>
+        <div class="doc-row flag"><span>Qualifies for today</span><span class="v">$5,280</span></div>
+      </div>
+      <p class="real-src">Sample file, made up, run through the real engine. No bureau contacted.</p>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Your own credit file shapes the funding plan we build for you. One partner file is part of the Blueprint, and it goes to work before your file is ready.</li>
+        <li>The reason is simple. Every amount on your plan comes off one person's report. Right now your plan holds only what your own report reaches.</li>
+        <li>Take this SAMPLE owner. The cards run 86 percent used, one collection sits on two bureaus, and the engine says this file qualifies for $5,280 today.</li>
+        <li>When your own report keeps your funding low, the move is a spouse or business partner with GOOD credit. With their own consent, their file gives us a second path to review while you work on yours.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide" data-src="The partner's own consent comes first; their checklist is seeded only when the partner has their own soft pull consent: src/blueprint/credit-partner.mjs:85-99. They give their own consent, and their file gets its own checklist: public/app/present.js:987-988. The form they sign: db/migrations/287_contract_seller_signature_and_real_text.sql:146-154. Review your file the way a lender does: marketing/ads/RULES.md:44 (Part 0 rule 8). One partner file is included: docs/sops/weekend-2026-10-24/04-sales-call-script.md. The soft pull form: it does not lower the score, lenders do not see it as an application, it covers one pull, and the signer withdraws it in writing at any time: db/migrations/287_contract_seller_signature_and_real_text.sql:146-151. The pictures: line 1 of the soft pull form, word for word, db/migrations/287_contract_seller_signature_and_real_text.sql:146-147; Chris's offers overview, word for word, marketing/offers/fundhub-offers-2026-10-10.pdf p.5 and p.9. Nothing is read until they sign: the pull needs their signed permission (287...sql:139-148) and their checklist is built only after their own consent, src/blueprint/credit-partner.mjs:85-99. Their checklist is seeded from the same step list every client gets: src/blueprint/credit-partner.mjs:99 (seedClientWaypoints) and db/migrations/362_waypoint_definitions_seed.sql:82-86.">
+    <p class="eyebrow">CP-02 / Their file</p>
+    <h2>Your partner signs before a soft pull reads their file.</h2>
+    <ul class="lines">
+      <li>The Blueprint adds one spouse or business partner to your file as a second applicant, and that partner file is included.</li>
+      <li>Their checklist comes from their own report, so every step on it fits their file.</li>
+      <li>You work your steps and they work theirs, so both files move at the same time.</li>
+    </ul>
+    <figure class="pic">
+      <div class="real" role="img" aria-label="Line 1 of the soft pull permission form each person signs, word for word. Marked: it does not lower my credit score and lenders do not see it as an application for credit.">
+        <div class="rh2">Soft Pull Permission · Line 1</div>
+        <p class="clause">This is a soft pull. <mark>It does not lower my credit score and lenders do not see it as an application for credit.</mark></p>
+        <span class="chip on"><span class="cd"></span>Your partner signs their own</span>
+      </div>
+      <p class="real-src">The soft pull form each person signs, word for word.</p>
       <div class="real" role="img" aria-label="Fundhub's written offers overview. Marked: Your team can add one spouse or business partner to your file as a second applicant. And: Can my spouse or partner join? Yes, they are welcome on your call. Capital Blueprint also lets you add them as a second applicant.">
         <div class="rh2">Fundhub Offers · Capital Blueprint</div>
         <p class="clause"><mark>Your team can add one spouse or business partner to your file as a second applicant.</mark></p>
@@ -757,137 +802,89 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>When your own file holds your funding down, you bring somebody in. That's a credit partner.</li>
-        <li>A credit partner is a spouse or a business partner with good credit who joins your Capital Blueprint as a second applicant.</li>
-        <li>Look at the offer. It's written right there: one spouse or business partner can be added to your file as a second applicant, and one partner file is included.</li>
-        <li>Their file gets its own checklist, built from their own report.</li>
-        <li>And what you qualify for and what they qualify for get added together.</li>
-        <li>It raises capital when you don't qualify yet, and it still works when you do.</li>
+        <li>The first review is a soft pull, so it does not lower your partner's score. Nothing on their file gets read until THEY sign their own form. Later funding applications need their own consent and can create hard inquiries.</li>
+        <li>On the Capital Blueprint, one spouse or business partner joins your file as a second applicant. It's written into the offer, and that partner file is included.</li>
+        <li>The form spells it out, word for word: the soft pull doesn't lower their score, and no lender sees it as an application for credit.</li>
+        <li>Your partner stays in control of their permission. The form says they withdraw it in writing whenever they choose, and it covers one pull only.</li>
+        <li>Once they sign, the Blueprint builds their checklist from their own report, so every card and every item on their list belongs to their file.</li>
+        <li>Their list holds the same kinds of steps yours does, like a paydown target worked out from their own card limit, so their part of the work is clear.</li>
+        <li>Both files move at the same TIME. You work your steps, and your partner works theirs, on the same plan.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="The partner's own consent comes first; their checklist is seeded only when the partner has their own soft pull consent: src/blueprint/credit-partner.mjs:85-99. They give their own consent, and their file gets its own checklist: public/app/present.js:987-988. The form they sign: db/migrations/287_contract_seller_signature_and_real_text.sql:146-154. Review your file the way a lender does: marketing/ads/RULES.md:44 (Part 0 rule 8). One partner file is included: docs/sops/weekend-2026-10-24/04-sales-call-script.md:261.">
-    <p class="eyebrow">CP-02 / Two files</p>
-    <h2>Your partner's file is its own file, with its own consent and its own checklist.</h2>
+  <section class="slide" data-src="Sum prequal dollars from primary plus partner: src/blueprint/credit-partner.mjs:8-14 and :118-153 (combinedPrequal). How much you qualify for based on where you're at right now: .ai/rules/copy-certainty.md. It raises capital when you don't qualify yet, and it still works when you do: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:212. The bank still decides: docs/sops/weekend-2026-10-24/04-sales-call-script.md. No approval or amount is promised: db/migrations/288_real_contract_text.sql:257 (Blueprint agreement 3.1). What the money is for, jobs, ads and a hire: docs/sops/weekend-2026-10-24/04-sales-call-script.md. The client can review bank matches and decide whether to apply once the file is ready (Blueprint lane rule): ops/workflows/backend-selling-lanes-2026-10-30.md section 6e. Sample figures, printed by the engine and added by the product's own rule: marketing/slideshows/samples/credit-partner-file.result.json (headline: owner_alone 5280, partner_alone 233500, together 238780, times_the_owner_alone 45.22). The sum is src/blueprint/credit-partner.mjs combinedPrequalAmount reading the field src/handlers/client-lifecycle.mjs:569-573 stores. The partner: three cards used 6% in total, a car loan paid in full (same file). The engine's multipliers, 5.5 on the best card and 3 on the loan: vendor/underwriteiq-full/api/lite/crs/estimate-preapprovals.js:14-17; the partner's bases, 137500 and 96000, are in the same result file." data-figures="sample figures from marketing/slideshows/samples/credit-partner-file.result.json, labeled Sample on the slide">
+    <p class="eyebrow">CP-03 / The math</p>
+    <h2>The planning total adds two file estimates; each lender decides the actual amount.</h2>
     <ul class="lines">
-      <li>Your partner signs their own soft pull permission, the same form you sign.</li>
-      <li>Their checklist is built from their own report, so their steps are theirs.</li>
-      <li>Each file is reviewed on its own, the way a lender does it.</li>
+      <li>Each file runs through the engine on its own, and each amount comes from that person's report as it reads today.</li>
+      <li>On this sample, the owner's $5,280 plus the partner's $233,500 makes a plan total of $238,780.</li>
+      <li>That sample planning total is 45 times the owner's estimate alone. Each lender still decides what credit either person can receive.</li>
+    </ul>
+    <figure class="pic">
+      <div class="panel doc" role="img" aria-label="Sample: the owner's file has a $5,280 engine estimate, plus the partner's file at $233,500, equals $238,780 together.">
+        <div class="doc-head"><span>Sample pair</span><span>UnderwriteIQ</span></div>
+        <div class="doc-row"><span>Your file</span><span class="v">$5,280</span></div>
+        <div class="doc-row"><span>+ Your partner's file</span><span class="v">$233,500</span></div>
+        <div class="doc-row yes"><span>= Together</span><span class="v" style="font-size:1.25rem">$238,780</span></div>
+      </div>
+      <p class="pic-cap">Sample pair. Each file ran through UnderwriteIQ on its own, and the Blueprint's partner rule added them. Each bank still decides.</p>
+    </figure>
+    <aside class="talk" aria-hidden="true">
+      <ul>
+        <li>Your total is your amount plus your partner's amount, and each of those comes from its own file. That's the whole MATH, and it's simple.</li>
+        <li>Each amount is our estimate from that person's report as it reads today. Your report counts for you, and theirs counts for them.</li>
+        <li>Then your plan adds the two together and shows ONE total. That total is what the two of you are working toward, step by step.</li>
+        <li>The sample owner from the start, the $5,280 file, has a spouse with three seasoned cards used about 6 percent and a car loan paid in full.</li>
+        <li>The engine reads the partner's best card, a $25,000 line open since 2013, at five and a half times its limit. It reads the paid-off $32,000 car loan at three times.</li>
+        <li>Run through the engine on its own, the partner's file comes back at $233,500. The credit partner rule adds the two, for a plan total of $238,780.</li>
+        <li>That's 45 TIMES what the owner's file reaches alone. Counted together, the two files give this couple a plan built on the stronger report too.</li>
+        <li>And when the files are ready, you take that total to the banks yourself. Each bank makes its own decision on each application.</li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="slide dark" data-src="Everyone should build a funding circle, an inner circle of partners who help fund their deals; I do it all the time: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:34; longer form at ops/workflows/backend-selling-lanes-2026-10-30.md:212. I still fund myself: chris-voice-profile.md:28. The referral fee is left off: it still needs the real program it points to (backend-selling-lanes-2026-10-30.md:216). Chris's track record: marketing/ads/RULES.md Part 0 rules 36 and 38. Chris's track record, a little over $1,000,000 funded for himself into cash-flowing companies for ten years, with real losses: marketing/ads/RULES.md Part 0 rule 36. One partner file is included: docs/sops/weekend-2026-10-24/04-sales-call-script.md. The funding-circle program itself is not built: ops/workflows/backend-selling-lanes-2026-10-30.md:216. A partner raises capital before you qualify and still adds after: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:212. Every partner brings their own credit file to the deals funded together: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:212 (partners who help fund their deals). Each file read on its own, the amounts added on one plan: src/blueprint/credit-partner.mjs:85-99 and :118-153.">
+    <p class="eyebrow">CP-04 / My circle</p>
+    <h2>I fund my own deals with a circle of partners, and your credit partner starts yours.</h2>
+    <ul class="lines">
+      <li>My funding circle is an inner group of partners who help fund my deals, and I still fund myself too.</li>
+      <li>Every partner in my circle brings their own credit file to the deals we fund together.</li>
+      <li>On the Blueprint, your circle starts with one credit partner, and that file is included.</li>
     </ul>
     <figure class="pic">
       <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 236" role="img" aria-label="Two files side by side, yours and your partner's. Each one has consent signed and its own checklist. Both sit under one Capital Blueprint.">
-          <text class="lb" x="160" y="12" text-anchor="middle">TWO FILES, EACH ON ITS OWN</text>
-          <rect class="pn" x="4" y="24" width="150" height="152" rx="10"/>
-          <use href="#fh-person" x="14" y="34" width="22" height="22"/>
-          <text x="42" y="50">Your file</text>
-          <rect class="tint-fit edge-fit" x="14" y="64" width="130" height="28" rx="6"/>
-          <text class="caps" x="24" y="82">CONSENT SIGNED</text>
-          <circle class="pn" cx="24" cy="110" r="5"/><rect class="bar" x="36" y="107.5" width="92" height="5" rx="2.5"/>
-          <circle class="pn" cx="24" cy="130" r="5"/><rect class="bar" x="36" y="127.5" width="72" height="5" rx="2.5"/>
-          <circle class="pn" cx="24" cy="150" r="5"/><rect class="bar" x="36" y="147.5" width="84" height="5" rx="2.5"/>
-          <text class="lb" x="14" y="170">OWN CHECKLIST</text>
-          <rect class="pn" x="166" y="24" width="150" height="152" rx="10"/>
-          <use href="#fh-person" x="176" y="34" width="22" height="22"/>
-          <text x="204" y="50">Partner's file</text>
-          <rect class="tint-fit edge-fit" x="176" y="64" width="130" height="28" rx="6"/>
-          <text class="caps" x="186" y="82">CONSENT SIGNED</text>
-          <circle class="pn" cx="186" cy="110" r="5"/><rect class="bar" x="198" y="107.5" width="80" height="5" rx="2.5"/>
-          <circle class="pn" cx="186" cy="130" r="5"/><rect class="bar" x="198" y="127.5" width="96" height="5" rx="2.5"/>
-          <circle class="pn" cx="186" cy="150" r="5"/><rect class="bar" x="198" y="147.5" width="66" height="5" rx="2.5"/>
-          <text class="lb" x="176" y="170">OWN CHECKLIST</text>
-          <path class="cn ink" d="M79 176V196H241V176M160 196V206"/>
-          <rect class="pn-ink" x="66" y="206" width="188" height="26" rx="13"/>
-          <text class="caps on-ink" x="160" y="223" text-anchor="middle">ONE CAPITAL BLUEPRINT</text>
+        <svg class="bv" viewBox="0 0 320 170" role="img" aria-label="Your funding circle starts with two people: you, and one credit partner with their own file. One partner file is included with the Blueprint.">
+          <text class="lb" x="160" y="14" text-anchor="middle">YOUR FUNDING CIRCLE STARTS HERE</text>
+          <path class="cn ink" d="M128 86H190"/>
+          <rect class="pn-ink" x="30" y="66" width="98" height="40" rx="20"/>
+          <text class="caps on-ink" x="79" y="91" text-anchor="middle">YOU</text>
+          <circle class="tint-fit edge-fit" cx="222" cy="86" r="32"/><use href="#fh-person" x="204" y="68" width="36" height="36"/>
+          <text class="lb ink" x="222" y="140" text-anchor="middle">YOUR CREDIT PARTNER</text>
+          <text class="lb" x="160" y="164" text-anchor="middle">ONE PARTNER FILE, INCLUDED</text>
         </svg>
       </div>
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>Your partner's file is its own file. It has its own consent and its own checklist.</li>
-        <li>Look at the two files side by side. Your partner signs their own soft pull permission, the same form you sign. Nothing gets pulled on them until they sign it.</li>
-        <li>Then their checklist gets built from their own report. Their cards, their items, their steps.</li>
-        <li>Each file is reviewed on its own, the way a lender does it.</li>
-        <li>Both files sit under one Capital Blueprint, and one partner file is included.</li>
+        <li>Everyone should build a funding circle, and I build mine all the time. It's how I fund my own deals, and it's how yours starts.</li>
+        <li>My funding circle is my inner group of partners, and every one of them helps fund my deals. I still fund myself on top of that.</li>
+        <li>Every partner in my circle brings their own credit file to the deals we fund TOGETHER, and every one of those files gets read on its own.</li>
+        <li>The Blueprint reads your partner's file separately and shows both estimates on one plan. That is a planning view, not a bank approval.</li>
+        <li>On the Blueprint, the FIRST person in your circle is your credit partner, and that one included file is where your circle starts.</li>
+        <li>A partner file gives you a second route to review while your own file gets ready. The partner has to understand and authorize any credit obligation in their name.</li>
+        <li>Over time, that's what a circle gets your business. More than one credit file stands behind the deals you take on, starting with your partner's file.</li>
       </ul>
     </aside>
   </section>
 
-  <section class="slide" data-src="Sum prequal dollars from primary plus partner: src/blueprint/credit-partner.mjs:8-14 and :118-153 (combinedPrequal). How much you qualify for based on where you're at right now: .ai/rules/copy-certainty.md. It raises capital when you don't qualify yet, and it still works when you do: Chris 2026-10-31, ops/workflows/backend-selling-lanes-2026-10-30.md:212. The bank still decides: docs/sops/weekend-2026-10-24/04-sales-call-script.md:178. No approval or amount is promised: db/migrations/288_real_contract_text.sql:257 (Blueprint agreement 3.1).">
-    <p class="eyebrow">CP-03 / The amounts add</p>
-    <h2>What you qualify for and what your partner qualifies for are added together.</h2>
-    <ul class="lines">
-      <li>Each file gets its own amount, based on where that file is at right now.</li>
-      <li>Your plan shows the two amounts as one total.</li>
-      <li>That is how a partner raises capital when you don't qualify for it yet, and it still works when you do.</li>
-    </ul>
-    <figure class="pic">
-      <div class="eq" role="img" aria-label="What you qualify for, plus what your partner qualifies for, equals your total.">
-        <div class="panel">Your amount</div>
-        <span class="op">+</span>
-        <div class="panel">Your partner's amount</div>
-        <span class="op">=</span>
-        <div class="panel is-hot">Your total</div>
-      </div>
-      <p class="pic-cap">Each amount comes from that file as it is right now. The bank still decides.</p>
-    </figure>
-    <aside class="talk" aria-hidden="true">
-      <ul>
-        <li>What you qualify for and what your partner qualifies for are added together. That's the math, and it's simple.</li>
-        <li>Each file gets its own amount, based on where that file is at right now.</li>
-        <li>Your plan shows the two amounts as one total, so you see what the two of you are working toward.</li>
-        <li>That's how a partner raises capital when you don't qualify for it yet, and it still works when you do.</li>
-        <li>The bank still decides every application. We never promise an approval or an amount, and the agreement says that in writing.</li>
-      </ul>
-    </aside>
-  </section>
-
-  <section class="slide dark" data-src="Everyone should build a funding circle, an inner circle of partners who help fund their deals; I do it all the time: Chris 2026-10-31, marketing/copy-skills/copybot/references/chris-voice-profile.md:34; longer form at ops/workflows/backend-selling-lanes-2026-10-30.md:212. I still fund myself: chris-voice-profile.md:28. The referral fee is left off: it still needs the real program it points to (backend-selling-lanes-2026-10-30.md:216).">
-    <p class="eyebrow">CP-04 / The funding circle</p>
-    <h2>Everyone should build a funding circle, and I do it all the time.</h2>
-    <ul class="lines">
-      <li>A funding circle is an inner circle of partners who help fund your deals.</li>
-      <li>Your credit partner on the Blueprint is the first person in yours.</li>
-      <li>I still fund myself, and I do it with partners. That's how the funding game is played.</li>
-    </ul>
-    <figure class="pic">
-      <div class="sheet">
-        <svg class="bv" viewBox="0 0 320 236" role="img" aria-label="A funding circle. You are in the middle. Five partners stand around you, each with a line to you. The one at the top is marked your credit partner.">
-          <text class="lb" x="6" y="12">A FUNDING CIRCLE · CHRIS'S OWN PRACTICE</text>
-          <path class="cn ink" d="M160 118V72M160 118L236 94M160 118L220 170M160 118L100 170M160 118L84 94"/>
-          <circle class="tint-fit edge-fit" cx="160" cy="50" r="22"/><use href="#fh-person" x="147" y="37" width="26" height="26"/>
-          <text class="lb ink" x="190" y="46">YOUR CREDIT</text>
-          <text class="lb ink" x="190" y="60">PARTNER</text>
-          <circle class="pn" cx="258" cy="88" r="22"/><use href="#fh-person" x="245" y="75" width="26" height="26"/>
-          <circle class="pn" cx="232" cy="188" r="22"/><use href="#fh-person" x="219" y="175" width="26" height="26"/>
-          <circle class="pn" cx="88" cy="188" r="22"/><use href="#fh-person" x="75" y="175" width="26" height="26"/>
-          <circle class="pn" cx="62" cy="88" r="22"/><use href="#fh-person" x="49" y="75" width="26" height="26"/>
-          <rect class="pn-ink" x="122" y="102" width="76" height="32" rx="16"/>
-          <text class="caps on-ink" x="160" y="123" text-anchor="middle">YOU</text>
-          <text class="lb" x="160" y="230" text-anchor="middle">PARTNERS WHO HELP FUND YOUR DEALS</text>
-        </svg>
-      </div>
-    </figure>
-    <aside class="talk" aria-hidden="true">
-      <ul>
-        <li>Everyone should build a funding circle, and I do it all the time.</li>
-        <li>A funding circle is an inner circle of partners who help fund your deals.</li>
-        <li>Look at the picture. You're in the middle, and each person around you is a partner with their own file.</li>
-        <li>Your credit partner on the Blueprint is the first person in that circle.</li>
-        <li>I still fund myself, and I do it with partners. That's how the funding game is played.</li>
-        <li>Your story: a deal you funded with a partner in your own circle, and what it took to set it up.</li>
-      </ul>
-    </aside>
-  </section>
-
-  <section class="slide" data-src="Is anyone else part of money decisions for you, like a spouse or a business partner? It helps if they hear this too: docs/sops/weekend-2026-10-24/04-sales-call-script.md:71. They are welcome on your call: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. After the payment posts, the credit partner is set up: public/app/present.js:1046 (watch note). Partner consent first, then the checklist: src/blueprint/credit-partner.mjs:85-99. One total: credit-partner.mjs:118-153. We pull your file together on the call, a soft pull, your score does not move: 04-sales-call-script.md:69.">
+  <section class="slide" data-src="Is anyone else part of money decisions for you, like a spouse or a business partner? It helps if they hear this too: docs/sops/weekend-2026-10-24/04-sales-call-script.md. They are welcome on your call: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. After the payment posts, the credit partner is set up: public/app/present.js:1046 (watch note). Partner consent first, then the checklist: src/blueprint/credit-partner.mjs:85-99. One total: credit-partner.mjs:118-153. We pull your file together on the call, a soft pull, your score does not move: 04-sales-call-script.md. Who else is part of money decisions: docs/sops/weekend-2026-10-24/04-sales-call-script.md. The soft pull on the call: 04-sales-call-script.md and db/migrations/287_contract_seller_signature_and_real_text.sql:146-147. The Fundhub team and an AI coach: docs/journeys/capital-blueprint-intended.md:9. The client can review bank matches and decide whether to apply once the file is ready (Blueprint lane rule): ops/workflows/backend-selling-lanes-2026-10-30.md section 6e. Only you can see a soft pull on your report: marketing/offers/fundhub-offers-2026-10-10.pdf p.9. The partner file needs a Blueprint buyer and the partner's own signed soft pull consent: src/blueprint/credit-partner.mjs:46-47 and :85-99; set up after the payment posts, public/app/present.js:1046.">
     <p class="eyebrow">CP-05 / Your call</p>
-    <h2>Your spouse or partner is welcome on your call.</h2>
+    <h2>Your partner is welcome on your strategy call, where you both see your real file.</h2>
     <ul class="lines">
-      <li>When they make money decisions with you, it helps if they hear this too.</li>
-      <li>After you join, their file is set up: consent first, then their own checklist.</li>
-      <li>Then your plan shows both amounts as one total.</li>
+      <li>If you make money decisions with someone, they hear the plan at the same moment you do.</li>
+      <li>A soft pull reads your file on the call, and you both see how much you qualify for based on where you're at right now.</li>
+      <li>After you join, your partner chooses whether to sign their own form. Each file gets its own plan, and each applicant authorizes any later credit application.</li>
     </ul>
     <figure class="pic">
       <ol class="tl" aria-label="The order: your call, you join, their consent, their checklist, your plan.">
@@ -900,11 +897,13 @@ html[data-tone="dark"] .ss-btn:focus-visible{outline-color:#fff}
     </figure>
     <aside class="talk" aria-hidden="true">
       <ul>
-        <li>When a spouse or business partner makes money decisions with you, it helps if they hear this too.</li>
-        <li>They're welcome on your call, and they see the same screen you see: your real file and what it qualifies for.</li>
-        <li>Walk the timeline with me. After you join the Blueprint, your partner's file gets set up.</li>
-        <li>Their consent comes first. They sign their own soft pull permission, and only then does their checklist get built.</li>
-        <li>Then your plan shows both amounts as one total, and the two of you work your steps side by side.</li>
+        <li>The partner file starts once you join the Blueprint and your partner signs their form, so it goes to work before your own file is ready.</li>
+        <li>And that person is welcome on your strategy CALL. If you make money decisions with someone, they hear the plan at the same moment you do.</li>
+        <li>When they hear it with you, nobody has to explain the plan twice, and the two of you decide with the same facts in front of you.</li>
+        <li>On the call, a soft pull reads your file while you're both sitting there. It leaves your score alone, and the banks never see it on your report.</li>
+        <li>Then you both see how much you qualify for based on where you're at right now, and which step on your file comes FIRST.</li>
+        <li>The Fundhub team and an AI coach stay with you through every step on the Blueprint, so you always know the next move on your file.</li>
+        <li>When the files are ready, you review the offers available to each person. Each lender makes its own decision, and each applicant signs for their own obligation.</li>
       </ul>
     </aside>
   </section>
