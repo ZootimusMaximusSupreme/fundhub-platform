@@ -18,9 +18,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   pullMain,
+  verifyShipPin,
   pushToGitHub,
   hasShippableChange,
   shipDiffPathspecs,
@@ -96,6 +97,97 @@ function tempRepo(branch = "main") {
   const cleanup = () => fs.rmSync(dir, { recursive: true, force: true });
   return { dir, env, must, write, commit, gitFn, cleanup };
 }
+
+test("GitHub Ship requires a full approved SHA before reading or changing Git", () => {
+  for (const env of [
+    { GITHUB_ACTIONS: "true" },
+    { GITHUB_ACTIONS: "true", FUNDHUB_SHIP_EXPECTED_SHA: "" },
+    { GITHUB_ACTIONS: "true", FUNDHUB_SHIP_EXPECTED_SHA: "abc12345" },
+    { FUNDHUB_SHIP_EXPECTED_SHA: "g".repeat(40) }
+  ]) {
+    let called = false;
+    const result = verifyShipPin({ env, git: () => { called = true; return { ok: true, out: "" }; } });
+    assert.equal(result.ok, false);
+    assert.equal(result.pinned, true);
+    assert.equal(called, false);
+  }
+  assert.deepEqual(verifyShipPin({ env: {}, git: () => { throw Error("manual mode must use its original pull path"); } }),
+    { ok: true, pinned: false });
+});
+
+test("inherited GitHub Actions environment without a pin fails closed", () => {
+  const env = cleanGitEnv({ GITHUB_ACTIONS: "true" });
+  delete env.FUNDHUB_SHIP_EXPECTED_SHA;
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", `
+    const {verifyShipPin}=await import(${JSON.stringify(pathToFileURL(SHIP).href)});
+    let called=false;
+    const result=verifyShipPin({git:()=>{called=true;return {ok:true,out:''};}});
+    if(result.ok||called)process.exitCode=1;
+    console.log(result.line);
+  `], { encoding: "utf8", env });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /exact CI-approved Ship SHA is required/);
+});
+
+test("approved Ship pin rejects a different local head and an unverifiable remote", () => {
+  const expected = "a".repeat(40);
+  const env = { GITHUB_ACTIONS: "true", FUNDHUB_SHIP_EXPECTED_SHA: expected };
+  const calls = [];
+  const wrongHead = verifyShipPin({ env, git: args => { calls.push(args); return { ok: true, out: "b".repeat(40) }; } });
+  assert.equal(wrongHead.ok, false);
+  assert.equal(calls.some(args => args[0] === "ls-remote"), false);
+  const unavailable = verifyShipPin({ env, git: args => args[0] === "rev-parse"
+    ? { ok: true, out: expected } : { ok: false, out: "network unavailable" } });
+  assert.equal(unavailable.ok, false);
+  assert.match(unavailable.line, /could not be verified/);
+});
+
+for (const advances of [false, true]) {
+  test(`real Git approved Ship stays pinned when remote advances after gate: ${advances}`, () => {
+    const local = tempRepo();
+    const origin = fs.mkdtempSync(path.join(os.tmpdir(), "ship-pin-origin-"));
+    try {
+      const init = spawnSync("git", ["init", "--bare", origin], { encoding: "utf8", env: local.env });
+      assert.equal(init.status, 0, init.stderr);
+      local.write("public/source.txt", "approved source\n");
+      const expected = local.commit("CI-approved source");
+      local.must(["remote", "add", "origin", origin]);
+      local.must(["push", "origin", "main"]);
+      const env = { GITHUB_ACTIONS: "true", FUNDHUB_SHIP_EXPECTED_SHA: expected };
+      assert.equal(verifyShipPin({ git: local.gitFn, env }).ok, true, "initial CI-gated snapshot matches");
+      if (advances) {
+        local.must(["switch", "-c", "later-writer"]);
+        local.write("public/source.txt", "unverified newer source\n");
+        local.commit("main advanced after its release gate");
+        local.must(["push", "origin", "HEAD:refs/heads/main"]);
+        local.must(["switch", "main"]);
+      }
+      const calls = [];
+      const result = verifyShipPin({ env, git: (args, options) => { calls.push(args); return local.gitFn(args, options); } });
+      assert.equal(result.ok, !advances);
+      assert.equal(result.pinned, true);
+      if (advances) assert.match(result.line, /Main moved after CI/);
+      assert.equal(local.must(["rev-parse", "HEAD"]), expected);
+      assert.equal(fs.readFileSync(path.join(local.dir, "public/source.txt"), "utf8"), "approved source\n");
+      assert.equal(calls.some(args => ["pull", "fetch", "checkout", "switch", "merge", "rebase"].includes(args[0])), false);
+    } finally {
+      local.cleanup();
+      fs.rmSync(origin, { recursive: true, force: true });
+    }
+  });
+}
+
+test("pinned Ship gates initial execution and migrations; live asset receipt uses the approved commit", () => {
+  const main = SRC.slice(SRC.indexOf("async function main()"));
+  assert.ok(main.indexOf("verifyShipPin({ git: gitRun })") < main.indexOf("pullMain({ git: gitRun })"));
+  assert.match(main, /if \(!pin.ok\) fail\(pin.line\)/);
+  assert.ok(main.indexOf("const confirmedPin = verifyShipPin") < main.indexOf('say("\\n→ database")'));
+  assert.match(main, /if \(!confirmedPin.ok\) fail\(confirmedPin.line\)/);
+  const workflow = fs.readFileSync(path.join(HERE, "../.github/workflows/ship.yml"), "utf8");
+  assert.equal((workflow.match(/FUNDHUB_SHIP_EXPECTED_SHA: \$\{\{ needs.release_gate.outputs.sha \}\}/g) || []).length, 2);
+  assert.ok(workflow.includes("const source=process.env.FUNDHUB_SHIP_EXPECTED_SHA||''"));
+  assert.ok(workflow.includes("execFileSync('git',['show',source+':public'+path])"));
+});
 
 /** One repo: a base commit holding every file the cases touch, then one commit per case. */
 function shipCase(change) {
@@ -428,9 +520,9 @@ describe("pull before the checks: ff-only, then rebase --autostash, then abort �
     for (const text of failures) assert.equal(morningOnlySlow(text), false, text);
   });
 
-  test("ship.mjs: between the pull and the deploy, the pull can stop the ship only when the folder was left mid-pull", () => {
+  test("ship.mjs: the manual pull stops only when the folder was left mid-pull", () => {
     const main = SRC.slice(SRC.indexOf("async function main()"));
-    const pullBlock = main.slice(main.indexOf("// ── 2. in step with GitHub"), main.indexOf("// ── 3. anything to ship?"));
+    const pullBlock = main.slice(main.indexOf('say("→ pulling GitHub\'s main")'), main.indexOf("// ── 3. anything to ship?"));
     const stops = pullBlock.match(/fail\([^)]*\)|process\.exit\(\d\)/g) || [];
     assert.deepEqual(stops, ["fail(pull.line)"]);
     assert.match(pullBlock, /if \(pull\.restored === false\) fail\(pull\.line\);/);
