@@ -88,8 +88,8 @@ test("Door 23 exports only proofs exercised through real route and job results",
     debts: 2500,
     min_percent: 3,
     drawn: 50000,
-    fees: 8000,
-    net: 39500,
+    fees: 5000,
+    net: 42500,
     monthly: 1500,
   });
   mark("route:read/deal-math");

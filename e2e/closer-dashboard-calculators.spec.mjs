@@ -1,3 +1,4 @@
+import { dealMath } from "../src/sales/deal-math.mjs";
 // Closer dashboard — the deal calculator inputs, typed into for real.
 //
 // The draw, the guardrail %, the slider, and the deposit / fee / debts / minimum
@@ -38,8 +39,8 @@ async function open(page, query = `?client_id=${CLIENT_ID}`) {
     "/api/read/deal-math": (route, { url }) => {
       const p = Object.fromEntries(new URL(url).searchParams);
       math.push(p);
-      const drawn = Number(p.drawn), fees = Number(p.deposit) + drawn * Number(p.fee) / 100;
-      return json(route, { ok: true, drawn, fees, debts: Number(p.debts), net: drawn - fees - Number(p.debts), monthly: drawn * Number(p.min) / 100 });
+      return json(route, { ok: true, ...dealMath({ orgId: "org-1", drawn: p.drawn,
+        deposit: p.deposit, feePercent: p.fee, debts: p.debts, minPercent: p.min }) });
     },
     "/api/read/lender-matches": { ok: true, matches: [] },
     "/api/read/closer-call": { ok: true },
@@ -94,9 +95,10 @@ test.describe("closer dashboard: deal calculators", () => {
       const p = math[math.length - 1];
       return p && `${p.deposit}|${p.fee}|${p.debts}|${p.min}|${p.drawn}`;
     }).toBe("3000|12|1000|4|10000");
-    // net = drawn - (deposit + drawn x fee%) - debts; monthly = drawn x min%
-    await expect(page.locator("#oNet")).toHaveText("$4,800");
+    // Deposit credits the fee once; the larger deposit here remains the total cost.
+    await expect(page.locator("#oNet")).toHaveText("$6,000");
     await expect(page.locator("#oMonthly")).toHaveText("$400 / mo");
+    await expect(page.locator("#oFeeLabel")).toContainText("deposit credited");
   });
 
   test("with no client the calculators are not shown at all", async ({ page }) => {

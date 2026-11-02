@@ -1,3 +1,4 @@
+import { dealMath } from "../src/sales/deal-math.mjs";
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
@@ -194,9 +195,8 @@ test("phone calculator inputs retain the server answer and visible guardrails", 
     },
     "/api/read/deal-math": (route, { url }) => {
       const p = new URL(url).searchParams;
-      const drawn = Number(p.get("drawn"));
-      const fees = Number(p.get("deposit")) + drawn * Number(p.get("fee")) / 100;
-      return json(route, { ok: true, drawn, fees, debts: Number(p.get("debts")), net: drawn - fees - Number(p.get("debts")), monthly: drawn * Number(p.get("min")) / 100 });
+      return json(route, { ok: true, ...dealMath({ orgId: "org-1", drawn: p.get("drawn"),
+        deposit: p.get("deposit"), feePercent: p.get("fee"), debts: p.get("debts"), minPercent: p.get("min") }) });
     }
   });
   await page.locator("#paymentCalculator > summary").click();
@@ -205,7 +205,7 @@ test("phone calculator inputs retain the server answer and visible guardrails", 
   await page.locator("#iFee").fill("12");
   await page.locator("#iDebts").fill("1000");
   await page.locator("#iMin").fill("4");
-  await expect(page.locator("#oNet")).toHaveText("$7,000");
+  await expect(page.locator("#oNet")).toHaveText("$8,500");
   await expect(page.locator("#oMonthly")).toHaveText("$500 / mo");
   await expect(page.locator("#guardTitle")).toContainText("Hard Stop");
   await expect(page.locator("#cliffTitle")).toContainText("not computed");
