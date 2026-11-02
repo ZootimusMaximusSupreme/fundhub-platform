@@ -1,6 +1,8 @@
 Fundhub, Prime Data
 
-1. PD-01 / Prime data — A bank reads your file several layers deeper than a consumer credit site report goes.
+1. PD-01 / Prime data — We read the deeper report a bank sees and handle your data under written terms.
+
+We read your file after you approve the soft pull, and we handle your data under our published privacy policy. The saved report masks your most sensitive identifier, and every read of the full value is logged.
 
 A bank reads your file several layers deeper than a consumer credit site report goes. Most funding companies stop at that site report and call it your credit.
 
