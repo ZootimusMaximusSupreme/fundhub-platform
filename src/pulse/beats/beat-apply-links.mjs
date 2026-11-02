@@ -90,7 +90,8 @@ export const SQL_APPLY_URLS = `SELECT encode(sha256(convert_to(application_url, 
        application_url AS url,
        array_agg(id::text ORDER BY id::text) AS lender_ids
   FROM lenders
- WHERE active
+ WHERE org_id = (SELECT id FROM orgs WHERE is_default ORDER BY created_at LIMIT 1)
+   AND active
    AND application_url IS NOT NULL
    AND btrim(application_url) <> ''
  GROUP BY application_url
@@ -98,7 +99,9 @@ export const SQL_APPLY_URLS = `SELECT encode(sha256(convert_to(application_url, 
 
 /* The saved list's own health, asked only when the saved list came in empty (read only; the table may not exist yet). */
 export const SQL_STATE_TABLE = "SELECT to_regclass('public.pulse_bank_links') IS NOT NULL AS there";
-export const SQL_STATE_COUNT = "SELECT count(*)::int AS n FROM pulse_bank_links";
+// The runner loads pulse_bank_links for defaultOrgId(), so both reads MUST use that SAME org.
+// A foreign tenant's history must never turn a genuine first pass into a false load failure.
+export const SQL_STATE_COUNT = "SELECT count(*)::int AS n FROM pulse_bank_links WHERE org_id = (SELECT id FROM orgs WHERE is_default ORDER BY created_at LIMIT 1)";
 
 const HASH_RE = /^[0-9a-f]{64}$/;
 const COUNT_KEYS = ["OK", "WALL", "HARD", "SLOW", "BAD_URL"];
