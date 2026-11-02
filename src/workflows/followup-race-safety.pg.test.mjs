@@ -187,9 +187,10 @@ test("S-NOBOOK: a first-answer chase, then the finish: six real messages, not tw
     const clientId = await makeClient(orgId);
     const now = Date.now();
     const firstAnswer = await addEvent(orgId, clientId, "survey.submitted", iso(now - 10 * 60 * MIN));
-    const finished = await addEvent(orgId, clientId, "survey.completed", iso(now - 2 * 60 * MIN));
 
     const old = await runChase({ event: { id: firstAnswer, orgId, clientId, name: "survey.submitted", payload: {} }, db, step: instantStep() });
+    // The first-answer chase happened before the survey was finished.
+    const finished = await addEvent(orgId, clientId, "survey.completed", iso(now - 2 * 60 * MIN));
     const fresh = await runChase({ event: { id: finished, orgId, clientId, name: "survey.completed", payload: {} }, db, step: instantStep() });
     assert.equal(old.exitedAt, "completed");
     assert.equal(fresh.exitedAt, "completed");

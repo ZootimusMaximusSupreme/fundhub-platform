@@ -97,7 +97,9 @@ before(async () => {
       `INSERT INTO message_templates (org_id, template_key, channel, subject, body, compliance_passed)
        VALUES ($1,$2,$3,$4,$5,true)`,
       [orgId, key, key.startsWith("SMS") ? "sms" : "email", key.startsWith("EMAIL") ? `Subject ${key}` : null,
-        `${key}: Start your questions here: {{survey_resume_link}}`]
+        // The approved containment templates use the plain URL in both channels;
+        // the sender deliberately removes the old bearer-link tag from SMS.
+        `${key}: Start your questions here: https://apply.fundhub.ai/apply`]
     );
   }
 });

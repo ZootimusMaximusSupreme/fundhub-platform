@@ -323,7 +323,7 @@ test("the duplicate-text guard treats A and B as one step, and a different step 
 test("the come-back sequence check sees a sent version B of touch 2 like a sent version A", { skip: !HAS_DB }, async () => {
   const who = await makeClient("A", "resume-proof");
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-  const ask = () => sequenceInFlight(db, { orgId, clientId: who, cohortId: "this-run", since });
+  const ask = () => sequenceInFlight(db, { orgId, clientId: who, since });
   assert.equal(await ask(), false, "nothing sent yet");
 
   const insert = (key, ref) => db.query(
@@ -335,7 +335,8 @@ test("the come-back sequence check sees a sent version B of touch 2 like a sent 
 
   await db.query(`DELETE FROM messages WHERE client_id = $1`, [who]);
   await insert("SMS-S02-RESUME-2-B", "workflow:SMS-S02-RESUME-2:this-run");
-  assert.equal(await ask(), false, "this run's own message does not count against it");
+  // This check runs before a new sequence sends: any prior send blocks it, even a legacy matching run key.
+  assert.equal(await ask(), true, "a previously sent message counts regardless of its legacy run key");
 
   await db.query(`DELETE FROM messages WHERE client_id = $1`, [who]);
   await insert("SMS-S02-RESUME-2", "workflow:SMS-S02-RESUME-2:other-run");
