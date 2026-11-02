@@ -147,9 +147,10 @@ function assertStep(s) {
  * (measured 2026-10-08: every booking.created, deposit.paid and round.* row).
  * The workflow finds the person by that email (resolveClient), so this does
  * too. Without the email lookup five of the six steps were never looked at.
- * Demo events and demo clients are journey runs and seeds. They never get a
- * text row, so they are left out (measured 2026-10-08: 135 of 135 flagged
- * events on 2026-09-21 were is_demo). Same filter as gap-nurture.mjs.
+ * Demo and synthetic journeys never owe a real customer text. Include both
+ * is_demo and newer payload simulated/synthetic, client custom_fields.synthetic
+ * and known +sim- / +walk- fixture-address markers. A confirmed customer
+ * event without those markers remains actionable.
  */
 export function buildJourneyZeroSql(steps = SMS_JOURNEY_STEPS) {
   const values = steps.map((s) => {
@@ -187,9 +188,24 @@ SELECT count(*)::int AS n,
   ) rc
  WHERE e.org_id = $1::uuid
    AND COALESCE(e.is_demo, false) = false
+   -- A synthetic journey never owed a real customer SMS, even when its
+   -- creator forgot the older is_demo flag.
+   AND lower(COALESCE(e.payload->>'simulated', '')) NOT IN ('true', '1')
+   AND lower(COALESCE(e.payload->>'synthetic', '')) NOT IN ('true', '1')
+   AND lower(COALESCE(e.payload->>'email', '')) NOT LIKE '%+sim-%'
+   AND lower(COALESCE(e.payload->>'email', '')) NOT LIKE '%+walk-%'
    AND (rc.id IS NOT NULL OR btrim(COALESCE(e.payload->>'email', '')) <> '')
    AND NOT EXISTS (
      SELECT 1 FROM clients d WHERE d.id = rc.id AND COALESCE(d.is_demo, false) = true
+   )
+   AND NOT EXISTS (
+     SELECT 1 FROM clients d
+      WHERE d.id = rc.id AND d.org_id = e.org_id
+        AND (
+          lower(COALESCE(d.custom_fields->>'synthetic', '')) IN ('true', '1')
+          OR lower(COALESCE(d.email, '')) LIKE '%+sim-%'
+          OR lower(COALESCE(d.email, '')) LIKE '%+walk-%'
+        )
    )
    AND e.created_at < $2::timestamptz
    AND e.created_at >= $3::timestamptz
