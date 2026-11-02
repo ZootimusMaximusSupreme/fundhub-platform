@@ -11,4 +11,6 @@ Build queue (Chris, 2026-11-01):
 2. Assign a named success manager when a Blueprint buyer joins, show the person and contact route in the portal, and route first-month questions to that person. Update the Blueprint journey and buyer-facing script only after this works.
 3. Prove both paths with focused checkout, agreement, portal and live user-path checks before a closer promises them.
 
-Present closer-line alignment and 73 focused tests pass. The 22-deck checker passes. Preflight found no file overlap, but the branch needs the latest six main commits before PR. Remaining: finish lint, rebase through the ordered shipping command, rerun preflight, open the ordered PR, and verify GitHub result. Do not claim live publication from local tests or Desktop export.
+Present closer-line alignment and 73 focused tests pass. The 22-deck checker, lint and rules check pass. Preflight found no file overlap. Ordered PR #374 is open at chain position 9, with CI queued at last check. Do not claim live publication from local tests or Desktop export.
+
+Chris clarified that the final must be a spoken script, not an operator guide. Added `docs/sops/weekend-2026-10-24/04-sales-call-script-spoken.txt` as read-aloud call and objection lines. The existing Markdown page is labeled as staff operating notes. Restored the 22 recording sets and put the spoken script plus an index in the Desktop folder `Fundhub - FINAL Sales Script and 22 Recording Kit - 2026-11-01`; all 68 files match staging. PR #374 must receive this final text update before it is considered current.

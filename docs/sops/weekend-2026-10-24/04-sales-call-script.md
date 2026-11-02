@@ -1,4 +1,6 @@
-# Sales call script — the branch close
+# Sales call operating notes — the branch close
+
+**Read-aloud script:** [04-sales-call-script-spoken.txt](04-sales-call-script-spoken.txt). That file contains the words for the call and objection replies. This page is the staff reference behind it.
 
 Drafted 2026-10-29. It rebuilds the sheet a Cursor chat compiled earlier the same day. It is built from three places: Cole Gordon's closer course, Fundhub's own sales files, and the live Present deck. The steps are Cole's. The words are Fundhub. Nothing from Cole's course is copied here, because this repository is public.
 
