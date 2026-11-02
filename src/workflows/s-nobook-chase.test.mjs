@@ -543,6 +543,18 @@ test("nobook: only the text the other run sent is skipped; the texts it never se
     [SMS_NOBOOK_01, EMAIL_NOBOOK_01, SMS_NOBOOK_02, EMAIL_NOBOOK_02, SMS_NOBOOK_03, EMAIL_NOBOOK_03]);
 });
 
+test("nobook: old-trigger SMS does not suppress the missing email", async () => {
+  const db = makeDb({
+    clients: [{ ...PERSON }], templates: templates(),
+    events: [{ id: "evt-old-sms", org_id: "org-1", client_id: "cl-1", name: "survey.submitted", payload: {}, created_at: "2026-10-30T10:00:00Z" }]
+  });
+  db.messages.push({ org_id: "org-1", client_id: "cl-1", channel: "sms", template_key: SMS_NOBOOK_01, provider_ref: "workflow:SMS-NOBOOK-01:evt-old-sms:1" });
+  const res = await handle({ event: finishedEvent({ id: "evt-partial-old" }), db, step: recordingStep() });
+  assert.deepEqual(res.msg1.sms, { skipped: "sent_by_other_trigger" });
+  assert.ok(db.messages.some((m) => m.template_key === EMAIL_NOBOOK_01 && m.provider_ref?.includes("evt-partial-old")));
+  assert.equal(db.messages.filter((m) => m.template_key === SMS_NOBOOK_01).length, 1);
+});
+
 test("nobook: a text from the other trigger older than five days before this run does not count", async () => {
   const db = makeDb({
     clients: [{ ...PERSON }], templates: templates(),
