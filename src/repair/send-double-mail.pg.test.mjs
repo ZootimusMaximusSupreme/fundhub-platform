@@ -183,6 +183,53 @@ describe("repair send — one press, one mailing", { skip: !HAVE_DB ? "no DATABA
     assert.equal((await letterRow(letter.id)).status, "sent");
   });
 
+  test("an old refusal cannot release a newer claim after staff clear and reclaim", async () => {
+    const letter = await mkLetter({ bureau: "TU", round: "R11" });
+    let firstEntered, secondEntered, finishFirst, finishSecond;
+    const firstAtMailer = new Promise((resolve) => { firstEntered = resolve; });
+    const secondAtMailer = new Promise((resolve) => { secondEntered = resolve; });
+    const firstReply = new Promise((resolve) => { finishFirst = resolve; });
+    const secondReply = new Promise((resolve) => { finishSecond = resolve; });
+    const send = (mailSender) => sendRepairLetters(db, {
+      orgId: org, clientId: client, staffId, mail: true, from: FROM,
+      letters: [{ bureau: "TU", letterId: letter.id, html: "<html>x</html>", caseId }],
+      mailSender
+    });
+
+    const oldSend = send(async () => { firstEntered(); return firstReply; });
+    await firstAtMailer;
+    const oldToken = (await db.query(
+      `SELECT send_claimed_at::text AS token FROM dispute_letters WHERE id = $1`, [letter.id]
+    )).rows[0].token;
+    const cleared = await clearStuckSendClaim(db, {
+      orgId: org, letterId: letter.id, staffId,
+      reason: "PostGrid confirms no letter from first attempt", minAgeMinutes: 0
+    });
+    assert.equal(cleared.ok, true);
+
+    const newSend = send(async () => { secondEntered(); return secondReply; });
+    await secondAtMailer;
+    const newToken = (await db.query(
+      `SELECT send_claimed_at::text AS token FROM dispute_letters WHERE id = $1`, [letter.id]
+    )).rows[0].token;
+    assert.notEqual(newToken, oldToken, "the second sender holds a distinct claim");
+
+    try {
+      finishFirst({ ok: false, preTransmission: true, error: "destination_address_missing" });
+      const refused = await oldSend;
+      assert.equal(refused.ok, false);
+      const stillClaimed = await letterRow(letter.id);
+      assert.equal(stillClaimed.status, "sending");
+      assert.equal((await db.query(
+        `SELECT send_claimed_at::text AS token FROM dispute_letters WHERE id = $1`, [letter.id]
+      )).rows[0].token, newToken, "the old release must not clear the new sender's claim");
+      assert.equal(stillClaimed.mailed_at, null);
+    } finally {
+      finishSecond({ ok: false, preTransmission: true, error: "destination_address_missing" });
+      await newSend;
+    }
+  });
+
   test("a call that may have transmitted KEEPS the claim and is never auto-retried", async () => {
     const letter = await mkLetter({ bureau: "EX", round: "R3" });
     const attempt = (sender) => sendRepairLetters(db, {

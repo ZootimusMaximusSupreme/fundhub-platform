@@ -149,7 +149,7 @@ export function nothingWasTransmitted(sent, error) {
 /**
  * Take the letter for mailing, before anything is transmitted.
  *
- * @returns {Promise<{claimed: boolean, reason: string|null, priorStatus: string|null}>}
+ * @returns {Promise<{claimed: boolean, reason: string|null, priorStatus: string|null, claimToken?: string}>}
  *   claimed true  — this caller holds the letter and may send it.
  *   claimed false — do not send. `reason` says why.
  */
@@ -179,7 +179,9 @@ export async function claimLetterForMailing(db, { letterId, orgId, clientId, req
             : "d.status NOT IN ('sending', 'sent', 'delivered')"}
           ${requireActivePaidRepair ? `AND ${activePaidRepairSql(2, 3)}` : ""}
           ${requireCurrentDisputeAuthorization ? `AND ${currentRepairMailAuthorizationSql(2, 3)}` : ""}
-       RETURNING prior.status AS prior_status`,
+       -- Return text so the claim token keeps Postgres microsecond precision;
+       -- a JS Date would truncate it before the release compare-and-set.
+       RETURNING prior.status AS prior_status, d.send_claimed_at::text AS claim_token`,
       [letterId, orgId, clientId]
     );
   } catch (err) {
@@ -197,7 +199,12 @@ export async function claimLetterForMailing(db, { letterId, orgId, clientId, req
   }
 
   if (claim?.rows?.length) {
-    return { claimed: true, reason: null, priorStatus: claim.rows[0].prior_status ?? null };
+    return {
+      claimed: true,
+      reason: null,
+      priorStatus: claim.rows[0].prior_status ?? null,
+      claimToken: claim.rows[0].claim_token
+    };
   }
 
   // A refund/cancellation may have committed after preflight; the UPDATE
@@ -250,16 +257,18 @@ export async function claimLetterForMailing(db, { letterId, orgId, clientId, req
  *
  *  `mailed_at IS NULL` is load-bearing, not belt-and-braces. A release must never
  *  be able to un-mail a letter that really went out, whatever the caller believed
- *  when it asked. */
-async function releaseLetterClaim(db, { letterId, orgId, clientId, priorStatus }) {
-  if (!letterId || !db?.query) return;
+ *  when it asked. The token also prevents an old sender from releasing a newer
+ *  claim after a human clear and reclaim. */
+async function releaseLetterClaim(db, { letterId, orgId, clientId, priorStatus, claimToken }) {
+  if (!letterId || !db?.query || !claimToken) return;
   await db.query(
     `UPDATE dispute_letters
         SET status = COALESCE($4, 'ready'), send_claimed_at = NULL
       WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid
         AND status = 'sending'
-        AND mailed_at IS NULL`,
-    [letterId, orgId, clientId, priorStatus || null]
+        AND mailed_at IS NULL
+        AND send_claimed_at = $5::timestamptz`,
+    [letterId, orgId, clientId, priorStatus || null, claimToken]
   ).catch(() => {});
 }
 
@@ -478,7 +487,8 @@ export async function sendRepairLetters(db, {
           letterId: claimLetterId,
           orgId,
           clientId,
-          priorStatus: claim.priorStatus
+          priorStatus: claim.priorStatus,
+          claimToken: claim.claimToken
         });
       }
       results.push({ bureau, target: routing.target, ok: false, error: err });
