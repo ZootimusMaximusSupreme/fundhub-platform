@@ -49,17 +49,29 @@ export function normalizeIp(ip) {
 
 // createSession — mints a session and returns the ONLY copy of the cleartext
 // token. { token, sessionId, expiresAt }.
-export async function createSession(db, { staffId, orgId, ip, userAgent, env = process.env } = {}) {
+export async function createSession(db, { staffId, orgId, ip, userAgent,
+  mfaVerified = false, env = process.env } = {}) {
   if (!staffId) throw new Error("staffId required");
   const org = orgId || (await resolveDefaultOrg(db));
   const token = newToken();
   const expiresAt = new Date(Date.now() + ttlMs(env));
-  const r = await db.query(
-    `INSERT INTO sessions (org_id, staff_id, token_hash, expires_at, ip, user_agent)
-     VALUES ($1,$2,$3,$4,$5,$6)
-     RETURNING id, expires_at`,
-    [org, staffId, hashToken(token), expiresAt, normalizeIp(ip), truncate(userAgent, 512)]
-  );
+  const params = [org, staffId, hashToken(token), expiresAt,
+    normalizeIp(ip), truncate(userAgent, 512)];
+  let r;
+  try {
+    r = await db.query(
+      `INSERT INTO sessions (org_id, staff_id, token_hash, expires_at, ip, user_agent, mfa_verified_at)
+       VALUES ($1,$2,$3,$4,$5,$6,CASE WHEN $7::boolean THEN now() ELSE NULL END)
+       RETURNING id, expires_at`, [...params, !!mfaVerified]);
+  } catch (error) {
+    // A deploy may briefly reach a database before migration 543. Ordinary
+    // native sessions keep working; an MFA session must never lose its stamp.
+    if (mfaVerified || error?.code !== "42703" ||
+        !/mfa_verified_at/i.test(error.message || "")) throw error;
+    r = await db.query(
+      `INSERT INTO sessions (org_id, staff_id, token_hash, expires_at, ip, user_agent)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, expires_at`, params);
+  }
   return { token, sessionId: r.rows[0].id, expiresAt: r.rows[0].expires_at };
 }
 
@@ -89,9 +101,10 @@ export async function verifySession(db, token, { env = process.env } = {}) {
         WHERE token_hash = $1
           AND revoked_at IS NULL
           AND expires_at > now()
-        RETURNING id, staff_id, org_id, expires_at
+        RETURNING id, staff_id, org_id, expires_at,
+                  to_jsonb(sessions)->>'mfa_verified_at' AS mfa_verified_at
      )
-     SELECT live.id AS session_id, live.expires_at,
+     SELECT live.id AS session_id, live.expires_at, live.mfa_verified_at,
             s.id AS staff_id, s.org_id, s.role, s.email, s.name, s.status, s.avatar_key,
             ${withAssignments ? assignedRoles : "ARRAY[]::text[]"} AS assigned_roles,
             (to_jsonb(s) ->> 'active') AS active_flag
@@ -139,7 +152,8 @@ export async function verifySession(db, token, { env = process.env } = {}) {
       status: row.status,
       avatarUrl: row.avatar_key ? "/api/staff/avatar" : null
     },
-    session: { id: row.session_id, expiresAt: row.expires_at }
+    session: { id: row.session_id, expiresAt: row.expires_at,
+      mfaVerifiedAt: row.mfa_verified_at ?? null }
   };
 }
 

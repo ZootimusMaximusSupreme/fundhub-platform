@@ -58,6 +58,44 @@ test("login succeeds and returns a token plus the staff identity", async () => {
   assert.ok(db.stmts().some((s) => /INSERT INTO sessions/.test(s)), "mints a session");
 });
 
+test("MFA rollout returns only a short-lived challenge after a valid staff password", async () => {
+  _resetOrgCache();
+  const db = fakeDb({ staff: staffRow() });
+  const out = await login(db, { email: "dana@fundhub.test", password: PASSWORD,
+    mfaForPayout: true,
+    env: { MFA_REQUIRED: "1", MFA_SECRET_ENC_KEY: Buffer.alloc(32, 7).toString("base64") } });
+  assert.equal(out.ok, true);
+  assert.equal(out.mfa_required, true);
+  assert.equal(out.mfa_setup_required, true);
+  assert.match(out.mfa_token, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(out.token, undefined);
+  assert.ok(!db.stmts().some((s) => /INSERT INTO sessions/.test(s)));
+  assert.ok(db.stmts().some((s) => /INSERT INTO staff_mfa_challenges/.test(s)));
+});
+
+test("MFA rollout fails closed when its encryption key is absent", async () => {
+  _resetOrgCache();
+  const db = fakeDb({ staff: staffRow() });
+  const out = await login(db, { email: "dana@fundhub.test", password: PASSWORD,
+    mfaForPayout: true,
+    env: { MFA_REQUIRED: "1" } });
+  assert.equal(out.status, 503);
+  assert.equal(out.error, "mfa_unavailable");
+  assert.ok(!db.stmts().some((s) => /INSERT INTO sessions/.test(s)));
+});
+
+test("native staff login remains usable while payout sessions require MFA", async () => {
+  _resetOrgCache();
+  const db = fakeDb({ staff: staffRow() });
+  const out = await login(db, { email: "dana@fundhub.test", password: PASSWORD,
+    env: { MFA_REQUIRED: "1" } });
+  assert.equal(out.ok, true);
+  assert.equal(out.mfa_required, undefined);
+  assert.match(out.token, /^[A-Za-z0-9_-]{43}$/);
+  const insert = db.calls.find((c) => /INSERT INTO sessions/.test(c.sql));
+  assert.equal(insert.params.at(-1), false);
+});
+
 test("login includes assigned roles immediately from the verified session", async () => {
   _resetOrgCache();
   const db = fakeDb({ staff: staffRow({ assigned_roles: ["setter", "closer"] }) });

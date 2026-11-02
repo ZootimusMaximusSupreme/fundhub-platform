@@ -32,6 +32,7 @@ import { safeError } from "../../src/http/health.mjs";
 import "@pdf-lib/fontkit";
 import "pg";
 import authLogin from "../../api/auth/login.mjs";
+import authMfa from "../../api/auth/mfa.mjs";
 import authLogout from "../../api/auth/logout.mjs";
 import authSession from "../../api/auth/session.mjs";
 import authReset from "../../api/auth/reset.mjs";
@@ -387,6 +388,7 @@ export const config = { path: "/api/*" };
    the api/ directory; nothing at runtime reads it from outside this module. */
 export const ROUTES = {
   "auth/login": authLogin,
+  "auth/mfa": authMfa,
   "auth/logout": authLogout,
   "auth/session": authSession,
   "auth/reset": authReset,

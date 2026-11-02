@@ -6,7 +6,10 @@ import read from "../../api/read/staff-payout-account.mjs";
 const ORG = "00000000-0000-4000-8000-000000000001";
 const SELF = "00000000-0000-4000-8000-000000000002";
 const OTHER = "00000000-0000-4000-8000-000000000003";
-const auth = (role) => async () => ({ id: SELF, org_id: ORG, role });
+const auth = (role) => async (req) => {
+  req.session = { mfaVerifiedAt: new Date() };
+  return { id: SELF, org_id: ORG, role };
+};
 function response() { return { statusCode: 200, body: null, headers: {},
   status(code) { this.statusCode = code; return this; },
   json(body) { this.body = body; return this; },
@@ -31,7 +34,8 @@ test("staff bank write is self-only for closer and sales manager", async () => {
   }
   const secondary = response();
   await write({ method: "POST", body: { action: "link_token" } }, secondary,
-    { db: noDb, requireAuth: async () => ({ id: SELF, org_id: ORG, role: "setter", roles: ["setter", "closer"] }),
+    { db: noDb, requireAuth: async (req) => { req.session = { mfaVerifiedAt: new Date() };
+      return { id: SELF, org_id: ORG, role: "setter", roles: ["setter", "closer"] }; },
       startLink: async () => ({ ok: true, linkToken: "link", environment: "production" }) });
   assert.equal(secondary.statusCode, 200);
 });
@@ -48,6 +52,30 @@ test("bank exchange takes employee identity from session, never request", async 
   } });
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.body.account, { mask: "1234" });
+});
+
+test("MFA rollout gates both payout Link creation and bank exchange", async () => {
+  for (const action of ["link_token", "exchange"]) {
+    const res = response();
+    await write({ method: "POST", body: { action, public_token: "public" } }, res,
+      { db: noDb, env: { MFA_REQUIRED: "1" }, requireAuth: async () =>
+        ({ id: SELF, org_id: ORG, role: "closer" }),
+        startLink: async () => { throw new Error("must not start Link"); },
+        completeLink: async () => { throw new Error("must not exchange token"); } });
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.error, "mfa_required");
+  }
+});
+
+test("an old MFA session cannot change a payout bank", async () => {
+  const res = response();
+  await write({ method: "POST", body: { action: "link_token" } }, res,
+    { db: noDb, requireAuth: async (req) => {
+      req.session = { mfaVerifiedAt: new Date(Date.now() - 16 * 60 * 1000) };
+      return { id: SELF, org_id: ORG, role: "closer" };
+    }, startLink: async () => { throw new Error("must not start Link"); } });
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body.error, "mfa_required");
 });
 
 test("owner masked read is same-org; employees cannot read another staff id", async () => {
