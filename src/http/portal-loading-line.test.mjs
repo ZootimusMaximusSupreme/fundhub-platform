@@ -174,7 +174,7 @@ describe("client portal — the line under the greeting while the file loads (ho
     assert.doesNotMatch(p.line.el.textContent, REFUSAL, "while the file read is in flight the line says the file failed");
     assert.match(p.line.el.textContent, /^Loading/);
     await p.answer(SIM_FILE);
-    assert.equal(p.greeting(), "Welcome back, Sim");
+    assert.equal(p.greeting(), "Previewing Sim Eleven-Blueprint’s portal");
     assert.doesNotMatch(p.line.el.textContent, /^Loading/, "the loading words must go once the file lands");
     for (const t of p.line.seen) assert.doesNotMatch(t, REFUSAL, "a good load showed: " + t);
   });
@@ -185,9 +185,11 @@ describe("client portal — the line under the greeting while the file loads (ho
     for (const t of p.line.seen) assert.doesNotMatch(t, REFUSAL, "a good load showed: " + t);
   });
 
-  test("a real failure still says so — staff with no id", async () => {
+  test("staff without a selected file are sent to choose a client", async () => {
     const p = await startPortal({ search: "" });
-    assert.match(p.line.el.textContent, REFUSAL);
+    assert.equal(p.greeting(), "Choose a client");
+    assert.match(p.line.el.textContent, /Open a client record in the CRM/);
+    assert.doesNotMatch(p.line.el.textContent, REFUSAL);
   });
 
   test("a real failure still says so — a client with no file", async () => {
@@ -198,12 +200,12 @@ describe("client portal — the line under the greeting while the file loads (ho
   test("a real failure still says so — staff with an id that is no file", async () => {
     const p = await startPortal({ search: "?id=00000000-0000-4000-8000-000000000000" });
     await p.answer({ ok: false, source: "notfound", data: null, error: "no such record" });
-    assert.match(p.line.el.textContent, REFUSAL, "a stale or wrong id must not end on a friendly welcome");
+    assert.match(p.line.el.textContent, /could not be found/, "a stale or wrong id must not end on a friendly welcome");
   });
 
   test("a real failure still says so — staff with something that is not an id", async () => {
     const p = await startPortal({ search: "?id=not-an-id" });
     await p.answer({ ok: false, source: "badrequest", data: null, error: "That request was not accepted." });
-    assert.match(p.line.el.textContent, REFUSAL);
+    assert.match(p.line.el.textContent, /could not be found/);
   });
 });

@@ -49,7 +49,7 @@ flowchart TD
     CAN --> A_proxy[proxy — 2 routes]
     CAN --> A_public[public — 20 routes]
     CAN --> A_push[push — 1 route]
-    CAN --> A_read[Reading data — 70 routes]
+    CAN --> A_read[Reading data — 71 routes]
     CAN --> A_repair[repair — 5 routes]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 7 routes]
@@ -57,10 +57,11 @@ flowchart TD
     CAN --> A_top_level[Everything else — 45 routes]
     CAN --> A_trials[trials — 4 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 10 routes]
+    WHO -->|Yes| CANT[Blocked — 11 routes]
     CANT --> B_affiliates[affiliates — 2 blocked]
     CANT --> B_auth[Signing in and out — 1 blocked]
     CANT --> B_chat[chat — 1 blocked]
+    CANT --> B_native[native — 1 blocked]
     CANT --> B_push[push — 4 blocked]
     CANT --> B_read[Reading data — 1 blocked]
     CANT --> B_top_level[Everything else — 1 blocked]
@@ -68,7 +69,7 @@ flowchart TD
 
 ## What they can reach
 
-**328 of 338 routes.**
+**329 of 340 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -347,6 +348,7 @@ flowchart TD
 | `/api/read/lender-observations` | GET | owner, admin, funding_advisor |
 | `/api/read/lenders` | GET | owner, admin, funding_advisor |
 | `/api/read/message-templates` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/message-tests` | GET | owner, admin |
 | `/api/read/messages` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/money-map` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/morning-brief` | GET | owner, admin |
@@ -410,7 +412,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**10 of 338 routes.**
+**11 of 340 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -418,6 +420,7 @@ flowchart TD
 | `/api/affiliates/refer` | POST | client |
 | `/api/auth/authorized-rep-file` | GET, POST | client |
 | `/api/chat/portal-message` | GET, POST | client |
+| `/api/native/client-activity` | POST | client |
 | `/api/push/key` | GET | client |
 | `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |

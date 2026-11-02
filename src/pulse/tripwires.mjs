@@ -51,7 +51,7 @@ export const TRIPWIRES = Object.freeze({
   "route:public/slo-interest": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:contact-no-followup"] },
   "route:public/survey-submit": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:lead-first-touches-missing"] },
   // 2026-10-31: the come-back link in the welcome and the S-02 messages. A broken door sends the lead to the top.
-  "route:public/survey-resume": { impact: "customer", checks: ["survey:resume-link-opens", "survey:resume-door-answers", "survey:resume-links-signed"] },
+  "route:public/survey-resume": { impact: "customer", checks: ["survey:resume-link-opens", "survey:resume-door-answers", "survey:resume-links-signed", "survey:resume-no-link-in-texts"] },
   "route:payment-links": { impact: "money", checks: ["payments:pay-link-webhook", "payments:checkout-started-no-link", "payments:whop-paid-no-access"] },
   "job:finance-os-pull-sweeper": { impact: "customer", checks: ["blueprint:monthly-delivery"] },
   "job:waypoint-nudge-sweeper": { impact: "customer", checks: ["blueprint:coach-call-delivery", "gap:sms-sending-stuck"] },
@@ -84,6 +84,7 @@ export const TRIPWIRES = Object.freeze({
   "page:portal-login.html": { impact: "customer", checks: ["gap:auth-magic-link-dead", "portal:paid-client-never-signed-in"] },
   "desk:client-portal.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:paid-entitlement", "portal:next-step"] },
   "route:read/portal-summary": { impact: "customer", checks: ["portal:summary"] },
+  "route:native/client-activity": { impact: "customer", checks: ["crm-data:pipeline"] },
   "route:push/native-device": { impact: "customer", checks: ["native-push:device-owner", "native-push:configured"] },
   "route:push/preferences": { impact: "customer", checks: ["marketing-push:preference-shape", "provider:web-push-and-client-push"] },
   "send:src/push/native-send.mjs": { impact: "customer", checks: ["native-push:recent-delivery-failure", "native-push:configured"] },
@@ -260,4 +261,7 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
     "Staff-only recruiting desk: it shows job applicants from /api/hiring/* and moves them between hiring stages. No client, lead, payment or customer message is read or written there.",
   "send:src/push/send.mjs":
     "Dead today: nothing in the app calls sendToClient (only scripts/push/send-test-push.mjs does), so no customer is sent anything through it. Move this entry to TRIPWIRES the day a caller is added.",
+  // 2026-10-31: the A/B message tests report (src/messaging/experiment-report.mjs). One SELECT.
+  "route:read/message-tests":
+    "Staff-only report; reads, sends nothing. It shows owner and admin how the follow-up message tests (version A against version B) are doing and reaches no customer. Its door is watched by reg:read/message-tests.",
 });

@@ -64,7 +64,7 @@ test("s-00: two pings at once still send welcome only once", async () => {
 });
 
 // ── the resume link (owner-set 2026-10-31; containment 2026-10-31) ────────────────────────────────
-// The welcome text and email carry {{survey_resume_link}}. It is the plain /apply page, never a
+// The contained welcome templates carry the literal /apply link from seed 302, never a
 // signed ?r= code: /apply lets a new phone onto an existing lead's email, so this text can reach a
 // stranger. Real uuids and a real key are used so a code COULD be minted, and is not.
 const ORG = "0f8fad5b-d9cb-469f-a165-70867728950e";
@@ -72,8 +72,8 @@ const CLIENT = "c3b1a9d2-5f4e-4c1a-8b7d-2e6f9a0b1c3d";
 const SECRET = "unit-test-resume-secret-0123456789abcdef0123456789";
 
 const linkTemplates = () => [
-  { org_id: ORG, template_key: EMAIL_TEMPLATE_KEY, channel: "email", subject: "Welcome", body: "Welcome. Pick up here: {{survey_resume_link}}", compliance_passed: true },
-  { org_id: ORG, template_key: SMS_TEMPLATE_KEY, channel: "sms", body: "Welcome. Pick up here: {{survey_resume_link}}", compliance_passed: true }
+  { org_id: ORG, template_key: EMAIL_TEMPLATE_KEY, channel: "email", subject: "Welcome", body: "Welcome. Pick up here: https://apply.fundhub.ai/apply", compliance_passed: true },
+  { org_id: ORG, template_key: SMS_TEMPLATE_KEY, channel: "sms", body: "Welcome. Pick up here: https://apply.fundhub.ai/apply", compliance_passed: true }
 ];
 const pat = () => ({ id: CLIENT, org_id: ORG, email: "pat@example.com", phone: "+15551234567", first_name: "Pat", custom_fields: {} });
 

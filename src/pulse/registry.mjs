@@ -248,6 +248,8 @@ const API_KEYS = [
   /* Capital Blueprint B3: the GET answers 401 to an unsigned ping; the POST (staff
      accept / reject / waive / add a line) is never pinged. */
   "money/vault",
+  /* Authenticated client app-open receipt is POST-only; GET 405 proves the route is reachable without writing. */
+  "native/client-activity",
   "ops/hire-closer",
   "ops/notify-owner",
   "org-brand",
@@ -390,6 +392,7 @@ const API_KEYS = [
   "read/lender-observations",
   "read/lenders",
   "read/message-templates",
+  "read/message-tests",
   "read/messages",
   "read/money-map",
   "read/morning-brief",

@@ -852,4 +852,24 @@ describe("customer send hours in the gate", () => {
     assert.strictEqual(res.state, "blocked");
     assert.ok(codes(res).includes("opted_out"));
   });
+
+  // A version B of a tested message (src/messaging/experiments.mjs, key + "-B") is held, sent and
+  // blocked exactly like its base key.
+  test("a version B follow-up is held at 6 p.m. and allowed inside the window, like version A", async () => {
+    for (const [channel, key] of [["sms", "SMS-NOBOOK-02"], ["email", "EMAIL-NOBOOK-02"], ["sms", "SMS-S02-RESUME-2"], ["email", "EMAIL-S02-RESUME-2"]]) {
+      const held = await gate(fakeDb(), { ...base, channel, templateKey: `${key}-B` }, at("2026-08-02T01:00:00Z"));
+      const heldA = await gate(fakeDb(), { ...base, channel, templateKey: key }, at("2026-08-02T01:00:00Z"));
+      assert.deepStrictEqual(codes(held), ["drip_hours"], `${key}-B`);
+      assert.deepStrictEqual(codes(held), codes(heldA), key);
+      assert.strictEqual(held.reasons[0].retryable, true);
+      assert.strictEqual((await gate(fakeDb(), { ...base, channel, templateKey: `${key}-B` }, { now: MIDDAY })).state, "allowed", `${key}-B inside the window`);
+    }
+  });
+
+  test("a version B text still goes through the opt-out check", async () => {
+    const res = await gate(fakeDb({ optedOut: new Set([`${CLIENT}:sms`]) }),
+      { ...base, templateKey: "SMS-NOBOOK-02-B" }, { now: MIDDAY });
+    assert.strictEqual(res.state, "blocked");
+    assert.ok(codes(res).includes("opted_out"));
+  });
 });

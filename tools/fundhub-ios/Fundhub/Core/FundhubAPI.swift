@@ -49,6 +49,14 @@ struct FundhubAPI {
         try await send("/api/read/portal-summary", bearer: token)
     }
 
+    func reportClientAppOpened(token: String, installationId: String) async throws {
+        let reply: NativePushWriteReply = try await send("/api/native/client-activity", method: "POST", body: [
+            "platform": "ios", "event_type": "native_authenticated_open",
+            "installation_id": installationId
+        ], bearer: token)
+        guard reply.ok else { throw FundhubAPIError.unavailable }
+    }
+
     func nativePushStatus(token: String, installationId: String) async throws -> NativePushStatusReply {
         guard let id = installationId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
             throw FundhubAPIError.invalidResponse

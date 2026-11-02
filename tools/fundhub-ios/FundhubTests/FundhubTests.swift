@@ -146,17 +146,37 @@ final class FundhubTests: XCTestCase {
     @MainActor
     func testNotificationTapRequestIsOneUseAndExpires() {
         let push = NativePushCenter.shared
+        push.resetAfterInvalidSession()
         let tappedAt = Date(timeIntervalSince1970: 1_700_000_000)
-        _ = push.takePortalOpenRequest(now: tappedAt)
+        _ = push.takePortalOpenRequest(now: tappedAt, currentBearer: "session-A")
         XCTAssertFalse(push.recordNotificationTap(userInfo: ["path": "https://evil.example/join"], now: tappedAt))
-        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt))
+        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt, currentBearer: "session-A"))
 
-        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt))
-        XCTAssertTrue(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(60)))
-        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(61)))
+        XCTAssertFalse(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt,
+                                                 sessionBearer: "session-A"))
+        XCTAssertTrue(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(60), currentBearer: "session-A"))
+        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(61), currentBearer: "session-A"))
 
-        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt))
-        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(NativePushTap.requestLifetime + 1)))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt,
+                                                 sessionBearer: "session-A"))
+        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(NativePushTap.requestLifetime + 1),
+                                                  currentBearer: "session-A"))
+        push.resetAfterInvalidSession()
+    }
+
+    @MainActor
+    func testClientPortalTapCannotCrossSessions() {
+        let push = NativePushCenter.shared
+        push.resetAfterInvalidSession()
+        let now = Date()
+        let info = ["path": NativePushTap.portalPath]
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
+        XCTAssertFalse(push.takePortalOpenRequest(now: now, currentBearer: "session-B"))
+        XCTAssertFalse(push.takePortalOpenRequest(now: now, currentBearer: "session-A"))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
+        push.resetAfterInvalidSession()
+        XCTAssertFalse(push.takePortalOpenRequest(now: now, currentBearer: "session-A"))
     }
 
     @MainActor
@@ -190,9 +210,93 @@ final class FundhubTests: XCTestCase {
         XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
         push.resetAfterInvalidSession()
         XCTAssertNil(push.takeStaffOpenRequest(now: now, currentBearer: "session-A"))
-        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: now))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: now,
+                                                 sessionBearer: "session-A"))
         push.resetAfterInvalidSession()
-        XCTAssertFalse(push.takePortalOpenRequest(now: now))
+        XCTAssertFalse(push.takePortalOpenRequest(now: now, currentBearer: "session-A"))
+    }
+
+    @MainActor
+    func testDelayedStaffAlertRejectsAccountSwitchAfterIdentityRefresh() async {
+        // The identity lookup is deliberately held until session A becomes B.
+        // An already-dequeued alert for A must not navigate under B's WebView.
+        let alert = NativePushTap.StaffAlert(kind: "lead",
+                                            clientId: "56a40391-e541-4a89-873b-37eab9d6d953")
+        let gate = DelayedIdentityGate()
+        let simulated = SimulatedStaffState(bearer: "session-A")
+        let delayedCheck = Task { @MainActor in
+            guard let bearerAtTap = simulated.bearer else { return nil as String? }
+            await gate.pause()
+            return StaffAlertNavigation.verifiedPath(
+                alert: alert,
+                bearerAtTap: bearerAtTap,
+                bearerAfterRefresh: simulated.bearer,
+                staffSessionVerified: true,
+                roleAfterRefresh: "setter",
+                taskCancelled: Task.isCancelled
+            )
+        }
+        await gate.waitUntilPaused()
+        simulated.bearer = "session-B"
+        await gate.release()
+        let stalePath = await delayedCheck.value
+        XCTAssertNil(stalePath, "An alert dequeued for A must not open client navigation under B.")
+
+        let currentPath = StaffAlertNavigation.verifiedPath(
+            alert: alert, bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            staffSessionVerified: true, roleAfterRefresh: "setter", taskCancelled: false
+        )
+        XCTAssertEqual(currentPath,
+                       "/app/setter-dashboard.html?client_id=56a40391-e541-4a89-873b-37eab9d6d953")
+        XCTAssertNil(StaffAlertNavigation.verifiedPath(
+            alert: alert, bearerAtTap: "session-A", bearerAfterRefresh: nil,
+            staffSessionVerified: true, roleAfterRefresh: "setter", taskCancelled: false
+        ), "Signing out while identity refresh is suspended must discard the tap.")
+        XCTAssertNil(StaffAlertNavigation.verifiedPath(
+            alert: alert, bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            staffSessionVerified: false, roleAfterRefresh: "setter", taskCancelled: false
+        ), "An unverified/refused staff session must not navigate.")
+        XCTAssertNil(StaffAlertNavigation.verifiedPath(
+            alert: alert, bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            staffSessionVerified: true, roleAfterRefresh: "setter", taskCancelled: true
+        ), "A cancelled SwiftUI task must not commit stale navigation.")
+    }
+
+    @MainActor
+    func testDelayedClientPortalTapRejectsAccountSwitchAfterIdentityRefresh() async {
+        let gate = DelayedIdentityGate()
+        let simulated = SimulatedStaffState(bearer: "session-A")
+        let delayedCheck = Task { @MainActor in
+            guard let bearerAtTap = simulated.bearer else { return false }
+            await gate.pause()
+            return ClientPortalNavigation.shouldOpen(
+                bearerAtTap: bearerAtTap,
+                bearerAfterRefresh: simulated.bearer,
+                clientSessionVerified: true,
+                taskCancelled: Task.isCancelled
+            )
+        }
+        await gate.waitUntilPaused()
+        simulated.bearer = "session-B"
+        await gate.release()
+        let staleOpen = await delayedCheck.value
+        XCTAssertFalse(staleOpen, "A queued portal tap must not reload under another account.")
+        XCTAssertTrue(ClientPortalNavigation.shouldOpen(
+            bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            clientSessionVerified: true, taskCancelled: false
+        ))
+        XCTAssertFalse(ClientPortalNavigation.shouldOpen(
+            bearerAtTap: "session-A", bearerAfterRefresh: nil,
+            clientSessionVerified: true, taskCancelled: false
+        ))
+        XCTAssertFalse(ClientPortalNavigation.shouldOpen(
+            bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            clientSessionVerified: false, taskCancelled: false
+        ))
+        XCTAssertFalse(ClientPortalNavigation.shouldOpen(
+            bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            clientSessionVerified: true, taskCancelled: true
+        ))
     }
 
     func testServerErrorDoesNotInvalidateSession() async throws {
@@ -345,6 +449,40 @@ final class FundhubTests: XCTestCase {
         XCTAssertFalse(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/app/client-portal.html")!))
         XCTAssertFalse(WorkspaceNavigation.isSignOutDestination(URL(string: "https://evil.example/login.html")!))
     }
+}
+
+// Controlled synthetic delay: never calls a real identity provider or session.
+private actor DelayedIdentityGate {
+    private var hasPaused = false
+    private var released = false
+    private var pausedSignal: CheckedContinuation<Void, Never>?
+    private var releaseWaiter: CheckedContinuation<Void, Never>?
+
+    func pause() async {
+        hasPaused = true
+        pausedSignal?.resume()
+        pausedSignal = nil
+        if !released {
+            await withCheckedContinuation { releaseWaiter = $0 }
+        }
+    }
+
+    func waitUntilPaused() async {
+        if hasPaused { return }
+        await withCheckedContinuation { pausedSignal = $0 }
+    }
+
+    func release() {
+        released = true
+        releaseWaiter?.resume()
+        releaseWaiter = nil
+    }
+}
+
+@MainActor
+private final class SimulatedStaffState {
+    var bearer: String?
+    init(bearer: String) { self.bearer = bearer }
 }
 
 private final class StubURLProtocol: URLProtocol {

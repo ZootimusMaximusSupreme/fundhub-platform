@@ -150,10 +150,12 @@ test("one simulated client routes closer referral, offer, and no-show rebook sep
   assert.deepEqual(db.messages.map((m) => m.template_key).sort(),
     [EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY, OFFER_EMAIL.REPAIR_DFY].sort());
 
+  // S-05A stops on a booking saved after the miss, so the no-show and the rebook carry their saved times.
+  db.events.push({ id: "sim-noshow", org_id: "org-1", client_id: "cl-1", name: "booking.noshow", payload: {}, created_at: "2026-11-04T19:35:00.000Z" });
   const rebookStep = {
     run: async (id, fn) => {
       const result = await fn();
-      if (id === "send-touch-1") db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.created" });
+      if (id === "send-touch-1") db.events.push({ org_id: "org-1", client_id: "cl-1", name: "booking.created", created_at: "2026-11-05T17:00:00.000Z" });
       return result;
     },
     sleep: async () => {},

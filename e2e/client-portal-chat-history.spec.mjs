@@ -41,11 +41,11 @@ async function wire(page, state) {
       return reply(route, { ok: true, scores: {}, documents: [], payments: [], invoice_due: null });
     }
     if (p === "/api/dashboard/client") {
-      return reply(route, { ok: true, data: {
-        client: { first_name: "Synthetic", last_name: "Client" },
+      return reply(route, { ok: true,
+        client: { id: CID, first_name: "Synthetic", last_name: "Client" },
         messages: [{ rendered_body: "Staff-only preview note" }],
         transactions: []
-      } });
+      });
     }
     if (p === "/api/read/entitlements" || p.includes("entitlements")) return reply(route, { ok: true, items: [] });
     return reply(route, { ok: true, items: [] });
@@ -94,10 +94,16 @@ test("failed read is an error, not fake empty; retry reloads without client writ
   await expect(page.locator("#tp-msg")).toContainText("Saved after retry");
   expect(state.reads).toBeGreaterThanOrEqual(4);
 });
-test("staff preview and fictional sample view never request real client chat", async ({ page }) => {
+test("staff preview keeps client-only controls hidden and never requests real client chat", async ({ page }) => {
   const state = { reads: 0, queryStrings: [], staff: true, rows: [] };
   await wire(page, state);
   await openTab(page);
+  await expect(page.locator("body")).toHaveAttribute("data-portal-state", "ready");
+  await expect(page.locator("#greeting")).toContainText("Previewing Synthetic Client");
+  await expect(page.locator('#acct-tabs [data-tab="soft-pull"]')).toBeHidden();
+  await expect(page.locator(".client-ios-nav")).toHaveCount(0);
+  await expect(page.locator("#prog-link a")).toHaveAttribute("href", "/progress.html?client_id=" + CID);
+  await expect(page.locator("#tp-msg")).toContainText("Staff-only preview note");
   await expect(page.locator("#tp-msg")).not.toContainText("Loading your portal chat messages");
   expect(state.reads).toBe(0);
   // An unrelated staff principal cannot make a client-only conversation read.

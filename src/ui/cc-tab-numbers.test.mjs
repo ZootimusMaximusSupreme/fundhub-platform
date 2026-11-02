@@ -1,4 +1,4 @@
-// The Command Center's Numbers tab (Ads · Angles · Funnels): its own rules.
+// The Command Center's Numbers tab (Ads · Angles · Funnels · Message tests): its own rules.
 //
 // public/app/cc-tab-numbers.js puts every rule that turns data into words on
 // window.FundhubCCNumbers, so this file runs the real script in node:vm (the
@@ -63,14 +63,15 @@ describe("the tab plugs into the frame (docs/specs/command-center-tabs.md)", () 
     assert.deepEqual(seen, ["numbers"]);
   });
 
-  test("the three views are Ads, Angles and Funnels, in that order; no Map view is drawn before it exists", () => {
-    assert.deepEqual(plain(N.VIEWS), [["ads", "Ads"], ["angles", "Angles"], ["funnels", "Funnels"]]);
+  test("the four views are Ads, Angles, Funnels and Message tests, in that order; no Map view is drawn before it exists", () => {
+    assert.deepEqual(plain(N.VIEWS), [["ads", "Ads"], ["angles", "Angles"], ["funnels", "Funnels"], ["tests", "Message tests"]]);
   });
 
   test("the URL picks the view and the drawer: #numbers/ads/91", () => {
     assert.deepEqual(plain(N.parseParam("ads/91")), { view: "ads", n: "91" });
     assert.deepEqual(plain(N.parseParam("angles")), { view: "angles", n: null });
     assert.deepEqual(plain(N.parseParam("funnels/9")), { view: "funnels", n: null });
+    assert.deepEqual(plain(N.parseParam("tests")), { view: "tests", n: null });
     assert.deepEqual(plain(N.parseParam("map")), { view: null, n: null });
     assert.deepEqual(plain(N.parseParam("ads/9x")), { view: "ads", n: null });
     assert.deepEqual(plain(N.parseParam(undefined)), { view: null, n: null });
@@ -496,5 +497,33 @@ describe("UI law in the stylesheet (docs/rules/UI-STANDARDS.md)", () => {
     assert.match(SRC, /<polyline class="ccn-line"/);
     assert.doesNotMatch(SRC, /\b(Chart|d3|echarts|Plotly|ApexCharts)\b\s*[.(]/);
     assert.doesNotMatch(SRC, /<canvas|<text[\s>]/);
+  });
+});
+
+describe("the Message tests view: version A and version B (GET read/message-tests)", () => {
+  test("each side reads as the server counted it; a missing count is unknown, never 0", () => {
+    assert.equal(N.testArmLine({ people: 40, reached: 12 }, "booking.created"), "12 of 40 booked a call");
+    assert.equal(N.testArmLine({ people: 41, reached: 8 }, "survey.completed"), "8 of 41 finished the survey");
+    assert.equal(N.testArmLine({ people: 0, reached: 0 }, "booking.created"), "Nobody yet");
+    assert.equal(N.testArmLine({ people: null, reached: 3 }, "booking.created"), "unknown");
+    assert.equal(N.testArmLine({ people: 5 }, "booking.created"), "unknown");
+    assert.equal(N.testArmLine(undefined, "booking.created"), "unknown");
+    assert.equal(N.testArmLine({ people: 5, reached: 1 }, "something.else"), "1 of 5 reached the goal");
+  });
+
+  test("the line under the views says when the tests were counted, in Arizona time", () => {
+    assert.equal(N.testsAsOfLine(null, () => "x"), "Message tests: not counted yet.");
+    assert.equal(N.testsAsOfLine("2026-10-31T23:00:00Z", () => "Oct 31, 4:00 PM"), "Message tests counted Oct 31, 4:00 PM Arizona time.");
+  });
+
+  test("the page works out no rate for a test: it prints the server's counts and verdict", () => {
+    const words = SRC.slice(SRC.indexOf("function testArmLine"), SRC.indexOf("function testsAsOfLine"));
+    assert.doesNotMatch(words, /[/*]\s*\(?\s*(?:people|reached|100)\b/);
+    assert.match(SRC, /esc\(verdict\)/);
+  });
+
+  test("the view reads one route, GET read/message-tests, and Try again reads it again", () => {
+    assert.match(SRC, /load\("tests", "read\/message-tests", force\)/);
+    assert.match(SRC, /if \(name === "tests"\) return load\("tests", "read\/message-tests", true\)/);
   });
 });

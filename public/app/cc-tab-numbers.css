@@ -165,6 +165,13 @@ html.ccn-lock,html.ccn-lock body{overflow:hidden}
 @keyframes ccnspin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion: reduce){.ccn-skel,.ccn-spin{animation:none}}
 
+/* Message tests: version A and version B side by side, one per line when narrow.
+   The winning side gets a darker border and bold words, never color alone. */
+.ccn-ab{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:16px 0 8px;padding:0}
+.ccn-ab-side{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;padding:8px 16px;min-width:0;overflow-wrap:anywhere}
+.ccn-ab-side .caption{color:var(--gray)}
+.ccn-ab-side.win{border-color:var(--ink2);font-weight:600}
+
 /* Narrower screens: 2 across, then one column (§11). */
 @media (max-width:960px){
   .ccn-span{grid-column:span 6}

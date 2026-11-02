@@ -46,7 +46,7 @@ const WELCOME_KEYS = ["EMAIL-S00-WELCOME", "SMS-S00-WELCOME"];
 const template = (key) => ({
   org_id: ORG, template_key: key, channel: key.startsWith("SMS") ? "sms" : "email",
   subject: key.startsWith("EMAIL") ? `Subject for ${key}` : null,
-  body: `${key}: Start the questions here: {{survey_resume_link}}`,
+  body: `${key}: Start the questions here: https://apply.fundhub.ai/apply`,
   compliance_passed: true
 });
 

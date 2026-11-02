@@ -45,7 +45,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 26 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 168 routes]
+    WHO -->|Yes| CANT[Blocked — 170 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 6 blocked]
@@ -61,6 +61,7 @@ flowchart TD
     CANT --> B_journeys[journeys — 2 blocked]
     CANT --> B_marketing[marketing — 44 blocked]
     CANT --> B_money[money — 17 blocked]
+    CANT --> B_native[native — 1 blocked]
     CANT --> B_ops[ops — 1 blocked]
     CANT --> B_partner_brand[partner-brand — 1 blocked]
     CANT --> B_partner_marketing[partner-marketing — 5 blocked]
@@ -68,7 +69,7 @@ flowchart TD
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
     CANT --> B_push[push — 4 blocked]
-    CANT --> B_read[Reading data — 21 blocked]
+    CANT --> B_read[Reading data — 22 blocked]
     CANT --> B_social[social — 3 blocked]
     CANT --> B_staff[staff — 2 blocked]
     CANT --> B_top_level[Everything else — 20 blocked]
@@ -77,7 +78,7 @@ flowchart TD
 
 ## What they can reach
 
-**170 of 338 routes.**
+**170 of 340 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -261,7 +262,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**168 of 338 routes.**
+**170 of 340 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -381,6 +382,7 @@ flowchart TD
 | `/api/money/transfers` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/trends` | GET | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/vault` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/native/client-activity` | POST | client |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/partner-addons` | GET, POST | owner, admin |
 | `/api/partner-brand` | GET, PUT | employees: owner, admin<br>plus: partner |
@@ -413,6 +415,7 @@ flowchart TD
 | `/api/read/invoices` | GET | owner, admin, sales_manager |
 | `/api/read/lender-observations` | GET | owner, admin, funding_advisor |
 | `/api/read/lenders` | GET | owner, admin, funding_advisor |
+| `/api/read/message-tests` | GET | owner, admin |
 | `/api/read/morning-brief` | GET | owner, admin |
 | `/api/read/my-numbers` | GET | owner, admin, closer, sales_manager |
 | `/api/read/ops-pulse` | GET | owner, admin |
