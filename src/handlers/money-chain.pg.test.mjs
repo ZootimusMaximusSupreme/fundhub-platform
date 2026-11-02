@@ -10,7 +10,7 @@ import { db, close, pool } from "../db.mjs";
 import { randomUUID } from "node:crypto";
 import { emit, replay, _resetOrgCache } from "../events/bus.mjs";
 import { clearHandlers } from "../events/registry.mjs";
-import { register as registerLifecycle, onPaymentReceived, onPaymentFailed } from "./client-lifecycle.mjs";
+import { register as registerLifecycle, onPaymentReceived, onPaymentFailed, PaymentProviderRefConflictError } from "./client-lifecycle.mjs";
 import { register as registerMoneyChain, onPaymentReceivedMoney, onDepositPaidMoney, ensureSale, ensureSalePayment } from "./money-chain.mjs";
 import { onPaymentReceivedForLink } from "./payment-links.mjs";
 import { createSession } from "../auth/session.mjs";
@@ -843,7 +843,11 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       ]) {
         const ref = `${providerRef}-${label}`;
         await onPaymentFailed(event("payment.failed", { providerRef: ref }), conn);
-        await onPaymentReceived(event("payment.received", { providerRef: ref, ...change }, buyer), conn);
+        await assert.rejects(
+          () => onPaymentReceived(event("payment.received", { providerRef: ref, ...change }, buyer), conn),
+          (error) => error instanceof PaymentProviderRefConflictError && error.code === "payment_ref_conflict",
+          `${label} must reject conflicting receipt identity`
+        );
         const held = await readTransaction(ref);
         assert.equal(held.status, "failed", `${label} cannot replace the original failed attempt`);
         assert.equal(held.client_id, clientId);
@@ -871,7 +875,11 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
         const ref = `${providerRef}-captured-${label}`;
         await onPaymentReceived(event("payment.received", { ...bound, providerRef: ref }), conn);
         const conflicting = event("payment.received", { ...bound, providerRef: ref, ...change });
-        await onPaymentReceived(conflicting, conn);
+        await assert.rejects(
+          () => onPaymentReceived(conflicting, conn),
+          (error) => error instanceof PaymentProviderRefConflictError && error.code === "payment_ref_conflict",
+          `${label} must not repurpose an already captured receipt`
+        );
         for (const handler of [onPaymentReceivedMoney, onDepositPaidMoney]) {
           const refused = await handler(conflicting, conn);
           assert.equal(refused.reason, "transaction_source_conflict", `${label} cannot repurpose captured money`);
