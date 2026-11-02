@@ -418,8 +418,10 @@ describe("repair send — one press, one mailing", { skip: !HAVE_DB ? "no DATABA
 
     const logged = (await db.query(
       `SELECT decision FROM repair_decision_log
-        WHERE client_id = $1 AND decision = 'repair.letter.send_claim_cleared'`,
-      [client]
+        WHERE client_id = $1 AND org_id = $2
+          AND decision = 'repair.letter.send_claim_cleared'
+          AND payload->>'letterId' = $3`,
+      [client, org, letter.id]
     )).rows;
     assert.equal(logged.length, 1, "the clear shows on the client's timeline");
 
