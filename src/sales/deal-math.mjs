@@ -1,6 +1,4 @@
-// Deal math for the closer calculator. Same formula the screen already used
-// when it ran locally: fees = deposit + drawn * fee%, net = drawn - fees - debts,
-// monthly = drawn * min%. Numbers are dollars the closer typed — not invented.
+// Funding Agreement section 2 credits the deposit once toward the success fee.
 
 export function dealMath({
   orgId,
@@ -17,7 +15,7 @@ export function dealMath({
   const debtsN = Math.max(0, Number(debts) || 0);
   const min = Math.max(0.25, Number(minPercent) || 3);
   const drawnN = Math.max(0, Number(drawn) || 0);
-  const fees = depositN + drawnN * fee / 100;
+  const fees = depositN + Math.max(0, drawnN * fee / 100 - depositN);
   const net = drawnN - fees - debtsN;
   const monthly = drawnN * min / 100;
 
