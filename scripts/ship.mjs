@@ -22,7 +22,8 @@
 //
 // ORDER, and why:
 //   1. main only, clean tree — an uncommitted file would ship without a record.
-//   2. pull GitHub's main (spec M0 step 8, "ship stays in step with GitHub"). Once the
+//   2. GitHub Actions keeps the exact CI-approved SHA pinned and refuses a moved
+//      main. Manual CLI use still pulls GitHub's main (spec M0 step 8). Once the
 //      repo outbox is live, every save in the Command Center is a commit on GitHub, so
 //      GitHub's main moves between ships while this Mac's main carries ship-log commits
 //      and local merges. So: `git pull --ff-only` first; if that cannot fast-forward,
@@ -162,6 +163,28 @@ function safeCall(gitFn, args, opts = {}) {
  * restored = after a failed pull the folder is back on main, at the same commit, clean.
  * Only restored === false stops the ship.
  */
+export function verifyShipPin({ git, env = process.env, timeout = PULL_TIMEOUT_MS }) {
+  if (env.GITHUB_ACTIONS !== "true" && !Object.hasOwn(env, "FUNDHUB_SHIP_EXPECTED_SHA")) {
+    return { ok: true, pinned: false };
+  }
+  const expected = env.FUNDHUB_SHIP_EXPECTED_SHA;
+  const stopped = line => ({ ok: false, pinned: true, line: `${line} Nothing was deployed.` });
+  if (typeof expected !== "string" || !/^[a-f0-9]{40}$/.test(expected)) {
+    return stopped("An exact CI-approved Ship SHA is required.");
+  }
+  const before = safeCall(git, ["rev-parse", "HEAD"]);
+  if (!before.ok || before.out.trim() !== expected) return stopped("Local main differs from the CI-approved SHA.");
+  const remote = safeCall(git, ["ls-remote", "--heads", "origin", "refs/heads/main"], {
+    timeout, env: { ...env, ...GIT_NO_PROMPT }
+  });
+  const remoteHead = remote.ok ? /^([a-f0-9]{40})\s+refs\/heads\/main$/.exec(remote.out.trim())?.[1] : null;
+  if (!remoteHead) return stopped("GitHub main could not be verified against the approved SHA.");
+  if (remoteHead !== expected) return stopped("Main moved after CI; wait for its own 14/14 success.");
+  const after = safeCall(git, ["rev-parse", "HEAD"]);
+  if (!after.ok || after.out.trim() !== expected) return stopped("Local main changed during the approved-SHA check.");
+  return { ok: true, pinned: true, head: expected, line: `Keeping CI-approved main ${expected.slice(0, 8)}; no pull will change it.` };
+}
+
 export function pullMain({ git, env = process.env, timeout = PULL_TIMEOUT_MS }) {
   const net = { timeout, env: { ...env, ...GIT_NO_PROMPT } };
   const before = safeCall(git, ["rev-parse", "HEAD"]).out.trim();
@@ -261,13 +284,19 @@ async function main() {
   if (git("status", "--porcelain")) fail("uncommitted changes. Commit them first, then ship.");
 
   // ── 2. in step with GitHub ──────────────────────────────────────────────────
-  say("→ pulling GitHub's main");
-  if (DRY) {
-    say("  (dry run: would pull GitHub's main here; nothing pulled)");
+  const pin = verifyShipPin({ git: gitRun });
+  if (!pin.ok) fail(pin.line);
+  if (pin.pinned) {
+    say(`→ ${pin.line}`);
   } else {
-    const pull = pullMain({ git: gitRun });
-    if (pull.restored === false) fail(pull.line);
-    say(`  ${pull.line}`);
+    say("→ pulling GitHub's main");
+    if (DRY) {
+      say("  (dry run: would pull GitHub's main here; nothing pulled)");
+    } else {
+      const pull = pullMain({ git: gitRun });
+      if (pull.restored === false) fail(pull.line);
+      say(`  ${pull.line}`);
+    }
   }
   const head = git("rev-parse", "--short=8", "HEAD");
 
@@ -328,6 +357,10 @@ async function main() {
   // The pulse reads new tables in this release. Apply checked migrations before
   // the built-bundle pulse proofs so a pre-release read cannot fail on the old schema.
   // The guards above still run before any database change; deploy stays last.
+  if (pin.pinned) {
+    const confirmedPin = verifyShipPin({ git: gitRun });
+    if (!confirmedPin.ok) fail(confirmedPin.line);
+  }
   say("\n→ database");
   let applied = 0;
   const migrationConnection = migrationOwnerConnection();

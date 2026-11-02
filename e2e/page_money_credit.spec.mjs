@@ -32,8 +32,9 @@ for(const width of [1440,390,320])test(`Credit client states and controls at ${w
    await expect(page.locator('.sample')).toContainText('Sample report');
    await expect(page.locator('#c-acct')).toBeVisible();
    await page.getByRole('combobox',{name:'Money section'}).focus();
-   await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');
-   await expect(page).not.toHaveURL(/money-credit\.html$/);
+   // The native picker supports keyboard type-ahead; Overview is its unique O.
+   await page.keyboard.press('o');
+   await expect(page).toHaveURL(/\/app\/money\.html$/);
    await page.goto('/app/money-credit.html');
    await expect(page.locator('#s-experian')).toBeVisible();
   }
