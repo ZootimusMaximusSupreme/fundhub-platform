@@ -91,9 +91,60 @@ test('child change targets the preceding PR and does not merge into it', async (
   assert.equal(result.base, 'codex/previous-change');
   assert.equal(result.position, 2);
   assert(calls.some(call => call.join(' ').includes('pr create --repo ZootimusMaximusSupreme/fundhub-platform --base codex/previous-change')));
+  assert(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create' &&
+    call.at(-1).includes('Stack parent head: parent-head')));
   assert(calls.some(call => call.join(' ').includes('pr edit 42 --repo ZootimusMaximusSupreme/fundhub-platform --add-label ship-order/2')));
   assert(calls.some(call => call.join(' ') === 'npm run preflight -- --expected-base origin/codex/previous-change'));
   assert(!calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'merge'));
+});
+
+test('resume refreshes the recorded parent tip without changing the release manifest', async () => {
+  const existing = { ...member(42, 'codex/new-change', 'codex/previous-change', 2),
+    body: `Owner lane: sales\n\nRelease manifest stays.\n\nStack parent head: ${'c'.repeat(40)}` };
+  const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1), existing]);
+  const resumed = async (program, args, options) => {
+    if (program === 'git' && args[0] === 'status') return '';
+    if (program === 'git' && args[0] === 'rev-list') return '1\n';
+    return command(program, args, options);
+  };
+  await runShipChange({ message: 'Next change', ownerLane: 'sales', files: [], resume: true }, resumed);
+  const edit = calls.find(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'edit' && call.includes('--body'));
+  assert.ok(edit);
+  assert.ok(edit.at(-1).includes('Release manifest stays.'));
+  assert.ok(edit.at(-1).includes('Stack parent head: parent-head'));
+  assert.equal((edit.at(-1).match(/Stack parent head:/g) || []).length, 1);
+});
+
+test('adopts an existing main-based backlog PR into the next ordered position', async () => {
+  const legacy = { number: 42, headRefName: 'codex/new-change', baseRefName: 'main',
+    isDraft: false, labels: [], body: 'Owner lane: sales\n\nRelease manifest stays.' };
+  const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1), legacy]);
+  const resumed = async (program, args, options) => {
+    if (program === 'git' && args[0] === 'status') return '';
+    if (program === 'git' && args[0] === 'rev-list') return '1\n';
+    if (program === 'git' && args[0] === 'merge-base') return 'main-base\n';
+    return command(program, args, options);
+  };
+  const result = await runShipChange({ message: 'Backlog change', ownerLane: 'sales', files: [], resume: true }, resumed);
+  assert.equal(result.number, 42);
+  assert.equal(result.base, 'codex/previous-change');
+  assert.ok(calls.some(call => call[0] === 'git' && call[1] === 'rebase' &&
+    call[2] === '--onto' && call[3] === 'parent-head' && call[4] === 'main-base'));
+  assert.ok(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'edit' &&
+    call.includes('--base') && call.at(-1) === 'codex/previous-change'));
+  assert.ok(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'edit' &&
+    call.includes('--body') && call.at(-1).includes('Release manifest stays.')));
+  assert.ok(calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'edit' &&
+    call.includes('--add-label') && call.at(-1) === 'ship-order/2'));
+});
+
+test('does not take a legacy PR out of its existing older stack', async () => {
+  const legacy = { number: 42, headRefName: 'codex/new-change', baseRefName: 'older-branch',
+    isDraft: false, labels: [], body: 'Owner lane: sales' };
+  const { command, calls } = fakeCommands([legacy]);
+  await assert.rejects(runShipChange({ message: 'Backlog change', ownerLane: 'sales',
+    files: ['scripts/new.mjs'] }, command), /preserve that older chain/);
+  assert.equal(calls.some(call => call[0] === 'git' && call[1] === 'commit'), false);
 });
 
 test('a parent branch that moves during preflight stops before child push or PR creation', async () => {
@@ -107,6 +158,64 @@ test('a parent branch that moves during preflight stops before child push or PR 
   await assert.rejects(runShipChange({ message: 'Next change', ownerLane: 'sales', files: ['scripts/new.mjs'] }, moved), /Stack parent .* advanced/);
   assert(!calls.some(call => call[0] === 'git' && call[1] === 'push'));
   assert(!calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create'));
+});
+
+test('another PR claiming the next position during preflight stops before push', async () => {
+  const first = member(41, 'codex/previous-change', 'main', 1);
+  const { command, calls } = fakeCommands([first]);
+  let lists = 0;
+  const raced = async (program, args, options) => {
+    if (program === 'gh' && args[0] === 'pr' && args[1] === 'list' && ++lists === 2) {
+      return JSON.stringify([first, member(42, 'codex/other-change', 'codex/previous-change', 2)]);
+    }
+    return command(program, args, options);
+  };
+  await assert.rejects(runShipChange({ message: 'Next change', ownerLane: 'sales',
+    files: ['scripts/new.mjs'] }, raced), /Ordered queue advanced/);
+  assert(!calls.some(call => call[0] === 'git' && call[1] === 'push'));
+  assert(!calls.some(call => call[0] === 'gh' && call[1] === 'pr' && call[2] === 'create'));
+});
+
+test('resume rebases only child commits when a stacked parent was rewritten', async () => {
+  const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1)]);
+  const moved = async (program, args, options) => {
+    if (program === 'git' && args[0] === 'status') return '';
+    if (program === 'git' && args[0] === 'rev-list') return '1\n';
+    if (program === 'git' && args[0] === 'merge-base') {
+      return args[1] === '--fork-point' ? 'old-parent-head\n' : 'main-base\n';
+    }
+    if (program === 'git' && args[0] === 'rev-parse' && args[1]?.startsWith('origin/')) {
+      return 'new-parent-head\n';
+    }
+    if (program === 'git' && args[0] === 'ls-remote' && args[1] === '--heads') {
+      return `new-parent-head\trefs/heads/${args[3]}\n`;
+    }
+    return command(program, args, options);
+  };
+  await runShipChange({ message: 'Next change', ownerLane: 'sales', files: [], resume: true }, moved);
+  assert(calls.some(call => call[0] === 'git' && call[1] === 'rebase' &&
+    call[2] === '--onto' && call[3] === 'new-parent-head' && call[4] === 'old-parent-head'));
+  assert(!calls.some(call => call[0] === 'git' && call[1] === 'rebase' && call[4] === 'main-base'));
+});
+
+test('resume stops safely when a rewritten parent has no known fork point', async () => {
+  const { command, calls } = fakeCommands([member(41, 'codex/previous-change', 'main', 1)]);
+  const moved = async (program, args, options) => {
+    if (program === 'git' && args[0] === 'status') return '';
+    if (program === 'git' && args[0] === 'rev-list') return '1\n';
+    if (program === 'git' && args[0] === 'merge-base') {
+      if (args[1] === '--fork-point') throw new Error('no reflog');
+      return 'main-base\n';
+    }
+    if (program === 'git' && args[0] === 'rev-parse' && args[1]?.startsWith('origin/')) {
+      return 'new-parent-head\n';
+    }
+    return command(program, args, options);
+  };
+  await assert.rejects(runShipChange({ message: 'Next change', ownerLane: 'sales', files: [], resume: true }, moved),
+    /Could not identify the previous tip/);
+  assert(!calls.some(call => call[0] === 'git' && call[1] === 'rebase'));
+  assert(!calls.some(call => call[0] === 'git' && call[1] === 'push'));
 });
 
 test('an unverified archive tag stops before branch push', async () => {

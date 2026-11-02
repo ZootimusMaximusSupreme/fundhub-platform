@@ -55,9 +55,9 @@
      same bottom edge, can be drawn from dot centre to dot centre. A column
      whose marks need more room grows the row upward; the bottom edge, and so
      the connector, stays put. Bar heights climb Repair only → Full funding. */
-  var H = 160;
-  var LVL = 52;
-  var BAR = [30, 60, 90];
+  var H = 125;
+  var LVL = 44;
+  var BAR = [25, 50, 75];
   var DOT_Y = BAR.map(function (b) { return H - b - 10; });
 
   var LEVELS = [
@@ -106,9 +106,9 @@
      offset. No hex colours and no shadows in this file (its test holds it to
      the tokens). Change one, change all three. */
   var CSS = [
-    ".fhv-journey{font-family:var(--sans);color:var(--ink);container-type:inline-size;display:flex;flex-direction:column;gap:24px;max-width:100%}",
+    ".fhv-journey{font-family:var(--sans);color:var(--ink);container-type:inline-size;display:flex;flex-direction:column;gap:8px;max-width:100%}",
     ".fhv-journey *{box-sizing:border-box;min-width:0}",
-    ".fhv-journey-eyebrow{display:flex;align-items:center;gap:9px;margin:0 0 12px;min-height:28px;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);line-height:1.4}",
+    ".fhv-journey-eyebrow{display:flex;align-items:center;gap:9px;margin:0 0 8px;min-height:28px;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);line-height:1.4}",
     ".fhv-journey-eyebrow::before{content:'';display:inline-block;width:16px;height:2px;border-radius:1px;background:var(--spectrum);flex:0 0 auto}",
     ".fhv-journey-tag{display:inline-flex;align-items:center;gap:7px;margin-left:auto;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gray);white-space:nowrap;line-height:1.2;flex:0 0 auto}",
     ".fhv-journey-tag::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--warn)}",
@@ -153,7 +153,7 @@
     ".fhv-journey-rbtn.is-open .fhv-journey-rtitle{color:var(--ink)}",
     ".fhv-journey-rbody{position:relative;padding:2px 0 18px 46px}",
     ".fhv-journey-rbody[hidden]{display:none}",
-    ".fhv-journey-card{display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}",
+    ".fhv-journey-card{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}",
     ".fhv-journey-note{margin:0;font-size:16px;line-height:1.45;color:var(--ink)}",
     ".fhv-journey-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}",
     ".fhv-journey-items li{display:grid;grid-template-columns:1fr;gap:2px 12px;padding:8px 0;border-top:1px solid var(--line);font-size:16px;line-height:1.35}",
@@ -190,7 +190,7 @@
     "@container (min-width:720px){",
     ".fhv-journey-path{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0}",
     ".fhv-journey-path::before{content:'';display:block;position:absolute;top:26px;left:calc(100% / 12);right:calc(100% / 12);height:2px;background:var(--line)}",
-    ".fhv-journey-rbtn{grid-row:1;flex-direction:column;align-items:center;gap:10px;min-height:44px;padding:8px 8px 12px;text-align:center}",
+    ".fhv-journey-rbtn{grid-row:1;flex-direction:column;align-items:center;gap:6px;min-height:44px;padding:6px 8px 8px;text-align:center}",
     ".fhv-journey-rbtn::before,.fhv-journey-rbody::before{display:none}",
     ".fhv-journey-rbtn.is-open::after{content:'';position:absolute;left:18%;right:18%;bottom:0;height:2px;border-radius:2px;background:var(--ink)}",
     ".fhv-journey-rbtn[data-fhv-round=R1]{grid-column:1}",

@@ -30,15 +30,22 @@ function completeHandoff() {
 function fakeDb(booked = true) {
   const client = { client_id: CLIENT_ID, first_name: "Pat", last_name: "Lee", phone: "+15551234567",
     email: "pat@example.com", custom_fields: {}, booked_at: booked ? "2026-10-26T19:00:00Z" : null,
-    booking_time: booked ? "2026-10-28T19:00:00Z" : null, closer_staff_id: STAFF.id };
+    booking_time: booked ? "2026-10-28T19:00:00Z" : null, closer_staff_id: STAFF.id,
+    qualification_bucket: null };
+  const bookings = [];
   const queries = [];
   const db = { async query(sql, params) {
     queries.push(sql);
     // A copy, as a real read returns: the row the writes below change is `client`, and the
     // copy the code holds is what the row looked like when it was read.
     if (sql.includes("FROM clients c")) return { rows: [structuredClone(client)] };
+    if (sql.includes("SELECT custom_fields FROM clients")) return { rows: [{ custom_fields: structuredClone(client.custom_fields) }] };
     if (sql.includes("SELECT id, name FROM staff")) return { rows: [{ id: "staff-2", name: "Closer" }] };
     if (sql.includes("UPDATE clients")) {
+      if (sql.includes("qualification_bucket")) {
+        client.qualification_bucket = params[1];
+        return { rows: [] };
+      }
       if (sql.includes("'credit_tier'")) {
         client.custom_fields.credit_tier = params[2];
         return { rows: [] };
@@ -50,11 +57,15 @@ function fakeDb(booked = true) {
       client.custom_fields.setter_handoff = { ...(client.custom_fields.setter_handoff || {}), ...JSON.parse(params[2]) };
       return { rows: [{ custom_fields: client.custom_fields }] };
     }
+    if (sql.includes("UPDATE bookings SET qualification_bucket")) {
+      for (const booking of bookings) if (booking.qualification_bucket == null) booking.qualification_bucket = params[1];
+      return { rows: [] };
+    }
     if (sql.includes("UPDATE tasks")) return { rows: [] };
     if (sql.includes("UPDATE cards")) return { rows: [] };
     throw new Error(`unexpected query: ${sql}`);
   } };
-  return { db, client, queries };
+  return { db, client, bookings, queries };
 }
 
 test("handoff input refuses unsupported claims and keeps only checklist fields", () => {
@@ -281,6 +292,22 @@ test("fixing the score on the call moves credit_tier, and clearing the fix moves
   const cleared = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey", survey_edits: {} });
   assert.equal(cleared.status, 200);
   assert.equal(client.custom_fields.credit_tier, "unqualified", "back to the typed 620-699");
+});
+
+test("setter score correction updates the client bucket and fills only unbucketed calls", async () => {
+  const { db, client, bookings } = fakeDb(false);
+  client.custom_fields.cf_svy_self_reported_fico_label = "620-699";
+  client.qualification_bucket = "funding_unqualified";
+  bookings.push({ qualification_bucket: "funding_unqualified" }, { qualification_bucket: null });
+  const up = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
+    survey_edits: { cf_svy_self_reported_fico: "700-759" } });
+  assert.equal(up.status, 200);
+  assert.equal(client.qualification_bucket, "funding_qualified");
+  assert.deepEqual(bookings.map((booking) => booking.qualification_bucket),
+    ["funding_unqualified", "funding_qualified"], "a known booking bucket stays frozen");
+  await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey", survey_edits: {} });
+  assert.equal(client.qualification_bucket, "funding_unqualified", "clearing the edit restores the submitted score bucket");
+  assert.equal(bookings[1].qualification_bucket, "funding_qualified", "the first known booking bucket remains frozen");
 });
 
 test("a score the person never gave cannot be corrected, so credit_tier stays unwritten", async () => {
