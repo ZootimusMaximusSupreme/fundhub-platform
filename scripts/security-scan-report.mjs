@@ -7,7 +7,7 @@ export function buildSecurityScanReport(audit, { auditStatus = 0, runUrl = '' } 
   const valid = audit && typeof audit === 'object' && !Array.isArray(audit);
   const vulnerabilities = valid && audit.vulnerabilities && typeof audit.vulnerabilities === 'object'
     ? audit.vulnerabilities : null;
-  const error = !valid || !vulnerabilities || audit.error
+  const error = !valid || !vulnerabilities || audit.error || (auditStatus !== 0 && Object.keys(vulnerabilities).length === 0)
     ? String(audit?.error?.summary || audit?.error?.message || 'npm audit returned no usable vulnerability inventory')
     : null;
   const packages = error ? [] : Object.entries(vulnerabilities).map(([name, finding]) => ({

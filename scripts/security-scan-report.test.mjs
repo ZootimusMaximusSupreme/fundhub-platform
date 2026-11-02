@@ -21,7 +21,7 @@ test('clean inventory closes an old issue and passes', () => {
 });
 
 test('network or parser errors never masquerade as a clean inventory', () => {
-  for (const audit of [{ error: { summary: 'registry unavailable' } }, {}]) {
+  for (const audit of [{ error: { summary: 'registry unavailable' } }, {}, { vulnerabilities: {} }]) {
     const report = buildSecurityScanReport(audit, { auditStatus: 1 });
     assert.equal(report.complete, false);
     assert.equal(report.failed, true);
