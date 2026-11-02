@@ -353,6 +353,36 @@ function primaryGate(file, { sets, wrappers }) {
     return { kind: "role-set", roles: resolved.roles, principals: null, note: `requireAuth + requireRole, ${resolved.label}` };
   }
 
+  // These two self-service handlers use an injected alias of requireAuth and
+  // a shared eligibility helper. Follow the actual helper, including its
+  // secondary-duty condition; do not describe them as open or any-staff doors.
+  if (/\bcanLinkStaffPayout\(staff\)/.test(src)) {
+    const alias = /const\s+(\w+)\s*=\s*deps\.requireAuth\s*(?:\?\?|\|\|)\s*requireAuth\s*;/.exec(src);
+    const authenticated = /requireAuth\(\s*req\s*,\s*res/.test(src) ||
+      (alias && new RegExp(`\\b${alias[1]}\\(\\s*req\\s*,\\s*res`).test(src));
+    const imported = /from\s*["']\.\.\/\.\.\/src\/staff\/payout-account\.mjs["']/.test(src);
+    const model = code(read("src/staff/payout-account.mjs"));
+    const directSet = /STAFF_PAYOUT_ROLES\s*=\s*new Set\(\[([^\]]*)\]\)/.exec(model);
+    const helper = /export function canLinkStaffPayout\([^)]*\)\s*\{([\s\S]*?)\n\}/.exec(model)?.[1] || "";
+    const excludedSet = /if\s*\(\s*!primary\s*\|\|\s*\[([^\]]*)\]\.includes\(primary\)\)\s*return false/.exec(helper);
+    const quoted = (text) => [...text.matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
+    if (!authenticated || !imported || !directSet || !excludedSet ||
+        !/return\s+roles\.some\(/.test(helper) || !/STAFF_PAYOUT_ROLES\.has\(/.test(helper) ||
+        !/Array\.isArray\(staff\?\.roles\)/.test(helper)) {
+      return { kind: "unverified", roles: null, principals: null,
+        note: "staff payout authentication or shared duty gate changed and must be traced" };
+    }
+    const direct = quoted(directSet[1]);
+    const excluded = quoted(excludedSet[1]);
+    const eligible = (sets.STAFF || []).filter((role) => !excluded.includes(role));
+    const ownerRead = /req\.method\s*!==\s*"GET"/.test(src) && /if\s*\(staff\.role\s*===\s*"owner"\)/.test(src);
+    return { kind: "explicit-roles", roles: [...new Set([...(ownerRead ? ["owner"] : []), ...eligible])],
+      principals: ["staff"], conditionalStaffRoles: eligible.filter((role) => !direct.includes(role)),
+      conditionalStaffRequirement: `an active ${direct.join(" or ")} duty`, directStaffRoles: direct,
+      note: `requireAuth + canLinkStaffPayout from src/staff/payout-account.mjs; primary ${direct.join(", ")} or another eligible employee with an active one of those duties; self only` +
+        (ownerRead ? "; primary owner may instead read one named same-org employee's masked bank" : "; excluded primary roles remain denied even with old secondary assignments") };
+  }
+
   // requireAuth with no role gate: any signed-in employee, any role.
   if (/requireAuth\(\s*req\s*,\s*res/.test(src)) {
     return { kind: "role-set", roles: sets.STAFF ? ["any signed-in employee"] : null, principals: ["staff"],
@@ -670,6 +700,13 @@ export function reaches(journey, gate) {
       return gate.principals && gate.principals.includes("staff")
         ? { reachable: true, why: "accepted as the staff kind, no role limit" }
         : { reachable: false, why: "no role admitted" };
+    }
+    if (gate.conditionalStaffRoles?.includes(journey.subject)) {
+      const additional = Array.isArray(journey.roles) ? journey.roles : [];
+      const assigned = gate.directStaffRoles.some((role) => additional.includes(role));
+      return { reachable: assigned, why: assigned
+        ? `also assigned ${gate.conditionalStaffRequirement}`
+        : `primary role alone does not qualify; requires ${gate.conditionalStaffRequirement}` };
     }
     return gate.roles.includes(journey.subject)
       ? { reachable: true, why: "role is in the allowed set" }

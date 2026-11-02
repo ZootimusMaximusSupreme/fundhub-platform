@@ -36,6 +36,8 @@ export function isPingId(id) {
 }
 
 export const TRIPWIRES = Object.freeze({
+  "route:read/staff-payout-account": { impact: "money", checks: ["staff-payout:destination-integrity"] },
+  "route:staff/payout-account": { impact: "money", checks: ["staff-payout:destination-integrity"] },
   "route:read/meet-presence": { impact: "customer", checks: ["meet:read-door"] },
   ...Object.fromEntries(PUBLIC_STATIC_FILES.filter((file) => /^slideshows\/[^/]+\.html$/.test(file))
     .map((file) => [`page:${file}`, { impact: "customer", checks: ["slideshows:content"] }])),

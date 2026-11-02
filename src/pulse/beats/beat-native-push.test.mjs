@@ -113,6 +113,10 @@ test("native push beat catches a missing route and an unusable signing key", asy
 
 
 test("staff link association hourly proof requires the exact deployed static scope, not device-open claims", async () => {
+  assert.ok(beat.steps.includes("staff-link-association"));
+  assert.ok(beat.covers.includes("route:push/native-device"));
+  assert.equal(beat.covers.includes("page:.well-known/apple-app-site-association"), false,
+    "association JSON is checked metadata, not an invented HTML surface");
   const key = "GET https://fundhub.ai/.well-known/apple-app-site-association";
   const good = selfTest.pass();
   assert.equal((await check(good)).ok, true);

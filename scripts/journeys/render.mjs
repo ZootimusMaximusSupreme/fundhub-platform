@@ -114,7 +114,10 @@ function who(gate) {
   if (gate.kind === "open") return "anyone";
 
   const kinds = (gate.principals || []).filter((k) => k !== "staff");
-  const roles = gate.roles ? gate.roles.join(", ") : null;
+  const conditional = gate.conditionalStaffRoles || [];
+  const direct = gate.roles?.filter((role) => !conditional.includes(role)) || [];
+  const roles = gate.roles ? direct.join(", ") + (conditional.length
+    ? `<br>${conditional.join(", ")} only with ${gate.conditionalStaffRequirement}` : "") : null;
 
   if (roles && kinds.length) return `employees: ${roles}<br>plus: ${kinds.join(", ")}`;
   if (roles) return roles;

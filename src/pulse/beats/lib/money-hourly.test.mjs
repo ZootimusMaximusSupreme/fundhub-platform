@@ -7,20 +7,21 @@ import { CHECK_IDS as UNMATCHED } from "../../coverage/gap-payments-unmatched.mj
 import { CHECK_IDS as SUBSCRIPTIONS } from "../../coverage/gap-subscriptions.mjs";
 import { CHECK_IDS as MOVES } from "../../coverage/gap-money-moves.mjs";
 import { CHECK_IDS as ADS } from "../../coverage/gap-ads-meta.mjs";
+import { CHECK_IDS as STAFF_PAYOUT } from "../../coverage/gap-staff-payout-account.mjs";
 import {
   MONEY_CHECKOUT_LANES, MONEY_FUNDING_LANES, MONEY_OPERATIONS_LANES,
   fakeLaneRead, DEFAULT_ORG_SQL, SELF_TEST_ORG
 } from "./money-hourly.mjs";
 
 test("the hourly money descriptors cover every W1 and W2 check exactly once", () => {
-  const expected = [...W1, ...CHECKOUT, ...SETUP, ...UNMATCHED, ...SUBSCRIPTIONS, ...MOVES, ...ADS].sort();
+  const expected = [...W1, ...CHECKOUT, ...SETUP, ...UNMATCHED, ...SUBSCRIPTIONS, ...MOVES, ...STAFF_PAYOUT, ...ADS].sort();
   const actual = [
     ...MONEY_FUNDING_LANES.checks,
     ...MONEY_CHECKOUT_LANES.checks,
     ...MONEY_OPERATIONS_LANES.checks
   ].map((check) => check.id).sort();
   assert.deepEqual(actual, expected);
-  assert.equal(new Set(actual).size, 19);
+  assert.equal(new Set(actual).size, 20);
 });
 
 test("the fake reader answers the default company and leaves all other reads empty", async () => {

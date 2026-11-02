@@ -8,7 +8,9 @@ import { BOARD_CARDS_SQL, BOARD_READ_LIMIT, orgDemoModeEnabled } from "./lib/pip
 export const id = "native-push";
 export const title = "Native iPhone push is ready";
 export const kind = "probe";
-export const covers = ["route:push/native-device", "route:push/preferences", "send:src/push/native-send.mjs", "route:native/client-activity", "page:.well-known/apple-app-site-association"];
+// The extensionless association JSON is native transport metadata, not a registered HTML page.
+// Its real unsigned GET remains enforced by the staff-link-association step below.
+export const covers = ["route:push/native-device", "route:push/preferences", "send:src/push/native-send.mjs", "route:native/client-activity"];
 export const box = false;
 export const reads = [{ host: "SITE", methods: ["GET"] }];
 export const steps = ["preference-door", "preference-shape", "signing-ready", "door-mounted", "device-owner", "recent-delivery-failure", "native-open-receipts", "staff-link-association"];
