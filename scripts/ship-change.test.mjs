@@ -521,3 +521,91 @@ for (const scenario of ['normal clean', 'remote moves during preflight', 'remote
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   });
 }
+
+
+for (const scenario of ['three-parent reviewed merge already inherits main', 'diverged source still needs main']) {
+  test(`real Git ordinary main shipping preserves source history: ${scenario}`, async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ship-main-merge-preservation-'));
+    const work = path.join(root, 'work');
+    const origin = path.join(root, 'origin.git');
+    fs.mkdirSync(work);
+    const git = (...args) => execFileSync('git', args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    try {
+      execFileSync('git', ['init', '--bare', origin], { stdio: 'ignore' });
+      git('init', '-b', 'main'); git('config', 'user.email', 'test@example.test'); git('config', 'user.name', 'Test');
+      git('remote', 'add', 'origin', origin);
+      fs.writeFileSync(path.join(work, 'shared.txt'), 'base\n');
+      git('add', '.'); git('commit', '-m', 'base'); const base = git('rev-parse', 'HEAD');
+      git('push', 'origin', 'main');
+      let originalParents;
+      const preservesMerge = scenario.startsWith('three-parent');
+      if (preservesMerge) {
+        git('switch', '-c', 'side-a'); fs.writeFileSync(path.join(work, 'shared.txt'), 'side A\n');
+        git('add', '.'); git('commit', '-m', 'side A'); const sideA = git('rev-parse', 'HEAD');
+        git('switch', '-c', 'side-b', base); fs.writeFileSync(path.join(work, 'shared.txt'), 'side B\n');
+        git('add', '.'); git('commit', '-m', 'side B'); const sideB = git('rev-parse', 'HEAD');
+        fs.writeFileSync(path.join(work, 'shared.txt'), 'reviewed resolution of A and B\n');
+        fs.writeFileSync(path.join(work, 'merge-only.txt'), 'approved content absent from every parent\n');
+        git('add', '.'); const tree = git('write-tree');
+        const head = git('commit-tree', tree, '-p', base, '-p', sideA, '-p', sideB, '-m', 'reviewed three-parent resolution');
+        git('reset', '--hard'); git('switch', '-c', 'child', head);
+        originalParents = [base, sideA, sideB].join(' ');
+      } else {
+        git('switch', '-c', 'child'); fs.writeFileSync(path.join(work, 'child.txt'), 'approved child\n');
+        git('add', '.'); git('commit', '-m', 'child');
+        git('switch', 'main'); fs.writeFileSync(path.join(work, 'new-main.txt'), 'new main\n');
+        git('add', '.'); git('commit', '-m', 'main advanced'); git('push', 'origin', 'main'); git('switch', 'child');
+      }
+      const source = git('rev-parse', 'HEAD'); const sourceTree = git('rev-parse', 'HEAD^{tree}');
+      const calls = [];
+      const command = async (program, args) => {
+        calls.push([program, ...args]);
+        if (program === 'npm') return '';
+        if (program === 'gh') {
+          if (args[1] === 'list') return '[]';
+          if (args[1] === 'create') return 'https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/42';
+          if (args[1] === 'view') return JSON.stringify(member(42, 'child', 'main', 1));
+          return '';
+        }
+        if (program === 'git' && args[0] === 'remote') return 'https://github.com/ZootimusMaximusSupreme/fundhub-platform.git';
+        return execFileSync(program, args, { cwd: work, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      };
+      await runShipChange({ message: 'Preserve reviewed source', ownerLane: 'ci', files: [], resume: true }, command);
+      const published = git('ls-remote', '--heads', 'origin', 'child').split(/\s+/)[0];
+      assert.equal(published, git('rev-parse', 'HEAD'));
+      assert.equal(git('ls-remote', '--tags', 'origin', 'refs/tags/archive/child').split(/\s+/)[0], published);
+      const preflight = calls.findIndex(c => c[0] === 'npm' && c[1] === 'run' && c[2] === 'preflight');
+      const branchPush = calls.findIndex(c => c[0] === 'git' && c[1] === 'push' && c.at(-1)?.endsWith(':refs/heads/child'));
+      assert.ok(preflight >= 0 && branchPush > preflight);
+      assert.ok(calls[branchPush].includes('--force-with-lease=refs/heads/child:'));
+      if (preservesMerge) {
+        assert.equal(published, source, 'publish the exact reviewed merge head');
+        assert.equal(git('rev-parse', 'HEAD^{tree}'), sourceTree);
+        assert.equal(git('show', '-s', '--format=%P', 'HEAD'), originalParents);
+        assert.equal(fs.readFileSync(path.join(work, 'merge-only.txt'), 'utf8'), 'approved content absent from every parent\n');
+        assert.equal(calls.some(c => c[0] === 'git' && c[1] === 'rebase'), false);
+      } else {
+        assert.notEqual(published, source, 'a divergent source must still rebase');
+        git('merge-base', '--is-ancestor', 'origin/main', 'HEAD');
+        assert.equal(fs.readFileSync(path.join(work, 'new-main.txt'), 'utf8'), 'new main\n');
+        assert.equal(fs.readFileSync(path.join(work, 'child.txt'), 'utf8'), 'approved child\n');
+        assert.ok(calls.some(c => c[0] === 'git' && c[1] === 'rebase' && c[2] === 'origin/main'));
+      }
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+}
+
+
+test('ordinary main ancestry inspection errors stop before preflight or publication', async () => {
+  const { command, calls } = fakeCommands([member(42, 'codex/new-change', 'main', 1)]);
+  const broken = async (program, args) => {
+    if (program === 'git' && args[0] === 'status') return '';
+    if (program === 'git' && args[0] === 'rev-list') return '1';
+    if (program === 'git' && args[0] === 'merge-base' && args[1] === '--is-ancestor') {
+      const error = new Error('ancestry object unavailable'); error.code = 128; throw error;
+    }
+    return command(program, args);
+  };
+  await assert.rejects(runShipChange({ message: 'Preserve source', ownerLane: 'ci', files: [], resume: true }, broken), /ancestry object unavailable/);
+  assert.equal(calls.some(c => c[0] === 'npm' || (c[0] === 'git' && ['rebase', 'push', 'tag'].includes(c[1]))), false);
+});

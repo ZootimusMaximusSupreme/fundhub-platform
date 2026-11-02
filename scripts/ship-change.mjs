@@ -387,7 +387,16 @@ export async function runShipChange(options, command = defaultCommand) {
       const basePoint = (await rootGit(['merge-base', immutableSourceHead, mainHead])).trim();
       await exactReplay(basePoint, mainHead, 'main');
     } else {
-      await rootGit(['rebase', 'origin/main']);
+      // Rebase flattens merge commits even when main is already inherited,
+      // potentially dropping reviewed merge-only resolution content.
+      let inheritsMain = false;
+      try {
+        await rootGit(['merge-base', '--is-ancestor', 'origin/main', immutableSourceHead]);
+        inheritsMain = true;
+      } catch (error) {
+        if ((error.code ?? error.status) !== 1) throw error;
+      }
+      if (!inheritsMain) await rootGit(['rebase', 'origin/main']);
     }
   }
   if (preparedCandidateHead) await assertState(preparedCandidateHead);
