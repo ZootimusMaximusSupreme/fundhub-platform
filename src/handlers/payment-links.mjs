@@ -55,6 +55,27 @@ function receiptCoversAccess(link, paidAmountCents) {
   return Number.isSafeInteger(dueCents) && dueCents > 0 && paidAmountCents >= dueCents;
 }
 
+// A signed callback can outlive a failed lifecycle write. Paid access needs
+// the captured transaction row, not just callback metadata or a paid link.
+async function capturedAccessReceipt(db, event, link, paidAmountCents) {
+  if (!requiresFullAmount(link)) return true;
+  const p = event.payload || {};
+  const ref = receiptHint(p.paymentId, p.providerRef);
+  if (ref.conflict || !ref.value || !link.client_id || !p.productName ||
+      p.source !== "commas" || (link.provider && link.provider !== "commas") ||
+      (link.product_id && String(link.product_id) !== String(p.productId || ""))) return false;
+  const receipt = (await db.query(
+    `SELECT org_id, client_id, provider, product_name, status, amount_paid
+       FROM transactions WHERE org_id = $1 AND provider_ref = $2 LIMIT 1`,
+    [event.orgId, ref.value]
+  )).rows[0];
+  return !!receipt && String(receipt.org_id) === String(link.org_id) &&
+    String(receipt.client_id) === String(link.client_id) &&
+    receipt.provider === "commas" && receipt.product_name === p.productName &&
+    String(receipt.status).toLowerCase() === "succeeded" &&
+    toCents(receipt.amount_paid) === paidAmountCents;
+}
+
 export async function onPaymentReceivedForLink(event, db) {
   const p = event.payload || {};
   // Whop settles its own saved link after checking the signed checkout identity.
@@ -84,7 +105,8 @@ export async function onPaymentReceivedForLink(event, db) {
     const referencedLink = await getByLinkRef(db, { linkRef: p.ref });
     if (referencedLink) {
       if (!receiptMatchesLink(referencedLink, identity) ||
-          !receiptCoversAccess(referencedLink, paidAmountCents)) return;
+          !receiptCoversAccess(referencedLink, paidAmountCents) ||
+          !await capturedAccessReceipt(db, event, referencedLink, paidAmountCents)) return;
       if (referencedLink.status === "paid") {
         await turnOnFinanceOsIfSetup(db, referencedLink);
         return;
@@ -107,7 +129,8 @@ export async function onPaymentReceivedForLink(event, db) {
   if (sessionId) {
     const sessionLink = await getByCommasSession(db, { orgId: event.orgId, sessionId });
     if (!sessionLink || !receiptMatchesLink(sessionLink, identity) ||
-        !receiptCoversAccess(sessionLink, paidAmountCents)) return;
+        !receiptCoversAccess(sessionLink, paidAmountCents) ||
+        !await capturedAccessReceipt(db, event, sessionLink, paidAmountCents)) return;
     const bySession = await markPaidBySession(db, {
       ...identity, commasSessionId: sessionId,
       requireFullAmount: requiresFullAmount(sessionLink)

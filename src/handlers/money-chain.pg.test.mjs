@@ -12,6 +12,7 @@ import { emit, replay, _resetOrgCache } from "../events/bus.mjs";
 import { clearHandlers } from "../events/registry.mjs";
 import { register as registerLifecycle, onPaymentReceived, onPaymentFailed } from "./client-lifecycle.mjs";
 import { register as registerMoneyChain, onPaymentReceivedMoney, onDepositPaidMoney, ensureSale, ensureSalePayment } from "./money-chain.mjs";
+import { onPaymentReceivedForLink } from "./payment-links.mjs";
 import { createSession } from "../auth/session.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 
@@ -649,6 +650,143 @@ describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
       0,
       "nothing may be granted on a guess"
     );
+  });
+
+  test("two simultaneous fee captures cannot overcredit sale cash", {
+    skip: !process.env.CI || !process.env.DATABASE_URL ? "requires disposable CI Postgres" : false
+  }, async () => {
+    const clientId = (await db.query(
+      `INSERT INTO clients (org_id, email, first_name, ghl_contact_id)
+       VALUES ($1,$2,$3,'existing-local-link') RETURNING id`,
+      [org, `${MARK}.fee-race-${randomUUID()}@example.invalid`, MARK]
+    )).rows[0].id;
+    const { sale } = await ensureSale(db, {
+      orgId: org, clientId, name: "checkout.accepted",
+      payload: { productId: fundingProductId, amount: 3000 }
+    }, { productBucket: "deposit" });
+    assert.ok(sale);
+    let invoiceId;
+    try {
+      invoiceId = (await db.query(
+        `INSERT INTO invoices (org_id, client_id, sale_id, invoice_type, source, status, amount_due)
+         VALUES ($1,$2,$3,'success_fee','funding_success_fee','sent',100) RETURNING id`,
+        [org, clientId, sale.id]
+      )).rows[0].id;
+      const refs = [`fee-race-${randomUUID()}`, `fee-race-${randomUUID()}`];
+      for (const ref of refs) {
+        await db.query(
+          `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                    status, provider, provider_ref, raw_payload)
+           VALUES ($1,$2,'Success fee',80,'succeeded','commas',$3,'{}'::jsonb)`,
+          [org, clientId, ref]
+        );
+      }
+      const receipt = (ref) => ({ id: null, name: "payment.received", orgId: org, clientId,
+        payload: { invoiceId, saleId: sale.id, product: "success_fee",
+          productName: "Success fee", amount: 80, providerRef: ref, paymentId: ref,
+          source: "commas" } });
+      // Two real checked-out connections start before either receipt commits.
+      // The second allocator must wait on the invoice row lock.
+      const runCapture = async (ref) => {
+        const conn = await pool().connect();
+        try {
+          await conn.query("BEGIN");
+          const result = await onPaymentReceivedMoney(receipt(ref), conn);
+          await conn.query("COMMIT");
+          return result;
+        } catch (err) {
+          await conn.query("ROLLBACK").catch(() => {});
+          throw err;
+        } finally {
+          conn.release();
+        }
+      };
+      const results = await Promise.all(refs.map(runCapture));
+      assert.equal(results.filter((r) => r.done).length, 1, JSON.stringify(results));
+      assert.equal(results.filter((r) => r.reason === "success_fee_overpayment_unallocated").length, 1);
+      const applied = (await db.query(
+        `SELECT COALESCE(SUM(amount),0)::numeric AS total FROM invoice_payments
+          WHERE invoice_id = $1 AND kind = 'payment'`, [invoiceId]
+      )).rows[0].total;
+      const credited = (await db.query(
+        `SELECT COALESCE(SUM(amount),0)::numeric AS total FROM sale_payments
+          WHERE sale_id = $1 AND kind = 'success_fee'`, [sale.id]
+      )).rows[0].total;
+      assert.equal(Number(applied), 100);
+      assert.equal(Number(credited), 80, "only the fully applied capture may pay sale/commission");
+    } finally {
+      if (invoiceId) {
+        // This is a disposable CI fixture; the production tables correctly
+        // forbid deletes. Restore each guard even if fixture cleanup fails.
+        await db.query(`ALTER TABLE invoice_payments DISABLE TRIGGER trg_invoice_payments_no_delete`);
+        try {
+          await db.query(`DELETE FROM invoice_payments WHERE invoice_id = $1`, [invoiceId]);
+        } finally {
+          await db.query(`ALTER TABLE invoice_payments ENABLE TRIGGER trg_invoice_payments_no_delete`);
+        }
+        await db.query(`ALTER TABLE invoices DISABLE TRIGGER trg_invoices_no_delete`);
+        try {
+          await db.query(`DELETE FROM invoices WHERE id = $1`, [invoiceId]);
+        } finally {
+          await db.query(`ALTER TABLE invoices ENABLE TRIGGER trg_invoices_no_delete`);
+        }
+      }
+    }
+  });
+
+  test("failed captured transaction cannot pay or heal SLO and Finance links", {
+    skip: !process.env.CI || !process.env.DATABASE_URL ? "requires disposable CI Postgres" : false
+  }, async () => {
+    const conn = await pool().connect();
+    try {
+      await conn.query("BEGIN");
+      const clientId = (await conn.query(
+        `INSERT INTO clients (org_id, email, first_name, ghl_contact_id)
+         VALUES ($1,$2,$3,'existing-local-link') RETURNING id`,
+        [org, `${MARK}.link-fail-${randomUUID()}@example.invalid`, MARK]
+      )).rows[0].id;
+      for (const [kind, linkRef, description, amount, title] of [
+        ["SLO", `slo_${randomUUID().replaceAll("-", "")}`, "SLO", 297, "SLO"],
+        ["Finance", `pl_${randomUUID().replaceAll("-", "")}`, "Finance OS setup", 500,
+          "Consulting Services Engagement"]
+      ]) {
+        const ref = `failed-link-${randomUUID()}`;
+        const linkId = (await conn.query(
+          `INSERT INTO payment_links (org_id, client_id, purpose, description,
+             amount_cents, link_ref, checkout_url, status)
+           VALUES ($1,$2,'custom',$3,$4,$5,'https://example.invalid/checkout','sent') RETURNING id`,
+          [org, clientId, description, amount * 100, linkRef]
+        )).rows[0].id;
+        await conn.query(
+          `INSERT INTO transactions (org_id, client_id, product_name, amount_paid,
+                                    status, provider, provider_ref, raw_payload)
+           VALUES ($1,$2,$3,$4,'failed','commas',$5,'{}'::jsonb)`,
+          [org, clientId, title, amount, ref]
+        );
+        const event = { orgId: org, clientId,
+          payload: { ref: linkRef, paymentLinkId: linkId, amount, paymentId: ref,
+            providerRef: ref, source: "commas", productName: title } };
+        await onPaymentReceivedForLink(event, conn);
+        assert.equal((await conn.query(`SELECT status FROM payment_links WHERE id=$1`, [linkId])).rows[0].status,
+          "sent", `${kind} must not mark a failed receipt paid`);
+        // A previous handler could have marked the link paid before failing.
+        // Replay must still refuse to create access from this failed capture.
+        await conn.query(`UPDATE payment_links SET status='paid', paid_amount_cents=$2 WHERE id=$1`,
+          [linkId, amount * 100]);
+        await onPaymentReceivedForLink(event, conn);
+      }
+      assert.equal((await conn.query(
+        `SELECT count(*)::int n FROM subscriptions WHERE client_id=$1 AND tier='finance-os'`,
+        [clientId]
+      )).rows[0].n, 0);
+      assert.equal((await conn.query(
+        `SELECT count(*)::int n FROM accounts WHERE client_id=$1 AND kind='client'`,
+        [clientId]
+      )).rows[0].n, 0);
+    } finally {
+      await conn.query("ROLLBACK").catch(() => {});
+      conn.release();
+    }
   });
 
   test("invoice pair guards and failed capture recovery hold in real Postgres", async () => {

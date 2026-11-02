@@ -49,6 +49,7 @@ import { createFundingCloseoutSafe } from "../funding/closeout.mjs";
 import { attachGateToRound } from "../inquiry-ops/gate.mjs";
 import { accrueForPaymentSafe, voidForRefund } from "../partners/revenue.mjs";
 import { toCents } from "../commissions/money.mjs";
+import { allocatePayment } from "../invoices/allocate.mjs";
 import { convertSafe } from "../affiliates/economics.mjs";
 import { listConfirmedApprovals, listExcludedApprovals, NO_CONFIRMED_APPROVALS } from "../funding/success-fee.mjs";
 import { PRODUCT as CARD_STACKING_PRODUCT } from "../funding/card-stacking-rounds.mjs";
@@ -979,7 +980,7 @@ export function feePaymentBalanceDecision({ amount, due, applied = 0 }) {
  * our payment link carries durable product identity. Unknown/unlinked products
  * still do not invent a sale.
  */
-export async function onPaymentReceivedMoney(event, db) {
+export async function onPaymentReceivedMoney(event, db, { allocateFeePayment = allocatePayment } = {}) {
   const orgId = event.orgId;
   const p = event.payload || {};
   // Canonical and legacy event names must agree. A snake_case invoice/link
@@ -1149,6 +1150,7 @@ export async function onPaymentReceivedMoney(event, db) {
   // The paid-invoice block above already proves replay receipt identity.
   // The comparison below always caps collectible sale cash by original debt,
   // including a partial event that the allocator has already processed.
+  let currentFeeAppliedCents = 0;
   if (feeInvoice && Number(paymentPayload.amount) > 0) {
     const receiptRef = paymentPayload.paymentId || paymentPayload.providerRef || null;
     const sourceEventId = asUuid(event.id);
@@ -1163,11 +1165,26 @@ export async function onPaymentReceivedMoney(event, db) {
       [orgId, feeInvoice.id, receiptRef, sourceEventId]
     );
     const agg = totals.rows[0] || null;
+    currentFeeAppliedCents = agg ? toCents(agg.current_applied) : 0;
     const priorApplied = agg ? Number(agg.applied) - Number(agg.current_applied) : null;
     const reason = feePaymentBalanceDecision({
       amount: paymentPayload.amount, due: feeInvoice.amount_due, applied: priorApplied
     });
     if (reason) return { done: false, reason, invoiceId: feeInvoice.id };
+  }
+  // The allocator locks this invoice through its balance read and receipt
+  // insert. Without that durable allocation, concurrent callbacks can both
+  // credit the sale before either independent allocator run sees the other.
+  if (feeInvoice && Number(paymentPayload.amount) > 0) {
+    const allocation = await allocateFeePayment(db, paymentEvent);
+    const fullCents = toCents(paymentPayload.amount);
+    const fullyApplied = allocation?.allocated && allocation.invoiceId === feeInvoice.id &&
+      allocation.appliedCents === fullCents && allocation.surplusCents === 0;
+    const fullReplay = allocation?.replay && allocation.invoiceId === feeInvoice.id &&
+      currentFeeAppliedCents === fullCents;
+    if (!fullyApplied && !fullReplay) {
+      return { done: false, reason: "success_fee_overpayment_unallocated", invoiceId: feeInvoice.id };
+    }
   }
   let sale = null;
   if (billedInvoice?.sale_id) {

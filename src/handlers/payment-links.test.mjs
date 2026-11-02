@@ -7,7 +7,7 @@ import { onPaymentReceivedForLink } from "./payment-links.mjs";
 const TEST_ORG = "11111111-1111-4111-8111-111111111111";
 const OTHER_ORG = "22222222-2222-4222-8222-222222222222";
 
-function fakeDb(rows) {
+function fakeDb(rows, receipts = []) {
   for (const row of rows) row.org_id ||= TEST_ORG;
   const calls = [];
   return {
@@ -15,6 +15,9 @@ function fakeDb(rows) {
     query: async (sql, params) => {
       calls.push({ sql: String(sql), params });
       const text = String(sql);
+      if (/FROM transactions WHERE org_id = \$1 AND provider_ref = \$2/.test(text)) {
+        return { rows: receipts.filter((r) => r.org_id === params[0] && r.provider_ref === params[1]) };
+      }
       if (/^\s*SELECT \* FROM payment_links WHERE link_ref = \$1/i.test(text)) {
         return { rows: rows.filter((r) => r.link_ref === params[0]) };
       }
@@ -182,6 +185,11 @@ describe("onPaymentReceivedForLink", () => {
     assert.equal(rows[0].status, "created");
   });
 
+  const captured = (ref, clientId, amount, status = "succeeded", productName = "SLO") => ({
+    org_id: TEST_ORG, client_id: clientId, provider_ref: ref, provider: "commas",
+    product_name: productName, status, amount_paid: amount
+  });
+
   test("a paid $297 SLO link opens the portal login for that client", async () => {
     const ORG = "11111111-1111-4111-8111-111111111111";
     const CLIENT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -198,6 +206,9 @@ describe("onPaymentReceivedForLink", () => {
       query: async (sql, params) => {
         db.calls.push({ sql: String(sql), params });
         const text = String(sql);
+        if (/FROM transactions WHERE org_id = \$1 AND provider_ref = \$2/.test(text)) {
+          return { rows: [captured("txn_slo", CLIENT, 297)] };
+        }
         if (/^\s*SELECT \* FROM payment_links WHERE link_ref = \$1/i.test(text)) {
           return { rows: rows.filter((r) => r.link_ref === params[0]) };
         }
@@ -225,7 +236,7 @@ describe("onPaymentReceivedForLink", () => {
       }
     };
     await onPaymentReceivedForLink(
-      { orgId: TEST_ORG, payload: { ref: "slo_abcdef0123456789abcdef", amount: 297, providerRef: "txn_slo" } },
+      { orgId: TEST_ORG, payload: { ref: "slo_abcdef0123456789abcdef", amount: 297, providerRef: "txn_slo", source: "commas", productName: "SLO" } },
       db
     );
     assert.equal(rows[0].status, "paid");
@@ -267,9 +278,9 @@ describe("onPaymentReceivedForLink", () => {
   const CLIENT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const LINK_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
-  function setupDb(links) {
+  function setupDb(links, receipts = []) {
     const subs = [];
-    const base = fakeDb(links);
+    const base = fakeDb(links, receipts);
     const db = {
       subs,
       calls: base.calls,
@@ -304,14 +315,53 @@ describe("onPaymentReceivedForLink", () => {
 
   test("a paid Finance OS setup link turns Finance OS on for that client", async () => {
     const links = [setupLink()];
-    const db = setupDb(links);
-    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_s" } }, db);
+    const db = setupDb(links, [captured("txn_s", CLIENT, 500, "succeeded", "Finance OS setup")]);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_s", source: "commas", productName: "Finance OS setup" } }, db);
     assert.equal(links[0].status, "paid");
     assert.equal(db.subs.length, 1);
     assert.equal(db.subs[0].tier, "finance-os");
     assert.equal(db.subs[0].client_id, CLIENT);
     assert.equal(db.subs[0].provider_ref, `payment_link:${LINK_ID}`);
     assert.equal(db.subs[0].price_cents, null, "not priced is null, never 0");
+  });
+
+  test("a signed callback without a captured transaction cannot pay or heal setup access", async () => {
+    for (const status of ["sent", "paid"]) {
+      const links = [setupLink({ status, paid_amount_cents: status === "paid" ? 50000 : null })];
+      const db = setupDb(links);
+      await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: CLIENT,
+        payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_missing",
+          source: "commas", productName: "Finance OS setup" } }, db);
+      assert.equal(links[0].status, status);
+      assert.equal(db.subs.length, 0);
+    }
+  });
+
+  test("failed or mismatched captured receipts cannot pay a setup link", async () => {
+    for (const [label, receipt] of [
+      ["failed", captured("txn_guard", CLIENT, 500, "failed", "Finance OS setup")],
+      ["buyer", captured("txn_guard", "another-buyer", 500, "succeeded", "Finance OS setup")],
+      ["amount", captured("txn_guard", CLIENT, 499, "succeeded", "Finance OS setup")],
+      ["product", captured("txn_guard", CLIENT, 500, "succeeded", "Another product")],
+      ["provider", { ...captured("txn_guard", CLIENT, 500, "succeeded", "Finance OS setup"), provider: "other" }]
+    ]) {
+      const links = [setupLink()];
+      const db = setupDb(links, [receipt]);
+      await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: CLIENT,
+        payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_guard",
+          source: "commas", productName: "Finance OS setup" } }, db);
+      assert.equal(links[0].status, "sent", label);
+      assert.equal(db.subs.length, 0, label);
+    }
+  });
+
+  test("a failed captured receipt cannot heal an already-paid setup link", async () => {
+    const links = [setupLink({ status: "paid", paid_amount_cents: 50000 })];
+    const db = setupDb(links, [captured("txn_failed_heal", CLIENT, 500, "failed", "Finance OS setup")]);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG,
+      payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_failed_heal",
+        source: "commas", productName: "Finance OS setup" } }, db);
+    assert.equal(db.subs.length, 0);
   });
 
   test("a $1 receipt cannot settle a $500 Finance OS setup link", async () => {
@@ -324,21 +374,21 @@ describe("onPaymentReceivedForLink", () => {
 
   test("session fallback also requires the full Finance OS setup amount", async () => {
     const links = [setupLink({ commas_session_id: "session_setup" })];
-    const db = setupDb(links);
+    const db = setupDb(links, [captured("txn_session", CLIENT, 500, "succeeded", "Finance OS setup")]);
     await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: CLIENT, payload: { itemId: "session_setup", amount: 1 } }, db);
     assert.equal(links[0].status, "sent");
     assert.equal(db.subs.length, 0);
-    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: CLIENT, payload: { itemId: "session_setup", amount: 500 } }, db);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, clientId: CLIENT, payload: { itemId: "session_setup", amount: 500, providerRef: "txn_session", source: "commas", productName: "Finance OS setup" } }, db);
     assert.equal(links[0].status, "paid");
     assert.equal(db.subs.length, 1);
   });
 
   test("matching buyer, invoice, and link ID still settle Finance OS setup", async () => {
     const links = [setupLink({ invoice_id: "invoice-a" })];
-    const db = setupDb(links);
+    const db = setupDb(links, [captured("txn_invoice", CLIENT, 500, "succeeded", "Finance OS setup")]);
     await onPaymentReceivedForLink({
       orgId: TEST_ORG, clientId: CLIENT,
-      payload: { ref: "pl_setup1", invoiceId: "invoice-a", paymentLinkId: LINK_ID, amount: 500 }
+      payload: { ref: "pl_setup1", invoiceId: "invoice-a", paymentLinkId: LINK_ID, amount: 500, providerRef: "txn_invoice", source: "commas", productName: "Finance OS setup" }
     }, db);
     assert.equal(links[0].status, "paid");
     assert.equal(db.subs.length, 1);
@@ -346,8 +396,8 @@ describe("onPaymentReceivedForLink", () => {
 
   test("a replayed setup payment does not open a second subscription", async () => {
     const links = [setupLink()];
-    const db = setupDb(links);
-    const evt = { orgId: TEST_ORG, payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_s" } };
+    const db = setupDb(links, [captured("txn_s", CLIENT, 500, "succeeded", "Finance OS setup")]);
+    const evt = { orgId: TEST_ORG, payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_s", source: "commas", productName: "Finance OS setup" } };
     await onPaymentReceivedForLink(evt, db);
     await onPaymentReceivedForLink(evt, db);
     await onPaymentReceivedForLink(evt, db);
@@ -356,8 +406,8 @@ describe("onPaymentReceivedForLink", () => {
 
   test("a replay heals a setup link that was marked paid but never granted", async () => {
     const links = [setupLink({ status: "paid", paid_at: new Date("2026-10-06T12:00:00Z") })];
-    const db = setupDb(links);
-    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_setup1", amount: 500 } }, db);
+    const db = setupDb(links, [captured("txn_heal", CLIENT, 500, "succeeded", "Finance OS setup")]);
+    await onPaymentReceivedForLink({ orgId: TEST_ORG, payload: { ref: "pl_setup1", amount: 500, providerRef: "txn_heal", source: "commas", productName: "Finance OS setup" } }, db);
     assert.equal(db.subs.length, 1);
   });
 

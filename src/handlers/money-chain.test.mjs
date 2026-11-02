@@ -411,6 +411,13 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   const NEWEST_SALE = "00000000-0000-4000-8000-0000000000b2"; // a later funding sale, same client
   const PRODUCT = "00000000-0000-4000-8000-0000000000f1";
 
+  // These older unit fixtures test identity and balance guards. The separate
+  // Postgres test exercises the real allocator lock and receipt write.
+  const feePayment = (event, db, allocateFeePayment = async (_db, receipt) => ({
+    allocated: true, invoiceId: INVOICE,
+    appliedCents: Math.round(Number(receipt.payload.amount) * 100), surplusCents: 0
+  })) => onPaymentReceivedMoney(event, db, { allocateFeePayment });
+
   function feeDb({
     invoice = { id: INVOICE, sale_id: BILLED_SALE, status: "sent" },
     paidReceiptRef = null,
@@ -488,7 +495,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("invoice payment never uses lead capture to edit a buyer's contact", async () => {
     const db = feeDb();
-    const out = await onPaymentReceivedMoney(feeReceipt({
+    const out = await feePayment(feeReceipt({
       name: "Forged Contact", phone: "+15550001111"
     }), db);
     assert.equal(out.done, true, JSON.stringify(out));
@@ -502,7 +509,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     const db = feeDb();
     const event = feeReceipt({ email: "unknown+invoice@example.invalid", name: "Injected Lead" });
     event.clientId = null;
-    const out = await onPaymentReceivedMoney(event, db);
+    const out = await feePayment(event, db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "no_client");
     assert.ok(db.queries.some(q => /SELECT id FROM clients WHERE org_id = \$1 AND lower\(email\)/.test(q.text)));
@@ -513,7 +520,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     const db = feeDb();
     const event = feeReceipt({ email: "local+buyer@example.invalid" });
     event.clientId = "00000000-0000-4000-8000-00000000ffff";
-    const out = await onPaymentReceivedMoney(event, db);
+    const out = await feePayment(event, db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "no_client");
     assert.ok(!db.queries.some(q => /^\s*(UPDATE|INSERT INTO) clients\b|INSERT INTO sale_payments/i.test(q.text)));
@@ -522,7 +529,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("it is kind success_fee on the invoice's own sale, never front-end money on a guessed sale", async () => {
     const db = feeDb();
-    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    const out = await feePayment(feeReceipt(), db);
     assert.equal(out.done, true, JSON.stringify(out));
     const ins = salePaymentInsert(db);
     assert.ok(ins, "the success fee was not recorded at all");
@@ -539,7 +546,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   test("a fee invoice cannot credit a different funding round", async () => {
     const db = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "sent",
       funding_round_id: "00000000-0000-4000-8000-0000000000f5" } });
-    const out = await onPaymentReceivedMoney(feeReceipt({
+    const out = await feePayment(feeReceipt({
       fundingRoundId: "00000000-0000-4000-8000-0000000000f6"
     }), db);
     assert.equal(out.done, false);
@@ -550,7 +557,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("a generic sale link with no invoice identity cannot pay a fee invoice", async () => {
     const db = feeDb({ linkedInvoiceId: null });
-    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    const out = await feePayment(feeReceipt(), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "payment_link_invoice_conflict");
     assert.equal(salePaymentInsert(db), undefined);
@@ -559,7 +566,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("one invoice cannot use a same-buyer link for another invoice", async () => {
     const db = feeDb({ linkedInvoiceId: "00000000-0000-4000-8000-0000000000e2" });
-    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    const out = await feePayment(feeReceipt(), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "payment_link_invoice_conflict");
     assert.equal(salePaymentInsert(db), undefined);
@@ -568,7 +575,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("a matching invoice link can supply the missing invoice identifier", async () => {
     const db = feeDb({ linkedInvoiceId: INVOICE });
-    const out = await onPaymentReceivedMoney(feeReceipt({ invoiceId: null }), db);
+    const out = await feePayment(feeReceipt({ invoiceId: null }), db);
     assert.equal(out.done, true, JSON.stringify(out));
     assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
     assert.equal(salePaymentInsert(db)?.params[1], BILLED_SALE);
@@ -576,7 +583,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("a success-fee invoice cannot be redirected to another same-buyer sale", async () => {
     const db = feeDb();
-    const out = await onPaymentReceivedMoney(feeReceipt({ saleId: NEWEST_SALE }), db);
+    const out = await feePayment(feeReceipt({ saleId: NEWEST_SALE }), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "success_fee_sale_conflict");
     assert.equal(salePaymentInsert(db), undefined, "conflicted fee must not enter sale_payments");
@@ -584,7 +591,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("a success-fee invoice with no original sale is held for reconciliation", async () => {
     const db = feeDb({ invoice: { id: INVOICE, sale_id: null, status: "sent" } });
-    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    const out = await feePayment(feeReceipt(), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "unlinked_success_fee_invoice");
     assert.equal(salePaymentInsert(db), undefined);
@@ -593,7 +600,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   for (const invoiceStatus of ["draft", "void", "written_off"]) {
     test(`a ${invoiceStatus} success-fee invoice cannot post cash or paid access`, async () => {
       const db = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: invoiceStatus } });
-      const out = await onPaymentReceivedMoney(feeReceipt(), db);
+      const out = await feePayment(feeReceipt(), db);
       assert.equal(out.done, false);
       assert.equal(out.reason, "success_fee_invoice_not_collectible");
       assert.equal(salePaymentInsert(db), undefined);
@@ -603,7 +610,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("overpaid success fee never posts PSP surplus as sale cash", async () => {
     const db = feeDb();
-    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 3000 }), db);
+    const out = await feePayment(feeReceipt({ amount: 3000 }), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "success_fee_overpayment_unallocated");
     assert.equal(salePaymentInsert(db), undefined);
@@ -611,10 +618,21 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.ok(db.queries.some(q => q.text.includes("COALESCE(SUM")));
   });
 
+  test("an allocator that applies only part of a captured fee cannot credit sale or commission", async () => {
+    const db = feeDb();
+    const out = await feePayment(feeReceipt(), db, async () => ({
+      allocated: true, invoiceId: INVOICE, appliedCents: 2000, surplusCents: 500
+    }));
+    assert.equal(out.done, false);
+    assert.equal(out.reason, "success_fee_overpayment_unallocated");
+    assert.equal(salePaymentInsert(db), undefined);
+    assert.equal(out.entitlements, undefined);
+  });
+
   test("previous partial fee receipts reduce collectible balance", async () => {
     const db = feeDb({ paidAmount: 2000,
       invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 2500, status: "partially_paid" } });
-    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 600 }), db);
+    const out = await feePayment(feeReceipt({ amount: 600 }), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "success_fee_overpayment_unallocated");
     assert.equal(salePaymentInsert(db), undefined);
@@ -623,7 +641,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   test("exact remaining partial fee receipt still credits original sale", async () => {
     const db = feeDb({ paidAmount: 2000, transactionAmount: 500,
       invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 2500, status: "partially_paid" } });
-    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 500 }), db);
+    const out = await feePayment(feeReceipt({ amount: 500 }), db);
     assert.equal(out.done, true, JSON.stringify(out));
     assert.equal(salePaymentInsert(db)?.params[1], BILLED_SALE);
     assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
@@ -636,7 +654,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     // only $100 remaining and erroneously skips its sale/payment credit.
     const db = feeDb({ paidAmount: 900, currentAppliedAmount: 500, transactionAmount: 500,
       invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 1000, status: "partially_paid" } });
-    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 500 }), db);
+    const out = await feePayment(feeReceipt({ amount: 500 }), db);
     assert.equal(out.done, true, JSON.stringify(out));
     assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
     assert.equal(salePaymentInsert(db)?.params[7], 500);
@@ -648,7 +666,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     const db = feeDb({ paidAmount: 2500, currentAppliedAmount: 500,
       paidReceiptRef: "sim-pay-fee", transactionAmount: 600,
       invoice: { id: INVOICE, sale_id: BILLED_SALE, amount_due: 2500, status: "paid" } });
-    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 600 }), db);
+    const out = await feePayment(feeReceipt({ amount: 600 }), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "success_fee_overpayment_unallocated");
     assert.equal(salePaymentInsert(db), undefined);
@@ -660,7 +678,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
       invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid" },
       paidReceiptRef: "sim-pay-fee"
     });
-    const out = await onPaymentReceivedMoney(
+    const out = await feePayment(
       feeReceipt({ paymentId: "sim-pay-second", providerRef: "sim-pay-second",
         amount: 2500, product: "unmatched" }), db
     );
@@ -675,7 +693,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
       invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid" },
       paidReceiptRef: "sim-pay-fee"
     });
-    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    const out = await feePayment(feeReceipt(), db);
     assert.equal(out.done, true, JSON.stringify(out));
     assert.equal(out.saleId, BILLED_SALE);
     assert.equal(salePaymentInsert(db)?.params[6], "success_fee");
@@ -685,7 +703,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("a paid invoice without a recorded matching receipt never counts as paid sale cash", async () => {
     const db = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid" } });
-    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    const out = await feePayment(feeReceipt(), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "paid_success_fee_new_receipt");
     assert.equal(salePaymentInsert(db), undefined);
@@ -693,7 +711,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("a zero-dollar payment cannot grant paid access", async () => {
     const db = feeDb();
-    const out = await onPaymentReceivedMoney(feeReceipt({ amount: 0 }), db);
+    const out = await feePayment(feeReceipt({ amount: 0 }), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "unrecorded_payment");
     assert.equal(salePaymentInsert(db), undefined);
@@ -701,7 +719,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("an invalid payment amount cannot grant access or post commissions", async () => {
     const db = feeDb();
-    const out = await onPaymentReceivedMoney(feeReceipt({ amount: -25 }), db);
+    const out = await feePayment(feeReceipt({ amount: -25 }), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "unrecorded_payment");
     assert.equal(out.entitlements, undefined);
@@ -731,7 +749,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     };
 
     const rejected = withCloser();
-    const unpaid = await onPaymentReceivedMoney(feeReceipt({ amount: 0, closerId }), rejected);
+    const unpaid = await feePayment(feeReceipt({ amount: 0, closerId }), rejected);
     assert.equal(unpaid.done, false);
     assert.equal(unpaid.reason, "unrecorded_payment");
     assert.ok(!rejected.queries.some(q => /UPDATE payment_links|INSERT INTO sale_attributions/.test(q.text)),
@@ -739,7 +757,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(salePaymentInsert(rejected), undefined);
 
     const accepted = withCloser();
-    const paid = await onPaymentReceivedMoney(feeReceipt({ closerId }), accepted);
+    const paid = await feePayment(feeReceipt({ closerId }), accepted);
     assert.equal(paid.done, true, JSON.stringify(paid));
     const paymentAt = accepted.queries.findIndex(q => /INSERT INTO sale_payments/.test(q.text));
     const linkAt = accepted.queries.findIndex(q => /UPDATE payment_links/.test(q.text));
@@ -753,7 +771,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     const query = db.query.bind(db);
     db.query = async (sql, params) => /pr\.category = 'funding'/.test(String(sql))
       ? { rows: [] } : query(sql, params);
-    const out = await onPaymentReceivedMoney(
+    const out = await feePayment(
       feeReceipt({ invoiceId: null, paymentLinkId: null, product: "unmatched", productName: null }), db
     );
     assert.equal(out.done, false);
@@ -763,7 +781,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
   });
   test("the invoice is looked up inside this client and org only", async () => {
     const db = feeDb();
-    await onPaymentReceivedMoney(feeReceipt(), db);
+    await feePayment(feeReceipt(), db);
     const inv = db.queries.find((q) => /FROM invoices/.test(q.text));
     assert.ok(inv, "the receipt's invoice was never read");
     assert.deepEqual(inv.params, [INVOICE, ORG, CLIENT]);
@@ -772,7 +790,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("a success-fee receipt with an unverified invoice cannot become a sale installment", async () => {
     const db = feeDb({ invoice: null });
-    const out = await onPaymentReceivedMoney(feeReceipt(), db);
+    const out = await feePayment(feeReceipt(), db);
     assert.equal(out.done, false);
     assert.equal(out.reason, "invoice_identity_conflict");
     assert.equal(salePaymentInsert(db), undefined);
@@ -781,7 +799,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("a success-fee receipt without invoice identity or invoice link is held", async () => {
     const db = feeDb();
-    const out = await onPaymentReceivedMoney(feeReceipt({ invoiceId: null, paymentLinkId: null }), db);
+    const out = await feePayment(feeReceipt({ invoiceId: null, paymentLinkId: null }), db);
     assert.ok(!db.queries.some((q) => /FROM invoices/.test(q.text)), "a receipt with no invoice should not guess a bill");
     assert.equal(out.done, false);
     assert.equal(out.reason, "success_fee_invoice_unresolved");
@@ -790,7 +808,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("an unmatched receipt with no original sale never chooses this buyer's latest funding sale", async () => {
     const db = feeDb({ invoice: null });
-    const out = await onPaymentReceivedMoney(feeReceipt({
+    const out = await feePayment(feeReceipt({
       invoiceId: null, paymentLinkId: null, purpose: null,
       product: "unmatched", productName: null
     }), db);
@@ -804,7 +822,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("a generic unmatched receipt with an explicit original sale still records that sale only", async () => {
     const db = feeDb({ invoice: null });
-    const out = await onPaymentReceivedMoney(feeReceipt({
+    const out = await feePayment(feeReceipt({
       invoiceId: null, paymentLinkId: null, purpose: null,
       product: "unmatched", productName: null, saleId: BILLED_SALE
     }), db);
@@ -819,7 +837,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("an explicit unknown invoice cannot redirect a real buyer payment onto an otherwise valid sale", async () => {
     const db = feeDb({ invoice: null });
-    const out = await onPaymentReceivedMoney(feeReceipt({
+    const out = await feePayment(feeReceipt({
       invoiceId: INVOICE, paymentLinkId: null, product: "unmatched",
       productName: null, purpose: null, saleId: BILLED_SALE
     }), db);
@@ -832,7 +850,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("snake_case unknown invoice cannot become an installment on a different sale", async () => {
     const db = feeDb({ invoice: null });
-    const out = await onPaymentReceivedMoney(feeReceipt({
+    const out = await feePayment(feeReceipt({
       invoiceId: null, invoice_id: INVOICE, paymentLinkId: null,
       product: "unmatched", productName: null, purpose: null, saleId: BILLED_SALE
     }), db);
@@ -844,7 +862,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("snake_case invoice and checkout link retain the original fee and buyer", async () => {
     const db = feeDb();
-    const out = await onPaymentReceivedMoney(feeReceipt({
+    const out = await feePayment(feeReceipt({
       invoiceId: null, paymentLinkId: null, invoice_id: INVOICE, payment_link_id: LINK
     }), db);
     assert.equal(out.done, true, JSON.stringify(out));
@@ -863,7 +881,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
       [{ payment_link_id: NEWEST_SALE }, "payment_link_context_conflict"]
     ]) {
       const db = feeDb();
-      const out = await onPaymentReceivedMoney(feeReceipt(extra), db);
+      const out = await feePayment(feeReceipt(extra), db);
       assert.equal(out.done, false);
       assert.equal(out.reason, reason);
       assert.equal(salePaymentInsert(db), undefined);
@@ -877,7 +895,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
       source: "other", invoice_type: "platform_fee" };
     const receipt = { product: "unmatched", productName: null, purpose: null, paymentLinkId: null };
     const wrong = feeDb({ invoice });
-    const rejected = await onPaymentReceivedMoney(feeReceipt({
+    const rejected = await feePayment(feeReceipt({
       ...receipt, saleId: NEWEST_SALE
     }), wrong);
     assert.equal(rejected.done, false);
@@ -885,7 +903,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
     assert.equal(salePaymentInsert(wrong), undefined);
 
     const valid = feeDb({ invoice });
-    const accepted = await onPaymentReceivedMoney(feeReceipt({
+    const accepted = await feePayment(feeReceipt({
       ...receipt, saleId: BILLED_SALE
     }), valid);
     assert.equal(accepted.done, true, JSON.stringify(accepted));
@@ -898,14 +916,14 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
       purpose: null, paymentLinkId: null, saleId: BILLED_SALE };
     const voided = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "void",
       source: "other", invoice_type: "platform_fee" } });
-    const result = await onPaymentReceivedMoney(feeReceipt(receipt), voided);
+    const result = await feePayment(feeReceipt(receipt), voided);
     assert.equal(result.done, false);
     assert.equal(result.reason, "invoice_not_collectible");
     assert.equal(salePaymentInsert(voided), undefined);
 
     const paid = feeDb({ invoice: { id: INVOICE, sale_id: BILLED_SALE, status: "paid",
       source: "other", invoice_type: "platform_fee" } });
-    const novel = await onPaymentReceivedMoney(feeReceipt(receipt), paid);
+    const novel = await feePayment(feeReceipt(receipt), paid);
     assert.equal(novel.done, false);
     assert.equal(novel.reason, "paid_success_fee_new_receipt");
     assert.equal(salePaymentInsert(paid), undefined);
@@ -913,7 +931,7 @@ describe("a success-fee receipt is booked as the invoice's success fee (N1)", ()
 
   test("an explicit original sale with conflicting product identity is held", async () => {
     const db = feeDb({ invoice: null });
-    const out = await onPaymentReceivedMoney(feeReceipt({
+    const out = await feePayment(feeReceipt({
       invoiceId: null, paymentLinkId: null, purpose: null,
       product: "unmatched", productName: null,
       saleId: BILLED_SALE, productId: NEWEST_SALE
