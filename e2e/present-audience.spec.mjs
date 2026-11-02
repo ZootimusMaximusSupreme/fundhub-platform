@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import {tmpdir} from 'node:os';
 import { CLIENT_ID, CLOSER, openScreen, json } from './harness.mjs';
 import { offersForClient } from '../src/config/offers.mjs';
 
@@ -70,7 +71,7 @@ for (const width of [390, 1440]) {
       circle.style.cssText = 'position:fixed;right:5px;top:1px;width:120px;height:53px;border:3px solid red;border-radius:50%;color:red;text-align:left;font:16px sans-serif';
       marker.append(arrow, circle); document.body.append(marker);
     });
-    await page.screenshot({ path: `/private/tmp/fundhub-present-audience-${width}-MARKED.png` });
+    await page.screenshot({ path: `${tmpdir()}/fundhub-present-audience-${width}-MARKED.png` });
   });
 }
 

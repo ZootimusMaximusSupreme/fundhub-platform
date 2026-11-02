@@ -350,6 +350,7 @@ describe("Start a flywheel offers every key in src/config/offers.mjs", () => {
   test("same keys, same names", () => {
     assert.deepEqual(Array.from(T.FLYWHEEL_OFFERS, (o) => o[0]).sort(), [...OFFER_KEYS].sort());
     for (const [key, name] of T.FLYWHEEL_OFFERS) assert.equal(name, OFFERS[key].name, key);
+    assert.ok(!T.FLYWHEEL_OFFERS.find(([key]) => key === "REPAIR_TRIAL")[1].includes("first round"), "the UI must not advertise the obsolete one-round trial");
   });
 });
 

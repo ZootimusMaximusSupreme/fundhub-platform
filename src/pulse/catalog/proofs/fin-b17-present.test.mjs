@@ -1405,11 +1405,19 @@ test("the client screens carry the 2026-10-29 words", async () => {
   assert.deepEqual(rungs, [
     ["rung:2", "Capital Blueprint $5,000", true],
     ["rung:0", "Onboard now: full done-for-you $1,000", false],
-    ["rung:1", "Trial: first round done-for-you $200", false],
+    ["rung:1", "Trial: two rounds done-for-you $200", false],
   ], "row 2: the Capital Blueprint is the first rung, and the one a file that is not ready starts on");
+  assert.ok(!rungs.some(rung => rung[1].includes("first round")), "no single-round trial label");
   assert.ok(blueprint.client().includes("S-19"), "the offer choice remains on S-19");
   blueprint.press("rung:0");
   assert.ok(blueprint.client().includes("The four doors"), "S-19 keeps the four-door plan after a rung choice");
+  blueprint.press("rung:1");
+  assert.ok(blueprint.button("rung:1").tag.includes("ck-btn k"), "the $200 two-round trial is selected");
+  assert.ok(blueprint.client().includes("The four doors"), "the approved shared plan remains on the client screen");
+  blueprint.press("phase:09").press("next");
+  assert.ok(blueprint.says().some(line => line.includes("$200 test run covers two done-for-you rounds")));
+  assert.ok(blueprint.says().some(line => line.includes("newer credit pull for the second")));
+  assert.ok(!blueprint.says().some(line => line.includes("After that round, you decide")), "the wrap must not revert to one round");
 
   const stack = await openDeck("REPAIR_ONLY");
   stack.press("phase:06").press("next");

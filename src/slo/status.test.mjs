@@ -96,11 +96,12 @@ test("done, repair: the two catalogue plans + Talk to us first, and no pa", () =
   assert.equal(s.pa, null);
   assert.deepEqual(s.repair_offer, {
     plans: [
-      { key: "REPAIR_TRIAL", name: "Repair test run (first round, done for you)", price_cents: 20000, display: "$200" },
+      { key: "REPAIR_TRIAL", name: "Repair test run (two rounds, done for you)", price_cents: 20000, display: "$200" },
       { key: "REPAIR_DFY", name: "Credit repair, done-for-you", price_cents: 100000, display: "$1,000" }
     ],
     book_url: "https://apply.fundhub.ai/roadmap-book"
   });
+  assert.ok(!s.repair_offer.plans.some(plan => plan.name.includes("first round")), "the $200 trial is two rounds");
 });
 
 test("bucket: clients.outcome_tier first, then crs_results.outcome_tier", () => {

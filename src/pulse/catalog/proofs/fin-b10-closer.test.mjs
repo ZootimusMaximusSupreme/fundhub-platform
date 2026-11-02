@@ -145,7 +145,8 @@ test("Present button: opens the deck for this client in a new tab, and the bare 
     await waitFor(async () => await present.isVisible(), "Present shown");
     assert.equal(await present.textContent(), "Present");
     await present.click();
-    assert.deepEqual(await page.evaluate(() => window.__opened), [[`present.html?contact=${CLIENT}`, "_blank", "noopener,noreferrer"]]);
+    assert.deepEqual(await page.evaluate(() => window.__opened), [[`present.html?contact=${CLIENT}&audience=1`, "_blank", "noopener,noreferrer"]]);
+    assert.notEqual((await page.evaluate(() => window.__opened))[0][0], `present.html?contact=${CLIENT}`, "Present must not launch the private view");
     assert.deepEqual(errors, []);
     await page.close();
 
@@ -153,7 +154,8 @@ test("Present button: opens the deck for this client in a new tab, and the bare 
     const bare = await openCall({ query: "", cockpit: { ok: true, current: null, next: null }, ready: "#fh-present" });
     await waitFor(async () => await bare.page.locator("#fh-present").isVisible(), "Present shown with no client");
     await bare.page.locator("#fh-present").click();
-    assert.deepEqual(await bare.page.evaluate(() => window.__opened), [["present.html", "_blank", "noopener,noreferrer"]]);
+    assert.deepEqual(await bare.page.evaluate(() => window.__opened), [["present.html?audience=1", "_blank", "noopener,noreferrer"]]);
+    assert.notEqual((await bare.page.evaluate(() => window.__opened))[0][0], "present.html", "the no-client gate keeps the audience-only contract");
     await bare.page.close();
   });
 });

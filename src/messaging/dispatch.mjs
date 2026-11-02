@@ -388,7 +388,7 @@ export async function resolveDocumentAttachments(db, attachments, message, { sto
    `message` is a claimed row from claimDue(). */
 export async function dispatchOne(db, message, options = {}) {
   const {
-    fetchImpl, timeoutMs, signal, env, now,
+    fetchImpl, timeoutMs, signal, env = process.env, now,
     sendNative = sendNativeToClient,
     sendWeb = sendToClient,
     smsDedupBatchKeys = null

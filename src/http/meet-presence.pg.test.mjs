@@ -25,6 +25,7 @@ async function fixture(run) {
   const sql = new pg.Client({ connectionString: dsn }); await sql.connect();
   try {
     await sql.query('BEGIN');
+    await sql.query('SET LOCAL ROLE fundhub_app');
     assert.equal((await sql.query('SELECT current_user AS role')).rows[0].role, 'fundhub_app');
     const privileges = (await sql.query(`SELECT has_table_privilege(current_user,'staff_role_assignments','SELECT') AS r,
       has_table_privilege(current_user,'staff_role_assignments','INSERT') AS w`)).rows[0];

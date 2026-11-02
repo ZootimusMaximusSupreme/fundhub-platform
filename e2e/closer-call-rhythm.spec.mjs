@@ -419,6 +419,8 @@ test("Save · next call sends the exact checkout link after a paid call", async 
   await page.locator('[data-outcome="deposit"]').click();
   await page.locator("#fh-save-next").click();
   await expect.poll(() => posted.length).toBe(1);
+  await expect(page).toHaveURL(/closer-dashboard\.html\?client_id=bbbb&task_id=task-2$/);
+  await expect(page.locator("#ccp-who-name")).toHaveText("Dana Whitfield");
   expect(posted[0].payment_link_id).toBe("link-this-call");
   expect(posted[0].offer_key).toBe("FUNDING_DFY");
   expect(posted[0].transaction_id).toBeUndefined();

@@ -580,6 +580,25 @@ describe("nothing reaches a provider without the gate allowing it", () => {
 // ---------------------------------------------------------------------------
 
 describe("routing", () => {
+  test("omitted env uses the process environment and sends once through the routed provider", async () => {
+    const previous = new Map(Object.keys(ENV).map((key) => [key, process.env[key]]));
+    try {
+      Object.assign(process.env, ENV);
+      const f = spy();
+      const db = fakeDb();
+      const res = await dispatchOne(db, claimed(), { fetchImpl: f, now: MIDDAY });
+      assert.strictEqual(res.outcome, OUTCOME.SENT, res.detail);
+      assert.strictEqual(f.calls.length, 1);
+      assert.ok(f.calls[0].url.includes("mailgun.net"), f.calls[0].url);
+      assert.ok(db.updates.some(({ sql, params }) => /SET status = 'sent'/.test(sql) && params[0] === MSG && params[2] === "prov1"), "the provider send receipt is persisted for this message");
+    } finally {
+      for (const [key, value] of previous) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
   test("sends through the provider the org routed", async () => {
     const f = spy();
     const db = fakeDb();

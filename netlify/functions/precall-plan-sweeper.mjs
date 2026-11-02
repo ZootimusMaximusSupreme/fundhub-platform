@@ -1,5 +1,6 @@
 // Five-minute clock for durable pre-call lessons. The planner owns the due
 // rows; this function only starts a bounded pass and records its heartbeat.
+import "@pdf-lib/fontkit";
 import { db } from "../../src/db.mjs";
 import { noteScheduledRun } from "../../src/pulse/heartbeats.mjs";
 import { sweepPrecall } from "../../src/workflows/precall-plan.mjs";

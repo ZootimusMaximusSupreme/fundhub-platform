@@ -51,6 +51,7 @@
 // the whole reason the gate reads opt-out state at send time rather than at
 // queue time — and it is why a held message is re-gated rather than trusted.
 
+import "@pdf-lib/fontkit";
 import { db } from "../../src/db.mjs";
 import { noteScheduledRun } from "../../src/pulse/heartbeats.mjs";
 import { dispatchDue, DEFAULT_BATCH } from "../../src/messaging/dispatch.mjs";

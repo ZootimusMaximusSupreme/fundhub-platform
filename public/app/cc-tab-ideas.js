@@ -105,7 +105,7 @@
     ["FUNDING_DFY", "Funding, done-for-you"],
     ["FUNDING_MASTERY", "Capital Academy"],
     ["REPAIR_DFY", "Credit repair, done-for-you"],
-    ["REPAIR_TRIAL", "Repair test run (first round, done for you)"],
+    ["REPAIR_TRIAL", "Repair test run (two rounds, done for you)"],
     ["SOFT_PULL", "UnderwriteIQ soft-pull assessment"],
     ["DECLINE_AUTOPSY", "Decline Autopsy"],
     ["WINNERS_BOARD", "Winner's Board"],

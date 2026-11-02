@@ -72,6 +72,7 @@ export const SHIFTS = Object.freeze({
       "bank-outreach",
       "funding-trip",
       "lender-book",
+      "meet-presence",
       "money-funding",
       "money-operations",
       "money-tasks",
