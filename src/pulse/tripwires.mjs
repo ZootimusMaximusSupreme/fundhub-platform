@@ -226,6 +226,8 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
+  "route:auth/mfa":
+    "Staff-only sign-in step: a password-authenticated short-lived challenge and authenticator code create an MFA staff session. It does not read or send customer data.",
   "route:read/ad-preview":
     "Staff-only read of the same-org client attribution and matched Meta ad preview; it is lazy and never sends a message or changes a customer or advertising record.",
   "job:ops-manager-review":

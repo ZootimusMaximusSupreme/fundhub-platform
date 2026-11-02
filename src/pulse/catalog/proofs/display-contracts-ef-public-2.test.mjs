@@ -249,7 +249,7 @@ test("Display EF/Public wave 2 proves every exported row in rendered Chromium", 
     await page.goto(`${origin}/login.html`);
     await page.locator("#email").fill("owner@example.test"); await page.locator("#pw").fill("correct horse battery staple"); await page.locator("#f").evaluate((form) => form.requestSubmit());
     await page.waitForURL("**/app/");
-    assert.deepEqual(loginBody, { email: "owner@example.test", password: "correct horse battery staple" });
+    assert.deepEqual(loginBody, { email: "owner@example.test", password: "correct horse battery staple", mfa_for_payout: true });
     assert.equal(await page.evaluate(() => localStorage.getItem("fh_token")), "saved-token");
     mark(cases("login").find((entry) => entry.surface.startsWith("form:")));
 

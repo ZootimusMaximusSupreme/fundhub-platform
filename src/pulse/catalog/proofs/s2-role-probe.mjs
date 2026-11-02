@@ -26,8 +26,10 @@ export const PRINCIPALS = Object.freeze({
   "role-outbound-rep": () => [staffSession({ role: "outbound_rep" })],
   "role-csm": () => [staffSession({ role: "csm" })],
   "role-setter": () => [staffSession({ role: "setter" })],
-  "role-sales-manager": () => [staffSession({ role: "sales_manager" })],
-  "role-closer": () => [staffSession({ role: "closer" })],
+  // These roles may link their own payout bank only from a recent MFA session.
+  // The probe exercises the role gate with that required proof present.
+  "role-sales-manager": () => [staffSession({ role: "sales_manager", mfa_verified_at: new Date().toISOString() })],
+  "role-closer": () => [staffSession({ role: "closer", mfa_verified_at: new Date().toISOString() })],
   "role-funding-advisor": () => [staffSession({ role: "funding_advisor" })],
   "role-inquiry-remover": () => [staffSession({ role: "inquiry_specialist" })],
 });

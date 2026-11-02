@@ -147,7 +147,7 @@ test("homepage survey: each answer is kept, the contact step is last, the answer
   });
 });
 
-test("sign-in: email and password go to the server; a refusal is said; a good answer stores the session and goes on", { timeout: 60_000 }, async (t) => {
+test("web sign-in requests payout MFA; a refusal is said; a completed answer stores the session", { timeout: 60_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Staff and demo sign-in: email and password/, async () => {
     const testWord = `pw-${Date.now()}`;
@@ -157,7 +157,7 @@ test("sign-in: email and password go to the server; a refusal is said; a good an
     await first.page.locator("#pw").fill(testWord);
     await first.page.locator("#go").click();
     await waitFor(() => bad.posts.length === 1);
-    assert.deepEqual(bad.posts[0], { email: "jordan@fundhub.ai", password: testWord });
+    assert.deepEqual(bad.posts[0], { email: "jordan@fundhub.ai", password: testWord, mfa_for_payout: true });
     await first.page.waitForFunction(() => /Wrong email or password\./.test(document.querySelector("#err")?.innerText || ""));
     assert.equal(await first.page.evaluate(() => localStorage.getItem("fh_token")), null, "a refusal stores no session");
     await first.page.close();
@@ -172,6 +172,7 @@ test("sign-in: email and password go to the server; a refusal is said; a good an
     await second.page.waitForURL((url) => url.pathname === "/app/lenders.html");
     await second.page.waitForFunction(() => localStorage.getItem("fh_token") === "session-token-for-test");
     await second.page.waitForFunction(() => localStorage.getItem("fh_role") === "owner");
+    assert.deepEqual(good.posts[0], { email: "jordan@fundhub.ai", password: testWord, mfa_for_payout: true });
     await second.page.close();
   });
 });

@@ -19,7 +19,7 @@ flowchart TD
     CAN --> A_adintel[adintel — 1 route]
     CAN --> A_affiliates[affiliates — 1 route]
     CAN --> A_analytics[analytics — 4 routes]
-    CAN --> A_auth[Signing in and out — 6 routes]
+    CAN --> A_auth[Signing in and out — 7 routes]
     CAN --> A_banking[banking — 6 routes]
     CAN --> A_blueprint[blueprint — 2 routes]
     CAN --> A_campaigns[Campaigns — 10 routes]
@@ -80,7 +80,7 @@ flowchart TD
 
 ## What they can reach
 
-**216 of 345 routes.**
+**217 of 346 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -97,6 +97,7 @@ flowchart TD
 | `/api/auth/logout` | — | anyone |
 | `/api/auth/magic-link` | — | anyone |
 | `/api/auth/magic-link-verify` | — | anyone |
+| `/api/auth/mfa` | POST | staff with a password-authenticated MFA challenge |
 | `/api/auth/reset` | POST | anyone |
 | `/api/auth/session` | — | anyone |
 | `/api/bank-outreach` | POST | owner, admin, sales_manager, outbound_rep |
@@ -310,7 +311,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**129 of 345 routes.**
+**129 of 346 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

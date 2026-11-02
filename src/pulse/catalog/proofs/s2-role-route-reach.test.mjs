@@ -54,8 +54,12 @@ const CLIENT_OWN_FILE = ["banking/link-exchange", "banking/link-token"];
    affiliate id, so the door answers 403 not_an_affiliate — correct; the static
    reading only sees the kinds. */
 const CLIENT_LIGHT_AFFILIATE = ["affiliates/payout-account"];
+/* The MFA route receives a password-authenticated staff challenge token, not
+   an existing session. The generic empty-body probe sees its 400 token prompt
+   for every caller; it cannot mint a staff challenge for an outside account. */
+const STAFF_MFA_CHALLENGE = ["auth/mfa"];
 const EXPECTED_DISAGREEMENTS = {
-  client: [...CLIENT_OWN_FILE, ...CLIENT_LIGHT_AFFILIATE, "auth/authorized-rep-file"],
+  client: [...CLIENT_OWN_FILE, ...CLIENT_LIGHT_AFFILIATE, ...STAFF_MFA_CHALLENGE, "auth/authorized-rep-file"],
   // All nine approved primary employee roles may enroll their own native device.
   "role-sales-manager": [...VALIDATES_BODY_FIRST],
   // A closer may create a payment link and is refused every other action: the
@@ -66,8 +70,8 @@ const EXPECTED_DISAGREEMENTS = {
   // This route has two doors. The static journey sees its signed playback URL;
   // the session-only probe sends no signature and therefore reaches the
   // metadata door, which correctly refuses affiliate and partner sessions.
-  affiliate: ["content/welcome-video", "money/setup", ...CLIENT_LIGHT_AFFILIATE],
-  "white-label": ["content/welcome-video", "money/setup"],
+  affiliate: ["content/welcome-video", "money/setup", ...CLIENT_LIGHT_AFFILIATE, ...STAFF_MFA_CHALLENGE],
+  "white-label": ["content/welcome-video", "money/setup", ...STAFF_MFA_CHALLENGE],
 };
 
 const FLOORS = {
