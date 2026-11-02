@@ -125,6 +125,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "document-vault-chase",
   "blueprint-next-funding-sequence-sweeper",
   "hiring-bench-sweeper",
+  "ops-manager-review",
   "hiring-outreach-cadence",
   "inquiry-call-sweeper",
   "invoice-checkout-retirement-sweeper",
