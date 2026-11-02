@@ -33,6 +33,8 @@ The tripwire map (`src/pulse/tripwires.mjs`) is where every page, route, job and
 
 The client marketing-push switch is watched in both clocks. The morning `marketing-push:preference-shape` tripwire and the hourly `native-push` beat read saved client choices and go red if a present choice is not a true or false value. The hourly beat also checks that the switch route requires sign-in, before it checks APNs setup. Neither check claims a notification reached a phone.
 
+The native app-open receipt route is also watched by the hourly `native-push` beat. For the default company, it compares each visible Sales card's app-open time, read with the board route's held SQL, with an independent company-scoped read of saved iPhone receipts. Missing or mismatched times and refused reads stay red. An absent receipt is valid only when the card also shows no open. This is stored-result proof, not an installed-app login or APNs delivery receipt.
+
 ## Whole-company catalog
 
 Claude's 20 map files hold 3,975 rows. Thirty-three rows clearly name another row they repeat, leaving 3,942 unique company items. The compiler gives every item one stable id and one recipe. It links existing tests, deep lanes, hourly beats and pings. A money or customer item needs deep proof. A staff-only item needs an end-to-end test. A claim with no executable proof stays red.
