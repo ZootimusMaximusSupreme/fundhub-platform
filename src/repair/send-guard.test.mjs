@@ -190,10 +190,13 @@ test("a send the outbound fence held gives the letter back", async () => {
   // src/lib/outbound-fetch.mjs reports transmitted:false. Under the old
   // string-only test this kept the claim and the letter could never be mailed.
   const statements = [];
+  const parameters = [];
+  const claimToken = "2026-11-01 20:00:00.123456+00";
   const db = {
-    async query(sql) {
+    async query(sql, args) {
       statements.push(String(sql).replace(/\s+/g, " "));
-      if (isClaim(sql)) return { rows: [{ prior_status: "ready" }] };
+      parameters.push(args);
+      if (isClaim(sql)) return { rows: [{ prior_status: "ready", claim_token: claimToken }] };
       return { rows: [] };
     }
   };
@@ -207,6 +210,10 @@ test("a send the outbound fence held gives the letter back", async () => {
     statements.some((s) => /SET status = COALESCE\(\$4, 'ready'\), send_claimed_at = NULL/.test(s)),
     "and the claim was released, so the letter is sendable again"
   );
+  const releaseIndex = statements.findIndex((s) => /SET status = COALESCE\(\$4, 'ready'\), send_claimed_at = NULL/.test(s));
+  assert.match(statements[releaseIndex], /send_claimed_at = \$5::timestamptz/);
+  assert.equal(parameters[releaseIndex][4], claimToken,
+    "the release must match the exact claim that this sender acquired");
 });
 
 test("a call that was made keeps the claim", async () => {

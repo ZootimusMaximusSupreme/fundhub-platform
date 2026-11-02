@@ -199,6 +199,9 @@ export default async function handler(req, res) {
     }
     if (code === "NOT_FOUND") return res.status(404).json({ ok: false, error: err.message });
     if (code === "FORBIDDEN") return res.status(403).json({ ok: false, error: err.message });
+    if (code === "IDEMPOTENCY_CONFLICT") {
+      return res.status(409).json({ ok: false, error: "idempotency_key_reused" });
+    }
     return res.status(500).json({ ok: false, error: safeError(err) });
   }
 }
