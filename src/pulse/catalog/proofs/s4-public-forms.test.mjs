@@ -119,7 +119,7 @@ test("homepage survey: each answer is kept, the contact step is last, the answer
     await answerNext("Yes, 1-2 years");
     await answerNext("$250k - $499k");
     await answerNext("Yes, bank statements");
-    await answerNext("$5k - $25k");
+    await answerNext("$5k - $9,999");
     await page.locator("#sv-name").fill(PERSON);
     await page.locator("#sv-email").fill("bad");
     await page.locator('#appform [data-act="submit"]').click();
@@ -140,7 +140,7 @@ test("homepage survey: each answer is kept, the contact step is last, the answer
       cf_svy_funding_target_amount: "$100k - $200k", cf_svy_planned_use: "Growth (marketing, inventory, hiring)",
       cf_svy_money_change_now: ["Stability (cover bills / buffer slow weeks)"], cf_svy_self_reported_fico: "620-699",
       cf_svy_has_negatives: "No", cf_svy_has_business: "Yes, 1-2 years", cf_svy_business_revenue: "$250k - $499k",
-      cf_svy_revenue_verifiable: "Yes, bank statements", cf_svy_available_capital: "$5k - $25k",
+      cf_svy_revenue_verifiable: "Yes, bank statements", cf_svy_available_capital: "$5k - $9,999",
     });
     await page.waitForURL(/\/roadmap\/\?thanks=1$/);
     await page.close();
