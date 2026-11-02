@@ -22,6 +22,12 @@ function c03Db({ client, cases = [], inquiries = [], paid = false, fraudCase = f
       return { rows: [{ id: client.id }] };
     }
     if (sql.includes("UPDATE tasks SET assignee_staff_id")) return { rows: [] };
+    if (sql.includes("UPDATE tasks SET done = true")) {
+      for (const task of base.tasks) {
+        if (task.source_workflow === "c-03-inquiry-removed-resume-or-hold" && task.title === "Claim funding file and review clean bureaus") task.done = true;
+      }
+      return { rows: [] };
+    }
     return query(sql, params);
   };
   return base;
@@ -106,7 +112,21 @@ test("cleared inquiry does not invite Apply when no funding advisor is available
   assert.equal(res.branch, "advisor_unassigned");
   assert.equal(client.custom_fields.ready_for_next_round, false);
   assert.equal(client.custom_fields.employee_next_action, "Assign Funding Advisor");
-  assert.equal(db.tasks.length, 0);
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.tasks[0].assignee_role, "funding_advisor");
+  assert.equal(db.tasks[0].assignee_staff_id, null);
+
+  client.custom_fields.cf_funding_advisor_user_id = "advisor-1";
+  db.tasks[0].assignee_staff_id = "advisor-1";
+  const resumed = await handle({
+    event: ev("inquiry.removed", { source: "funding_advisor_claimed" }, { id: "evt-advisor-claimed", clientId: client.id }),
+    db, step: fakeStep()
+  });
+  assert.equal(resumed.branch, "resume");
+  assert.equal(client.custom_fields.ready_for_next_round, true);
+  assert.equal(client.custom_fields.employee_next_action, "Apply for Funding");
+  assert.equal(db.tasks[0].done, true);
+  assert.equal(db.tasks[1].assignee_staff_id, "advisor-1");
 });
 
 test("document hold and unpaid funding do not become Apply", async () => {

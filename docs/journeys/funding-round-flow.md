@@ -36,7 +36,10 @@ recently touched bureaus still protected. The advisor may apply on a clean burea
 Oxylabs launch checks the chosen lender's bureau against current cases and inquiry history
 again and records refused protected or unknown-bureau attempts as failed proxy sessions.
 Mark cleared refuses while any inquiry on that case is still open; each inquiry must clear
-first. Files: `src/workflows/c-03-inquiry-removed-resume-or-hold.mjs`,
+first. If there is no active advisor at handback, one unclaimed funding task remains in the
+role queue. Claiming it emits a new handback check; the file becomes Apply-ready only if
+the live holds still clear, and the recovery task closes when the next-round task is made.
+Files: `src/workflows/c-03-inquiry-removed-resume-or-hold.mjs`,
 `api/inquiry-cases.mjs`, `src/proxy/launch.mjs`.
 
 ---

@@ -2,13 +2,21 @@
 // database statement. Every open funding task on that file follows the transfer.
 export async function transferFundingAdvisorTask(db, { orgId, taskId, staffId, claim = false }) {
   const r = await db.query(
-    `WITH target AS (
-       SELECT id, client_id FROM tasks
-        WHERE id = $1::uuid AND org_id = $2::uuid
-          AND assignee_role = 'funding_advisor' AND client_id IS NOT NULL AND done = false
-          AND (NOT $4::boolean OR assignee_staff_id IS NULL OR assignee_staff_id = $3::uuid)
+    `WITH task_ref AS (
+       SELECT client_id FROM tasks WHERE id = $1::uuid AND org_id = $2::uuid
+     ), locked_client AS (
+       SELECT c.id, c.custom_fields FROM clients c
+         JOIN task_ref t ON t.client_id = c.id
+        WHERE c.org_id = $2::uuid FOR UPDATE OF c
+     ), target AS (
+       SELECT t.id, t.client_id FROM tasks t
+         JOIN locked_client c ON c.id = t.client_id
+        WHERE t.id = $1::uuid AND t.org_id = $2::uuid
+          AND t.assignee_role = 'funding_advisor' AND t.done = false
+          AND (NOT $4::boolean OR t.assignee_staff_id IS NULL OR t.assignee_staff_id = $3::uuid)
+        FOR UPDATE OF t
      ), eligible AS (
-       SELECT t.client_id FROM target t JOIN clients c ON c.id = t.client_id AND c.org_id = $2::uuid
+       SELECT t.client_id FROM target t JOIN locked_client c ON c.id = t.client_id
         WHERE ($3::uuid IS NULL OR EXISTS (
           SELECT 1 FROM staff s WHERE s.id = $3::uuid AND s.org_id = $2::uuid
             AND s.role = 'funding_advisor' AND s.status = 'active'

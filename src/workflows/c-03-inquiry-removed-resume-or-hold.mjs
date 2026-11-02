@@ -130,9 +130,19 @@ export async function handle({ event, db, step }) {
     await step.run("keep-unassigned-file-unready", () => mergeCustomFields(db, clientId, {
       ready_for_next_round: false, employee_next_action: "Assign Funding Advisor"
     }));
-    return { done: true, branch: "advisor_unassigned", advisor };
+    const task = await step.run("create-unassigned-funding-task", () => createTaskOnce(db, {
+      orgId, clientId, eventId, title: "Claim funding file and review clean bureaus",
+      assigneeRole: "funding_advisor"
+    }));
+    return { done: true, branch: "advisor_unassigned", advisor, task };
   }
   await step.run("set-ready-for-next-round", () => mergeCustomFields(db, clientId, { ready_for_next_round: true, employee_next_action: "Apply for Funding" }));
+  await step.run("close-unassigned-funding-task", () => db.query(
+    `UPDATE tasks SET done = true, updated_at = now()
+      WHERE org_id = $1::uuid AND client_id = $2::uuid
+        AND source_workflow = $3 AND title = 'Claim funding file and review clean bureaus'
+        AND done = false`, [orgId, clientId, SOURCE_WORKFLOW]
+  ));
   const task = await step.run("create-next-round-task", () => createTaskOnce(db, {
     orgId, clientId, eventId, title: "Start next funding round — check clean bureaus",
     assigneeRole: "funding_advisor", assigneeStaffId: advisor.staffId
