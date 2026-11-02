@@ -39,7 +39,7 @@ flowchart TD
     CAN --> A_proxy[proxy — 2 routes]
     CAN --> A_public[public — 20 routes]
     CAN --> A_push[push — 1 route]
-    CAN --> A_read[Reading data — 53 routes]
+    CAN --> A_read[Reading data — 54 routes]
     CAN --> A_repair[repair — 1 route]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 4 routes]
@@ -78,7 +78,7 @@ flowchart TD
 
 ## What they can reach
 
-**175 of 338 routes.**
+**176 of 339 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -211,6 +211,7 @@ flowchart TD
 | `/api/read/csm-queue` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/customer-insights` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/deal-math` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/dock` | GET | staff, client |
 | `/api/read/documents` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/entitlements` | GET | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
 | `/api/read/finance-ask` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -267,7 +268,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**163 of 338 routes.**
+**163 of 339 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

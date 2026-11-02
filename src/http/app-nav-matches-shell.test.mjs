@@ -64,6 +64,8 @@ const APP = path.resolve(HERE, "../../public/app");
    morning-brief.html   — the daily brief Chris opens from his text with one tap; no
                           sign-in, the long code in the link is the key, so no shell.js
                           and no staff navigation (src/http/morning-brief-page.test.mjs)
+   role-dock.html       — native Mac companion panel; its role feed is scoped by
+                          the signed-in session, and it has no CRM navigation
    *.fragment.html      — a fragment, not a screen */
 const NO_SIDEBAR = new Set([
   "index.html",
@@ -91,7 +93,8 @@ const NO_SIDEBAR = new Set([
   "money-alerts.html",
   "teleprompter.html",
   "teleprompter-remote.html",
-  "morning-brief.html"
+  "morning-brief.html",
+  "role-dock.html"
 ]);
 
 function navHrefs(html) {

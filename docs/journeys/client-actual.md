@@ -32,7 +32,7 @@ flowchart TD
     CAN --> A_ops[ops — 1 route]
     CAN --> A_public[public — 20 routes]
     CAN --> A_push[push — 5 routes]
-    CAN --> A_read[Reading data — 6 routes]
+    CAN --> A_read[Reading data — 7 routes]
     CAN --> A_top_level[Everything else — 10 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
@@ -73,7 +73,7 @@ flowchart TD
 
 ## What they can reach
 
-**81 of 338 routes.**
+**82 of 339 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -151,6 +151,7 @@ flowchart TD
 | `/api/read/affiliate-portal` | GET | staff, affiliate, client |
 | `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate, client |
 | `/api/read/client-progress` | GET | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
+| `/api/read/dock` | GET | staff, client |
 | `/api/read/entitlements` | GET | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
 | `/api/read/portal-contracts` | GET | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
 | `/api/read/portal-summary` | GET | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
@@ -166,7 +167,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**257 of 338 routes.**
+**257 of 339 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

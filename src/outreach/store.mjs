@@ -6,11 +6,30 @@ import { mailConfig, inSendWindow, BANK_EMAIL_KEYS, COLD_KEYS } from './mail.mjs
 import { serperKey, SIGNUP_URL } from '../messaging/providers/serper-search.mjs';
 import { DEFAULT_SEARCHES_PER_DAY, DEFAULT_EMAILS_PER_DAY } from './automation.mjs';
 
+export function hasOutreachClaim(staff) {
+  return !!staff && (OUTREACH_ROLES.includes(staff.role)
+    || (Array.isArray(staff.roles) && staff.roles.includes('outbound_rep')));
+}
+
 async function identity(db, staff) {
   if (!staff?.id || !staff?.org_id) fail('Sign in to your staff account', 401);
   uuid(staff.id); uuid(staff.org_id, 'organization');
   const actual = (await db.query(`SELECT id,org_id,name,email,role FROM staff WHERE id=$1 AND org_id=$2 AND status='active' AND COALESCE((to_jsonb(staff)->>'active')::boolean,true)`, [staff.id, staff.org_id])).rows[0];
-  if (!actual || !OUTREACH_ROLES.includes(actual.role)) fail('Bank outreach access required', 403);
+  if (!actual) fail('Bank outreach access required', 403);
+  const primaryAllowed = OUTREACH_ROLES.includes(actual.role);
+  let secondaryOutbound = false;
+  // The session's role list is refreshed from the database on every request.
+  // Check the assignment again here so a hand-built staff object cannot grant
+  // bank access, and keep a secondary rep out of manager actions.
+  if (!primaryAllowed && Array.isArray(staff.roles) && staff.roles.includes('outbound_rep')) {
+    const assigned = await db.query(`SELECT 1 FROM staff_role_assignments a
+      JOIN staff_roles sr ON sr.id = a.role_id AND sr.org_id = a.org_id
+      WHERE a.org_id = $1 AND a.staff_id = $2
+        AND sr.active = true AND lower(btrim(sr.key)) = 'outbound_rep'
+      LIMIT 1`, [actual.org_id, actual.id]);
+    secondaryOutbound = assigned.rows.length > 0;
+  }
+  if (!primaryAllowed && !secondaryOutbound) fail('Bank outreach access required', 403);
   return { ...actual, canManage: MANAGER_ROLES.includes(actual.role) };
 }
 function manager(staff) { if (!staff.canManage) fail('A manager must do this', 403); }
@@ -24,8 +43,29 @@ async function account(db, staff, id, lock = false) {
   if (!row) fail('Bank account not found', 404);
   return row;
 }
+async function secondaryReps(db, staff, targetStaffId = null) {
+  try {
+    return (await db.query(`SELECT DISTINCT s.id,s.name,'outbound_rep'::text AS role
+      FROM staff s
+      JOIN staff_role_assignments a ON a.staff_id=s.id AND a.org_id=s.org_id
+      JOIN staff_roles sr ON sr.id=a.role_id AND sr.org_id=a.org_id
+      WHERE s.org_id=$1 AND s.status='active'
+        AND COALESCE((to_jsonb(s)->>'active')::boolean,true)
+        AND sr.active=true AND lower(btrim(sr.key))='outbound_rep'
+        AND ($2::boolean OR s.id=$3)
+        AND ($4::uuid IS NULL OR s.id=$4)
+      ORDER BY s.name,s.id`, [staff.org_id, staff.canManage, staff.id, targetStaffId])).rows;
+  } catch (err) {
+    // Older databases have no assignment table. Primary reps still work there.
+    if (err.code === '42P01') return [];
+    throw err;
+  }
+}
 async function reps(db, staff) {
-  return (await db.query(`SELECT id,name,role FROM staff WHERE org_id=$1 AND status='active' AND COALESCE((to_jsonb(staff)->>'active')::boolean,true) AND role=ANY($2::text[]) AND ($3::boolean OR id=$4) ORDER BY name,id`, [staff.org_id, OUTREACH_ROLES, staff.canManage, staff.id])).rows;
+  const primary = (await db.query(`SELECT id,name,role FROM staff WHERE org_id=$1 AND status='active' AND COALESCE((to_jsonb(staff)->>'active')::boolean,true) AND role=ANY($2::text[]) AND ($3::boolean OR id=$4) ORDER BY name,id`, [staff.org_id, OUTREACH_ROLES, staff.canManage, staff.id])).rows;
+  const secondary = await secondaryReps(db, staff);
+  return [...new Map([...secondary, ...primary].map(row => [row.id, row])).values()]
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')) || String(a.id).localeCompare(String(b.id)));
 }
 async function scopedSummary(db, staff) {
   return (await db.query(`WITH scope AS (
@@ -287,7 +327,11 @@ export async function writeOutreach(db, { staff: input, body = {} } = {}) {
     if (body.action === 'assign') {
       manager(staff);
       const assigned = body.staff_id ? uuid(body.staff_id, 'rep') : null;
-      if (assigned && !(await tx.query(`SELECT id FROM staff WHERE org_id=$1 AND id=$2 AND status='active' AND COALESCE((to_jsonb(staff)->>'active')::boolean,true) AND role=ANY($3::text[])`, [staff.org_id, assigned, OUTREACH_ROLES])).rows.length) fail('Choose an active rep in this organization');
+      if (assigned) {
+        const primaryRep = (await tx.query(`SELECT id FROM staff WHERE org_id=$1 AND id=$2 AND status='active' AND COALESCE((to_jsonb(staff)->>'active')::boolean,true) AND role=ANY($3::text[])`, [staff.org_id, assigned, OUTREACH_ROLES])).rows.length > 0;
+        const secondaryRep = primaryRep ? false : (await secondaryReps(tx, staff, assigned)).length > 0;
+        if (!primaryRep && !secondaryRep) fail('Choose an active rep in this organization');
+      }
       if (assigned !== a.assigned_staff_id) {
         await tx.query(`INSERT INTO outreach_assignments(org_id,account_id,previous_staff_id,assigned_staff_id,assigned_by) VALUES($1,$2,$3,$4,$5)`, [staff.org_id, a.id, a.assigned_staff_id, assigned, staff.id]);
         await tx.query(`UPDATE outreach_accounts SET assigned_staff_id=$3,next_action='Find and contact a banker',next_due_at=now(),updated_at=now() WHERE org_id=$1 AND id=$2`, [staff.org_id, a.id, assigned]);

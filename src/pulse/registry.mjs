@@ -354,6 +354,7 @@ const API_KEYS = [
   /* The only read behind the client progress page. An outage here is a client
      who paid up to $10,000 seeing no scores, no checklist and no next step. */
   "read/client-progress",
+  "read/dock",
   "read/closer-call",
   "read/closer-deck",
   "read/closer-now",
@@ -576,6 +577,7 @@ const DESK_FILES = [
   "pipeline.html",
   "present.html",
   "products-commissions.html",
+  "role-dock.html",
   "sales-floor.html",
   "social-studio.html",
   "soft-pull-approve.html",

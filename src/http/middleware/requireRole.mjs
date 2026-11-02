@@ -1,11 +1,8 @@
 // requireRole — role gate layered on top of requireAuth.
 //
-// Gates on staff.role, NOT on a join against staff_roles. That is deliberate:
-// staff_roles in 012_attribution.sql is a role CATALOG keyed by (org_id, key) —
-// definitions, not assignments — and a staff member's role is the staff.role
-// text column that softly references catalog keys (exactly as
-// sale_attributions.role does). Gating on staff.role means the gate keeps
-// working no matter what shape staff_roles turns out to have.
+// Gates on the primary staff.role and the server-resolved staff.roles array.
+// verifySession joins active, same-org staff_role_assignments to the catalog;
+// this helper never reads role claims from a browser or an account principal.
 //
 // 401 when there is no valid session, 403 when there is one and it is the wrong
 // role. Those are different facts and the caller is entitled to both: a 403
@@ -23,10 +20,13 @@ const norm = (r) => String(r ?? "").trim().toLowerCase();
 export function hasRole(staff, allowed) {
   const want = (Array.isArray(allowed) ? allowed : [allowed]).map(norm).filter(Boolean);
   if (!staff) return false;
-  const have = norm(staff.role);
-  if (!have) return false;
-  if (SUPER_ROLES.includes(have)) return true;
-  return want.length === 0 || want.includes(have);
+  const primary = norm(staff.role);
+  if (!primary) return false;
+  const canStackRoles = !["partner", "client", "affiliate", "outbound_rep"].includes(primary);
+  const have = [primary, ...(canStackRoles && Array.isArray(staff.roles)
+    ? staff.roles.map(norm).filter((role) => role !== "owner") : [])];
+  if (SUPER_ROLES.includes(primary)) return true;
+  return want.length === 0 || have.some((role) => want.includes(role));
 }
 
 // requireRole(...allowed) → async (req, res, opts) => staff | null

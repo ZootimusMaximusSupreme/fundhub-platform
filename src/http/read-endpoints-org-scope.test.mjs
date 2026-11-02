@@ -145,6 +145,10 @@ const NO_ORG_COLUMN = new Map([
   /* The setter queue handler passes the authenticated staff record. The store
      binds staff.org_id on its tasks query and verifies assignment for setters. */
   ["setter-dashboard.mjs", "scoped in src/setter/dashboard.mjs listSetterQueue(), which binds staff.org_id on its tasks query"],
+  /* Dock delegates the verified staff/client principal to buildDockFeed().
+     That store binds the principal's org on role tasks and client existence,
+     and its source reads each receive the same org from the principal. */
+  ["dock.mjs", "scoped in src/dock/feed.mjs buildDockFeed(), which binds the verified staff or client principal's org"],
 ]);
 
 /* An allow-listed endpoint must still prove it hands the SESSION's org to
@@ -235,6 +239,9 @@ test("an endpoint excused from the org filter still passes the session's org to 
       : f.name === "setter-dashboard.mjs"
         ? !/const staff = await requireAuth\(req, res, \{ db: database \}\)/.test(f.code) ||
           !/listSetterQueue\(database, staff, req\.query \|\| \{\}\)/.test(f.code)
+      : f.name === "dock.mjs"
+        ? !/const principal = deps\.principal \?\? await requirePrincipal\(req, res, \["staff", "client"\], \{ db: database \}\)/.test(f.code) ||
+          !/buildDockFeed\(database, principal,/.test(f.code)
       : !DELEGATES_SESSION_ORG.test(f.code))
     .map((f) => f.name);
 
@@ -249,7 +256,7 @@ test("an endpoint excused from the org filter still passes the session's org to 
 
 test("outreach's full-session delegation resolves an active identity in that same company", () => {
   const handler = stripComments(fs.readFileSync(path.join(READ_DIR, "bank-outreach.mjs"), "utf8"));
-  assert.match(handler, /import \{ readOutreach \} from "\.\.\/\.\.\/src\/outreach\/store\.mjs"/);
+  assert.match(handler, /import \{ readOutreach(?:, hasOutreachClaim)? \} from "\.\.\/\.\.\/src\/outreach\/store\.mjs"/);
   const store = stripComments(fs.readFileSync(path.join(HERE, "../outreach/store.mjs"), "utf8"));
   assert.match(store, /const staff = await identity\(db, input\)/);
   assert.match(store, /FROM staff WHERE id=\$1 AND org_id=\$2 AND status='active'/);

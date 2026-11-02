@@ -84,6 +84,10 @@ export const TRIPWIRES = Object.freeze({
   "page:portal-login.html": { impact: "customer", checks: ["gap:auth-magic-link-dead", "portal:paid-client-never-signed-in"] },
   "desk:client-portal.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:paid-entitlement", "portal:next-step"] },
   "route:read/portal-summary": { impact: "customer", checks: ["portal:summary"] },
+  // The Dock is a read-only composition of the scoped portal progress and summary reads.
+  // Its API contract and role denial are covered separately by the Dock route tests.
+  "route:read/dock": { impact: "customer", checks: ["portal:progress-read-real-client", "portal:summary"] },
+  "desk:role-dock.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:progress-read-real-client"] },
   "route:push/native-device": { impact: "customer", checks: ["native-push:device-owner", "native-push:configured"] },
   "route:push/preferences": { impact: "customer", checks: ["marketing-push:preference-shape", "provider:web-push-and-client-push"] },
   "send:src/push/native-send.mjs": { impact: "customer", checks: ["native-push:recent-delivery-failure", "native-push:configured"] },

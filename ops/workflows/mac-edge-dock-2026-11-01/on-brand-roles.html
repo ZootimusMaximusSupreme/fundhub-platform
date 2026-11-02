@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Fundhub Dock role peeks</title>
+<style>
+@font-face{font-family:FundhubRounded;src:url(../../../public/assets/fonts/nunito-latin-variable.woff2) format('woff2');font-weight:200 900}
+:root{--paper:#F8F8F6;--ink:#0D1113;--muted:#626968;--line:#E3E5E0;--alert:#F2A69B;--warn:#F5CE8F;--ok:#A8D8B0;--info:#A9C6E8;--accent:#C4B3E5;--spectrum:linear-gradient(90deg,#2A99E3 0 16.67%,#2CB9AD 16.67% 33.33%,#84C663 33.33% 50%,#ECC54E 50% 66.67%,#EF8F55 66.67% 83.33%,#D86092 83.33% 100%)}
+*{box-sizing:border-box}html,body{margin:0}body{font-family:FundhubRounded,ui-rounded,system-ui,sans-serif;color:var(--ink);background:white}
+.sheet{width:2000px;padding:42px 44px 46px}.eyebrow{font-size:14px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--muted)}.eyebrow:before{content:'';display:inline-block;width:22px;height:3px;background:var(--spectrum);vertical-align:middle;margin-right:9px}h1{font-size:33px;letter-spacing:-1.1px;line-height:1;margin:10px 0 10px;font-weight:850}.sub{color:var(--muted);font-size:16px;margin:0 0 28px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}.peek{height:268px;background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden;position:relative;box-shadow:0 5px 18px rgba(13,17,19,.07)}.peek:after{content:'';position:absolute;bottom:0;left:0;right:0;height:4px;background:var(--spectrum)}
+.head{display:flex;align-items:center;gap:8px;padding:14px 15px 12px;border-bottom:1px solid var(--line)}.icon{width:29px;height:29px;border-radius:7px}.brand{width:83px;height:auto}.role{margin-left:auto;color:var(--muted);font-size:13px;font-weight:800;white-space:nowrap}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:800;margin:13px 15px 4px}.row{height:43px;border-bottom:1px solid var(--line);margin:0 15px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:750}.row:last-of-type{border-bottom:0}.dot{width:8px;height:8px;border-radius:50%;flex:none}.row span:last-child{margin-left:auto;font-size:20px;color:var(--muted);font-weight:400}.open{position:absolute;bottom:13px;left:15px;right:15px;height:33px;border-radius:8px;background:var(--ink);color:white;display:flex;justify-content:space-between;align-items:center;padding:0 11px;font-size:13px;font-weight:800}.open span:last-child{font-size:18px;font-weight:400}.foot{margin-top:19px;color:var(--muted);font-size:13px}.foot b{color:var(--ink)}
+</style>
+<div class="sheet"><div class="eyebrow">Fundhub Mac · concept</div><h1>One Dock. The right work for each role.</h1><p class="sub">These are enlarged hover peeks from the short edge Dock. The layout stays the same; only the actions change with the signed-in role.</p><div class="grid" id="grid"></div><div class="foot"><b>Concept · sample state.</b> Pending PR work is shown as a design possibility, not a live alert.</div></div>
+<script>
+const roles=[
+ ['Founder',['Payment exception','Client at risk','Pulse issue']],
+ ['Setter',['New lead · call now','Reply due · 8 min','Handoff ready']],
+ ['Closer',['Next call · 10:30','Open call brief','Outcome missing']],
+ ['Sales manager',['No-show recovery','Outcome missing','Coaching task due']],
+ ['Bank outreach',['Bank reply due','Follow-up today','Verify product terms']],
+ ['Inquiry remover',['Inquiry send queue','Repair letters ready','Bureau response']],
+ ['Funding advisor',['Missing documents','Bank answer due','Approval needs amount']],
+ ['CSM',['Halfway call today','Result call tomorrow','Client at risk']]
+];
+const colors=['var(--alert)','var(--warn)','var(--info)'];
+document.getElementById('grid').innerHTML=roles.map(([role,rows])=>`<section class="peek"><div class="head"><img class="icon" src="../../../public/apple-touch-icon.png" alt=""><img class="brand" src="../../../public/assets/fundhub-wordmark.svg" alt="fundhub"><span class="role">${role}</span></div><div class="label">Needs attention</div>${rows.map((row,i)=>`<div class="row"><span class="dot" style="background:${colors[i]}"></span><span>${row}</span><span>›</span></div>`).join('')}<div class="open"><span>Open desk</span><span>↗</span></div></section>`).join('');
+</script>
+</html>

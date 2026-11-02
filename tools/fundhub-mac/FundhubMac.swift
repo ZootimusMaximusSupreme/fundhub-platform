@@ -78,6 +78,7 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
     func goHome() async {
         guard !signingOut else { return }
         signingOut = true
+        FundhubDock.shared.hide()
         view.stopLoading()
         // A server acknowledgement is best effort; we ALWAYS erase local data.
         let logoutAcknowledged = await revokeCurrentSession()
@@ -152,6 +153,7 @@ private final class FundhubBrowser: NSObject, ObservableObject, WKNavigationDele
         loading = false
         loadedOnce = true
         canGoBack = webView.canGoBack
+        Task { await FundhubDock.shared.refreshVisibility(from: webView) }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
