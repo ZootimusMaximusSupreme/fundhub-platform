@@ -117,6 +117,7 @@ test("repair send without mail=true fails closed", async () => {
 // letter's claim and needed a human to release it.
 
 const LETTER_ID = "55555555-5555-4555-8555-555555555555";
+const CLAIM_TOKEN = "2026-11-02 06:00:00.123456+00";
 const IDENT = {
   first_name: "Pat",
   last_name: "Client",
@@ -127,12 +128,13 @@ const IDENT = {
 };
 
 /** A db that lets the send loop claim the letter and records every statement. */
-function claimingDb(statements) {
+function claimingDb(statements, bindings) {
   return {
     async query(sql, params) {
       assertBind(sql, params);
       const s = String(sql).replace(/\s+/g, " ");
       statements.push(s);
+      bindings.push({ sql: s, params });
       if (s.includes("FROM clients")) return { rows: [{ id: "1" }] };
       if (s.includes("FROM dispute_letters") && s.includes("body_text")) {
         return { rows: [{ id: LETTER_ID, bureau: "EX", target: "bureau",
@@ -140,14 +142,14 @@ function claimingDb(statements) {
           furnisher_address_id: null }] };
       }
       if (/UPDATE dispute_letters d SET status = 'sending'/.test(s)) {
-        return { rows: [{ prior_status: "ready" }] };
+        return { rows: [{ prior_status: "ready", claim_token: CLAIM_TOKEN }] };
       }
       return { rows: [] };
     }
   };
 }
 
-async function post(deps, statements) {
+async function post(deps, statements, bindings = []) {
   const res = resCapture();
   await handler({
     method: "POST",
@@ -158,7 +160,7 @@ async function post(deps, statements) {
       letters: [{ bureau: "EX", html: "<p>x</p>", letter_id: LETTER_ID }]
     }
   }, res, {
-    db: claimingDb(statements),
+    db: claimingDb(statements, bindings),
     requireAuth: async () => ({
       id: "44444444-4444-4444-8444-444444444444",
       org_id: "22222222-2222-4222-8222-222222222222",
@@ -236,7 +238,8 @@ test("a 200 with no provider id is recorded as a mailing through the live route"
 
 test("a human repair letter is claimable only when generated or ready, unclaimed and unmailed; a refusal releases only the held claim", async () => {
   const statements = [];
-  await post({ mailBureauLetter: async () => ({ ok: false, preTransmission: true, error: "refused before it left" }) }, statements);
+  const bindings = [];
+  await post({ mailBureauLetter: async () => ({ ok: false, preTransmission: true, error: "refused before it left" }) }, statements, bindings);
   const one = (re) => statements.find((s) => re.test(s));
   assertSqlHas(one(/UPDATE dispute_letters d SET status = 'sending'/), {
     "this letter, this company, this client": "WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid",
@@ -250,8 +253,11 @@ test("a human repair letter is claimable only when generated or ready, unclaimed
   assert.match(claimSql, /revoked_at IS NULL/);
   assert.match(claimSql, /expires_at > now\(\)/);
   assertSqlHas(one(/SET status = COALESCE\(\$4, 'ready'\), send_claimed_at = NULL/), {
-    "only this letter, still held": "WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid AND status = 'sending' AND mailed_at IS NULL"
+    "only this letter, still held": "WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid AND status = 'sending' AND mailed_at IS NULL",
+    "only the exact claim this sender acquired": "AND send_claimed_at = $5::timestamptz"
   });
+  const release = bindings.find(({ sql }) => /SET status = COALESCE\(\$4, 'ready'\), send_claimed_at = NULL/.test(sql));
+  assert.equal(release.params[4], CLAIM_TOKEN, "release binds the exact claim returned by Postgres");
 });
 
 test("a mailed letter is marked sent once: the first mailing time is kept", async () => {
