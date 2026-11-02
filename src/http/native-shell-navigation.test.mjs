@@ -195,3 +195,26 @@ test("Mac client/staff workspace is a single-instance scene, not two shared-cook
   assert.match(mac, /@StateObject private var browser = FundhubBrowser\(\)/);
   assert.match(mac, /func goHome\(\) async/);
 });
+
+test("staff alert navigation rechecks the accepted bearer after asynchronous identity refresh", () => {
+  const home = iosApp.split("private struct HomeView: View {")[1]?.split("private struct BrandMark: View {")[0];
+  assert.ok(home, "authenticated iPhone HomeView must exist");
+  const oldUnsafeSource = 'await store.refreshSession()\\n guard store.token != nil; staffAlertPath = alert.workspacePath(role: store.identity?.staff.role)';
+  const safe = text => text.includes("let bearerAtTap = store.token") &&
+    text.includes("takeStaffOpenRequest(currentBearer: bearerAtTap)") &&
+    text.includes("bearerAfterRefresh: store.token") &&
+    text.includes("taskCancelled: Task.isCancelled") &&
+    text.includes("StaffAlertNavigation.verifiedPath(") &&
+    text.indexOf("let bearerAtTap = store.token") < text.lastIndexOf("await store.refreshSession()") &&
+    text.lastIndexOf("await store.refreshSession()") < text.indexOf("StaffAlertNavigation.verifiedPath(");
+  assert.equal(safe(oldUnsafeSource), false, "the pre-fix post-refresh check must fail");
+  assert.equal(safe(home), true, "staff tap cannot navigate without a post-await bearer guard");
+  const helper = iosApp.split("enum StaffAlertNavigation {")[1]?.split("private struct HomeView: View {")[0];
+  assert.ok(helper, "shared, Swift-testable staff alert decision helper must exist");
+  assert.match(helper, /!taskCancelled, bearerAfterRefresh == bearerAtTap, staffSessionVerified/);
+  const tests = readFileSync(new URL("../../tools/fundhub-ios/FundhubTests/FundhubTests.swift", import.meta.url), "utf8");
+  assert.match(tests, /testDelayedStaffAlertRejectsAccountSwitchAfterIdentityRefresh/);
+  assert.match(tests, /await gate\.waitUntilPaused\(\)/);
+  assert.match(tests, /simulated\.bearer = "session-B"/);
+  assert.match(tests, /XCTAssertNil\(stalePath/);
+});
