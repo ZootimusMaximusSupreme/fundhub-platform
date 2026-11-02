@@ -29,6 +29,7 @@ flowchart TD
     CAN --> A_hiring[Hiring — 1 route]
     CAN --> A_merchant[merchant — 1 route]
     CAN --> A_money[money — 17 routes]
+    CAN --> A_native[native — 1 route]
     CAN --> A_ops[ops — 1 route]
     CAN --> A_public[public — 20 routes]
     CAN --> A_push[push — 5 routes]
@@ -73,7 +74,7 @@ flowchart TD
 
 ## What they can reach
 
-**81 of 338 routes.**
+**82 of 339 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -120,6 +121,7 @@ flowchart TD
 | `/api/money/transfers` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/trends` | GET | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/vault` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/native/client-activity` | POST | client |
 | `/api/ops/notify-owner` | POST | anyone |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
 | `/api/paid-services` | GET, POST | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
@@ -166,7 +168,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**257 of 338 routes.**
+**257 of 339 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

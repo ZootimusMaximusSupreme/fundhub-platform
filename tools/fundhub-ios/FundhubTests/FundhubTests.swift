@@ -146,17 +146,37 @@ final class FundhubTests: XCTestCase {
     @MainActor
     func testNotificationTapRequestIsOneUseAndExpires() {
         let push = NativePushCenter.shared
+        push.resetAfterInvalidSession()
         let tappedAt = Date(timeIntervalSince1970: 1_700_000_000)
-        _ = push.takePortalOpenRequest(now: tappedAt)
+        _ = push.takePortalOpenRequest(now: tappedAt, currentBearer: "session-A")
         XCTAssertFalse(push.recordNotificationTap(userInfo: ["path": "https://evil.example/join"], now: tappedAt))
-        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt))
+        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt, currentBearer: "session-A"))
 
-        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt))
-        XCTAssertTrue(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(60)))
-        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(61)))
+        XCTAssertFalse(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt,
+                                                 sessionBearer: "session-A"))
+        XCTAssertTrue(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(60), currentBearer: "session-A"))
+        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(61), currentBearer: "session-A"))
 
-        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt))
-        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(NativePushTap.requestLifetime + 1)))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt,
+                                                 sessionBearer: "session-A"))
+        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(NativePushTap.requestLifetime + 1),
+                                                  currentBearer: "session-A"))
+        push.resetAfterInvalidSession()
+    }
+
+    @MainActor
+    func testClientPortalTapCannotCrossSessions() {
+        let push = NativePushCenter.shared
+        push.resetAfterInvalidSession()
+        let now = Date()
+        let info = ["path": NativePushTap.portalPath]
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
+        XCTAssertFalse(push.takePortalOpenRequest(now: now, currentBearer: "session-B"))
+        XCTAssertFalse(push.takePortalOpenRequest(now: now, currentBearer: "session-A"))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
+        push.resetAfterInvalidSession()
+        XCTAssertFalse(push.takePortalOpenRequest(now: now, currentBearer: "session-A"))
     }
 
     @MainActor
@@ -190,9 +210,10 @@ final class FundhubTests: XCTestCase {
         XCTAssertTrue(push.recordNotificationTap(userInfo: info, now: now, sessionBearer: "session-A"))
         push.resetAfterInvalidSession()
         XCTAssertNil(push.takeStaffOpenRequest(now: now, currentBearer: "session-A"))
-        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: now))
+        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: now,
+                                                 sessionBearer: "session-A"))
         push.resetAfterInvalidSession()
-        XCTAssertFalse(push.takePortalOpenRequest(now: now))
+        XCTAssertFalse(push.takePortalOpenRequest(now: now, currentBearer: "session-A"))
     }
 
     @MainActor
@@ -239,6 +260,43 @@ final class FundhubTests: XCTestCase {
             alert: alert, bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
             staffSessionVerified: true, roleAfterRefresh: "setter", taskCancelled: true
         ), "A cancelled SwiftUI task must not commit stale navigation.")
+    }
+
+    @MainActor
+    func testDelayedClientPortalTapRejectsAccountSwitchAfterIdentityRefresh() async {
+        let gate = DelayedIdentityGate()
+        let simulated = SimulatedStaffState(bearer: "session-A")
+        let delayedCheck = Task { @MainActor in
+            guard let bearerAtTap = simulated.bearer else { return false }
+            await gate.pause()
+            return ClientPortalNavigation.shouldOpen(
+                bearerAtTap: bearerAtTap,
+                bearerAfterRefresh: simulated.bearer,
+                clientSessionVerified: true,
+                taskCancelled: Task.isCancelled
+            )
+        }
+        await gate.waitUntilPaused()
+        simulated.bearer = "session-B"
+        await gate.release()
+        let staleOpen = await delayedCheck.value
+        XCTAssertFalse(staleOpen, "A queued portal tap must not reload under another account.")
+        XCTAssertTrue(ClientPortalNavigation.shouldOpen(
+            bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            clientSessionVerified: true, taskCancelled: false
+        ))
+        XCTAssertFalse(ClientPortalNavigation.shouldOpen(
+            bearerAtTap: "session-A", bearerAfterRefresh: nil,
+            clientSessionVerified: true, taskCancelled: false
+        ))
+        XCTAssertFalse(ClientPortalNavigation.shouldOpen(
+            bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            clientSessionVerified: false, taskCancelled: false
+        ))
+        XCTAssertFalse(ClientPortalNavigation.shouldOpen(
+            bearerAtTap: "session-A", bearerAfterRefresh: "session-A",
+            clientSessionVerified: true, taskCancelled: true
+        ))
     }
 
     func testServerErrorDoesNotInvalidateSession() async throws {
