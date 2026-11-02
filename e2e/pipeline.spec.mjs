@@ -88,6 +88,32 @@ test.describe("pipeline board", () => {
       .toHaveText("Booked · Fri, May 1, 2020, 10:00 AM MST");
   });
 
+  test("shows rescheduled bookings honestly and verified app-open under call confirmation", async ({ page }) => {
+    const stages = structuredClone(STAGES);
+    stages.stages[0].cards[0].booked_starts_at = "2030-05-01T17:00:00.000Z";
+    stages.stages[0].cards[0].booked_kind = "rescheduled";
+    stages.stages[0].cards[0].call_confirmed = true;
+    stages.stages[0].cards[0].app_first_authenticated_at = "2026-10-30T12:00:00.000Z";
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages
+    });
+    const card = page.locator('.card[data-client-id]');
+    await expect(card.locator(".c-booked-when")).toHaveText("Rescheduled · Wed, May 1, 2030, 10:00 AM MST");
+    await expect(card.locator(".c-call-confirmed")).toHaveText("✓ Call confirmed");
+    await expect(card.locator(".c-app-opened")).toHaveText("✓ App downloaded");
+    const order = await card.locator(".c-call-confirmed, .c-app-opened").allTextContents();
+    expect(order).toEqual(["✓ Call confirmed", "✓ App downloaded"]);
+  });
+
+  test("does not invent an app download when no authenticated native open exists", async ({ page }) => {
+    const stages = structuredClone(STAGES);
+    stages.stages[0].cards[0].call_confirmed = true;
+    await openScreen(page, "/app/pipeline.html", OWNER, {
+      "/api/dashboard/pipeline": stages
+    });
+    await expect(page.locator(".card .c-app-opened")).toHaveCount(0);
+  });
+
   test("opens a pre-credit card with real survey answers FIRST, not below credit", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", OWNER, {
       "/api/dashboard/pipeline": STAGES,
