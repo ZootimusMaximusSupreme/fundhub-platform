@@ -11,12 +11,15 @@ const EXISTING_BUSINESS='70000000-0000-4000-8000-000000000007';
 const ENTITY='80000000-0000-4000-8000-000000000008';
 const ORDER='d0000000-0000-4000-8000-00000000000d';
 const RESPONSE_VERSION='e0000000-0000-4000-8000-00000000000e';
+const ACCOUNT='90000000-0000-4000-8000-000000000009';
+const OTHER_CLIENT='a0000000-0000-4000-8000-00000000000a';
+const OTHER_ACCOUNT='b0000000-0000-4000-8000-00000000000b';
 const json=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
 function initial(started=false){return{orgId:ORG,clientId:CLIENT,targetBusinessCount:3,setupStep:0,startedAt:started?'2026-11-02T12:00:00Z':null,hasExistingBusiness:null,homeState:started?'AZ':null,postalCode:started?'85004':null,availableCashCents:null,monthlyIncomeCents:null,cashBufferCents:null,oneTimePayoffCents:null,payoffPlan:null,availableEvidence:[],businesses:[],existingBusinesses:[],stepProgress:[],businessPreparation:{}};}
 function record(){return{id:PLAN,name:'Cedar Grove LLC',activity:'Web design for local shops',formationState:'AZ',formationStatus:'planned',formationDate:null,ownershipSince:null,operatingSince:null,evidence:{formation:{status:'not_added'},ein:{status:'not_added'}},bankPreparation:{documentsReady:false,accountOpeningIssue:false,relationships:[]}};}
-async function open(page,{started=false,business=false,denied=false,malformedPlan=false,failSave=false,failSaveOnce=false,failUpload=false,failAttachOnce=false,seed={},nativeProgress=null,bankPlan=null,mailing=null,responseRows=[],letterFiles=[],clientName='Pat',planAccess=null,portalSummary={},entitlementRows=[]}={}){
+async function open(page,{started=false,business=false,denied=false,malformedPlan=false,failSave=false,failSaveOnce=false,failUpload=false,failAttachOnce=false,seed={},nativeProgress=null,bankPlan=null,mailing=null,responseRows=[],letterFiles=[],clientName='Pat',planAccess=null,portalSummary={},entitlementRows=[],authControl=null,requestGates={}}={}){
   const state={...initial(started),...structuredClone(seed)};if(business&&!state.businesses.length)state.businesses=[record()];
-  const requests=[],downloads=[],uploadFields=[],mailRequests=[],bureauUploads=[];const downloadState={missing:false};
+  const requests=[],downloads=[],uploadFields=[],mailRequests=[],bureauUploads=[],httpRequests=[];const downloadState={missing:false};
   const responseDocuments=structuredClone(responseRows),mailingData=structuredClone(mailing||{letters:[],orders:[],capabilities:{mailSupported:false,reason:'offline_provider_unavailable'}});
   let uploads=0,saveFailed=false,attachFailed=false,mailQuoteVersion=0;
   const savedProgress=nativeProgress||{waypoints:[{id:'w1',title:'Review the balances on your file',detail:'Compare each reported balance with your own records.',state:'not_started',owner:'client'}],nextStep:{waypointId:'w1',owner:'client'}};
@@ -40,7 +43,16 @@ async function open(page,{started=false,business=false,denied=false,malformedPla
   }
   await page.route('**/api/**',async route=>{
     const url=new URL(route.request().url()),path=url.pathname,method=route.request().method();
-    if(path==='/api/auth/session')return json(route,{ok:true,principal:'client',staff:{id:CLIENT,client_id:CLIENT,role:'client',name:'Pat Buyer',status:'active'}});
+    const request=route.request(),isJson=(request.headers()['content-type']||'').includes('application/json');
+    const action=isJson&&method!=='GET'?request.postDataJSON()?.action:null;
+    httpRequests.push({path,method,action,authorization:request.headers().authorization||null});
+    const gate=requestGates[`${method} ${path}${action?':'+action:''}`]||requestGates[`${method} ${path}`];
+    if(gate)await gate.wait();
+    try{return await(async()=>{
+    if(path==='/api/auth/session'){
+      if(authControl?.signedOut)return json(route,{ok:false,error:'unauthorized'},401);
+      return json(route,{ok:true,principal:'client',staff:{id:authControl?.accountId||ACCOUNT,org_id:ORG,client_id:authControl?.clientId||CLIENT,role:'client',principal_kind:'client',name:'Pat Buyer',status:'active'}});
+    }
     if(path==='/api/blueprint/plan'){if(planAccess?.wait)await planAccess.wait;return (planAccess?.denied??denied)?json(route,{ok:false,error:'blueprint_access_inactive'},403):json(route,malformedPlan?{ok:true,items:[]}:await payload());}
     if(path==='/api/blueprint/letter-mailing'){
       if(method==='GET')return json(route,{ok:true,...structuredClone(mailingData)});
@@ -98,13 +110,15 @@ async function open(page,{started=false,business=false,denied=false,malformedPla
     if(path.includes('portal-summary'))return json(route,{ok:true,documents:[],scores:{},soft_pull_complete:false,dispute_consent:{allowed:false},stage:{key:'paid'},upcoming_call:null,...portalSummary});
     if(path.includes('read/entitlements'))return json(route,{ok:true,items:entitlementRows});
     return json(route,{ok:true,items:[],rows:[],documents:[],payments:[]});
+    })();}finally{gate?.finish();}
   });
   // The portal welcome chat can open while a long form is in use. Close that
   // separate surface through its actual control; never force covered clicks.
   await page.addLocatorHandler(page.locator('#fh-chat-panel.open'),async()=>{await page.locator('#fh-chat-close').click();});
+  if(authControl)await page.addInitScript(token=>localStorage.setItem('fh_token',token),authControl.token);
   await page.goto('/app/client-portal.html');
   const app=page.locator('#blueprint-plan');if(!denied)await expect(app).toBeVisible();
-  return{app,state,requests,downloads,downloadState,uploadFields,mailRequests,mailingData,responseDocuments,bureauUploads,wasUploaded:()=>uploads>0,uploadCount:()=>uploads};
+  return{app,state,requests,downloads,downloadState,uploadFields,mailRequests,mailingData,responseDocuments,bureauUploads,httpRequests,wasUploaded:()=>uploads>0,uploadCount:()=>uploads};
 }
 
 test('paid buyer starts one question at a time and server state survives reload',async({page})=>{
@@ -563,4 +577,138 @@ test('a saved mailing request opens status even when letter files are no longer 
   const{app,mailRequests}=await open(page,{started:true,nativeProgress:nativeMailProgress(),mailing:{letters:[],orders:[{id:ORDER,status:'mailed',totalCents:9700,envelopes:[]}],capabilities:{mailSupported:false}}});
   const next=app.locator('.bp-next');await expect(next).toContainText('Review your mailing request');await expect(next).not.toContainText('Print and mail');
   await next.getByRole('button',{name:'Open letters and mailing status',exact:true}).click();await expect(app).toContainText('$97.00 · Submitted for mailing');expect(mailRequests).toHaveLength(0);
+});
+
+function principalFixture(){return{token:'offline-principal-a',accountId:ACCOUNT,clientId:CLIENT,signedOut:false};}
+function requestBarrier(){
+  let arrive,release,finish;const arrived=new Promise(r=>{arrive=r;}),released=new Promise(r=>{release=r;}),finished=new Promise(r=>{finish=r;});
+  return{arrived,release,finished,finish,wait:async()=>{arrive();await released;}};
+}
+async function changePrincipal(page,auth,mode){
+  if(mode==='switch'){auth.clientId=OTHER_CLIENT;auth.accountId=OTHER_ACCOUNT;auth.token='offline-principal-b';}
+  else{auth.signedOut=true;auth.token=null;}
+  // A real second document changes storage, so the browser emits its own event.
+  // The fixture-only static server has no API or customer account behind it.
+  const sibling=await page.context().newPage();
+  await sibling.goto('/__blueprint-principal-storage-fixture__');
+  await sibling.evaluate(token=>token===null?localStorage.removeItem('fh_token'):localStorage.setItem('fh_token',token),auth.token);
+  await sibling.close();
+}
+async function expectPrivateWorkspaceCleared(page,app){
+  await expect(app).toBeHidden();await expect(app).toBeEmpty();
+  await expect(page.locator('body')).not.toHaveAttribute('data-blueprint-plan','active');
+  await expect(page.locator('body')).not.toContainText('AveryPrivate');
+  await expect(app.locator('input,textarea,a[href],form')).toHaveCount(0);
+}
+async function finishBarrier(page,gate){gate.release();await gate.finished;await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));}
+const countPlanReads=log=>log.filter(r=>r.path==='/api/blueprint/plan'&&r.method==='GET').length;
+const oldAccountOnly=log=>expect(log.filter(r=>r.path.startsWith('/api/blueprint/')||['/api/documents-upload','/api/documents-download'].includes(r.path)).every(r=>r.authorization==='Bearer offline-principal-a')).toBe(true);
+
+for(const mode of['switch','logout']){
+  test(`session principal ${mode}: delayed initial read cannot reveal the old buyer`,async({page})=>{
+    const auth=principalFixture(),gate=requestBarrier();
+    const{app,httpRequests}=await open(page,{authControl:auth,clientName:'AveryPrivate',requestGates:{'GET /api/blueprint/plan':gate}});
+    await gate.arrived;await changePrincipal(page,auth,mode);await expectPrivateWorkspaceCleared(page,app);
+    await finishBarrier(page,gate);await expectPrivateWorkspaceCleared(page,app);oldAccountOnly(httpRequests);
+  });
+  test(`session principal ${mode}: delayed refresh scrubs existing private state and cannot restore it`,async({page},testInfo)=>{
+    const auth=principalFixture(),gates={};const{app,httpRequests}=await open(page,{started:true,business:true,clientName:'AveryPrivate',authControl:auth,requestGates:gates,mailing:savedLetters()});
+    await expect(app).toContainText('AveryPrivate');await openLetters(app);
+    const gate=requestBarrier();gates['GET /api/blueprint/plan']=gate;
+    await app.getByRole('button',{name:'Refresh letters and reviews',exact:true}).click();await gate.arrived;
+    await changePrincipal(page,auth,mode);await expectPrivateWorkspaceCleared(page,app);
+    await finishBarrier(page,gate);await expectPrivateWorkspaceCleared(page,app);oldAccountOnly(httpRequests);
+    await testInfo.attach(`session-${mode}-private-workspace-cleared`,{body:await page.screenshot(),contentType:'image/png'});
+  });
+  test(`session principal ${mode}: a pending save cannot continue with a new account token`,async({page})=>{
+    const auth=principalFixture(),gates={};const{app,httpRequests}=await open(page,{started:true,business:true,clientName:'AveryPrivate',authControl:auth,requestGates:gates});
+    await openBusiness(app);await app.locator('input[name=name]').fill('AveryPrivate draft');
+    const before=countPlanReads(httpRequests),gate=requestBarrier();gates['POST /api/blueprint/business-plans:save_business']=gate;
+    await app.getByRole('button',{name:'Save business plan',exact:true}).click();await gate.arrived;
+    await changePrincipal(page,auth,mode);await expectPrivateWorkspaceCleared(page,app);
+    await finishBarrier(page,gate);await expectPrivateWorkspaceCleared(page,app);
+    expect(countPlanReads(httpRequests)).toBe(before);oldAccountOnly(httpRequests);
+  });
+  test(`session principal ${mode}: save then delayed reread cannot publish the old private result`,async({page})=>{
+    const auth=principalFixture(),gates={};const{app,httpRequests}=await open(page,{started:true,business:true,clientName:'AveryPrivate',authControl:auth,requestGates:gates});
+    await openBusiness(app);await app.locator('input[name=name]').fill('AveryPrivate saved result');
+    const gate=requestBarrier();gates['GET /api/blueprint/plan']=gate;
+    await app.getByRole('button',{name:'Save business plan',exact:true}).click();await gate.arrived;
+    expect(httpRequests.some(r=>r.action==='save_business')).toBe(true);
+    await changePrincipal(page,auth,mode);await finishBarrier(page,gate);await expectPrivateWorkspaceCleared(page,app);oldAccountOnly(httpRequests);
+  });
+  test(`session principal ${mode}: stored upload cannot attach or reread under the changed session`,async({page})=>{
+    const auth=principalFixture(),gates={};const{app,httpRequests}=await open(page,{started:true,business:true,clientName:'AveryPrivate',authControl:auth,requestGates:gates});
+    await openBusiness(app);const form=app.locator('form[data-kind=formation]');
+    await form.locator('input[type=file]').setInputFiles({name:'AveryPrivate-formation.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\nprincipal fixture')});
+    const before=countPlanReads(httpRequests),gate=requestBarrier();gates['POST /api/documents-upload']=gate;
+    await form.getByRole('button',{name:'Upload formation document',exact:true}).click();await gate.arrived;
+    await changePrincipal(page,auth,mode);await finishBarrier(page,gate);await expectPrivateWorkspaceCleared(page,app);
+    expect(httpRequests.filter(r=>r.action==='attach_evidence')).toHaveLength(0);expect(countPlanReads(httpRequests)).toBe(before);oldAccountOnly(httpRequests);
+  });
+  test(`session principal ${mode}: bureau upload cannot start another read or display the old reply`,async({page})=>{
+    const auth=principalFixture(),gates={};const{app,httpRequests}=await open(page,{started:true,clientName:'AveryPrivate',authControl:auth,requestGates:gates,mailing:savedLetters(false)});
+    await openLetters(app);const form=app.locator('form[data-bp-form=bureau-response]');
+    await form.locator('input[name=files]').setInputFiles({name:'AveryPrivate-response.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\nprincipal reply fixture')});
+    const before=countPlanReads(httpRequests),gate=requestBarrier();gates['POST /api/documents-upload']=gate;
+    await form.getByRole('button',{name:'Upload response for validation',exact:true}).click();await gate.arrived;
+    await changePrincipal(page,auth,mode);await finishBarrier(page,gate);await expectPrivateWorkspaceCleared(page,app);
+    expect(countPlanReads(httpRequests)).toBe(before);oldAccountOnly(httpRequests);
+  });
+  test(`session principal ${mode}: late mailing quote cannot expose return address or payment controls`,async({page})=>{
+    const auth=principalFixture(),gates={};const{app,httpRequests}=await open(page,{started:true,clientName:'AveryPrivate',authControl:auth,requestGates:gates,mailing:savedLetters()});
+    await openLetters(app);const gate=requestBarrier();gates['POST /api/blueprint/letter-mailing:quote']=gate;
+    await app.getByRole('button',{name:'Mail these letters for me · $97',exact:true}).click();await gate.arrived;
+    await changePrincipal(page,auth,mode);await finishBarrier(page,gate);await expectPrivateWorkspaceCleared(page,app);
+    await expect(page.locator('body')).not.toContainText('1 Offline Fixture Way');expect(httpRequests.filter(r=>r.action==='confirm')).toHaveLength(0);oldAccountOnly(httpRequests);
+  });
+  test(`session principal ${mode}: late authorized confirmation cannot reveal a checkout for the old buyer`,async({page})=>{
+    const auth=principalFixture(),gates={};const{app,httpRequests}=await open(page,{started:true,clientName:'AveryPrivate',authControl:auth,requestGates:gates,mailing:savedLetters()});
+    await openLetters(app);await app.getByRole('button',{name:'Mail these letters for me · $97',exact:true}).click();
+    const form=app.locator('form[data-bp-form=mail-confirm]');await form.locator('input[name=authorization]').check();
+    const gate=requestBarrier();gates['POST /api/blueprint/letter-mailing:confirm']=gate;
+    await form.getByRole('button',{name:'Confirm $97 and mail my letters',exact:true}).click();await gate.arrived;
+    await changePrincipal(page,auth,mode);await finishBarrier(page,gate);await expectPrivateWorkspaceCleared(page,app);
+    await expect(page.locator('a[href*="offline-checkout.example"]')).toHaveCount(0);
+    expect(httpRequests.filter(r=>r.action==='confirm')).toHaveLength(1);oldAccountOnly(httpRequests);
+  });
+  test(`session principal ${mode}: delayed private document cannot navigate its pending blank window`,async({page,context})=>{
+    const auth=principalFixture(),gates={},navigations=[];await context.route('**/api/documents/'+DOCUMENT+'?*',route=>{navigations.push(route.request().url());return route.fulfill({status:200,contentType:'application/pdf',body:Buffer.from('%PDF-1.4\nprivate navigation fixture')});});
+    const b=record();b.evidence.formation={documentId:DOCUMENT,status:'evidence_received'};
+    const{app,httpRequests}=await open(page,{started:true,clientName:'AveryPrivate',authControl:auth,requestGates:gates,seed:{businesses:[b]}});await openBusiness(app);
+    const gate=requestBarrier();gates['GET /api/documents-download']=gate;const popupPromise=page.waitForEvent('popup');
+    await app.getByRole('button',{name:'Open saved document',exact:true}).click();const popup=await popupPromise;await gate.arrived;expect(popup.url()).toBe('about:blank');
+    await changePrincipal(page,auth,mode);await expect.poll(()=>popup.isClosed()).toBe(true);
+    await finishBarrier(page,gate);await expectPrivateWorkspaceCleared(page,app);expect(navigations).toHaveLength(0);oldAccountOnly(httpRequests);
+  });
+}
+
+test('session principal stable account: delayed read and save continuation retain the original identity',async({page})=>{
+  const auth=principalFixture(),gate=requestBarrier(),gates={'GET /api/blueprint/plan':gate};
+  const{app,httpRequests}=await open(page,{started:true,business:true,authControl:auth,requestGates:gates,clientName:'AveryPrivate'});
+  await gate.arrived;await finishBarrier(page,gate);delete gates['GET /api/blueprint/plan'];
+  await expect(app).toContainText('AveryPrivate');await openBusiness(app);await app.locator('input[name=name]').fill('Stable account business');
+  const saveGate=requestBarrier();gates['POST /api/blueprint/business-plans:save_business']=saveGate;
+  await app.getByRole('button',{name:'Save business plan',exact:true}).click();await saveGate.arrived;await finishBarrier(page,saveGate);
+  await expect(app.getByText('Saved to your client file.',{exact:true})).toBeVisible();await expect(app.locator('input[name=name]')).toHaveValue('Stable account business');
+  expect(countPlanReads(httpRequests)).toBe(2);oldAccountOnly(httpRequests);
+});
+test('session principal stable account: upload attachment and reread retain the original identity',async({page})=>{
+  const auth=principalFixture(),gates={};const{app,httpRequests,uploadCount}=await open(page,{started:true,business:true,authControl:auth,requestGates:gates});await openBusiness(app);
+  const form=app.locator('form[data-kind=formation]');await form.locator('input[type=file]').setInputFiles({name:'stable-formation.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\nstable principal fixture')});
+  const gate=requestBarrier();gates['POST /api/documents-upload']=gate;await form.getByRole('button',{name:'Upload formation document',exact:true}).click();await gate.arrived;await finishBarrier(page,gate);
+  await expect(app.getByText('Evidence received',{exact:true})).toBeVisible();expect(uploadCount()).toBe(1);expect(httpRequests.filter(r=>r.action==='attach_evidence')).toHaveLength(1);expect(countPlanReads(httpRequests)).toBe(2);oldAccountOnly(httpRequests);
+});
+test('session principal stable account: quote and authorized payment result stay usable without duplicate confirmation',async({page})=>{
+  const auth=principalFixture(),gates={};const{app,httpRequests}=await open(page,{started:true,authControl:auth,requestGates:gates,mailing:savedLetters()});await openLetters(app);
+  const gate=requestBarrier();gates['POST /api/blueprint/letter-mailing:quote']=gate;await app.getByRole('button',{name:'Mail these letters for me · $97',exact:true}).click();await gate.arrived;await finishBarrier(page,gate);
+  const form=app.locator('form[data-bp-form=mail-confirm]');await expect(form).toBeVisible();await form.locator('input[name=authorization]').check();
+  await form.getByRole('button',{name:'Confirm $97 and mail my letters',exact:true}).click();await expect(app.getByRole('link',{name:'Continue secure payment',exact:true})).toHaveAttribute('href','https://offline-checkout.example/order/'+ORDER);
+  expect(httpRequests.filter(r=>r.action==='confirm')).toHaveLength(1);oldAccountOnly(httpRequests);
+});
+test('session principal stable account: delayed signed document opens only its authenticated saved URL',async({page,context})=>{
+  const auth=principalFixture(),gates={};await context.route('**/api/documents/'+DOCUMENT+'?*',route=>route.fulfill({status:200,contentType:'application/pdf',body:Buffer.from('%PDF-1.4\nstable document fixture')}));
+  const b=record();b.evidence.formation={documentId:DOCUMENT,status:'evidence_received'};const{app,httpRequests}=await open(page,{started:true,authControl:auth,requestGates:gates,seed:{businesses:[b]}});await openBusiness(app);
+  const gate=requestBarrier();gates['GET /api/documents-download']=gate;const popupPromise=page.waitForEvent('popup');await app.getByRole('button',{name:'Open saved document',exact:true}).click();const popup=await popupPromise;await gate.arrived;
+  expect(popup.url()).toBe('about:blank');await finishBarrier(page,gate);await expect(popup).toHaveURL(new RegExp('/api/documents/'+DOCUMENT+'\\?exp=2000000000&sig=offline-fixture-signature'));oldAccountOnly(httpRequests);await popup.close();
 });

@@ -105,7 +105,8 @@ describe("the demo portal is unlocked, and only the demo", () => {
     assert.match(paint, /softPullDone = true/, "the soft pull reads Done, not locked at a price");
     assert.match(paint, /sloPaid = true/, "the $297 Blueprint and its five pack rows are open");
     // The one rule that would empty a card Chris asked to see is skipped on demo.
-    assert.match(HTML, /if \(!demoMode && entActive\["metro2-letter-pack"\]\)/);
+    assert.match(HTML, /var active = entActive \|\| \{\};/, "tile rendering retains the actual entitlement map");
+    assert.match(HTML, /if \(!demoMode && active\["metro2-letter-pack"\]\)/, "only real letter-pack owners hide the trial card; demo keeps every card visible");
   });
 
   test("every sample deliverable is openable and says SAMPLE on it", () => {
