@@ -276,3 +276,10 @@ stateDiagram-v2
 1. **A folder scan ships empty.** The live bundle carried 0 of 70 check files, and nothing said so. Now every file is a literal import in `modules.mjs`, and a test checks the list.
 2. **26 seconds per step.** All the checks in one step took about 61 s. Netlify cuts at 26 s, so no text would have gone out. Now each lane is its own step.
 3. **No repo files at run time.** Checks that read source files passed on a laptop and went red on the server. `npm run pulse:prove` runs from the real bundle to catch this.
+
+
+## Blueprint preparation, mailing and response checks (November 2 candidate)
+
+The buyer routes `blueprint/plan`, `blueprint/business-plans` and `blueprint/letter-mailing` have read-only GET pings plus deep tripwires. Existing daily/hourly Blueprint checks now also judge malformed or foreign preparation evidence, exact $97 USD payment/letter/version receipts and completed response-upload waypoints without a current accepted server validation. Existing Blueprint checks are preserved. Waiting for a buyer response does not itself mean failure.
+
+`blueprint-letter-mailing` runs every five minutes on the existing Netlify clock, with matching heartbeat registration. It only recovers explicitly authorized saved orders; the clock never creates a charge. Held or uncertain payment/send states remain visible for review. No mailing cron is registered with Inngest. These are source registrations and saved-record checks, not proof of live payment, mail delivery, document authenticity or a deployed buyer session.

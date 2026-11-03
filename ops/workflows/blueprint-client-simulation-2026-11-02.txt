@@ -1,0 +1,475 @@
+Blueprint client simulation — November 2, 2026
+
+Owner: root. Discovery completed; user now requested a working buyer simulation
+before the step-by-step walkthrough. Owner subsequently corrected scope: the
+buyer experience must be REAL and usable by a person, including UnderwriteIQ.
+Scenario: fictional brand-new buyer of the high-ticket 12-month Capital Blueprint.
+Goal: walk the buyer through the current portal, jump time/change circumstances,
+and identify clearer actions, missing delivery, and useful offer additions.
+
+Workflow A — Blueprint steps and portal (read only)
+Prompt: Trace current Blueprint client steps, education, proof/verification,
+coach and calendar touchpoints. Compare the user's ideas with existing source.
+Return a short built / partial / proposed list with file:line evidence.
+Do not edit source, run providers, or treat source as live proof.
+
+Workflow B — UnderwriteIQ and FinanceOS (read only)
+Prompt: Trace existing business-profile, personal-credit and local banking
+recommendations and their verification. Search relevant Alec/Alex knowledge.
+Return the nearest reusable mechanisms and missing inputs with file:line evidence.
+Do not edit source, run providers, or recommend specific financial products.
+
+Workflow C — root synthesis and client roleplay
+Use both read-only reports to shape one coherent client experience.
+All feature suggestions remain proposals until the owner chooses changes.
+
+User brainstorm (deduplicated from two identical attachments)
+- State-specific business entity formation and additional businesses.
+- Credible business profile: website prompt, contact/address consistency,
+  listings and discoverability.
+- Optional business-credit starter steps; David's gas-card material pending.
+- Location-aware credit-union/bank relationships and ChexSystems readiness.
+- Sequence account opening, secured credit, deposits and seasoning by the
+  client's credit file, income, cash and existing relationships.
+- Calendar waypoints and Google Calendar reminders.
+- Merchant payment/financing partner referrals (provider names to verify).
+- Turn UnderwriteIQ recommendations into short lessons and exact actions.
+- Future FinanceOS evidence checks and existing bureau evidence can feed
+  progress and the next plan; FinanceOS is not live (owner correction below).
+- Employment/business-owner income documentation guidance.
+
+Source review completed — proposal, not a release or live customer test
+
+Freshness: connected GitHub compare found main one merge ahead of local
+origin/main f03eea246; changed files concern survey/Cortana, not the Blueprint,
+waypoint or FinanceOS paths reviewed here. Read-only agents reviewed matching
+origin/main source. No production client experience was exercised this turn.
+
+Current reusable mechanisms
+- src/waypoints/seed.mjs:135: saved client checklist from credit-file data.
+- db/migrations/362_waypoint_definitions_seed.sql:82: card paydowns,
+  no-new-credit, personal-loan conversation, LLC, EIN and business checking.
+- src/waypoints/verify.mjs:290: evidence-aware credit/dispute checks.
+- src/blueprint/coach.mjs:60: context-aware current-step coaching/help.
+- src/finance/business-info.mjs:70: saved entity/contact/industry fields.
+- src/finance/bank-strategy.mjs:381: opening/deposit/seasoning instructions.
+- src/finance/bank-strategy.mjs:637: saved relationship dates and ready dates.
+- src/finance/bank-strategy.mjs:1110: home/business-state bank guidance using
+  existing relationships, real credit evidence and UnderwriteIQ.
+- src/blueprint/paydown-simulator.mjs:80: cash-to-paydown allocation simulator.
+- docs/legacy-strong/README.md:3: Alec's historical banking/state datapoints.
+
+Current experience gaps (source findings, not witnessed client incidents)
+- public/progress.html:896 and :957: current-step/list rows omit waypoint
+  detail text, despite instructions existing in the stored definitions.
+- public/app/client-portal.html:530: next action uses generic account/doc
+  priorities rather than a personalized Blueprint action.
+- public/app/client-portal.html:977: five Blueprint course placeholders.
+- src/waypoints/self-attest.mjs:70: LLC/EIN/checking use client reporting;
+  bureau refresh cannot automatically establish completion of those tasks.
+- src/blueprint/coach.mjs:106: earliest-open-step focus; parallel business,
+  credit and banking paths need deliberate planning and clear dependencies.
+- src/waypoints/seed.mjs:145: existing-business applicability not established
+  by this seed path; avoid asking established owners to create another LLC.
+- Current bank geography is mostly state coverage, not membership/ZIP ranking.
+  Exact checking products, current links/fees and membership checks need data.
+- api/money/banks.mjs:122: bank progress writes are staff-only; stored opening
+  and deposit entries are not automatic verification from a connected account.
+- No Blueprint waypoint Google Calendar sync/export found in reviewed paths.
+- No guided ChexSystems, gas/fleet-card or listing workflow found; David's
+  material remains pending, and merchant referrals need partner-specific work.
+- src/underwrite/company-audit.mjs:72 and :129: canned Arizona/quarterly-entity
+  and low-risk-industry suggestions need replacement with guidance grounded in
+  real state/activity before expanding into a client formation experience.
+
+Proposed experience — not yet approved for implementation
+1. Confirm goal and existing business using already collected data; ask only
+   for gaps. Show credit, business, banking and optional revenue tracks.
+2. Home: Do now / Can do alongside this / Waiting for results. Show the next
+   three relevant actions, their dependencies and what the team owes.
+3. Each action: Why / exact steps and official destination / cost and funds
+   needed / proof / next check date / help. Offer a website prompt where useful.
+4. Keep reported complete, evidence received, verified and waiting distinct.
+   A changed bank balance does not by itself prove entity ownership or filing.
+5. Use one cash plan for bills, paydowns and bank deposits; avoid allocating
+   the same dollars to multiple tasks. Adjust the plan as circumstances change.
+6. Calendar dates follow the saved plan, completed evidence and actual waiting
+   periods; explain what changed when a milestone moves.
+7. Select AU, secured-credit and optional business-credit actions from actual
+   file needs. Choose bank count/pace by fit and cash rather than a blanket rule.
+8. Business guidance follows real state, entity, industry, employment and income
+   documentation. Formation, listings and merchant tools use current sources.
+9. Proposed next roleplay question: Do you already have a business, or are we
+   building your first one? New-buyer profile otherwise remains unspecified.
+
+Current official references checked for proposal wording
+- https://www.sba.gov/counseling/launch-your-business/state-registration-lookup/
+- https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/
+- https://www.irs.gov/businesses/small-businesses-self-employed/paying-yourself
+
+Owner clarifications — preserve wording and intent (November 2, 2026)
+- "Finance OS isn't live yet." Treat it as future functionality throughout
+  the simulation. Current buyer actions must work through clear instructions,
+  saved progress, submitted documents and actual available verification.
+  Code existence is not live FinanceOS delivery.
+- Fundhub is recommending steps as a consulting company. These are guided
+  client actions; this conversation does not authorize forming entities.
+- The recommended starting structure is a single-member LLC (owner also
+  said "sole member"), with a basic name. Later C-corporation/S-corporation
+  tax elections are a separate later decision, rather than the starting task.
+- The strategy includes three or four SEPARATE businesses "on the shelf"
+  for roughly 12 months down the road, with staged work to improve readiness.
+  This is not three/four members in one LLC and not just today's business.
+- Track every business separately: formation date and true age, ownership,
+  EIN/documents, actual business/profile details, accounts/relationships,
+  milestones, next dates and evidence. Entity age and actual operating history
+  are separate facts. Readiness is assessed at waypoints, not assumed at month12.
+- Business preparation runs alongside personal-credit optimization; build
+  useful foundations and bank relationships at the appropriate stage.
+- Use Alec Dupesh's actual repo material as the foundation. Do not replace
+  the named source with generic LLC advice or keep asking where it is.
+- Preserve the owner's wording/nuances as we continue the simulation; no new
+  buyer profile is chosen or approved by this clarification.
+
+Alec sources read directly for the clarification
+- docs/legacy-strong/README.md: identifies the full source tree below.
+- credentials/notion-scrape/output/opening-llc--59d3968e/page.md:
+  home-state formation preference, generic names, formation steps and docs.
+- credentials/notion-scrape/output/get-ein--fda2d58f/page.md:
+  member count, state, EIN steps and single-member treatment.
+- credentials/notion-scrape/output/details-aged-corp--1b8c3aa7/page.md:
+  banking during optimization and relationship/seasoning sequences.
+- credentials/notion-scrape/output/aged-corps-open-biz-checking--20dc3aa7/page.md:
+  entity/ownership/EIN document preparation for bank opening.
+- Source distinction: those aged-corp pages concern purchased or 2+ year
+  entities; the owner's present idea is to begin preparing several businesses
+  now for a future ~12-month point. Do not silently substitute one for the other.
+- Reuse the preparation structure; populate account openings/applications with
+  actual ownership, activity and supported financial facts, not the source's
+  canned assumed revenue/ownership answers or historical bank numbers.
+
+Status: owner nuances and source map saved locally. Feature changes remain
+proposals. No product source, customers, providers or bank accounts changed.
+
+Build request — working draft approved November 2, 2026
+1 Role: Blueprint buyer. Owner simulation controls live outside the buyer flow.
+2 One job: show the buyer's next useful action and walk them through it.
+3 First question: What should I do first now that I have paid?
+4 Reuse: approved Fundhub Astra/brand/font assets; existing checklist,
+  business fields, evidence states and Alec source as design/content references.
+5 Data: fictional local fixture only; browser-local persistence. No API route,
+  real credit pull, customer mutation, banking connection or paid action.
+6 Files: this board; ops/workflows/blueprint-client-simulation-2026-11-02/
+  preview/{index.html,simulation.css,simulation.js}; build-evidence/*.
+  Private preview packaging may mirror these files and shared assets into
+  the chat visualization directory. No production app source edits.
+7 Risk/proof: fixture can look like real service; persistent Simulation label,
+  explicit evidence states and FinanceOS future label. Check buyer progression,
+  refresh, four business records, time jumps, errors and responsive controls.
+
+Draft journey / observable ground truth
+- First visit opens welcome: 12-month Blueprint, one Start my plan action.
+- Start asks one relevant profile question; buyer can use saved fictional
+  profile or change it. Flow retains credit context without a fresh pull.
+- Save setup leads to Today with next action and parallel work visible.
+- Each action has why, instructions, evidence and one clear next action.
+- Add/manage 3–4 separate single-member LLC plans, basic names, individual
+  formation dates, documents, bank milestones and review dates.
+- Reported complete / evidence received / reviewed remain distinct.
+- Owner can jump to day30/90/365 or change scenario without a real provider.
+  Time alone never completes work, verifies proof or approves funding.
+- FinanceOS has no working connection or automatic verification claim.
+
+Build parallel prompts (read only)
+D — Portal layout: Review existing portal/shared Astra styles and report
+  the smallest set of brand assets/classes/layout traits to reuse. No edits.
+E — Lesson content: Review Alec LLC/EIN/banking source and owner nuances;
+  propose short new-buyer task copy with truthful evidence states. No edits.
+F — Root: implement the preview and package it; an independent agent checks
+  real rendered controls at desktop/phone after the build serves.
+
+Working preview delivered — November 2, 2026 (Phoenix)
+- Private simulation URL:
+  https://fundhub-blueprint-buyer-preview-nov2.stanbridgejchris.chatgpt.site
+- Site project: appgprj_6ae9249fbb788191a3d57aeff0f126e5
+- Source commit: b0d86a52539ab9ea352c9f1c816212361de1fcac
+- Saved version: appgprj_6ae9249fbb788191a3d57aeff0f126e5~appgver_dd033b74e6988191ba56ddb165601349
+- Deployment: appgdep_6ae92954c7dc8191b3a1b64e53d9f561; native result succeeded.
+- Authored preview source preserved in the adjacent preview/ directory.
+  Shared brand/font/Astra assets are copied unchanged into preview/assets/.
+- Welcome -> 3 one-question setup screens -> Today; 3/4 separate businesses,
+  business details, formation/EIN sample proof, banking checklist per business,
+  sample credit budget, website prompt, calendar file, sample help requests.
+- Owner controls: day1/30/90/180/365, cash/issue scenario, simulated document
+  review, screen-state preview, saved design notes and restart.
+- Fictional-only label, received vs reviewed evidence, real entity age vs
+  operating activity and FinanceOS-not-live wording retained throughout.
+- Independent QA: initial14 + followup3 passes; 22 rendered views checked for
+  no page overflow and >=44px targets. Bank-checklist state leak repaired and
+  independently retested. Phone navigation spacing repaired and reviewed.
+- Evidence: adjacent build-evidence/independent-qa-summary.json and eight
+  marked screenshots for full/loading/empty/error at1440px and390px.
+- npm run lint: 4587 files/inline scripts parse clean. npx tsc --noEmit: pass.
+  New preview JS node --check: pass. No DB tests invoked for local fixture.
+- Cold phone CDP4xCPU +150ms/200000bytes-sec: LCP1096ms, CLS0.00215,
+  total resources211304bytes, JS41687bytes; mobile-performance.json.
+  This is local Chromium measurement, not a Lighthouse or production result.
+  Lighthouse unavailable locally; production rollout still needs its gates.
+- First-screen layout movement found and repaired by pre-rendering welcome.
+- Publication is this owner-private fictional Site only. Existing Fundhub app,
+  APIs, real buyer/provider records and live FinanceOS are untouched.
+- Local preview test data reset to Welcome; the private Site starts fresh.
+- Walkthrough starts with one instruction: click Start my plan.
+
+Owner correction — real implementation required
+"Its fine but it needs to be real bro! Please make sure a person can use this!"
+"did you fix underwrite iq"
+The private simulation did NOT change UnderwriteIQ or the actual portal.
+New delivery target is the actual authenticated Blueprint buyer workflow:
+stored client data, actionable real instructions, saved progress, and business
+records with real company/client isolation. FinanceOS is still future.
+
+Implementation split (same owner; dependency contracts set before writes)
+G — UnderwriteIQ: actual recommendations and mapping into actionable business
+  preparation; single-member LLC/basic naming, existing-business awareness,
+  3–4 separate plans; keep actual activity/ownership/revenue facts. Own only
+  agreed src/underwrite paths and focused tests after clean checkout exists.
+H — Persistence: reuse existing business/waypoint/doc storage and auth boundaries;
+  scoped server persistence for client-owned records and progress. Own only
+  agreed API/store/tests paths; root owns any shared router/migration registry.
+I — Portal: replace fictional browser data with actual scoped endpoints and
+  teach existing next steps in the buyer portal. Root owns UI/docs/integration.
+G/H can inspect in parallel. Portal implementation waits for the endpoint
+contract. Root checks queue/ownership, integrates, verifies and delivers.
+The prior preview remains a design reference, not a delivered product claim.
+
+Full-request reread / coverage ledger — both original notes + every user clarification reread twice
+All rows below are REAL implementation requirements. No row is complete from the private demo.
+R01 Real authenticated high-ticket buyer start screen, one action/question at a time.
+R02 Real UnderwriteIQ recommendations become understandable, actionable next steps.
+R03 State-specific entity formation guidance and official filing destinations.
+R04 Single-member LLC default; basic name; later tax elections are later decisions.
+R05 Three/four SEPARATE planned businesses over a roughly12-month horizon.
+R06 Each business has separate dates, actual ownership/activity, documents and milestones.
+R07 Planned/formed/operating/eligible are separate facts; time never approves funding.
+R08 Existing-business awareness; additional plans do not overwrite existing companies.
+R09 Business-profile quality and flag review using actual saved details.
+R10 Website lesson + ready-to-copy prompt tailored to actual company details.
+R11 Business listings/Yellow Pages/Google visibility steps; no promised search ranking.
+R12 Optional business-credit/gas/fleet-card steps; David material sought/pending if absent.
+R13 Location-aware shortlist of up to5 actual local credit unions with source/eligibility context.
+R14 ChexSystems education, report/error-dispute steps and bank-opening issue handling.
+R15 Early1–3account relationship plan paced to cash/fit; no auto-openings.
+R16 Secured-credit guidance when actual thin-file/account facts call for it.
+R17 Cash/income/existing-account-aware bank/deposit/seasoning plan and milestones.
+R18 Personal credit and business/banking work can proceed alongside each other.
+R19 Dated waypoints and usable Google Calendar reminders; explain exact connection capability.
+R20 Merchant processing/customer-financing guidance and Whop/Clarity/Commas referral handoff.
+R21 Actual available provider/partner links; no claim that missing partnerships are configured.
+R22 Authorized-user education/action based on actual file; no blanket removal.
+R23 Employment/business-owner setup and supported income documentation for actual circumstances.
+R24 FinanceOS NOT LIVE; use available current proof/manual updates; existing real credit pulls retained.
+R25 Real uploads, self-reported vs evidence-received vs staff-reviewed states; server persistence.
+R26 Client/org isolation, premiumaccess boundary, refresh/readback and help for blocked steps.
+R27 Current Alec material is the knowledge foundation, with current official filing/bank sources.
+R28 Owner time-warp for rehearsal only; never changes real customer dates or proof.
+R29 Offer review can identify gaps; missing external inputs stay named until supplied/configured.
+R30 Finish required checks, GitHub delivery, deployment and authenticated person-usable path proof.
+
+Real build plan
+Role: authenticated paid Blueprint buyer. Job: act on the next useful saved step.
+First question: What should I do first now that I paid?
+Reuse: existing portal/Astra, client-progress/waypoint-tick, documents-upload and review,
+Blueprint paid-year gate, client custom_fields storage, actual UnderwriteIQ and banks data.
+Data: server-saved client business plans/step progress, existing file/credit/business records,
+official CU directory; no live FinanceOS connection required.
+Root files: public/app/client-portal.html, public/app/blueprint-plan.js/css,
+public/progress.html, api/blueprint/plan.mjs, src/blueprint/client-plan.mjs,
+netlify/functions/api.mjs, focused HTTP/browser tests, existing intended/actual/changelog/heartbeat docs,
+this board. Child file manifests remain those declared in their messages/board.
+Proof: scoped API/store persistence and negative tenant/year cases, saved real uploads,
+all client controls, desktop/phone states, codechecks and protected release/live readback.
+
+Owner source-selection review — November 2, latest steering
+Tradeline Secrets located in Shared with me, folder1LOQAteLXUjBx7uHfxzkhFnLBH6SPGoJM.
+Owner says this is his IP; he taught David, who made the course.
+Owner: not all needed; extract first, show useful parts before incorporating.
+Explicit exclusion: NAV, Net30s and DUNS entirely out of the buyer plan.
+No unreviewed course-specific buyer content added; approved generic optional fuel research retained.
+
+Recommended extraction for owner review (PROPOSED, not all implemented)
+1. Business identity consistency: match actual legal name, formation/EIN address,
+   website/contact details, accurate activity/industry code. Show missing vs conflicting
+   facts; save correction note and supporting file. Existing company keeps actual identity.
+2. Per-business document packet: accepted state formation, EIN, actual owner/signers,
+   separate formation/ownership/operating dates and ready-for-bank checklist. Keep
+   three/four separate single-member-LLC plans; don't duplicate one business's proof.
+3. Lean website/profile checklist: real services, name, contact, about, useful domain,
+   matching listings where appropriate; tailored copyable website prompt, saved URL
+   and review. No compulsory phone/address vendor or first-page-Google promise.
+4. Bank fit interview: local candidates -> ask current account fees/deposit, membership/
+   footprint, industry/history/financials, loan/card products and current seasoning terms.
+   Record the bank's actual answers and review date. Plan1–3relationships within cash.
+5. Optional real-expense fuel path: assess whether business has fuel expenses first;
+   compare actual official offers/stations/repayment/guarantees/reporting, record a
+   decision, due dates and evidence. No blanket three-card stack or old thresholds.
+6. Financial evidence and follow-through: bank/merchant statements, P&L/balance sheet
+   when relevant, actual cash/income commitments, payment/review dates and saved
+   reminders. Reported, evidence received and reviewed stay distinct before FinanceOS.
+
+Read sources
+- Shared PDF: https://drive.google.com/file/d/1KACNVV12KvKtprwMPJG3Di-PhbElzG8S/view
+- Tier1: https://docs.google.com/document/d/1U_T11eZDFK4cVgNCrvK_nDhHrdNc8PLCtip1w2ohTng/edit
+- Tier2: https://docs.google.com/document/d/1kxtZc77wxeV294O4cqAO_IpRtQrcwln3NkbJMDI5n2M/edit
+- Complete profile: https://docs.google.com/document/d/1WknGBKgfNk53kbPBWCpwwAvBMh3ptjNTH97i0gDVikc/edit
+- Bank interview: https://docs.google.com/document/d/1ZQBOmRGclPP7kbJAV-gwZrjdIKfID3I31gTPBGq1924/edit
+
+Validation currently observed
+- Browser contracts17PASS, all0retries; mocked APIs, not live runtime.
+- Source/API/store/coach selected run163PASS,0FAIL,6PGSKIP.
+- Additional monitoring/runtime27PASS,0FAIL,2PGSKIP.
+- Lint4635PASS, TypeScriptPASS. Full release checks still pending.
+- Router/tripwires owned by active Plaid-final branch; exact2route handoff requested
+  via Tether note2026-11-03T01:34:47Z; no competing router edits held.
+- Known historic marked buyer absent from current connected DB; no account,
+  password, entitlement, financial receipt, provider or customer record changed.
+- Managed archive of completed H worktree rejected as active-task-in-use; no forced
+  cleanup. Root owns integrated source; child commits preserved.
+- Actual build has not been deployed or proved with a signed-in paid buyer.
+
+Owner additions after source review (authorized get it all done)
+R31 Payoff planning: snowball and highest-interest-first, actual statement inputs,
+    minimums/unknown APR preserved, no forecast or credit-change promise; protect
+    bills/buffer and one-time paydown commitments across business deposits.
+R32 Clear client credit-letter SOP: current generated downloads -> client review/
+    self-mail or optional Fundhub service -> mailing proof -> actual bureau replies
+    uploaded -> existing document validation -> evidence-led next step/new letters.
+R33 Owner price97USD per selected mailing batch (latest97 supersedes100). Explicit
+    client one-time confirmation; saved card only if provider support AND exact
+    verified client/customer/card ownership; otherwise secure hosted checkout.
+    No live charge or mail as test. Durable payment and per-envelope send claims.
+R34 Reuse existing document reader for real response validation: currentdocument
+    version, correct recipient/bureau/type, legibility/authenticity review;
+    upload existence cannot complete response step. Uncertain files stayheld.
+
+Current independent findings and repair status
+- Reviewed entity must override staleuploadmetadata: fixed store+hourly/dailySQL,
+  source tests; knownlinkedentity sentwithupload; server savedfilepickerrecovery
+  survivesreloadwithoutduplicatingupload (browserprovedoneupload).
+- Paidquote selectionchange invalidatesquote; exactlettertitles+price+consent shown.
+- Mailing ledger realconstraints checkout_expires_at/produced_kind: writer repairing
+  after independentreview; simplified PGfixture being replaced with actualconstraints.
+- Savedcard email-only lookup insufficient; independentrepro provedmisbinding;
+  writer told to require verified scopedproviderCustomerID orhostedonly.
+- Newletter version afterquote mustrefusecharge; afterpaymentmustholdmailing.
+- Existingbureau-reader strengthened, currentversionverdictsaved; waypointchecks
+  sameacceptedverdict. Rawtextalone held, nocreditresultfromuncheckedupload.
+-30browsercontractchecksPASS53.6sec0retries; stillofflinefixtures, notliveproof.
+- Newmoneyservice API/worker/migration545 underwriteowner; rootownsUI/router/
+  registry/manifest/heartbeatintegration aftercurrentPlaid387ownership clears.
+- SourceUIorder/loading/font fixes applied; finalperformance revisitpending.
+- Automaticreview refused childstaging becauseauthorizationchanged (noactionrun);
+  rootsolecommitter now. Validatorprivacyalternative retains identitylocally;
+  identitychecksremain intact. No deniedactionbypassed.
+
+Completed-child ownership handoff: both H and G checkouts clean, zero unmatched patch commits against root via git log --cherry-pick --right-only. Both checkouts detached at their unchanged exact HEAD to release completed branch ownership; all files/commits/branches preserved. No checkout removed, reset or force push. Managed archival remains deferred because app reports active-task-in-use; this did not remove an active checkout. Current work continues only in blueprint-real-client root.
+
+Pre-publication reviewed source snapshot
+- Core buyer source96targetedtestsPASS,0skip. Browser30PASS,0retry.
+- Independent validator66PASS and mailing42PASS,0skip; exacthashes in ignored
+  final/validator-review.json and final/mailing-core-review.json.
+- New mailing writer43PASS+1PGSKIP,38existingpaid-service regressionsPASS,
+ 5outboundfencechecksPASS. No real provider writes.
+- New hourly/daily monitoring21PASS+4PGSKIP, old4SQLchecks preservedbyteexact.
+- UI4states1440/390 clear;20 markedshots, allfields16px and targets44px.
+- Raw local cold4G baseline retainedRED. ActualCDNusesBrotli; identicalcandidate
+ Brotlicomparison LCP864ms,firstaction1769ms,CLS.0293,encodedexternalJS96205B,
+ total353380B. This is fixturetransportcomparison,notauthenticatedliveproof.
+- Productionsettingsread-only: existingPostGrid/Commas configured, existingoutbound
+ settingsallowtransmission; no keysmodified orprovidercharge/mailperformed.
+- Actualproductionappscopehas35visibleclients withRLSactive; no explicitlymarked
+ QA+activepaidBlueprinttestaccount found. No credentials/purchasescreatedorfaked.
+- Preflight clean afterchildhandoff, branchrebasedovercurrentmain385.
+- First ship-change--resume correctlyrefused: brandnewbranchhasnopriorparenttip.
+ Noarchive/push/PRoccurred. Use normal initial ship-change withthisrequiredreceipt
+ update; it can safely select currentmain mergebase before orderedparentrebase.
+- Three API handlers/545/worker integration is still pending; initialPRmuststay
+ draftuntilthesearewiredontheordered387parent andfinalchecksarecomplete.
+
+
+Final integration lane — root owns shared registration; independent agents review only.
+- Ordered ship-change rebase completed on PR387 a0c676f5 parent; expected-base preflight passed before edits.
+- Inherited parent already owns 545_account_plaid_mfa_consent; mailing migration renamed546, original SQL preserved. Historical545 reservation above is superseded.
+- Added exact plan/business-plans/letter-mailing routes; read-only GET registry; Netlify-only scheduled job and five-minute heartbeat; preserved old tripwires and added the preparation/mailing/current-response deep checks.
+- Updated existing actual journey, heartbeat journey and changelog. Source registration does not mean deployed.
+- Root performs integration checks/publication; independent review can run alongside. Release waits for protected parent queue; new Blueprint PR must remain draft until complete.
+
+Final independent integration receipts
+- Integration54PASS +1PGSKIP; migration-manifest6PASS. Independent integration93PASS/1FAIL identified missing named workflow registration; repaired exact expected ID, then independent64PASS0SKIP.
+- Generated authentication documentation initially could not trace shared paid-client gate. Equivalent production authenticate alias plus source-traced wrapper/regression now preserves exact client/org/year boundary;9existingjourneys and11existingdiagrams regenerated (only2diagramfiles changed). No new Markdown file.
+- Browser29initialPASS/1stale-labelFAIL; only two exact label expectations changed, affected scenario1PASS0retry. First failed log retained. Label now Submitted for mailing, never physical-delivery proof.
+- Lint4661parseclean; installedTypeScriptPASS. Finalfullsuite initially sandbox-refused localservers; retained redlog, rerun with temporarylocalhostpermission (no configured DATABASE_URL) underway.
+- Netlify CLI localbuild refused sandbox config refresh; direct samezip-it-and-ship-it bundler avoids credential writes. APIbundle built; cronworker pending at this snapshot.
+- Owner does not know an existing paid testlogin. Separate scratch environment setup delegated; no realclient modifications or fabricated production purchases.
+- Protected parent queue retained; candidate publication is DRAFT, not completion or production proof.
+
+
+R35 — owner screenshot design correction (November 2 evening)
+- User supplied actual portal screenshot: oversized/inconsistent offer prices/actions and support rail squeezed into one grid column. Explicitly requested design fix.
+- Root owns existing fundhub-astra-client.css only for this layout; H continues R07 first-action readiness in separate named files. Existing board remains coordination path.
+- Compact responsive offer grid, restrained price/type, left-aligned44px actions, full-width2-column support rail; existing hidden/entitlement/course states preserved. Independent visual verification pending; not yet a deployed fix.
+- Actual scratchChrome sign-in/setup/businesssave/reload proved: CedarGroveLLC remains planned,1of4saved; noformedentity/creditresult fabricated. Browserfilechooser refused localfileaccess through extension, so that UIupload step remains unverified; no permission workaround performed.
+
+
+Final repair source and independent receipts
+- RealPostgreSQL16.15/pgvector scratch on49909:429migrations,51targetedchecksPASS0SKIP. Store6,mailing realledger/immutability, currentresponse/waypoints, coach54710, monitoring25 and app-role3 included in exact receipt. No productionrows used.
+- RealPG caught JSONB object-key order causingunchangedaddressrefusal; canonicalhash fixed+unitregression. Realaddresschange stillrefuses0payment/mail; independenthashreviewCLEAR28PASS. PGtestURL andbigint representations fixed, originalconstraintsretained.
+-547exactoldpromptreplacement preserves488/490bytes, otherorgs/voice/FOS/customtext/states/approvals. Existingnotify importcycle repairedwithlivebinding; originalsendlocks/templates unchanged.
+- Firstfull localsuite retainedRED:30995unitPASS/12FAIL/31SKIP; noDB PG88PASS/1274SKIP, neverpersistenceproof. Requiredfailures traced to registration/count/heartbeatmetadata/portalhourlymapping/oldfixtures andstrictnewvalidator; focusedrepairs subsequentlyPASS. Seven regeneratedoldbaselinePNGs preservedinprivate/tmp thenoriginalHEADbytesrestored, notchangedtofitUI.
+- Freshcombinedbrowser52PASS0retry; signature11PASS0skip; namedfinalfailurechecks23PASS0skip. AfterR07 addition,buyer34PASS0retry+94unitPASS0skip/lint/typecheck.
+- R07realChrome nowshows letterpacknotready+Preparebusinesses with1of4persistedscratchplans, no mailbeforefile/no fabricatedproviderresult.
+- R35independentactualHTTP at2032/1440/390PASS:all5offers, unchangedprices, hiddenstates,18titles/16body+price/44targets,nooverflow,courseopen/realinstruction/close. Supportequalcolumns verified860/860,564/564,358mobile. Exactraw/markedreceiptsunderignoredfinal/r35.
+- Rootownssolecommit. PR388 staysDRAFT/autoOFF; next ship-change--resume safelyreplays recorded a0parentdeltaonto current387parentpercontrollerhandoff. Source/published/deployed/authenticatedproductionproof remain separate.
+
+
+R36 — observed included-report display mismatch
+- Actual paidConsultingPackage grants onlyroadmap/Metro2 initially, whileofferincludesCreditAnalysisReport; oldtile showedlocked32untilreportarrived. RealgrantfunctionconfirmednotQAinvention. Standalonediagnosticremainsseparate32SKU.
+- Validatedauthenticatedpaidplanpublishesincludedbenefit; reportwaitingnotDone; reusescredit_review guidance. Nogrant/price/pull/providerchanges. Denials revoke;500/malformedstatesremainerrorandkeepFinanceOShidden.
+- Buyerbrowser40PASS; broaderlegacy32PASS+1staleplaceholderFAIL thenexactscenario1PASS requiringactualinstructions. Final7access/errorcasesPASS. Guards33PASS/lint4661/typecheck/diffPASS. Rejectednew-loginverificationpathnotretried; rootreadOnlyexistingChromeGET/reloadconfirmedIncluded/NotReady+1receiveddoc. NoPOSTconsent.
+
+Specific release-control approval and exact handoff
+- Initial reviewedpatchapply/commit was rejectedBEFOREprocesscreation byautomaticapprovalreview: sharedreleaseguardscopebeyondBlueprint. No workaround/indirectexecution.
+- User answered exactsharedreleasecheckquestion: Approve the shared release-check fix. Sameexplicitapprovalalsoincontrollerchat. Onlyreviewed2filepatch e4677090... applied;afterhashes12f33230.../e3db2f...match. Committed2a69c28b2, focused42PASS0skip; originalsource640preserved.
+- Connectedold-a0preflightnowrecognizesverifiedparentbranch. It preservesdirty/unrelated/forged/movedsourceblocks;controller2filecopiesclean. Normalship-change resume remainsrequired, sameDRAFT388, no manualstack.
+
+Actual isolated software-upload proof
+- Formationupload200, attach200, reloadretainedplanned/evidence_received/noReview. Signeddownloadidentical1051bytes/SHA256d2f7313f...c4893f97. UserChromeextensionfilepickerpermissionunchanged.
+- Bureauactualuploadnotyetproved: repeatedsuccessfulclientsignins hitexistingstaff-firstloginlimiter(emailFails5/ipFails5/15min). No authrowreset orbypass. Separateauthownerleftoverrecorded; responseunit/PGproofstillvalidasitsownsubset.
+
+
+Current-source release follow-through — November 3, 05:10 UTC
+- Canonical published PR388 source2666a6645 on main5ece7f6bc; local rebase preserved the three unpublished own commits and all protected parent history. PR388 remains DRAFT/autoOFF. Parent387 Main14 passed; its protected Ship is running, no Blueprint release implied.
+- Fresh source2666 PostgreSQL16.15: all429 migrations applied to new isolated blueprint_current_ci_2666a6645_20261103 database;51PASS0FAIL0SKIP (core12,coach10,monitor25,app-role3,ownership1). Final ownership1 used original local fundhub_ci schema reads and transaction-local TEMP/ROLLBACK only. Current-source-pg/receipt.json and full source SHA manifest retain exact scope/commands. No durable QA changes.
+- Current backend unit execution: mailing47PASS0SKIP and validator66PASS0SKIP. Current-source-unit receipt records actual hashes and reconciliation against older independent snapshots; these new runs are execution, not a new independent review. Source/provider/migration rename differences stay visible.
+- Later actual bureau upload completed after the normal15-minute limiter expired. One ordinary local login plus one actual documents-upload POST, read+reload pending/unreviewed/noverdict; waypoints, operating-business/credit/payment/mail counts unchanged. No limiter reset/bypass, provider/consent or external writes. Actual-local-http/bureau-proof-e814.json retains original source/scope. Earlier failed attempt remains in formation-partial-proof.json; formation signed1051-byte download matched its SHA.
+- Required independent controller review reproduced old-account private controls after a delayed read and account switch/logout. Root owns this required bounded repair, not a broader auth refactor. Steps agent owns public/app/blueprint-plan.js; guidance agent owns existing buyer browser spec. All other production paths frozen.
+- Frozen JS ee7950fb34517a52b0d7b35b676a4a9333b188b10d9064ebdb07889a1ea29233 binds immutable original bearer+verified account/org/client, aborts and scrubs all private plan/docs/quotes/orders/IDs on auth change, guards requests/async continuations/navigation/clipboard/calendar. It cannot undo an already accepted original-account request. Actual existing Chrome reload confirmed same-account plan still works through real local HTTP/DB. Browser62-case independent run pending at this snapshot.
+- GitHub2666 unit4 and PG4 each failed the same sole old entActive alias source assertion. Exact demo test updated to require the real entitlement-map alias and the unchanged demo exclusion;8PASS0SKIP. Other completed unit/PG shards and blocks passed; browser job still running. Original red logs retained. Final source needs its own protected CI/regrade.
+- Durable ignored evidence root: ops/workflows/build-evidence/blueprint-real-client/final/. review-artifact-manifest.json hashes source-specific receipts; no password/session/customer data committed. Root owns sole commit/publication; controller owns protected release.
+
+Final bounded session repair freeze
+- Independent actual-script fixture browser:62PASS0FAIL0SKIP0RETRY,22new session cases+40previous. Tested JS SHAee7950fb... and specSHAc0b360c6... unchanged before/after. Delayed reads, refresh, save/reread, formation upload/attach, bureau upload/reread, quote, confirmed payment result, pending document window all refuse old-account continuation after switch/logout; four stable same-account positives preserve working flows. No real provider/payment/mail/browser-session edits.
+- Exact receipt/log/marked screenshots: final/session-principal/session-principal-browser-receipt.json and shots/. Lint4662, installedTypeScript, syntax/diff, rules/journeys/diagrams checksPASS. Actual existing Chrome reload also retained the real local saved plan under the new original-principal guard.
+- Final preflight attemptRED solely futurecompany-cash unsaved pulse3paths. Requested owner to preserve/park own exact additions until388publication, then reapply on orderedchild; no overlap exclusion or shared-file overwrite. Final six-file manifest: public/app/blueprint-plan.js; e2e/blueprint-client-plan.spec.mjs; src/http/portal-demo-unlocked.test.mjs; thisboard; docs/journeys/capital-blueprint-actual.md; docs/journeys/CHANGELOG.md.
+
+Cookie-only session follow-through
+- Independent56262 regrade closed the bearer-switch issue and reproduced the same privacy fence through mutable HttpOnly cookies when fh_token is absent. Originalredreceipt retained by controller; no backend authorization weakened.
+- New JS frozen647ff7da03165c285a72a151932785004c2e508ed72f9bd2c15db0fe40fd8f79 requires a captured nonempty/non-demo bearer before initializing any private/session request. Missing or changed sign-in clears/aborts private state and offers the existing /portal-login.html in a public sibling outside the guarded private host. Normal password/magic-link routes already store fh_token.
+- Four focused actual-browser CI/headless casesPASS: HttpOnly cookieAtoB/nobearer issues no plan/save request; cookie logout remains private and the public sign-in link actually navigates; demo bearer refused; valid bearerA remains scoped despite opaque cookieB. Final66-case CI/headless run pending at this freeze.
+- Existing actual Chrome reload under the new guard retained the real saved1of4/planned/waiting-document/not-ready-letter state. No new login, consent, browser-token mutation or production/provider write performed.
+
+Final CI-browser repair receipts — ready for protected GitHub checks
+- Final source647ff7da... plus spec7aa8df6d...:66CI/headless browserPASS0FAIL0SKIP0RETRY,26sessioncases+40previous,70.4sec, hashesunchanged. CurrentfullChromiumPDF3PASS exactsignednavigation/HTTP200/PDF/nativehandler; headlessPDF3PASS exactdownloadURL/rawbytes. Earlier62runs/redheadlessdiagnostics remain separate receipts. No PDF viewer HTML falsely called rawPDF.
+- Finalnewguard legacy portal35PASS0skip/retry; existing visibility and strict screenshot bounds assertions intact. Nonbuyer fixtures supply actualaccount/org/client andexplicit403, notmalformed200; realtargetcentering fixes fractionalclipping withoutboundsrelaxation. Messagingfullfile15PASS0skip/retry;4readinesslines awaitexistingthread/clientprefill beforeediting, allsend/status/blocked/idempotency/draftchecks unchanged. No reproducedmessagingproductdefect claimed.
+- Four named browser specs only plus existing docs/board changed aftercookieguard sourcefreeze4d319d655. ProductJS/backend unchanged since647ff7da. Durable final/session-principal/session-principal-browser-ci-final-receipt.json, ci-screens-repair/{legacy-screens-repair.json,messaging-repair-receipt.json}; originalGitHub2666RED14/2023PASS3SKIP logs retained. Fresh wholeprotectedCI stillrequired, no blanketPASSclaim.
+- Companyowner preserved+parked exact3pulsepaths; finalpreflight thenCLEAR0behind0blocks. Parent387officialrelease observedbycontroller; Blueprint388remainsDRAFT/autoOFF untilownlatestreview/Main14/Ship/liveproof. Finalpublication uses normalship-change only.

@@ -8,7 +8,10 @@ async function open(page,{state='empty',enrolled=false,postStatus=201,summary,vi
  let joined=enrolled;
  await page.route('**/api/**',async route=>{
  const u=route.request().url();
- if(u.includes('/api/auth/session'))return json(route,{ok:true,principal:'client',staff:{id:CLIENT_ID,client_id:CLIENT_ID,role:'client',name:'Portal Sample',email:'sample@example.test',status:'active'}});
+ // This legacy portal buyer has no active Blueprint purchase. Model the
+ // authenticated denial instead of sending an unrelated success-shaped body.
+ if(new URL(u).pathname==='/api/blueprint/plan')return json(route,{ok:false,error:'blueprint_access_inactive'},403);
+ if(u.includes('/api/auth/session'))return json(route,{ok:true,principal:'client',staff:{id:'bbbbbbbb-2222-4222-8222-222222222222',client_id:CLIENT_ID,org_id:'11111111-1111-4111-8111-111111111111',role:'client',name:'Portal Sample',email:'sample@example.test',status:'active'}});
  if(u.includes('/api/affiliates/refer')){if(postStatus<300)joined=true;return json(route,{ok:true,shareUrl:'https://fundhub.ai/start?ref=SAFE'},postStatus);}
  if(u.includes('/api/read/affiliate-portal'))return json(route,{ok:true,enrolled:joined,affiliate:joined?{id:'safe-aff',shareUrl:'https://fundhub.ai/start?ref=SAFE'}:null,referrals:[],rates:{},payouts:[]});
  if(u.includes('/api/read/portal-summary')){
@@ -20,6 +23,8 @@ async function open(page,{state='empty',enrolled=false,postStatus=201,summary,vi
  });
  await page.goto(`/app/client-portal.html?id=${CLIENT_ID}${view ? "&view="+view+"#acct" : ""}`);
  await expect(page.locator('body')).toHaveAttribute('data-client-ios',/.*/);
+ await expect(page.locator('#blueprint-plan')).toBeHidden();
+ await expect(page.locator('body')).not.toHaveAttribute('data-blueprint-plan',/.*/);
  const accountMenu=page.locator('details').filter({has:page.locator('.client-ios-signout')});
  if(await accountMenu.count()) await accountMenu.locator('summary').click();
  await expect(page.locator('.client-ios-signout')).toBeVisible();

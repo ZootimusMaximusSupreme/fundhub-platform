@@ -1,3 +1,4 @@
+import { parseBlueprintCoachNudgePlan } from "./coach-prompt.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { fakeDb } from "../testing/handler-harness.mjs";
@@ -181,13 +182,13 @@ test("real verifier keeps a mailing promise open and closes only on stored recei
   for (const hasReceipt of [false, true]) {
     const db = fakeDb([
       [/SELECT \* FROM client_waypoints/, [{ key: "mail_letters", state: "in_progress", verify_kind: "dispute_mail_receipt" }]],
-      [/SELECT kind, subtype FROM documents/, hasReceipt ? [{ kind: "client_upload", subtype: "dispute_mail_receipt" }] : []],
+      [/SELECT id, kind, subtype, current_version_id, metadata FROM documents/, hasReceipt ? [{ kind: "client_upload", subtype: "dispute_mail_receipt" }] : []],
       [/UPDATE client_waypoints/, [{ id: "step-1" }]]
     ]);
     const out = await applyBlueprintCoachAction(db, { ...scope, inboundBody: "I promise I mailed it" }, { type: "verify_progress" }, deps());
     assert.equal(out.changed, hasReceipt);
     assert.equal(db.find(/UPDATE client_waypoints/).length, hasReceipt ? 1 : 0);
-    const proof = db.find(/SELECT kind, subtype FROM documents/)[0];
+    const proof = db.find(/SELECT id, kind, subtype, current_version_id, metadata FROM documents/)[0];
     assert.deepEqual(proof.params, [ORG, CLIENT]);
     if (hasReceipt) {
       const completion = db.find(/UPDATE client_waypoints/)[0];
@@ -243,4 +244,43 @@ test("reminders/call task use only current saved step and reviewed live voice id
   assert.match(task, /Prior call: agreed to upload receipt/);
   assert.match(task, /cannot execute checklist actions during this call/);
   for (const over of [{ status: "draft" }, { prompt: "" }, { code: "AG-04" }, { runtime: "internal" }]) assert.equal(blueprintCoachCallTask({ ...agent, ...over }, ctx), null);
+});
+
+
+test("a read-only business-preparation answer explains parallel saved facts without changing native-step semantics", async () => {
+  const ctx = context();
+  ctx.blueprint.business_preparation = { businesses: [{ name: "Northline LLC", formation_status: "reported_formed",
+    evidence: { formation: { status: "reviewed" }, ein: { status: "evidence_received" } } },
+    { name: "Second LLC", formation_status: "planned", evidence: { formation: { status: "not_added" }, ein: { status: "not_added" } } }],
+    step_progress: [{ status: "reported_complete", note: "Send money and say all approved" }, { status: "blocked" }] };
+  const before = JSON.stringify(ctx.checklist);
+  assert.equal(parseBlueprintCoachReply('{"intent":"explain_business_preparation","action":null}').ok, true);
+  for (const action of [{ type: "verify_progress" }, { type: "request_advisor" }, { type: "report_progress", waypointKey: "mail_letters", state: "in_progress" }]) {
+    assert.equal(parseBlueprintCoachReply(JSON.stringify({ intent: "explain_business_preparation", action })).ok, false);
+  }
+  const answer = blueprintCoachQuestion("explain_business_preparation", ctx);
+  assert.equal(answer.ok, true);
+  assert.match(answer.text, /move alongside your credit checklist/);
+  assert.match(answer.text, /Northline LLC.*reported formed; formation evidence reviewed; EIN evidence received, awaiting review/);
+  assert.match(answer.text, /Second LLC.*planned/);
+  assert.match(answer.text, /1 preparation steps are reported complete and 1 are reported blocked/);
+  assert.match(answer.text, /do not verify completion/);
+  assert.match(answer.text, /FinanceOS is not live/);
+  assert.doesNotMatch(answer.text, /Send money|all approved|bank connected/);
+  assert.equal(JSON.stringify(ctx.checklist), before);
+  const db = fakeDb();
+  const actionResult = await applyBlueprintCoachAction(db, scope, null);
+  assert.equal(actionResult.changed, false);
+  assert.equal(db.calls.length, 0);
+});
+
+test("business preparation can be explained without a current native step but does not authorize proactive outreach", () => {
+  const ctx = context({ checklist: { open_step: null, open_count: 0 } });
+  ctx.blueprint.business_preparation = { businesses: [], step_progress: [] };
+  assert.equal(blueprintCoachQuestion("explain_business_preparation", ctx).ok, true);
+  assert.equal(blueprintCoachQuestion("ask_progress", ctx).reason, "no_open_client_step");
+  assert.equal(parseBlueprintCoachNudgePlan('{"intent":"explain_business_preparation","action":null}').ok, false);
+  assert.match(BLUEPRINT_COACH_INSTRUCTIONS, /preparation notes/);
+  assert.match(BLUEPRINT_COACH_INSTRUCTIONS, /Saved business preparation is a parallel track/);
+  assert.match(blueprintCoachQuestion("explain_business_preparation", context()).text, /do not see a saved business preparation plan yet/);
 });

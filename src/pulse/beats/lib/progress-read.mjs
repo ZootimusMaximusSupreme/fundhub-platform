@@ -354,8 +354,10 @@ function waypointView(row) {
   const price = row.paid_alternative_price_cents;
   return {
     id: row.id,
+    key: row.key ?? null,
     order: row.position == null ? null : Number(row.position),
     title: row.title,
+    detail: row.detail ?? null,
     owner: row.owner_kind,
     state: row.state,
     dueAt: isoOrNull(row.due_at),

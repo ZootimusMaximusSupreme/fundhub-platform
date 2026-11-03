@@ -7,7 +7,10 @@ import { TEST_CLIENT_EMAIL_RE } from "./gap-consent.mjs";
 export const CHECK_IDS = Object.freeze([
   "blueprint:real-advisor",
   "blueprint:monthly-delivery",
-  "blueprint:coach-call-delivery"
+  "blueprint:coach-call-delivery",
+  "blueprint:preparation-evidence",
+  "blueprint:letter-mailing",
+  "blueprint:response-validation"
 ]);
 
 // Same real-client exclusions as the existing consent and portal checks.
@@ -101,10 +104,197 @@ export const COACH_CALL_DELIVERY_SQL = `
   ) failures
 `;
 
+// Saved data integrity only; incomplete client work is not a delivery failure.
+export const PREPARATION_EVIDENCE_SQL = `
+  /* gap:blueprint-preparation-evidence */
+  WITH scoped_clients AS (
+    SELECT c.id, c.org_id, c.custom_fields->'blueprint_business_plans' AS state
+      FROM clients c
+     WHERE c.org_id = $1::uuid
+       AND ${REAL_CLIENT}
+       AND EXISTS (
+         SELECT 1 FROM entitlements e
+         JOIN transactions t ON t.id = e.source_transaction_id
+           AND t.org_id = e.org_id AND t.client_id = e.client_id
+         JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
+           AND p.org_id = t.org_id
+         WHERE e.org_id = c.org_id AND e.client_id = c.id
+           AND e.entitlement_code = 'credit-optimization-roadmap' AND e.revoked_at IS NULL
+           AND (e.expires_at IS NULL OR e.expires_at > $2::timestamptz)
+           AND lower(btrim(p.code)) = lower($4::text)
+           AND lower(btrim(COALESCE(t.status, ''))) = $5::text
+           AND COALESCE(t.is_demo, false) = false
+           AND t.created_at <= $2::timestamptz
+           AND t.created_at + interval '12 months' > $2::timestamptz
+       )
+  ), saved AS (
+    SELECT * FROM scoped_clients
+     WHERE state IS NOT NULL AND state NOT IN ('null'::jsonb, '{}'::jsonb, '[]'::jsonb)
+       AND NOT (jsonb_typeof(state) = 'object' AND NOT (state ? 'version')
+         AND state - 'businesses' - 'stepProgress' = '{}'::jsonb
+         AND COALESCE(state->'businesses', '[]'::jsonb) = '[]'::jsonb
+         AND COALESCE(state->'stepProgress', '[]'::jsonb) = '[]'::jsonb)
+  ), plans AS (
+    SELECT s.id AS client_id, s.org_id, p.plan
+      FROM saved s CROSS JOIN LATERAL jsonb_array_elements(
+        CASE WHEN jsonb_typeof(s.state->'businesses') = 'array' THEN s.state->'businesses' ELSE '[]'::jsonb END
+      ) AS p(plan)
+  ), evidence AS (
+    SELECT p.client_id, p.org_id, p.plan->>'id' AS plan_id, p.plan->>'entityId' AS entity_id,
+      e.key AS evidence_kind, e.value->>'documentId' AS document_id
+      FROM plans p CROSS JOIN LATERAL jsonb_each(
+        CASE WHEN jsonb_typeof(p.plan->'evidence') = 'object' THEN p.plan->'evidence' ELSE '{}'::jsonb END
+      ) e
+     WHERE e.key IN ('formation', 'ein') AND e.value->>'documentId' IS NOT NULL
+  )
+  SELECT count(*)::int AS n FROM saved s
+   WHERE jsonb_typeof(s.state) IS DISTINCT FROM 'object'
+      OR s.state->>'version' IS DISTINCT FROM '1'
+      OR COALESCE(s.state->>'targetBusinessCount', '') NOT IN ('3', '4')
+      OR CASE WHEN jsonb_typeof(s.state->'businesses') = 'array'
+           THEN jsonb_array_length(s.state->'businesses') > 4 ELSE true END
+      OR jsonb_typeof(s.state->'stepProgress') IS DISTINCT FROM 'array'
+      OR EXISTS (
+        SELECT 1 FROM plans p WHERE p.client_id = s.id AND p.org_id = s.org_id
+          AND (jsonb_typeof(p.plan) IS DISTINCT FROM 'object'
+            OR COALESCE(p.plan->>'id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+            OR COALESCE(p.plan->>'formationStatus', '') NOT IN ('planned', 'reported_formed'))
+      )
+      OR EXISTS (
+        SELECT 1 FROM evidence e WHERE e.client_id = s.id AND e.org_id = s.org_id
+          AND (NOT EXISTS (
+            SELECT 1 FROM documents d LEFT JOIN document_vault_reviews r
+              ON r.document_id = d.id AND r.org_id = d.org_id AND r.client_id = d.client_id
+             WHERE d.org_id = e.org_id AND d.client_id = e.client_id AND d.id::text = e.document_id
+               AND d.kind = 'client_upload'
+               AND d.subtype = CASE e.evidence_kind WHEN 'formation' THEN 'articles_of_organization' ELSE 'ein_letter' END
+               AND (COALESCE(r.entity_id::text, NULLIF(d.metadata->>'entity_id', '')) IS NULL
+                 OR COALESCE(r.entity_id::text, NULLIF(d.metadata->>'entity_id', '')) = e.entity_id)
+          ) OR EXISTS (
+            SELECT 1 FROM evidence other WHERE other.org_id = e.org_id AND other.client_id = e.client_id
+              AND other.document_id = e.document_id AND other.plan_id IS DISTINCT FROM e.plan_id
+          ))
+      )
+      OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(
+          CASE WHEN jsonb_typeof(s.state->'stepProgress') = 'array' THEN s.state->'stepProgress' ELSE '[]'::jsonb END
+        ) AS progress(step)
+        WHERE jsonb_typeof(step) IS DISTINCT FROM 'object'
+          OR COALESCE(step->>'status', '') NOT IN ('not_started', 'in_progress', 'reported_complete', 'blocked')
+          OR COALESCE(step->>'verification', 'client_reported') <> 'client_reported'
+          OR (step->>'businessPlanId' IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM plans p WHERE p.org_id = s.org_id AND p.client_id = s.id
+              AND p.plan->>'id' = step->>'businessPlanId'
+          ))
+      )
+`;
+
+export const LETTER_MAILING_SQL = `
+  /* gap:blueprint-letter-mailing */
+  SELECT count(*)::int AS n
+    FROM blueprint_letter_mailing_orders o
+    JOIN clients c ON c.org_id = o.org_id AND c.id = o.client_id
+    LEFT JOIN paid_service_requests p ON p.id = o.id
+      AND p.org_id = o.org_id AND p.client_id = o.client_id AND p.service_kind = 'letter_mailing'
+   WHERE o.org_id = $1::uuid
+     AND COALESCE(c.is_demo, false) = false
+     AND COALESCE(c.custom_fields->>'synthetic', '') <> 'true'
+     AND COALESCE(c.email, '') !~* $3::text
+     AND (
+       o.state = 'needs_review'
+       OR p.id IS NULL OR p.price_total_cents IS DISTINCT FROM 9700 OR p.currency IS DISTINCT FROM 'USD'
+       OR (o.payment_state = 'none' AND p.status IS DISTINCT FROM
+         CASE WHEN o.state = 'cancelled' THEN 'cancelled' ELSE 'quoted' END)
+       OR (o.payment_state IN ('charging', 'creating_checkout') AND (
+         o.attempt_started_at IS NULL OR o.attempt_started_at < $2::timestamptz - interval '15 minutes'
+         OR p.status NOT IN ('quoted', 'awaiting_payment')))
+       OR (o.payment_state = 'awaiting_payment' AND p.status IS DISTINCT FROM 'awaiting_payment')
+       OR (p.status IN ('paid', 'fulfilled') AND o.payment_state <> 'paid')
+       OR (o.payment_state <> 'paid' AND (o.provider_payment_ref IS NOT NULL OR o.paid_at IS NOT NULL))
+       OR (o.payment_state = 'paid' AND (
+         o.state NOT IN ('mail_pending', 'mailing', 'mailed', 'needs_review')
+         OR o.authorized_at IS NULL OR o.authorized_account_id IS NULL OR o.paid_at IS NULL
+         OR NULLIF(btrim(o.provider_payment_ref), '') IS NULL
+         OR p.amount_paid_cents IS DISTINCT FROM 9700 OR p.paid_at IS NULL
+         OR p.payment_ref IS DISTINCT FROM o.provider_payment_ref
+         OR p.status IS DISTINCT FROM CASE WHEN o.state = 'mailed' THEN 'fulfilled' ELSE 'paid' END))
+       OR (o.payment_state = 'paid' AND o.state IN ('mail_pending', 'mailing')
+         AND o.paid_at < $2::timestamptz - interval '15 minutes')
+       OR (SELECT count(*) FROM blueprint_letter_mailing_envelopes e WHERE e.order_id = o.id)
+         IS DISTINCT FROM CASE WHEN jsonb_typeof(o.snapshot->'files') = 'array'
+           THEN jsonb_array_length(o.snapshot->'files') ELSE 0 END
+       OR EXISTS (
+         SELECT 1 FROM blueprint_letter_mailing_envelopes e WHERE e.order_id = o.id AND (
+           e.org_id IS DISTINCT FROM o.org_id OR e.client_id IS DISTINCT FROM o.client_id
+           OR e.state = 'needs_review'
+           OR (e.state = 'sending' AND (e.claimed_at IS NULL
+             OR e.claimed_at < $2::timestamptz - interval '15 minutes'))
+           OR (e.state = 'accepted' AND (NULLIF(btrim(e.provider_id), '') IS NULL OR e.accepted_at IS NULL))
+           OR NOT EXISTS (
+             SELECT 1 FROM documents d
+             JOIN document_versions v ON v.id = e.document_version_id
+               AND v.document_id = d.id AND v.org_id = d.org_id
+              WHERE d.id = e.document_id AND d.org_id = o.org_id AND d.client_id = o.client_id
+                AND d.kind = 'deliverable' AND d.subtype IN ('funding_inquiry_removal', 'funding_personal_info')
+                AND v.mime_type = 'application/pdf' AND v.checksum = e.checksum
+                AND v.storage_key = e.snapshot->>'storageKey'
+                AND e.snapshot->>'documentId' = d.id::text
+                AND e.snapshot->>'versionId' = v.id::text
+                AND e.snapshot->>'checksum' = e.checksum AND e.snapshot->>'bureau' = e.bureau
+                AND EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(o.snapshot->'files') = 'array'
+                    THEN o.snapshot->'files' ELSE '[]'::jsonb END) selected(file)
+                  WHERE file->>'documentId' = e.document_id::text AND file->>'versionId' = e.document_version_id::text
+                    AND file->>'checksum' = e.checksum AND file->>'bureau' = e.bureau)
+                AND (o.state IN ('quoted', 'cancelled', 'mailed') OR (d.current_version_id = v.id
+                  AND (d.expires_at IS NULL OR d.expires_at > $2::timestamptz)))
+           )
+         )
+       )
+       OR (o.state = 'mailed' AND (
+         p.produced_kind IS DISTINCT FROM 'letter_mailing_batch' OR p.produced_ref IS DISTINCT FROM o.id
+         OR NOT EXISTS (SELECT 1 FROM blueprint_letter_mailing_envelopes e WHERE e.order_id = o.id)
+         OR EXISTS (SELECT 1 FROM blueprint_letter_mailing_envelopes e WHERE e.order_id = o.id
+           AND (e.state <> 'accepted' OR NULLIF(btrim(e.provider_id), '') IS NULL OR e.accepted_at IS NULL))
+       ))
+     )
+`;
+
+export const RESPONSE_VALIDATION_SQL = `
+  /* gap:blueprint-response-validation */
+  SELECT count(*)::int AS n
+    FROM client_waypoints w
+    JOIN clients c ON c.org_id = w.org_id AND c.id = w.client_id
+   WHERE w.org_id = $1::uuid AND w.state = 'done' AND w.verify_kind = 'bureau_response_upload'
+     AND COALESCE(c.is_demo, false) = false
+     AND COALESCE(c.custom_fields->>'synthetic', '') <> 'true'
+     AND COALESCE(c.email, '') !~* $3::text
+     AND NOT EXISTS (
+       SELECT 1 FROM documents d
+       CROSS JOIN LATERAL (SELECT d.metadata->'bureau_response_validation' AS v) reviewed
+        WHERE d.org_id = w.org_id AND d.client_id = w.client_id AND d.kind = 'bureau_response'
+          AND (d.expires_at IS NULL OR d.expires_at > $2::timestamptz)
+          AND d.current_version_id IS NOT NULL
+          AND EXISTS (SELECT 1 FROM document_versions current_v WHERE current_v.id = d.current_version_id
+            AND current_v.org_id = d.org_id AND current_v.document_id = d.id)
+          AND v->'schema' = '1'::jsonb AND v->>'validator' = 'bureau-response-reader'
+          AND v->>'document_id' = d.id::text AND v->>'version_id' = d.current_version_id::text
+          AND v->>'status' = 'accepted' AND v->>'quality' = 'pass'
+          AND v->>'document_type' = 'bureau_response' AND v->>'client_match' = 'match'
+          AND v->>'authenticity' = 'clear' AND v->>'bureau' IN ('EX', 'EQ', 'TU')
+          AND NULLIF(btrim(v->>'recipient_name'), '') IS NOT NULL
+          AND CASE WHEN v->>'reviewed_at' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$'
+            THEN isfinite((v->>'reviewed_at')::timestamptz) ELSE false END
+     )
+`;
+
+
 const TRIP = "Recon (AG-07) is the one tripwire. Do not auto-fix from this pulse. Do not send to clients.";
 const ADVISOR_FIX = `Open the existing blueprint-csm-assignment owner work and clear or fix the broken staff link through the staff flow. No staff person is needed; the AI coaches and team CSM queue cover the client. ${TRIP}`;
 const DELIVERY_FIX = `Open the blueprint-monthly-delivery owner task and finish the plan and letters from its saved credit result. Do not request another paid credit pull. ${TRIP}`;
 const COACH_CALL_FIX = `Open blueprint-coach-call advisor work and reconcile the saved call receipt with Bland and outbound_calls. Do not redial an uncertain provider result. ${TRIP}`;
+const PREPARATION_FIX = `Review the saved Blueprint plan through its authenticated workflow. Repair malformed state or the missing/wrong-client evidence link; keep reported work separate from reviewed proof. ${TRIP}`;
+const LETTER_MAILING_FIX = `Reconcile the exact saved $97 payment, frozen letter versions and provider receipts through the Blueprint mailing workflow. Do not repeat a charge or resend an uncertain envelope. ${TRIP}`;
+const RESPONSE_VALIDATION_FIX = `Reconcile the completed upload step with an accepted reader verdict for an actual same-client current-version bureau response. Held or unreadable uploads stay unverified; use the existing response workflow. ${TRIP}`;
 
 function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
@@ -125,7 +315,17 @@ export async function gapChecks(ctx = {}) {
       "open Blueprint monthly-delivery exceptions", DELIVERY_FIX],
     [CHECK_IDS[2], COACH_CALL_DELIVERY_SQL,
       [orgId, Number.isFinite(now.getTime()) ? now.toISOString() : null, TEST_CLIENT_EMAIL_RE],
-      "Blueprint coach-call delivery exceptions or unresolved receipts", COACH_CALL_FIX]
+      "Blueprint coach-call delivery exceptions or unresolved receipts", COACH_CALL_FIX],
+    [CHECK_IDS[3], PREPARATION_EVIDENCE_SQL,
+      [orgId, Number.isFinite(now.getTime()) ? now.toISOString() : null, TEST_CLIENT_EMAIL_RE,
+        OFFERS.UWIQ_DELIVERABLES.productCode, PAID_TRANSACTION_STATUS],
+      "active Blueprint clients with malformed preparation state or invalid linked evidence", PREPARATION_FIX],
+    [CHECK_IDS[4], LETTER_MAILING_SQL,
+      [orgId, Number.isFinite(now.getTime()) ? now.toISOString() : null, TEST_CLIENT_EMAIL_RE],
+      "Blueprint mailing orders with held attempts, inconsistent receipts or invalid letter evidence", LETTER_MAILING_FIX],
+    [CHECK_IDS[5], RESPONSE_VALIDATION_SQL,
+      [orgId, Number.isFinite(now.getTime()) ? now.toISOString() : null, TEST_CLIENT_EMAIL_RE],
+      "completed bureau-response steps without accepted current-version review evidence", RESPONSE_VALIDATION_FIX]
   ];
   const out = [];
   for (const [id, sql, params, description, fix] of definitions) {

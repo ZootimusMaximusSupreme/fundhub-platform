@@ -262,6 +262,7 @@ async function openSignCard(lab, posts) {
     role: "client",
     staff: { id: CLIENT, client_id: CLIENT },
     api: async (request, url) => {
+      if (url.pathname === "/api/blueprint/plan") return { status: 403, body: { ok: false, error: "blueprint_access_inactive" } };
       if (url.pathname === "/api/read/portal-summary") {
         return {
           ok: true, prequal_amount: null, scores: {}, documents: [], inquiry_open: false, soft_pull_complete: true,

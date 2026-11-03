@@ -12,6 +12,8 @@ affiliate-payout-autopay — owner-set 2026-10-20 pay-on-clear affiliate payouts
 
 whop-billing-inbox-drain — durable Fundhub billing receipts and provider GET recovery; hourly whop-billing beat and gap-whop-billing.mjs check overdue receipts and paid buyers missing access.
 
+blueprint-letter-mailing / blueprint:preparation-evidence / blueprint:letter-mailing / blueprint:response-validation — three paid-client routes and the Netlify-only five-minute recovery clock; gap-blueprint.mjs and the hourly blueprint-delivery beat check owned preparation evidence, exact $97 USD payment/version/envelope receipts and completed response uploads without current accepted server validation. The portal beat maps these checks to their hourly runner. Held outcomes stay red; no provider call or delivery guarantee is inferred.
+
 blueprint:real-advisor / blueprint:monthly-delivery — gap-blueprint.mjs and the hourly blueprint-delivery beat check active paid clients for a real eligible human assignment and keep failed saved-result delivery exceptions red, even after the included year ends. Tripwire surfaces are csm-queue.html and finance-os-pull-sweeper.
 
 Slice modules (detail):

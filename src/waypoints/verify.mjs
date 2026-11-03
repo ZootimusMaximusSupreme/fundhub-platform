@@ -15,8 +15,8 @@
 //   dispute_mail_receipt   A client_upload with subtype dispute_mail_receipt on
 //                          this client's documents row closes the step.
 //
-//   bureau_response_upload Any document with kind bureau_response on this client
-//                          closes the step.
+//   bureau_response_upload A current-version bureau response accepted by the
+//                          server reader closes this upload step.
 //
 //   no_new_credit  Evidence flows ONE WAY. A revolving account on the new file
 //                  that we can POSITIVELY SAY was not on the file at enrolment
@@ -68,6 +68,8 @@ import {
   WaypointError
 } from "./store.mjs";
 import { latestCreditFile } from "./seed.mjs";
+import { currentBureauResponseValidation } from "../repair/response-agent.mjs";
+import { withTransaction } from "../db/with-transaction.mjs";
 
 /** How a paydown waypoint reads against one account. Pure, so the whole
  *  decision can be tested without a database.
@@ -185,20 +187,22 @@ export function judgeDisputeMailReceipt(documents = []) {
     : { verdict: "open", reason: "no_dispute_mail_receipt" };
 }
 
-/** Whether a bureau response upload is on file. Pure — no database. */
+/** A received file closes this upload step only after its current version passed
+ * the server reader. This does not verify an underlying credit-file change. */
 export function judgeBureauResponseUpload(documents = []) {
-  const hit = documents.some((d) => d?.kind === "bureau_response");
+  const hit = documents.some((d) => d?.kind === "bureau_response" && currentBureauResponseValidation(d)?.status === "accepted");
   return hit
-    ? { verdict: "complete", reason: "bureau_response_uploaded" }
-    : { verdict: "open", reason: "no_bureau_response" };
+    ? { verdict: "complete", reason: "bureau_response_validated" }
+    : { verdict: "open", reason: "no_validated_bureau_response" };
 }
 
 const DOCUMENT_VERIFY_KINDS = new Set(["dispute_mail_receipt", "bureau_response_upload"]);
 
 async function loadClientDocumentKinds(db, { orgId, clientId }) {
   const r = await db.query(
-    `SELECT kind, subtype FROM documents
-      WHERE org_id = $1::uuid AND client_id = $2::uuid`,
+    `SELECT id, kind, subtype, current_version_id, metadata FROM documents
+      WHERE org_id = $1::uuid AND client_id = $2::uuid
+        AND (expires_at IS NULL OR expires_at > now())`,
     [orgId, clientId]
   );
   return r.rows || [];
@@ -302,9 +306,20 @@ export async function evaluateWaypoints(db, {
     }
 
     if (w.verify_kind === "bureau_response_upload") {
-      const judged = judgeBureauResponseUpload(documents);
+      const judged = await withTransaction(db, async tx => {
+        // Hold the current proof through completion so an unreviewed replacement
+        // cannot race between this read and the stored waypoint change.
+        const proof = (await tx.query(
+          `SELECT id, kind, subtype, current_version_id, metadata FROM documents
+            WHERE org_id = $1::uuid AND client_id = $2::uuid AND kind = 'bureau_response'
+              AND (expires_at IS NULL OR expires_at > now()) FOR SHARE`,
+          [orgId, clientId]
+        )).rows;
+        const result = judgeBureauResponseUpload(proof);
+        if (result.verdict === "complete") await completeWaypoint(tx, { orgId, clientId, key: w.key, at: now });
+        return result;
+      });
       if (judged.verdict === "complete") {
-        await completeWaypoint(db, { orgId, clientId, key: w.key, at: now });
         completed.push({ key: w.key, reason: judged.reason });
       } else {
         unchanged.push({ key: w.key, reason: judged.reason });

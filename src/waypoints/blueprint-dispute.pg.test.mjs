@@ -14,6 +14,7 @@ import { seedClientWaypoints } from "./seed.mjs";
 import { evaluateWaypoints } from "./verify.mjs";
 import { listWaypoints } from "./store.mjs";
 import { seedChecklistForPurchase, BLUEPRINT_PRODUCT_CODE } from "./purchase.mjs";
+import { processBureauResponse } from "../repair/response-agent.mjs";
 
 /* A test identity, so the simulator never reads the owner's gitignored file
    (credentials/sim-identity/owner-identity.local.json). That file exists only
@@ -135,7 +136,7 @@ describe("Capital Blueprint dispute waypoints", { skip: !HAVE_DB ? "no DATABASE_
     }
   });
 
-  test("upload proof closes document-verify waypoints without a credit re-pull", async () => {
+  test("a response upload stays open until its actual current version passes review, without a credit re-pull", async () => {
     await db.query(
       `INSERT INTO documents
          (org_id, client_id, document_key, kind, subtype, title, storage_key, mime_type, generated_at)
@@ -150,18 +151,36 @@ describe("Capital Blueprint dispute waypoints", { skip: !HAVE_DB ? "no DATABASE_
       "mail receipt upload closes the step"
     );
 
-    await db.query(
+    const response = (await db.query(
       `INSERT INTO documents
          (org_id, client_id, document_key, kind, subtype, title, storage_key, mime_type, generated_at)
        VALUES ($1,$2,$3,'bureau_response','bureau_letter','Bureau reply',
-               'test/blueprint/bureau.pdf','application/pdf','2026-10-01T00:00:00Z')`,
+               'test/blueprint/bureau.pdf','application/pdf','2026-10-01T00:00:00Z') RETURNING id`,
       [org, client, `bureau_response|bureau_letter|${client}`]
-    );
+    )).rows[0];
+
+    const unreviewed = await evaluateWaypoints(db, { orgId: org, clientId: client, now: ENROLLED_AT });
+    assert.ok(!unreviewed.completed.some(c => c.key === "blueprint_dispute_bureau_response"), "upload alone is not reviewed proof");
+    const version = (await db.query(
+      `INSERT INTO document_versions (org_id, document_id, version, storage_key, mime_type)
+       VALUES ($1,$2,1,'test/blueprint/bureau.pdf','application/pdf') RETURNING id`, [org, response.id]
+    )).rows[0];
+    await db.query("UPDATE documents SET current_version_id=$2 WHERE id=$1", [response.id, version.id]);
+    const reviewed = await processBureauResponse(db, {
+      orgId: org, clientId: client, documentId: response.id, versionId: version.id,
+      bytes: Buffer.from("synthetic bureau response"), mimeType: "application/pdf", items: [],
+      callModelImpl: async () => ({ text: JSON.stringify({ quality: "pass", document_type: "bureau_response",
+        recipient_name: "Dispute Seed", authenticity: "clear", bureau_guess: "EX", text: "Experian response addressed to Dispute Seed." }) }),
+      createTaskImpl: async () => ({ created: true, id: "synthetic-review-task" }),
+      sendTemplatedImpl: async () => { throw new Error("no live provider belongs in this fixture"); },
+      onEvent: async () => { throw new Error("no repair case belongs in this fixture"); }
+    });
+    assert.equal(reviewed.validation.status, "accepted");
 
     const out2 = await evaluateWaypoints(db, { orgId: org, clientId: client, now: ENROLLED_AT });
     assert.ok(
       out2.completed.some((c) => c.key === "blueprint_dispute_bureau_response"),
-      "bureau response upload closes the step"
+      "accepted current-version response closes the document review step"
     );
   });
 });

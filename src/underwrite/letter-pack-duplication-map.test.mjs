@@ -160,7 +160,8 @@ describe("the funding pack carries the Business Duplication Map", () => {
     assert.equal(plain.duplicationMapSkip, null);
     const t = textOf(htmlOf(plain.files.find((f) => f.type === "business_duplication_map")));
     assert.match(t, /No company is on your file yet, so there is no Experian Business check to run\./);
-    assert.match(t, /Open company one, set up right/);
+    assert.match(t, /Review your starting situation and separate business plans below\./);
+    assert.match(t, /Plan three or four separate single-member LLCs/);
   });
 
   test("a saved company the pull brought no report for is checked as far as the file goes", async () => {

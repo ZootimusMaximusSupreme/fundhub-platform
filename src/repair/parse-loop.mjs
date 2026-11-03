@@ -1,6 +1,8 @@
 import { parseResponseText } from "../metro2/inbound/parse-response.mjs";
 import { confirmParse, isRealStaffId } from "../metro2/inbound/confirm.mjs";
 import { onRepairEvent } from "./handlers.mjs";
+import { currentBureauResponseValidation } from "./response-agent.mjs";
+import { withTransaction } from "../db/with-transaction.mjs";
 
 const OPENISH = new Set(["open", "sent", "unaddressed", "escalated", "verified"]);
 export const AUTO_THRESHOLD = 0.85;
@@ -59,12 +61,18 @@ export async function runParseAdvanceLoop(db, {
   orgId, clientId, text, items: itemsIn = null,
   autoConfirmThreshold = AUTO_THRESHOLD,
   confirmedBy = null,
-  onEvent = onRepairEvent
+  onEvent = onRepairEvent, requireDocumentValidation = false, documentValidation = null, requireHumanReview = false
 } = {}) {
   const items = itemsIn || await loadOpenDisputeItems(db, { orgId, clientId });
   const parseResult = parseResponseText({ text, items });
+  if (documentValidation) parseResult.document_validation = { ...documentValidation };
+  if (requireHumanReview) { parseResult.needsConfirm = true; parseResult.requiresHumanReview = true; }
+  if (requireDocumentValidation) {
+    parseResult.requiresDocumentValidation = true;
+    parseResult.needsConfirm = true;
+  }
   const caseId = items[0]?.case_id || items[0]?.caseId || null;
-  if (!caseId) return { ok: false, reason: "no_open_items", parseResult, status: "skipped" };
+  if (!caseId) return { ok: requireDocumentValidation, reason: requireDocumentValidation ? "source_document_required" : "no_open_items", parseResult, status: requireDocumentValidation ? "held" : "skipped" };
 
   const needsHuman = parseResult.needsConfirm || Number(parseResult.confidence) < autoConfirmThreshold;
   if (needsHuman) {
@@ -125,6 +133,7 @@ export async function confirmHeldParse(db, {
   orgId, responseId, confirmedBy, confirmedOutcomes = null, onEvent = onRepairEvent
 } = {}) {
   if (!db || !responseId) return { ok: false, reason: "missing_args" };
+  return withTransaction(db, async db => {
   const r = await db.query(`SELECT * FROM dispute_responses WHERE id = $1 AND org_id = $2`, [responseId, orgId]);
   const row = r.rows[0];
   if (!row) return { ok: false, reason: "not_found" };
@@ -132,6 +141,18 @@ export async function confirmHeldParse(db, {
   const parseResult = row.parse_json && typeof row.parse_json === "object"
     ? row.parse_json
     : { outcomes: [], confidence: Number(row.confidence) || 0, needsConfirm: true };
+  if (parseResult.requiresDocumentValidation) return { ok: false, reason: "source_document_required" };
+  if (parseResult.document_validation) {
+    const source = parseResult.document_validation;
+    const document = (await db.query(
+      `SELECT id, kind, current_version_id, metadata FROM documents
+        WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid
+          AND kind = 'bureau_response' AND current_version_id = $4::uuid
+          AND (expires_at IS NULL OR expires_at > now()) FOR UPDATE`,
+      [source.document_id, orgId, row.client_id, source.version_id]
+    )).rows[0];
+    if (currentBureauResponseValidation(document)?.status !== "accepted") return { ok: false, reason: "source_document_not_validated" };
+  }
   const items = await loadOpenDisputeItems(db, { orgId, clientId: row.client_id });
   const caseItems = items.filter((it) => String(it.case_id) === String(row.case_id));
   const useItems = caseItems.length ? caseItems : items;
@@ -151,4 +172,5 @@ export async function confirmHeldParse(db, {
       payload: { response_id: responseId, confidence: parseResult.confidence, case_id: row.case_id, confirmed_by: confirmedBy || null, log: confirmed.log || [] } });
   }
   return { ok: true, status: "advanced", event: "repair.response.parsed", responseId, advanced: confirmed };
+  });
 }
