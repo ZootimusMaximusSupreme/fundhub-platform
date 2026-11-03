@@ -3,9 +3,9 @@
 //
 // Finishes Plaid Link: trades the public_token, stores the encrypted item, reads
 // every account on it (checking, savings, credit cards) and saves them. Same
-// gate as link-token: staff (FINANCE, client in their org) or a signed-in client
-// for their OWN file — the client_id then comes off the session and a client_id
-// in the body is never read. The access token never appears in a response.
+// gate as link-token: the signed-in client for their OWN file, with the same
+// MFA and consent grant used to open Link. Staff client exchange is refused.
+// The access token never appears in a response.
 import { db } from "../../src/db.mjs";
 import { requireAuth, AUTH_UNAVAILABLE } from "../../src/http/middleware/requireAuth.mjs";
 import { resolvePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
@@ -13,6 +13,7 @@ import { installClientSamples } from "../../src/demo/client-portal-samples.mjs";
 import { ROLE_SETS, requireRole, isUuid } from "../../src/http/read-api.mjs";
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { completeLink } from "../../src/banking/plaid-link.mjs";
+import { advanceAccountPlaidLink } from "../../src/auth/account-plaid-mfa.mjs";
 import { describeAccount } from "../../src/banking/accounts-store.mjs";
 import { readBody } from "./sync-accounts.mjs";
 
@@ -36,6 +37,18 @@ export default async function handler(req, res, deps = {}) {
   if (!body.public_token || typeof body.public_token !== "string") {
     return res.status(400).json({ ok: false, error: "public_token is required" });
   }
+  let consentAt = null;
+  let consentScope = null;
+  if (scope.kind === "client") {
+    const grant = await (deps.advanceGrant || advanceAccountPlaidLink)(database, {
+      token: body.plaid_grant_token, orgId: scope.orgId, accountId: scope.accountId,
+      sessionId: scope.sessionId, targetKind: "client_bank", targetId: scope.clientId,
+      stage: "exchange"
+    });
+    if (!grant) return res.status(403).json({ ok: false, error: "plaid_mfa_consent_required" });
+    consentAt = grant.consent_granted_at;
+    consentScope = grant.consent_scope;
+  } else return res.status(403).json({ ok: false, error: "client_consent_required" });
 
   const institution = body.institution && typeof body.institution === "object"
     ? { institution_id: body.institution.institution_id ?? null, name: body.institution.name ?? null }
@@ -47,6 +60,8 @@ export default async function handler(req, res, deps = {}) {
     publicToken: body.public_token,
     institution,
     asOf: clock().toISOString(),
+    consentAt,
+    consentScope,
     env
   });
   if (!r.ok) {
@@ -77,8 +92,8 @@ export default async function handler(req, res, deps = {}) {
    handler's own text for its gate.
 
    A CLIENT session is pinned to its own client_id from the session. Staff go
-   through the unchanged staff gate: requireAuth, FINANCE, client_id in the
-   body, client in their org. Any other principal kind (affiliate, partner) is
+   through their role and org checks, then are refused for client Link. Any
+   other principal kind (affiliate, partner) is
    refused. No session at all falls through to requireAuth, which answers 401. */
 async function clientScope(req, res, { database, auth, resolve, env } = {}) {
   const who = await resolve(req, { db: database, env });
@@ -96,7 +111,8 @@ async function clientScope(req, res, { database, auth, resolve, env } = {}) {
       return null;
     }
     if (!(await requireClientInOrg(res, database, { org_id: orgId }, clientId))) return null;
-    return { orgId, clientId };
+    return { kind: "client", orgId, clientId, accountId: who.accountId,
+      sessionId: who.sessionId };
   }
   if (who && who.kind !== "staff") {
     res.status(403).json({ ok: false, error: "forbidden", message: "this endpoint serves staff, client" });
@@ -118,5 +134,5 @@ async function clientScope(req, res, { database, auth, resolve, env } = {}) {
     return null;
   }
   if (!(await requireClientInOrg(res, database, staff, String(clientId).trim()))) return null;
-  return { orgId: staff.org_id, clientId: String(clientId).trim() };
+  return { kind: "staff", orgId: staff.org_id, clientId: String(clientId).trim() };
 }

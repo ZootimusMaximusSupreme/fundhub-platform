@@ -31,6 +31,8 @@ A person's setup step (for example "connect your calendar so booked calls land o
 
 The tripwire map (`src/pulse/tripwires.mjs`) is where every page, route, job and send is sorted: money or customer names its deep check, the rest says why it is not customer-facing. A new one fails the tests until it is sorted. That is what sews the tripwires into every build.
 
+The monthly `retention-review` job runs on the Netlify clock at 04:00 UTC on the 1st. It counts expired records for each org and writes a count-only `retention_run_receipts` review row keyed to the month. It does not delete or change customer data. The job heartbeat goes red after a missed run; a reviewed purge still needs an owner or admin to invoke `scripts/retention-purge.mjs --apply`, which writes an apply receipt in the same database transaction as the purge.
+
 The client marketing-push switch is watched in both clocks. The morning `marketing-push:preference-shape` tripwire and the hourly `native-push` beat read saved client choices and go red if a present choice is not a true or false value. The hourly beat also checks that the switch route requires sign-in, before it checks APNs setup. Neither check claims a notification reached a phone.
 
 The native app-open receipt route is also watched by the hourly `native-push` beat. For the default company, it compares each visible Sales card's app-open time, read with the board route's held SQL, with an independent company-scoped read of saved iPhone receipts. Missing or mismatched times and refused reads stay red. An absent receipt is valid only when the card also shows no open. This is stored-result proof, not an installed-app login or APNs delivery receipt.

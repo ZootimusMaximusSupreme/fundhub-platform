@@ -46,25 +46,24 @@ describe("POST /api/banking/link-token", () => {
     assert.equal(res.statusCode, 404);
   });
 
-  test("503 names missing keys when Plaid is not configured", async () => {
-    const res = makeRes();
-    await linkToken({ method: "POST", body: { client_id: CLIENT_ID } }, res,
-      { db: db(), requireAuth: authAs(OWNER), env: {} });
-    assert.equal(res.statusCode, 503);
-    assert.ok(res.body.missing.includes("PLAID_SECRET"));
-  });
-
-  test("200 hands back the link token", async () => {
+  test("staff cannot mint a client Link token without the client's own consent", async () => {
     const res = makeRes();
     await linkToken({ method: "POST", body: { client_id: CLIENT_ID } }, res, {
       db: db(), requireAuth: authAs(OWNER),
-      startLink: async ({ clientId }) => {
-        assert.equal(clientId, CLIENT_ID);
-        return { ok: true, linkToken: "link-sandbox-x", expiration: "2026-10-06T00:00:00Z", environment: "sandbox" };
-      }
+      startLink: async () => assert.fail("staff cannot open client Link")
     });
-    assert.equal(res.statusCode, 200);
-    assert.equal(res.body.link_token, "link-sandbox-x");
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.error, "client_consent_required");
+  });
+
+  test("staff cannot exchange a client's public token", async () => {
+    const res = makeRes();
+    await linkExchange({ method: "POST", body: { client_id: CLIENT_ID, public_token: "public-x" } }, res, {
+      db: db(), requireAuth: authAs(OWNER),
+      completeLink: async () => assert.fail("staff cannot exchange client Link")
+    });
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.error, "client_consent_required");
   });
 });
 
@@ -76,7 +75,7 @@ describe("POST /api/banking/link-exchange", () => {
     assert.equal(res.statusCode, 400);
   });
 
-  test("org comes from the session, never the body", async () => {
+  test("staff exchange is denied even when it supplies an org", async () => {
     const res = makeRes();
     let seen;
     await linkExchange({ method: "POST", body: { client_id: CLIENT_ID, public_token: "public-x", org_id: "evil" } }, res, {
@@ -90,11 +89,8 @@ describe("POST /api/banking/link-exchange", () => {
         };
       }
     });
-    assert.equal(res.statusCode, 200);
-    assert.equal(seen.orgId, "org-1");
-    assert.equal(seen.asOf, "2026-10-06T12:00:00.000Z");
-    assert.equal(res.body.accounts[0].type, "credit");
-    assert.equal(JSON.stringify(res.body).includes("access"), false, "no token in the response");
+    assert.equal(res.statusCode, 403);
+    assert.equal(seen, undefined);
   });
 });
 
@@ -102,7 +98,15 @@ describe("POST /api/banking/link-exchange", () => {
    session; a client_id in the body is never read. Staff paths above are
    unchanged. */
 const OTHER_CLIENT = "99999999-8888-7777-6666-555555555555";
-const asClient = (clientId = CLIENT_ID) => async () => ({ kind: "client", accountId: "acc-1", orgId: "org-1", clientId });
+const asClient = (clientId = CLIENT_ID) => async () => ({ kind: "client", accountId: "acc-1", sessionId: "session-1", orgId: "org-1", clientId });
+const grant = async (_db, args) => {
+  assert.equal(args.accountId, "acc-1");
+  assert.equal(args.sessionId, "session-1");
+  assert.equal(args.targetId, CLIENT_ID);
+  assert.equal(args.targetKind, "client_bank");
+  assert.equal(args.token, "grant-token");
+  return { consent_granted_at: "2026-10-06T11:59:00Z", consent_scope: ["accounts", "balances", "transactions"] };
+};
 const noStaff = async () => assert.fail("a client session must not go through the staff gate");
 const scopedDb = (inOrg = [CLIENT_ID]) => ({
   query: async (sql, params) => (/FROM clients/.test(sql)
@@ -114,8 +118,9 @@ describe("client session — POST /api/banking/link-token", () => {
   test("opens Link for the session's own file", async () => {
     const res = makeRes();
     let seen;
-    await linkToken({ method: "POST", body: {} }, res, {
+    await linkToken({ method: "POST", body: { plaid_grant_token: "grant-token" } }, res, {
       db: scopedDb(), resolvePrincipal: asClient(), requireAuth: noStaff,
+      advanceGrant: grant,
       startLink: async ({ clientId }) => { seen = clientId; return { ok: true, linkToken: "link-sandbox-c", expiration: "e", environment: "sandbox" }; }
     });
     assert.equal(res.statusCode, 200);
@@ -126,8 +131,9 @@ describe("client session — POST /api/banking/link-token", () => {
   test("a client_id in the body for another client is ignored", async () => {
     const res = makeRes();
     let seen;
-    await linkToken({ method: "POST", body: { client_id: OTHER_CLIENT } }, res, {
+    await linkToken({ method: "POST", body: { client_id: OTHER_CLIENT, plaid_grant_token: "grant-token" } }, res, {
       db: scopedDb([CLIENT_ID, OTHER_CLIENT]), resolvePrincipal: asClient(), requireAuth: noStaff,
+      advanceGrant: grant,
       startLink: async ({ clientId }) => { seen = clientId; return { ok: true, linkToken: "l", expiration: "e", environment: "sandbox" }; }
     });
     assert.equal(res.statusCode, 200);
@@ -141,6 +147,16 @@ describe("client session — POST /api/banking/link-token", () => {
       startLink: async () => assert.fail("must not start")
     });
     assert.equal(res.statusCode, 403);
+  });
+
+  test("no MFA and consent grant means no Plaid Link token", async () => {
+    const res = makeRes();
+    await linkToken({ method: "POST", body: {} }, res, {
+      db: scopedDb(), resolvePrincipal: asClient(), requireAuth: noStaff,
+      startLink: async () => assert.fail("must not open")
+    });
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.error, "plaid_mfa_consent_required");
   });
 
   test("an affiliate or partner session is 403", async () => {
@@ -171,21 +187,22 @@ describe("client session — POST /api/banking/link-exchange", () => {
   test("saves the bank under the session's own client and org", async () => {
     const res = makeRes();
     const box = {};
-    await linkExchange({ method: "POST", body: { public_token: "public-c", org_id: "evil" } }, res, {
+    await linkExchange({ method: "POST", body: { public_token: "public-c", org_id: "evil", plaid_grant_token: "grant-token" } }, res, {
       db: scopedDb(), resolvePrincipal: asClient(), requireAuth: noStaff,
-      now: () => new Date("2026-10-06T12:00:00Z"), completeLink: done(box)
+      now: () => new Date("2026-10-06T12:00:00Z"), completeLink: done(box), advanceGrant: grant
     });
     assert.equal(res.statusCode, 200);
     assert.equal(box.args.clientId, CLIENT_ID);
     assert.equal(box.args.orgId, "org-1");
+    assert.equal(box.args.consentAt, "2026-10-06T11:59:00Z");
   });
 
   test("cannot link into another client's file via the body", async () => {
     const res = makeRes();
     const box = {};
-    await linkExchange({ method: "POST", body: { client_id: OTHER_CLIENT, public_token: "public-c" } }, res, {
+    await linkExchange({ method: "POST", body: { client_id: OTHER_CLIENT, public_token: "public-c", plaid_grant_token: "grant-token" } }, res, {
       db: scopedDb([CLIENT_ID, OTHER_CLIENT]), resolvePrincipal: asClient(), requireAuth: noStaff,
-      completeLink: done(box)
+      completeLink: done(box), advanceGrant: grant
     });
     assert.equal(res.statusCode, 200);
     assert.equal(box.args.clientId, CLIENT_ID);
@@ -198,6 +215,16 @@ describe("client session — POST /api/banking/link-exchange", () => {
       completeLink: async () => assert.fail("must not exchange")
     });
     assert.equal(res.statusCode, 400);
+  });
+
+  test("public token without the same MFA and consent grant is refused", async () => {
+    const res = makeRes();
+    await linkExchange({ method: "POST", body: { public_token: "public-c" } }, res, {
+      db: scopedDb(), resolvePrincipal: asClient(), requireAuth: noStaff,
+      completeLink: async () => assert.fail("must not exchange")
+    });
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.error, "plaid_mfa_consent_required");
   });
 
   test("the session's client gone from the org → 404", async () => {

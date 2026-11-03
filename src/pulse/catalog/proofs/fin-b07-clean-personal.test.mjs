@@ -30,7 +30,7 @@ const STAFF = id(50);
 const NOW = "2026-10-14 12:00:00";
 const OLD = "2026-08-01 09:00:00";
 const TABLES = [
-  "clients", "pii_identity", "plaid_items", "bank_accounts", "bank_transactions", "erasure_requests",
+  "clients", "pii_identity", "plaid_items", "account_plaid_link_grants", "bank_accounts", "bank_transactions", "erasure_requests",
   "crs_results", "tradelines", "soft_pull_requests", "pii_access_log", "transactions", "invoices", "commission_ledger",
 ];
 const DEFAULTS = { erasure_requests: { id: UUID_DEFAULT, created_at: "(datetime('now'))" } };
@@ -47,6 +47,12 @@ function seeded() {
   for (const n of [1, 2]) {
     standIn.insert("pii_identity", { id: id(100 + n), org_id: ORG, client_id: id(n), ssn_enc: "v1:a:b:c", updated_at: OLD });
     standIn.insert("plaid_items", { id: id(200 + n), org_id: ORG, client_id: id(n), plaid_item_id: `pi_${n}`, encrypted_access_token: "v1:a:b:c", created_at: OLD });
+    standIn.insert("account_plaid_link_grants", {
+      id: id(600 + n), token_hash: `grant_${n}`, org_id: ORG, target_kind: "client_bank", target_id: id(n),
+      consent_scope: { accounts: true }, consent_version: "test", consent_text: "Bank connection consent",
+      privacy_url: "https://example.test/privacy", consent_granted_at: OLD, mfa_verified_at: OLD,
+      expires_at: NOW, created_at: OLD,
+    });
     standIn.insert("bank_accounts", { id: id(300 + n), org_id: ORG, client_id: id(n), plaid_item_id: id(200 + n), created_at: OLD });
     for (const t of [1, 2, 3]) {
       standIn.insert("bank_transactions", {
@@ -62,6 +68,12 @@ function seeded() {
     standIn.insert("invoices", { id: id(550 + n), org_id: ORG, client_id: id(n) });
     standIn.insert("commission_ledger", { id: id(560 + n), org_id: ORG, client_id: id(n) });
   }
+  standIn.insert("account_plaid_link_grants", {
+    id: id(603), token_hash: "grant_affiliate", org_id: ORG, target_kind: "affiliate_payout", target_id: SUBJECT,
+    consent_scope: { payouts: true }, consent_version: "test", consent_text: "Payout connection consent",
+    privacy_url: "https://example.test/privacy", consent_granted_at: OLD, mfa_verified_at: OLD,
+    expires_at: NOW, created_at: OLD,
+  });
   return standIn;
 }
 
@@ -104,6 +116,24 @@ test("the identity, the bank logins and the bank accounts are deleted, and the t
       assert.equal(t.merchant_name, null, "the merchant name is scrubbed from every row");
       assert.deepEqual(t.raw, {}, "the provider payload is scrubbed from every row");
     }
+  } finally {
+    standIn.close();
+  }
+});
+
+test("erasure closes only the erased client's open bank-link grant and retains its consent receipt", async () => {
+  const standIn = seeded();
+  try {
+    await erase(standIn);
+    const grants = standIn.rows("account_plaid_link_grants");
+    const subjectBank = grants.find((r) => r.target_kind === "client_bank" && r.target_id === SUBJECT);
+    const neighbourBank = grants.find((r) => r.target_kind === "client_bank" && r.target_id === NEIGHBOUR);
+    const affiliate = grants.find((r) => r.target_kind === "affiliate_payout");
+    assert.equal(subjectBank.consumed_at, NOW, "the open link can no longer be used");
+    assert.equal(subjectBank.consent_text, "Bank connection consent", "the consent receipt stays");
+    assert.equal(subjectBank.consent_granted_at, OLD, "the consent timestamp stays");
+    assert.equal(neighbourBank.consumed_at, null, "the other client's link stays open");
+    assert.equal(affiliate.consumed_at, null, "a payout grant with the same target id stays open");
   } finally {
     standIn.close();
   }

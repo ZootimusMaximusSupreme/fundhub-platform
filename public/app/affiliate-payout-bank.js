@@ -59,7 +59,12 @@
     btn.textContent = "Opening your bank…";
     say("");
     function done() { btn.disabled = false; btn.textContent = label; }
-    post({ action: "link_token" }).then(function (res) {
+    if (!root.FHPlaidStepUp) { done(); say("Bank verification did not load. Refresh and try again."); return; }
+    var grantToken;
+    root.FHPlaidStepUp.authorize("affiliate_payout").then(function (token) {
+      grantToken = token;
+      return post({ action: "link_token", plaid_grant_token: grantToken });
+    }).then(function (res) {
       if (!res || !res.ok || !res.link_token) { done(); say((res && res.message) || "Bank linking is not open right now. Try again later."); return; }
       return loadPlaid().then(function () {
         var handler = root.Plaid.create({
@@ -68,7 +73,8 @@
             btn.textContent = "Saving your bank…";
             var inst = metadata && metadata.institution ? { name: metadata.institution.name || null } : null;
             var acct = metadata && metadata.accounts && metadata.accounts.length === 1 ? metadata.accounts[0].id : null;
-            post({ action: "exchange", public_token: publicToken, institution: inst, account_id: acct }).then(function (r2) {
+            post({ action: "exchange", public_token: publicToken, institution: inst,
+              account_id: acct, plaid_grant_token: grantToken }).then(function (r2) {
               done();
               if (!r2 || !r2.ok) { say((r2 && r2.message) || "The bank did not save. Try again."); return; }
               say("Bank linked. Your next payout goes here.");
@@ -79,6 +85,9 @@
         });
         handler.open();
       }, function () { done(); say("The bank sign-in window did not load. Check your connection and try again."); });
+    }).catch(function (err) {
+      done();
+      if (!err || err.message !== "cancelled") say((err && err.message) || "Bank verification did not work. Try again.");
     });
   }
 

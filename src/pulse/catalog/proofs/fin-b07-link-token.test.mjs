@@ -12,7 +12,7 @@
 // What each case holds:
 //   * a signed-in client is pinned to the file on its own session; a client_id in the body is
 //     never read
-//   * staff may ask only with a finance role, and only for a client of their own company
+//   * staff cannot start a client's Link without that client's own MFA and consent
 //   * an affiliate or partner login is refused
 //   * a missing Plaid key answers 503 and names the missing keys, never a 200 with no token
 
@@ -65,13 +65,14 @@ function minted() {
 const staff = (role, org = COMPANY) => ({ id: "s1", role, org_id: org });
 const post = (body) => ({ method: "POST", body, headers: {} });
 
-async function run(request, { principal = null, authAs = null, startLink, db = clientsDb(), env = {} } = {}) {
+async function run(request, { principal = null, authAs = null, startLink, db = clientsDb(), env = {}, advanceGrant } = {}) {
   const res = makeRes();
   await handler(request, res, {
     db,
     resolvePrincipal: async () => principal,
     requireAuth: async () => authAs,
     startLink,
+    advanceGrant,
     env,
   });
   return { res, db };
@@ -84,10 +85,21 @@ test("only POST is answered", async () => {
   assert.deepEqual(asked, []);
 });
 
-test("a signed-in client gets a token for its own file, and a client_id in the body is never read", async () => {
+const accountPrincipal = { kind: "client", clientId: MINE, orgId: COMPANY,
+  accountId: "account-1", sessionId: "session-1" };
+const approvedGrant = async (_db, args) => {
+  assert.equal(args.accountId, "account-1");
+  assert.equal(args.sessionId, "session-1");
+  assert.equal(args.targetId, MINE);
+  assert.equal(args.token, "grant-token");
+  assert.equal(args.stage, "open");
+  return { id: "grant-1" };
+};
+
+test("a signed-in client with MFA and consent gets a token for its own file", async () => {
   const { startLink, asked } = minted();
-  const principal = { kind: "client", clientId: MINE, orgId: COMPANY };
-  const { res } = await run(post({ client_id: SOMEONE_ELSES }), { principal, startLink });
+  const { res } = await run(post({ client_id: SOMEONE_ELSES, plaid_grant_token: "grant-token" }),
+    { principal: accountPrincipal, startLink, advanceGrant: approvedGrant });
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.body, { ok: true, link_token: "link-sandbox-fake", expiration: "2026-10-15T00:00:00Z", environment: "sandbox" });
   assert.deepEqual(asked, [MINE], "the token must be minted for the session's own client, never the body's");
@@ -109,12 +121,13 @@ test("a client login with no file attached is refused before any lookup", async 
   assert.deepEqual(db.calls, []);
 });
 
-test("staff with a finance role get a token for a client of their own company", async () => {
+test("staff finance roles cannot bypass the client's own consent", async () => {
   for (const role of FINANCE_ROLES) {
     const { startLink, asked } = minted();
     const { res } = await run(post({ client_id: MINE }), { principal: { kind: "staff" }, authAs: staff(role), startLink });
-    assert.equal(res.statusCode, 200, role);
-    assert.deepEqual(asked, [MINE], role);
+    assert.equal(res.statusCode, 403, role);
+    assert.equal(res.body.error, "client_consent_required");
+    assert.deepEqual(asked, [], role);
   }
 });
 
@@ -156,12 +169,14 @@ test("an affiliate or partner login is refused", async () => {
 test("Plaid not configured answers 503 with the missing keys, and an upstream error answers 502", async () => {
   const notConfigured = async () => ({ ok: false, reason: "not_configured", missing: ["PLAID_SECRET"] });
   const upstream = async () => ({ ok: false, reason: "upstream_error", error: "plaid said no" });
-  const principal = { kind: "client", clientId: MINE, orgId: COMPANY };
-  const a = await run(post({}), { principal, startLink: notConfigured });
+  const principal = accountPrincipal;
+  const a = await run(post({ plaid_grant_token: "grant-token" }),
+    { principal, startLink: notConfigured, advanceGrant: approvedGrant });
   assert.equal(a.res.statusCode, 503);
   assert.deepEqual(a.res.body.missing, ["PLAID_SECRET"]);
   assert.equal(a.res.body.link_token, undefined);
-  const b = await run(post({}), { principal, startLink: upstream });
+  const b = await run(post({ plaid_grant_token: "grant-token" }),
+    { principal, startLink: upstream, advanceGrant: approvedGrant });
   assert.equal(b.res.statusCode, 502);
   assert.equal(b.res.body.link_token, undefined);
 });
@@ -208,8 +223,8 @@ test("the real startLink tells Plaid the client's own id, and only asks Plaid on
 
 test("through the door: a client's session id, not the body's, is what reaches Plaid", async () => {
   await withPlaidStandIn(async (requests) => {
-    const { res } = await run(post({ client_id: SOMEONE_ELSES }), {
-      principal: { kind: "client", clientId: MINE, orgId: COMPANY },
+    const { res } = await run(post({ client_id: SOMEONE_ELSES, plaid_grant_token: "grant-token" }), {
+      principal: accountPrincipal, advanceGrant: approvedGrant,
       startLink: realStartLink,
       env: plaidEnv(),
     });
@@ -220,13 +235,12 @@ test("through the door: a client's session id, not the body's, is what reaches P
   });
 });
 
-test("through the door: a staff member's chosen client is what reaches Plaid, and a refused staff member reaches nothing", async () => {
+test("through the door: staff finance and non-finance roles reach no client Plaid Link", async () => {
   await withPlaidStandIn(async (requests) => {
     const ok = await run(post({ client_id: MINE }), { principal: { kind: "staff" }, authAs: staff("owner"), startLink: realStartLink, env: plaidEnv() });
-    assert.equal(ok.res.statusCode, 200);
-    assert.equal(requests[0].body.user.client_user_id, MINE);
+    assert.equal(ok.res.statusCode, 403);
     const refused = await run(post({ client_id: MINE }), { principal: { kind: "staff" }, authAs: staff("setter"), startLink: realStartLink, env: plaidEnv() });
     assert.equal(refused.res.statusCode, 403);
-    assert.equal(requests.length, 1, "a refused role asks Plaid for nothing");
+    assert.equal(requests.length, 0, "staff cannot ask Plaid for a client Link");
   });
 });
