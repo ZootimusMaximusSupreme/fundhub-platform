@@ -31,6 +31,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { FILE_OVERLAP_CUTOVER } from "./release-control.mjs";
+import { orderOf, recordedParentHead } from "./restack-after-merge.mjs";
 
 const BASE = "origin/main";
 
@@ -140,10 +141,71 @@ export function inheritedOrderedRefs(sources, childRefs, isAncestor) {
   return inherited;
 }
 
-export function excludeExpectedBase(sources, expectedBase) {
+// A restacked parent can have a new tip while the child's source preflight
+// deliberately compares against its archived old parent. Resolve that identity
+// only from the current ordered PR and independently matching GitHub/Git refs.
+export function recordedExpectedParent(prs, current, expectedBase, readGit = git) {
+  if (!/^[a-f0-9]{40}$/i.test(expectedBase || "")) return null;
+  const base = expectedBase.toLowerCase();
+  const children = prs.filter((pr) => pr.headRefName === current);
+  if (children.length !== 1) return null;
+  const child = children[0];
+  const oneOrder = (pr) => (pr.labels || []).filter((label) => /^ship-order\//.test(typeof label === "string" ? label : label.name || "")).length === 1;
+  const position = orderOf(child);
+  if (!oneOrder(child) || !position || position < 2 || recordedParentHead(child) !== base
+      || [...(child.body || "").matchAll(/^Stack parent head:/gim)].length !== 1) return null;
+  const parents = prs.filter((pr) => orderOf(pr) === position - 1);
+  if (prs.filter((pr) => orderOf(pr) === position).length !== 1 || parents.length !== 1) return null;
+  const parent = parents[0];
+  if (!oneOrder(parent) || prs.filter((pr) => pr.headRefName === parent.headRefName).length !== 1
+      || child.baseRefName !== parent.headRefName || parent.headRefName === current
+      || !/^[a-f0-9]{40}$/i.test(parent.headRefOid || "")
+      || !/^[a-f0-9]{40}$/i.test(child.headRefOid || "")) return null;
+  const head = readGit(["rev-parse", "HEAD"]);
+  const branch = readGit(["symbolic-ref", "--short", "HEAD"]);
+  const parentHead = parent.headRefOid.toLowerCase();
+  const remote = (ref) => {
+    const output = readGit(["ls-remote", "--refs", "origin", ref]);
+    const rows = lines(output).map((row) => row.split(/\s+/));
+    return rows.length === 1 && rows[0][1] === ref ? rows[0][0] : null;
+  };
+  const tracking = (name) => readGit(["rev-parse", "--verify", `refs/remotes/origin/${name}`]);
+  if (branch !== current || !head || readGit(["cat-file", "-t", base]) !== "commit" || tracking(current) !== child.headRefOid
+      || remote(`refs/heads/${current}`) !== child.headRefOid
+      || readGit(["merge-base", "--is-ancestor", base, head]) === null
+      || readGit(["merge-base", "--is-ancestor", child.headRefOid, head]) === null
+      || tracking(parent.headRefName) !== parentHead
+      || remote(`refs/heads/${parent.headRefName}`) !== parentHead
+      || readGit(["rev-parse", "--verify", `refs/heads/${parent.headRefName}`]) !== parentHead) return null;
+  if (base !== parentHead) {
+    const tags = [`refs/tags/archive/${parent.headRefName}`, `refs/tags/archive/${parent.headRefName}-${base.slice(0, 8)}`];
+    if (!tags.some((tag) => {
+      const rows = lines(readGit(["ls-remote", "origin", tag, `${tag}^{}`])).map((row) => row.split(/\s+/));
+      if (!rows.length || rows.some((row) => ![tag, `${tag}^{}`].includes(row[1]))) return false;
+      const direct = rows.filter((row) => row[1] === tag);
+      const peeled = rows.filter((row) => row[1] === `${tag}^{}`);
+      return direct.length === 1 && peeled.length <= 1 && (peeled[0]?.[0] || direct[0][0]) === base;
+    })) return null;
+  }
+  // Do not accept refs which moved during the network reads above.
+  if (readGit(["rev-parse", "HEAD"]) !== head || readGit(["symbolic-ref", "--short", "HEAD"]) !== current
+      || tracking(current) !== child.headRefOid || remote(`refs/heads/${current}`) !== child.headRefOid
+      || tracking(parent.headRefName) !== parentHead
+      || readGit(["rev-parse", "--verify", `refs/heads/${parent.headRefName}`]) !== parentHead
+      || remote(`refs/heads/${parent.headRefName}`) !== parentHead) return null;
+  return { branch: parent.headRefName, head: parentHead, prNumber: parent.number };
+}
+
+export function excludeExpectedBase(sources, expectedBase, recordedParent = null) {
   if (!expectedBase) return sources;
   const name = expectedBase.replace(/^origin\//, "");
-  return sources.filter((source) => source.refName !== name);
+  const recordedSha = /^[a-f0-9]{40}$/i.test(expectedBase);
+  return sources.filter((source) => {
+    if (!recordedSha && source.refName === name) return false;
+    if (!recordedParent || source.refName !== recordedParent.branch) return true;
+    if (source.kind === "pr") return source.prNumber !== recordedParent.prNumber || source.sha !== recordedParent.head;
+    return source.kind !== "branch" || source.sha !== recordedParent.head;
+  });
 }
 
 // A prior PR may hand one file to this branch. The handoff is exact, and Git
@@ -341,17 +403,17 @@ export function main(argv = process.argv.slice(2)) {
 
   // 1. Local branches with recent commits not on origin/main.
   const refs = lines(
-    git(["for-each-ref", "--format=%(refname:short) %(committerdate:unix)", "refs/heads"])
+    git(["for-each-ref", "--format=%(refname:short) %(committerdate:unix) %(objectname)", "refs/heads"])
   );
   for (const r of refs) {
-    const [name, ts] = r.split(" ");
+    const [name, ts, sha] = r.split(" ");
     if (name === current || name === "main" || Number(ts) < sinceSec) continue;
     if (Number(git(["rev-list", "--count", `${BASE}..${name}`]) || 0) === 0) continue;
     // Files the branch changed (three dots) that still differ from main today (two dots).
     // This drops work that already landed, e.g. a squash-merged branch never deleted.
     const stillDiffers = new Set(lines(git(["diff", "--name-only", BASE, name])));
     const files = lines(git(["diff", "--name-only", `${BASE}...${name}`])).filter((f) => stillDiffers.has(f));
-    if (files.length) sources.push({ label: `branch ${name}`, refName: name, kind: "branch",
+    if (files.length) sources.push({ label: `branch ${name}`, refName: name, sha, kind: "branch",
       active: worktrees.some((wt) => wt.branch === name && !wt.prunable), files });
   }
 
@@ -371,7 +433,7 @@ export function main(argv = process.argv.slice(2)) {
 
   // 3. Open pull requests on GitHub.
   const prJson = run("gh", ["pr", "list", "--state", "open", "--limit", "100",
-    "--json", "number,title,headRefName,baseRefName,files,labels,body,createdAt"], { cwd: top });
+    "--json", "number,title,headRefName,headRefOid,baseRefName,files,labels,body,createdAt"], { cwd: top });
   let openPrs = [];
   if (prJson === null) {
     notes.push("GitHub PR list was unavailable; open pull requests were not checked.");
@@ -384,6 +446,7 @@ export function main(argv = process.argv.slice(2)) {
         sources.push({
           label: `PR #${pr.number} ${pr.headRefName}`,
           refName: pr.headRefName,
+          sha: pr.headRefOid,
           kind: "pr",
           prNumber: pr.number,
           prCreatedAt: pr.createdAt,
@@ -417,7 +480,9 @@ export function main(argv = process.argv.slice(2)) {
   if (inheritedRefs.size > childRefs.size) {
     notes.push(`Excluded ${inheritedRefs.size - childRefs.size} branch(es) built on ordered children; their inherited files are already in this chain.`);
   }
-  const collisionSources = excludeExpectedBase(sources, args.expectedBase)
+  const recordedParent = recordedExpectedParent(openPrs, current, args.expectedBase);
+  if (recordedParent) notes.push(`Verified recorded parent ${args.expectedBase} belongs to ordered parent ${recordedParent.branch}; only its matching committed tip is excluded.`);
+  const collisionSources = excludeExpectedBase(sources, args.expectedBase, recordedParent)
     .filter((source) => !inheritedRefs.has(source.refName));
   const handoff = resolveFileHandoffs(collisionSources, openPrs, current, canMergeFile);
   for (const item of handoff.accepted) {
