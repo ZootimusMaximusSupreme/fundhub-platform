@@ -58,8 +58,12 @@ const CLIENT_LIGHT_AFFILIATE = ["affiliates/payout-account"];
    an existing session. The generic empty-body probe sees its 400 token prompt
    for every caller; it cannot mint a staff challenge for an outside account. */
 const STAFF_MFA_CHALLENGE = ["auth/mfa"];
+/* The account Plaid MFA door allows client and affiliate kinds, then requires
+   a concrete bank/payout target and a full account session. The generic empty
+   probe has neither, so it correctly receives 403 after the kind check. */
+const ACCOUNT_PLAID_MFA_TARGET = ["auth/plaid-mfa"];
 const EXPECTED_DISAGREEMENTS = {
-  client: [...CLIENT_OWN_FILE, ...CLIENT_LIGHT_AFFILIATE, ...STAFF_MFA_CHALLENGE, "auth/authorized-rep-file"],
+  client: [...CLIENT_OWN_FILE, ...CLIENT_LIGHT_AFFILIATE, ...STAFF_MFA_CHALLENGE, ...ACCOUNT_PLAID_MFA_TARGET, "auth/authorized-rep-file"],
   // All nine approved primary employee roles may enroll their own native device.
   "role-sales-manager": [...VALIDATES_BODY_FIRST],
   // A closer may create a payment link and is refused every other action: the
@@ -70,7 +74,7 @@ const EXPECTED_DISAGREEMENTS = {
   // This route has two doors. The static journey sees its signed playback URL;
   // the session-only probe sends no signature and therefore reaches the
   // metadata door, which correctly refuses affiliate and partner sessions.
-  affiliate: ["content/welcome-video", "money/setup", ...CLIENT_LIGHT_AFFILIATE, ...STAFF_MFA_CHALLENGE],
+  affiliate: ["content/welcome-video", "money/setup", ...CLIENT_LIGHT_AFFILIATE, ...STAFF_MFA_CHALLENGE, ...ACCOUNT_PLAID_MFA_TARGET],
   "white-label": ["content/welcome-video", "money/setup", ...STAFF_MFA_CHALLENGE],
 };
 

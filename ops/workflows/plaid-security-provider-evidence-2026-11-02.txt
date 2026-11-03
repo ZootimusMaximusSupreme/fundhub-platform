@@ -1,0 +1,29 @@
+Plaid security evidence receipt — 2026-11-02 23:45 UTC
+Scope: read-only account and public-site checks plus a local repository dependency scan. No account security setting, customer record, credential, or payment was changed.
+
+GitHub MFA
+Command: gh api user --jq '{login,two_factor_authentication}'
+Result: ZootimusMaximusSupreme; two_factor_authentication=false.
+
+Netlify MFA
+Command: netlify api getCurrentUser | jq '{mfa_enabled}'
+Result: mfa_enabled=false for the signed-in Netlify user. The linked production site was confirmed as fundhub.ai / transcendent-wisp-888771 with netlify status.
+
+Public-site TLS
+Command: openssl s_client -connect fundhub.ai:443 -servername fundhub.ai -tls1_2 < /dev/null
+Result: TLSv1.2, ECDHE-ECDSA-CHACHA20-POLY1305, certificate verification code 0 (ok).
+Command: curl --tlsv1.1 --tls-max 1.1 https://fundhub.ai/api/health
+Result: TLS protocol-version alert; no HTTP response. This proves the tested public hostname accepted 1.2 and rejected 1.1 at this time. It is not an inventory of every subdomain, API, or database connection.
+
+Database/provider
+Command: netlify env:get DATABASE_URL --context production | node <URL parser that prints hostname and sslmode only>
+Result: host aws-1-us-west-2.pooler.supabase.com; no sslmode query parameter in the production URL. The credential was never printed or saved in this receipt.
+Provider statement: https://supabase.com/security says Supabase customer data is encrypted at rest with AES-256 and in transit via TLS. This is provider-level documentation, not project-specific settings proof. Database SSL enforcement and backup settings were not inspected. The app's Postgres URL does not itself prove SSL mode.
+
+Production dependency inventory
+Command: npm audit --omit=dev --json (package-lock.json at origin/main f03eea246)
+Before compatible fixes: 0 critical, 7 high, 5 moderate.
+Command: npm audit fix --omit=dev; npm audit fix; npm audit --omit=dev --json
+After compatible fixes: 0 critical, 2 high, 5 moderate. Five high findings cleared via lockfile updates. Remaining high findings are zod and inngest; the current Inngest 3.54.2 and latest Inngest 4.26.2 both declare zod ^3.25.0, while the advisory covers zod <4.6.6. The remaining moderate transitive chain is gcp-metadata > gaxios > rimraf > glob > minimatch. No major override was applied. The scheduled workflow must keep this finding red and open an issue until fixed.
+
+Limits: No employee/contractor laptop scan or full production asset scan was run. No Supabase user MFA state, project SSL enforcement, or backup encryption setting was directly inspected. Plaid questionnaire Q5/Q8 are not complete based on this receipt.

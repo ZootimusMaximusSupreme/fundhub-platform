@@ -4,10 +4,11 @@
 
 // The sign-in link and sign-in session checks live in the shared hourly truth file (one judge, two clocks).
 import {
-  MAGIC_TEMPLATE_SQL, MAGIC_DEAD_SQL, SIGNIN_NO_SESSION_SQL, check, clip, num, magicLink, signinNoSession
+  MAGIC_TEMPLATE_SQL, MAGIC_DEAD_SQL, SIGNIN_NO_SESSION_SQL, PLAID_GRANT_SQL,
+  check, clip, num, magicLink, signinNoSession, plaidGrantIntegrity
 } from "../beats/lib/auth-truth.mjs";
 
-export { MAGIC_LINK_TEMPLATE_KEY, MAGIC_TEMPLATE_SQL, MAGIC_DEAD_SQL, SIGNIN_NO_SESSION_SQL } from "../beats/lib/auth-truth.mjs";
+export { MAGIC_LINK_TEMPLATE_KEY, MAGIC_TEMPLATE_SQL, MAGIC_DEAD_SQL, SIGNIN_NO_SESSION_SQL, PLAID_GRANT_SQL } from "../beats/lib/auth-truth.mjs";
 
 /** Failed sign-ins with zero successes, from at least this many addresses. */
 export const LOGIN_FAIL_MIN = 5;
@@ -129,7 +130,8 @@ export const READ_ONLY_SQL = [
   MAGIC_DEAD_SQL,
   SESSION_READ_SQL,
   SIGNIN_NO_SESSION_SQL,
-  RESET_READ_SQL
+  RESET_READ_SQL,
+  PLAID_GRANT_SQL
 ];
 
 /** The two env names src/messaging/providers/resend.mjs refuses to send without. */
@@ -291,7 +293,8 @@ export async function gapChecks(ctx = {}) {
       "gap:auth-magic-link-dead",
       "gap:auth-session-read",
       "gap:auth-signin-no-session",
-      "gap:auth-reset-mail"
+      "gap:auth-reset-mail",
+      "gap:auth-plaid-consent-integrity"
     ].map((id) => check(id, "skip", SKIP));
   }
   return [
@@ -299,6 +302,7 @@ export async function gapChecks(ctx = {}) {
     await magicLink(db, ctx.orgId),
     await sessionRead(db),
     await signinNoSession(db),
-    await resetMail(db, ctx.env)
+    await resetMail(db, ctx.env),
+    await plaidGrantIntegrity(db)
   ];
 }

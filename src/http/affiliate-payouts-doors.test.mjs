@@ -39,7 +39,7 @@ test("payouts: unknown action and bad ids are 400 before any read", async () => 
   assert.equal(res.statusCode, 400);
 });
 
-test("payout-account: staff are refused — the affiliate's own Link is the consent", async () => {
+test("payout-account: staff are refused — affiliate MFA and consent are required", async () => {
   const res = resMock();
   await payoutAccount({ method: "POST", body: { action: "link_token" } }, res, {
     db: noDb,
@@ -61,15 +61,35 @@ test("payout-account: the affiliate id comes from the session, never the body", 
   const res = resMock();
   const mine = "00000000-0000-4000-8000-0000000000cc";
   let asked = null;
-  await payoutAccount({ method: "POST", body: { action: "link_token", affiliate_id: "00000000-0000-4000-8000-0000000000dd" } }, res, {
+  await payoutAccount({ method: "POST", body: { action: "link_token", plaid_grant_token: "grant-token", affiliate_id: "00000000-0000-4000-8000-0000000000dd" } }, res, {
     db: noDb,
     env: { PLAID_CLIENT_ID: "x", PLAID_SECRET: "y", PLAID_TOKEN_ENC_KEY: Buffer.alloc(32, 1).toString("base64") },
-    requirePrincipal: async () => ({ kind: "affiliate", orgId: ORG, affiliateId: mine }),
+    requirePrincipal: async () => ({ kind: "affiliate", orgId: ORG, affiliateId: mine, accountId: "account-1", sessionId: "session-1" }),
+    advanceGrant: async (_db, args) => {
+      assert.equal(args.targetId, mine);
+      assert.equal(args.accountId, "account-1");
+      assert.equal(args.sessionId, "session-1");
+      assert.equal(args.token, "grant-token");
+      assert.equal(args.stage, "open");
+      return { id: "grant-1" };
+    },
     plaidHttp: { createLinkToken: async ({ clientUserId, products }) => { asked = { clientUserId, products }; return { ok: true, linkToken: "link-sandbox-1" }; } }
   });
   assert.equal(res.statusCode, 200, JSON.stringify(res.body));
   assert.equal(asked.clientUserId, `affiliate:${mine}`);
   assert.deepEqual(asked.products, ["transfer"]);
+});
+
+test("payout-account: no MFA and consent grant means no Link token", async () => {
+  const res = resMock();
+  await payoutAccount({ method: "POST", body: { action: "link_token" } }, res, {
+    db: { query: async () => ({ rows: [] }) },
+    requirePrincipal: async () => ({ kind: "affiliate", orgId: ORG,
+      affiliateId: "00000000-0000-4000-8000-0000000000cc", accountId: "a", sessionId: "s" }),
+    plaidHttp: { createLinkToken: async () => assert.fail("must not call Plaid") }
+  });
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body.error, "plaid_mfa_consent_required");
 });
 
 test("read/affiliate-payouts: GET only, finance only", async () => {

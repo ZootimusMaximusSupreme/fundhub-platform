@@ -36,6 +36,7 @@ export function isPingId(id) {
 }
 
 export const TRIPWIRES = Object.freeze({
+  "route:auth/plaid-mfa": { impact: "customer", checks: ["gap:auth-plaid-consent-integrity"] },
   "route:read/staff-payout-account": { impact: "money", checks: ["staff-payout:destination-integrity"] },
   "route:staff/payout-account": { impact: "money", checks: ["staff-payout:destination-integrity"] },
   "route:read/meet-presence": { impact: "customer", checks: ["meet:read-door"] },
@@ -226,6 +227,8 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
+  "job:retention-review":
+    "Internal count-only monthly review: it writes an audit receipt but never changes customer records or sends a customer message. The job heartbeat reports missed runs.",
   "route:auth/mfa":
     "Staff-only sign-in step: a password-authenticated short-lived challenge and authenticator code create an MFA staff session. It does not read or send customer data.",
   "route:read/ad-preview":

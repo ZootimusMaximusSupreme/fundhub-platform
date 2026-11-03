@@ -147,6 +147,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "paid-checkout-expiry-sweeper",
   "partner-production-floor",
   "plaid-transactions-sweeper",
+  "retention-review",
   "pulse-instant-watch",
   "repair-bureau-response-reader",
   "round-started-client-notify",

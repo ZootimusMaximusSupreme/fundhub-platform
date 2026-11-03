@@ -64,6 +64,7 @@ import { inquiryCallSweeper } from './inquiry-call-sweeper.mjs';
 import { nextActionCatchUp } from './next-action-catch-up.mjs';
 import { sloInfiniteDrip } from './slo-infinite-drip.mjs';
 import { metaCampaignSyncHourly } from './meta-campaign-sync-sweeper.mjs';
+import { retentionReview } from './retention-review.mjs';
 
 export const scheduled = [
   cortanaBookingFeed,
@@ -186,6 +187,7 @@ export const scheduled = [
      client with an active consented Plaid login. Reads only; does nothing when
      Plaid is not configured. Finance OS build 2026-10-06, unit A. */
   plaidTransactionsSweeper,
+  retentionReview,
   /* Daily merchant processing pull (Finance OS wave 4b, unit H5, 2026-10-06):
      every client connection set to "Paste your API key" (Commas, Whop) is read
      with the client's own key into merchant_events. GET only, behind the

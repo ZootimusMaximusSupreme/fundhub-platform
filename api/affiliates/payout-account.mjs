@@ -7,7 +7,8 @@
 // WHO. An affiliate session, or a client who is a light affiliate
 // (accounts.affiliate_id, 340). The affiliate id comes off the session and never
 // from the body, so nobody can link a bank onto somebody else's payouts. Staff
-// are refused: the affiliate finishing Plaid Link IS the consent.
+// are refused: the affiliate must complete authenticator MFA and explicit
+// consent before Link opens, with one saved grant consumed at exchange.
 //
 // Plaid calls: src/affiliates/payout-rail.mjs → src/banking/providers/plaid-http.mjs.
 // The access token is encrypted before it is stored and never returned.
@@ -16,6 +17,7 @@ import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs
 import { safeError } from "../../src/http/health.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 import { isUuid, startAffiliateBankLink, completeAffiliateBankLink } from "../../src/affiliates/payout-rail.mjs";
+import { advanceAccountPlaidLink } from "../../src/auth/account-plaid-mfa.mjs";
 
 function readBody(raw) {
   if (raw == null) return {};
@@ -49,6 +51,12 @@ export default async function handler(req, res, deps = {}) {
 
   try {
     if (action === "link_token") {
+      const grant = await (deps.advanceGrant || advanceAccountPlaidLink)(database, {
+        token: body.plaid_grant_token, orgId, accountId: principal.accountId,
+        sessionId: principal.sessionId, targetKind: "affiliate_payout",
+        targetId: affiliateId, stage: "open"
+      });
+      if (!grant) return res.status(403).json({ ok: false, error: "plaid_mfa_consent_required" });
       const r = await startAffiliateBankLink({ affiliateId, env, http: deps.plaidHttp || null });
       if (!r.ok) return res.status(r.status).json({ ok: false, error: r.error, message: r.message, missing: r.missing ?? [] });
       return res.status(200).json({ ok: true, link_token: r.linkToken, expiration: r.expiration, environment: r.environment });
@@ -56,12 +64,19 @@ export default async function handler(req, res, deps = {}) {
     if (action === "exchange") {
       const publicToken = typeof body.public_token === "string" ? body.public_token.trim() : "";
       if (!publicToken) return res.status(400).json({ ok: false, error: "public_token is required" });
+      const grant = await (deps.advanceGrant || advanceAccountPlaidLink)(database, {
+        token: body.plaid_grant_token, orgId, accountId: principal.accountId,
+        sessionId: principal.sessionId, targetKind: "affiliate_payout",
+        targetId: affiliateId, stage: "exchange"
+      });
+      if (!grant) return res.status(403).json({ ok: false, error: "plaid_mfa_consent_required" });
       const institution = body.institution && typeof body.institution === "object"
         ? { name: body.institution.name ? String(body.institution.name) : null } : null;
       const r = await completeAffiliateBankLink(database, {
         orgId, affiliateId, publicToken,
         accountId: typeof body.account_id === "string" && body.account_id.trim() ? body.account_id.trim() : null,
         institution, linkedBy: `${principal.kind}:${principal.accountId || principal.id || affiliateId}`,
+        consentAt: grant.consent_granted_at,
         env, plaid: deps.plaid || null
       });
       const { ok, status, ...rest } = r;
