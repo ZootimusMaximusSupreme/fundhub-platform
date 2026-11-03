@@ -1,4 +1,4 @@
-// Company name, industry-code, shell-LLC, website, and LinkedIn check.
+// Company identity, industry-code and actionable business preparation advice.
 //
 // Suggestions only. Nothing here renames a company or blocks a payment.
 //
@@ -10,10 +10,11 @@
 // credentials/notion-scrape/output/using-aged-corps--1e5c3aa7/FULL.md
 // ("Low-risk NAICS + neutral name" / "Any hint of real-estate flipping, crypto, trucking, investing").
 //
-// Shell LLC rule — owner-set 2026-09-27: open shells outside the operating
-// business (minimum two, one new each quarter), sole member not a trust,
-// blank basic name, Arizona for out-of-state shells ($90, no yearly fee),
-// with a short how-to for people who do not live in Arizona.
+// Owner-set 2026-11-02: prepare three or four separate single-member LLC
+// plans alongside credit work, using actual activity, ownership and state.
+// Formation, ownership history and operating history are separate facts.
+// Source: Alec's Opening LLC, Get EIN and business-checking preparation pages
+// under credentials/notion-scrape/output; guidance is not a provider action.
 //
 // Website + LinkedIn — owner-set 2026-09-27: no scanner, no paid website API.
 // They need a website (Alec: banks check online presence). Always recommend a
@@ -66,30 +67,31 @@ const HIGH_RISK_WORDS = Object.freeze([
   ["software", "software"]
 ]);
 
-const NEUTRAL_EXAMPLES = "Consulting, Marketing, or Systems";
-
-/** Standing shell-LLC copy — owner-set 2026-09-27. Shown once per file. */
+/** Existing export names are retained for document and portal consumers. */
 export const SHELL_LLC_SUGGESTION_TEXT =
-  "Open shell LLCs outside your operating business. Keep at least two. " +
-  "Open one new shell LLC each quarter. File each as a sole member — one owner. " +
-  "Do not open them under a trust; two owners makes it harder. " +
-  "Use a blank, basic, standard name with no fancy or risky words. " +
-  "For an out-of-state shell, open it in Arizona. You do not have to live in Arizona. " +
-  "File the LLC with the state of Arizona. The $90 is the Arizona state filing fee, and Arizona has no yearly fee. " +
-  "Keep one owner. Do not use a trust. Use a basic name. " +
-  "This shell is separate from the company you already run in your home state. " +
-  "A filing helper such as Northwest Registered Agent can file the Arizona LLC for you. " +
-  "If the shell is not in your home state, also foreign-file it into your home state so it is registered where you live.";
+  "Plan three or four separate single-member LLCs for future business preparation. " +
+  "Each plan is a separate business with one owner, not several members in one LLC. " +
+  "Review the businesses you already have before adding a new plan. Use a basic name " +
+  "and describe the business's actual activity. Start with your home state's filing " +
+  "requirements, then check the formation and operating states before filing. " +
+  "Check current state fees and requirements; there is no fixed filing fee in this plan. " +
+  "For each business, save its formation document, EIN confirmation, ownership details, " +
+  "website and bank-preparation steps. Keep formation date, ownership history and " +
+  "operating history separate. Prepare these steps alongside your personal-credit work, " +
+  "with a review around 12 months. Time alone does not establish readiness or approval.";
 
 export const SHELL_LLC_SUGGESTION_WHY =
-  "This is the standing Fundhub rule for shell LLCs. " +
-  "Extra companies outside the operating business help funding. " +
-  "The file cannot tell a shell from an operating company, so this rule is shown once " +
-  "whether you have no company or already have one.";
+  "Alec's LLC, EIN and bank-opening material provides the preparation sequence. " +
+  "The owner-set plan is three or four separate future businesses with staged reviews. " +
+  "A saved company count cannot tell an operating business from a future plan, " +
+  "so review each existing business instead of automatically adding more. " +
+  "A plan is not a formed company, and a formation date is not proof of operating history.";
 
 /** Standing website copy — owner-set 2026-09-27. No scanner. Shown once per file. */
 export const WEBSITE_SUGGESTION_TEXT =
-  "You need a website. Set one up. It is simple. Put the business on it.";
+  "You need a website. Set one up with the business's actual services, legal name " +
+  "and contact details. Use the same business information on your website and records. " +
+  "Save the website link for review.";
 
 export const WEBSITE_SUGGESTION_WHY =
   "Banks check that you exist online. " +
@@ -142,16 +144,16 @@ export function auditCompany({ name = "", naics = null } = {}) {
       change: true,
       from: null,
       status: "missing",
-      why: "This company has no industry code. The company step cannot move on without one. Pick a code from the low-risk list.",
-      pick: APPROVED_NAICS.map((row) => ({ code: row.code, label: row.label }))
+      why: "This company has no industry code. Describe what it actually does, then save the NAICS code that matches that activity. The reference list is not a reason to describe a different business.",
+      pick: []
     };
   } else if (!approved) {
     naicsSuggestion = {
-      change: true,
+      change: false,
       from: code,
       status: "not_on_list",
-      why: `${code} is not on the low-risk list. A risky industry makes a lender more likely to say no. Pick a code from that list instead.`,
-      pick: APPROVED_NAICS.map((row) => ({ code: row.code, label: row.label }))
+      why: `${code} is outside the program's reference list. Keep it if it accurately describes the business's actual activity. Review the applicable lender requirements; a different industry code does not change the work the business does.`,
+      pick: []
     };
   } else {
     naicsSuggestion = {
@@ -159,12 +161,11 @@ export function auditCompany({ name = "", naics = null } = {}) {
       from: code,
       status: "approved",
       label: approved.label,
-      why: `${code} ${approved.label} is on the low-risk list.`,
+      why: `${code} ${approved.label} is on the program reference list. Confirm it matches the business's actual activity; being on this list is not an approval.`,
       pick: []
     };
   }
 
-  const restrictedInName = hits(company, RESTRICTED_WORDS);
   let nameSuggestion;
   if (!company || uniqueFlags.length === 0) {
     nameSuggestion = {
@@ -176,28 +177,21 @@ export function auditCompany({ name = "", naics = null } = {}) {
     };
   } else {
     const listed = uniqueFlags.join(", ");
-    const why = restrictedInName.length
-      ? `The name says ${listed}. Those industries are an automatic no in the low-risk notes. A neutral name does not name that work. Examples used for a low-risk filing are ${NEUTRAL_EXAMPLES}.`
-      : `The name says ${listed}. The aged-corp notes say a high-risk name, or any hint of real estate, crypto, trucking, or investing, leads to denials. A neutral name does not name that work. Examples used for a low-risk filing are ${NEUTRAL_EXAMPLES}.`;
     nameSuggestion = {
       change: true,
       from: company,
       flags: uniqueFlags,
-      why,
-      suggestion: `Take ${listed} out of the name. Use a neutral name such as ${NEUTRAL_EXAMPLES}.`
+      why: `The name mentions ${listed}, which the historical bank notes flag for review. Check requirements for the business's actual activity. A basic name does not change the business's activity or lender eligibility.`,
+      suggestion: "Use the registered legal name consistently on existing business records. " +
+        "For a new business plan, choose a basic name that fits the actual business. " +
+        "Keep the actual activity clear when choosing its industry code and preparing applications."
     };
   }
 
   return { name: company || null, naics: code, nameSuggestion, naicsSuggestion };
 }
 
-/**
- * shellLlcSuggestion — standing shell-LLC rule for the whole file.
- * Shown for people with no company and people with companies. The saved
- * company list cannot tell shells from operating companies, so this is
- * always the standing rule once — never "open two more on top" of an
- * unknown stack.
- */
+/** One preparation recommendation; no automatic new-business count or filings. */
 export function shellLlcSuggestion({ companyCount = 0 } = {}) {
   const count = Number.isFinite(companyCount) ? Math.max(0, Math.floor(companyCount)) : 0;
   return {
@@ -230,7 +224,7 @@ export function linkedInSuggestion() {
   };
 }
 
-export function auditCompanies(businesses = []) {
+export function auditCompanies(businesses = [], options = {}) {
   const rows = Array.isArray(businesses) ? businesses : [];
   const companies = rows.map((row) => {
     const entity = row?.entity_data && typeof row.entity_data === "object" ? row.entity_data : {};
@@ -241,8 +235,96 @@ export function auditCompanies(businesses = []) {
   });
   return {
     companies,
+    businessPreparation: buildBusinessPreparation({ ...options, businesses: rows }),
     shellSuggestion: shellLlcSuggestion({ companyCount: companies.length }),
     websiteSuggestion: websiteSuggestion(),
     linkedInSuggestion: linkedInSuggestion()
+  };
+}
+
+
+const BUSINESS_PREPARATION_SOURCES = Object.freeze([
+  "credentials/notion-scrape/output/opening-llc--59d3968e/page.md",
+  "credentials/notion-scrape/output/get-ein--fda2d58f/page.md",
+  "credentials/notion-scrape/output/aged-corps-open-biz-checking--20dc3aa7/page.md",
+  "ops/workflows/blueprint-client-simulation-2026-11-02.txt"
+]);
+
+const savedText = (value) => typeof value === "string" && value.trim() ? value.trim() : null;
+const savedState = (value) => {
+  const state = savedText(value)?.toUpperCase();
+  return state && /^[A-Z]{2}$/.test(state) ? state : null;
+};
+
+function preparationRecord(row, planned) {
+  const entity = row?.entity_data && typeof row.entity_data === "object" ? row.entity_data : {};
+  const name = savedText(row?.name) || savedText(entity.legal_name);
+  const activity = savedText(row?.activity) || savedText(entity.activity) || savedText(entity.industry);
+  const formationState = savedState(row?.formationState ?? entity.formation_state);
+  const operatingState = savedState(row?.operatingState ?? entity.state ?? row?.state);
+  const recordState = planned
+    ? row?.formationStatus === "reported_formed" ? "reported_formed" : "planned"
+    : "existing_record";
+  // Never use record creation time, ownership time or entity age as operation history.
+  const formationDate = recordState === "planned" ? null
+    : savedText(row?.formationDate ?? entity.formation_date ?? entity.started ?? row?.incorporatedDate);
+  const ownershipSince = savedText(row?.ownershipSince ?? entity.ownership_since);
+  const operatingSince = savedText(row?.operatingSince ?? entity.operating_since);
+  const einRecorded = !!savedText(entity.ein_last4);
+  const website = savedText(row?.website ?? entity.website);
+  const stateWords = formationState ? `your ${formationState} formation requirements` : "your formation state's requirements";
+  const step = (key, title, why, instructions, requiredEvidence, state = "not_started") => ({
+    key, title, why, instructions, requiredEvidence, state, verification: "not_verified"
+  });
+  const steps = [
+    step("identity", "Confirm this business's details",
+      "Each separate business needs its own accurate identity and plan.", [
+        "Save its legal or planned basic name, actual activity, formation state and operating state.",
+        "For a new single-member LLC plan, record one actual owner. Keep existing ownership as it really is.",
+        "Review existing businesses before adding another plan."
+      ], ["Business details and actual ownership"], name && activity && formationState && operatingState ? "details_recorded" : "not_started"),
+    step("formation", "Prepare or confirm the LLC filing",
+      "A planned business is not formed until its state accepts the filing.", [
+        `Check ${stateWords}, current fees and any requirements where the business operates.`,
+        "Use the state's official filing service or a chosen filing helper; save the accepted document.",
+        "Record the actual formation date separately from ownership and operating dates."
+      ], ["Accepted formation document", "Actual formation date"], recordState === "reported_formed" ? "reported_complete" : formationDate ? "details_recorded" : "not_started"),
+    step("ein", "Prepare the EIN confirmation",
+      "The business's EIN confirmation should match its own formation record.", [
+        "After formation, use the official IRS EIN application and the actual legal name, state and owner count.",
+        "Choose the activity and answers that describe this business, then save its EIN confirmation letter."
+      ], ["EIN confirmation letter for this business"], einRecorded ? "details_recorded" : "not_started"),
+    step("profile", "Build a clear business profile",
+      "Your website and business records should describe the same business.", [
+        "Put its actual services, legal name and contact details on its website.",
+        "Use consistent business details on relevant public profiles and save the links for review."
+      ], ["Business website and profile links"], website ? "details_recorded" : "not_started"),
+    step("bank_preparation", "Prepare this business's bank relationship",
+      "Account preparation depends on this business's documents, location and available funds.", [
+        "Gather its formation record, EIN confirmation, ownership information and signer identification.",
+        "Review suitable account requirements and available cash before choosing an opening or deposit date.",
+        "Use actual activity and supported expected transactions; record opening dates and evidence when they happen."
+      ], ["Business document checklist", "Account-opening or deposit evidence when available"])
+  ];
+  return {
+    businessId: planned ? savedText(row?.businessId) : savedText(row?.id),
+    planId: planned ? savedText(row?.id) : null,
+    name, activity, recordState, formationState, operatingState,
+    formationDate, ownershipSince, operatingSince,
+    nextActionKey: steps.find((item) => item.state === "not_started")?.key || null,
+    steps
+  };
+}
+
+/** Pure advice: saved plans stay separate from canonical existing businesses. */
+export function buildBusinessPreparation({ businesses = [], plans = [], targetBusinessCount = 4 } = {}) {
+  return {
+    targetBusinessCount: targetBusinessCount === 3 ? 3 : 4,
+    targetOptions: [3, 4],
+    reviewHorizonMonths: 12,
+    formationMode: "single_member_llc",
+    existingBusinesses: (Array.isArray(businesses) ? businesses : []).map((row) => preparationRecord(row, false)),
+    plans: (Array.isArray(plans) ? plans : []).map((row) => preparationRecord(row, true)),
+    sources: [...BUSINESS_PREPARATION_SOURCES]
   };
 }

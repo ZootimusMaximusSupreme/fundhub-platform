@@ -3,8 +3,9 @@
 // Built "in reverse order" (owner, 2026-10-02): the /roadmap sales page already
 // shows a sample of this document (marketing/landing-pages/slo/slo-01-sales.html,
 // the `duplication:` entry of `var P`). This is the real document that sample
-// shows. Its SECTIONS and WORDING mirror the sample; its NUMBERS come from the
-// client's own file and the UnderwriteIQ engine, never from the sample.
+// shows. Its NUMBERS come from the client's file and UnderwriteIQ engine.
+// Preparation advice was updated by the owner on 2026-11-02; the historical
+// sales sample is not the source of current filing instructions.
 //
 // OWNER FACTS (final, 2026-10-02):
 //   * The map checks personal + business credit: how fundable the client is off
@@ -13,11 +14,9 @@
 //     Business: business credit score, blemishes, business balances, the NAICS
 //     code, the business name, and the exact fix for each so a lender sees a
 //     credible business. No DUNS, no net-30, no vendor accounts.
-//   * The plan: set companies up right and open them consistently — one to two
-//     aged companies ready every quarter, with good names, NAICS codes,
-//     reporting and business credit history. "Nothing too crazy."
-//   * Unlimited funding over time is true: five to ten companies, each needs
-//     time and revenue.
+//   * Updated 2026-11-02: prepare three or four separate single-member LLC
+//     plans with actual ownership, activity, state requirements and evidence.
+//     Review around 12 months; do not assume filings or funding from time.
 //
 // WHERE EVERY FACT COMES FROM — nothing on this page is typed in:
 //   personal decision, funding  → the tier engine run on the stored pull
@@ -51,7 +50,6 @@ import { usd, median } from "./format.mjs";
 import { cover, ctaPage, section, table, chip, renderDocument, GOLD, isGold, PB } from "./chrome.mjs";
 import {
   auditCompany,
-  APPROVED_NAICS,
   websiteSuggestion,
   linkedInSuggestion,
   shellLlcSuggestion
@@ -68,7 +66,7 @@ export const BUSINESS_DUPLICATION_MAP_DOC = Object.freeze({
   variant: ""
 });
 
-/** How many quarters the plan covers: two years, the window in which a new company doubles. */
+/** Review horizon; the dates do not create a business or approve funding. */
 export const PLAN_QUARTERS = 8;
 
 const MONTH_NAMES = Object.freeze(["January", "February", "March", "April", "May", "June",
@@ -284,20 +282,16 @@ function balanceRow(signals) {
   };
 }
 
-const LOW_RISK_LIST = APPROVED_NAICS.map((r) => `${r.code} ${r.label}`).join(", ");
 
 function naicsRow(audit) {
   const n = audit.naicsSuggestion;
   if (n.status === "approved") {
-    return { label: "NAICS code", status: `${n.from} OK`, kind: "line",
-      fix: `Keep it. ${n.label} is on the low-risk list.` };
+    return { label: "NAICS code", status: `${n.from} OK`, kind: "line", fix: n.why };
   }
   if (n.status === "not_on_list") {
-    return { label: "NAICS code", status: `${n.from} FLAGGED`, kind: "solid",
-      fix: `Use the code that matches what you sell, from the low-risk list: ${LOW_RISK_LIST}.` };
+    return { label: "NAICS code", status: `${n.from} REVIEW`, kind: "mid", fix: n.why };
   }
-  return { label: "NAICS code", status: NOT_ON_FILE, kind: "mid",
-    fix: `No NAICS code is saved for this company. Pick one from the low-risk list: ${LOW_RISK_LIST}.` };
+  return { label: "NAICS code", status: NOT_ON_FILE, kind: "mid", fix: n.why };
 }
 
 function nameRow(company, audit, signals) {
@@ -431,49 +425,32 @@ export function companyFacts(company, scored, asOf) {
 
 /* ──────────────────────────────────────────────────── the quarterly plan ── */
 
-/**
- * The quarterly plan, PLAN_QUARTERS long, starting with the quarter `asOf` is
- * in. One new company a quarter (the owner-set shell-LLC rule in
- * company-audit.mjs: "Open one new shell LLC each quarter"), plus the quarter
- * each saved company and each new company crosses 12 and 24 months.
- */
+/** Quarterly preparation reviews plus known formation milestones, not auto-filings. */
 export function quarterlyPlan(companies, asOf) {
   const first = quarterIndex(asOf);
   const last = first + PLAN_QUARTERS - 1;
   const existing = Array.isArray(companies) ? companies : [];
-  const rows = [];
-  for (let q = first; q <= last; q++) {
-    const i = q - first;
-    const n = existing.length + i + 1;
-    rows.push({
-      q,
-      order: 0,
-      step: i === 0
-        ? `Open company ${word(n)}, set up right: a clean name, a NAICS code from the low-risk list, `
-          + "and reporting from day one."
-        : `Open company ${word(n)} the same way.`
-    });
-    if (i + 4 <= last - first) {
-      rows.push({
-        q: q + 4,
-        order: 2,
-        step: `Company ${word(n)} passes 12 months. Its funding goes from half to equal your card funding.`
-      });
-    }
-  }
+  const reviews = [
+    "Review existing businesses and plan three or four separate single-member LLCs. Save each business's actual activity, owner and state requirements before filing.",
+    "Review each plan's formation document and EIN confirmation. Keep formation, ownership and operating dates separate.",
+    "Review each business profile and suitable bank relationships. Check available cash and current account requirements before setting dates.",
+    "Review saved progress alongside personal-credit work. Update missing documents, actual account dates and the next review.",
+    "Review the roughly 12-month preparation horizon. Recheck actual documents, operating history and the current credit file; elapsed time does not approve funding.",
+    "Review each business's current records and banking evidence. Change the next step when its circumstances change.",
+    "Review actual income, activity and operating history for each business. Keep unverified facts open for review.",
+    "Reassess the current file and business preparation before choosing any application steps."
+  ];
+  const rows = reviews.slice(0, PLAN_QUARTERS).map((step, i) => ({ q: first + i, order: 0, step }));
   for (const c of existing) {
     const label = c.name || "Your company";
-    if (c.turns12 && quarterIndex(c.turns12) <= last) {
-      rows.push({ q: Math.max(first, quarterIndex(c.turns12)), order: 1,
-        step: `${label} passes 12 months. Its funding goes from half to equal your card funding.` });
-    }
-    if (c.turns24 && quarterIndex(c.turns24) <= last) {
-      rows.push({ q: Math.max(first, quarterIndex(c.turns24)), order: 1,
-        step: `${label} passes 24 months. Its funding doubles.` });
+    for (const [months, date] of [[12, c.turns12], [24, c.turns24]]) {
+      if (date && quarterIndex(date) <= last) {
+        rows.push({ q: Math.max(first, quarterIndex(date)), order: 1,
+          step: `${label} reaches its recorded ${months}-month formation milestone. Review its current credit file and actual operating history; age alone does not approve funding.` });
+      }
     }
   }
-  return rows
-    .sort((a, b) => a.q - b.q || a.order - b.order)
+  return rows.sort((a, b) => a.q - b.q || a.order - b.order)
     .map((r) => ({ quarter: quarterLabel(r.q), step: r.step }));
 }
 
@@ -580,9 +557,9 @@ export function buildBusinessDuplicationMap(client, map, opts = { look: GOLD }) 
 
   // 01 — both files
   h.push(section("01", "both files", "How Fundable You Are Off the Business"));
-  h.push(`<p${gold ? ' class="lead"' : ""}>Why you need this: you keep getting funded after round `
-    + "one, one aged company after another. This map checks your personal file and every company "
-    + "on your file, then lays out the plan to open new ones the right way.</p>");
+  h.push(`<p${gold ? ' class="lead"' : ""}>Why you need this: prepare each business with clear records `
+    + "and the next useful step. This map checks your personal file and every saved company, "
+    + "then sets review points for your separate business plans.</p>");
   const dash = (v) => (v === null || v === undefined || v === "" ? "-" : v);
   const bizTotal = m.businessFundingTotal === null || m.businessFundingTotal === undefined
     ? "Not on the file"
@@ -600,7 +577,7 @@ export function buildBusinessDuplicationMap(client, map, opts = { look: GOLD }) 
     const decided = p.decision ? `UnderwriteIQ's decision on your personal file is "${esc(p.decision)}", so it`
       : "UnderwriteIQ";
     h.push(callout(`${decided} shows $0 for personal and business funding today. Fix the personal `
-      + "file first. Companies come after it."));
+      + "file first for funding readiness. Business documents and preparation can move alongside your credit work."));
   }
   h.push("<p><b>The funding order:</b></p>");
   h.push(`<ol class="${gold ? "fh-ol" : "plain"}">`
@@ -612,7 +589,7 @@ export function buildBusinessDuplicationMap(client, map, opts = { look: GOLD }) 
   h.push(section("02", "your business today", "Your Business Today: Experian Business Check"));
   if (!companies.length) {
     h.push("<p>No company is on your file yet, so there is no Experian Business check to run. "
-      + "Your first company is the first step of the plan below.</p>");
+      + "Review your starting situation and separate business plans below.</p>");
   } else {
     h.push("<p>Experian Business is the business file a lender reads. Each company below is "
       + "checked the same way, with the exact fix next to anything that needs one.</p>");
@@ -635,10 +612,10 @@ export function buildBusinessDuplicationMap(client, map, opts = { look: GOLD }) 
   } else if (p.cardFunding <= 0) {
     h.push(callout(`UnderwriteIQ puts your card funding at ${esc(usd(p.cardFunding))} today, so a `
       + "company adds $0 until the personal file is fixed. Work your Credit Optimization Roadmap "
-      + "first. Open the companies now anyway: the age clock starts the day each one is filed."));
+      + "first. Prepare the business plans alongside that work and record each actual filing date."));
   } else {
     h.push(`<p>UnderwriteIQ puts your card funding at <b>${esc(usd(p.cardFunding))}</b> today. `
-      + "Each company can add a share of it, set by the company's age.</p>");
+      + "The model uses each company's recorded age to calculate an estimate; it is not a funding approval.</p>");
   }
   h.push(table(["company age", "business funding"],
     (m.ageBands || AGE_BANDS).map((b) => [esc(b.label), esc(b.words)]), [], opts));
@@ -646,8 +623,8 @@ export function buildBusinessDuplicationMap(client, map, opts = { look: GOLD }) 
     + "a blemish or a lien stops it.</p>");
   for (const co of companies) {
     if (co.turns24) {
-      h.push(`<p>${esc(co.name)} turns 24 months in ${esc(monthLabel(co.turns24))}. That is when `
-        + "its funding doubles.</p>");
+      h.push(`<p>${esc(co.name)} reaches its recorded 24-month formation milestone in ${esc(monthLabel(co.turns24))}. `
+        + "Recheck its actual operating history and current file then; age alone does not approve funding.</p>");
     } else if (co.ageMonths !== null) {
       h.push(`<p>${esc(co.name)} is past 24 months, so it is already in the top band.</p>`);
     }
@@ -655,18 +632,18 @@ export function buildBusinessDuplicationMap(client, map, opts = { look: GOLD }) 
 
   // 04 — the quarterly plan
   h.push(PB);
-  h.push(section("04", "quarterly plan", "Your Quarterly Plan"));
-  h.push(`<p>Starting ${esc(m.asOfLabel || "")}. One new company each quarter, set up the same `
-    + "way every time.</p>");
+  h.push(section("04", "quarterly reviews", "Your Business Preparation Reviews"));
+  h.push(`<p>Starting ${esc(m.asOfLabel || "")}. Review three or four separate single-member LLC plans `
+    + "and existing businesses. Each keeps its own documents, dates and next steps.</p>");
   h.push(table(["quarter", "step"], (m.plan || []).map((r) => [esc(r.quarter), esc(r.step)]), [], opts));
-  h.push(callout("Keep opening one to two a quarter and aged companies keep coming ready for "
-    + "funding. Over time that is five to ten companies. Each one needs time and revenue before a "
-    + "lender funds it."));
+  h.push(callout("These are preparation and review points, not automatic filing or funding dates. "
+    + "Keep planned businesses separate from formed businesses. Review actual ownership, "
+    + "operating history, evidence and current lender requirements before applying."));
 
   // 05 — set every company up the same way
   h.push(section("05", "set up", "Set Up Every Company the Same Way"));
   const setup = [
-    `Give it a NAICS code from the low-risk list: ${LOW_RISK_LIST}.`,
+    "Use the NAICS code that matches what the business actually does. A reference-list code is not an approval.",
     "Use one exact name everywhere the company is listed.",
     ...(m.setup || [])
   ];
