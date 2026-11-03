@@ -1,0 +1,50 @@
+FUNDHUB REAL ESTATE LENDING OFFER — SHARED WORKFLOW BOARD
+Date: 2026-11-02
+Owner lane: marketing
+Branch: codex/real-estate-lending-offer-20261102
+
+Objective
+Build the first complete marketing package for Fundhub's real estate lending entry point as one ecosystem with two connected markets:
+1. Homeowners seeking substantial home improvement financing.
+2. Qualified borrowers and capital partners with strong, verifiable credit or income who want to participate in real estate opportunities.
+
+The ecosystem must also preserve future products for both audiences. It is not limited to one loan or one offer.
+
+Workflow order
+Deep research and the two avatar tracks run together. Offer construction waits for all three. Copy + Copybot, the Jeremy Haynes VSL, and ad strategy wait for the offer. This session owns final integration.
+
+Workflow A — lender, market and mechanism research
+Use primary sources and existing Fundhub research to identify the real high-limit home improvement financing landscape, direct lenders versus platforms, documented borrower structures, funding channels, contractor relationships, and adjacent products for both sides of the market. Separate verified facts from working commercial assumptions. Produce dense notes for offer construction. Do not write ads.
+
+Workflow B — homeowner avatar
+Run the Fundhub Avatar Builder logic for homeowners seeking $100,000–$250,000+ for major renovation projects while preserving home equity or an existing mortgage. Cover financial profile, project triggers, desired outcomes, objections, buying context, proof needed, alternatives, and future products. Write only the homeowner avatar deliverable.
+
+Workflow C — qualified borrower and capital-partner avatar
+Run the Fundhub Avatar Builder logic for people with strong verifiable credit or income who want access to real estate opportunities, including people preparing to qualify later. Cover motivations, financial profile, participation models, objections, expectations, proof needed, readiness paths, and future products. Write only this avatar deliverable.
+
+Workflow D — integration owned by this session
+Build the ecosystem architecture and Hormozi-style offer candidates, choose and refine the main offers, then create Copy + Copybot messaging, direct-response ad strategy, and two VSLs using the Jeremy Haynes Mastering VSLs SOP from Chris's Drive. Include the main entry offer, readiness track, contractor/partner lanes, and future product ladder. Do not publish ads or create live campaigns.
+
+Drive VSL source
+Mastering VSLs (Video Sales Letters) SOP.docx
+https://docs.google.com/document/d/1b2DExaxWn7zHp61hMiU3IHGfNkJO0nn0/edit?usp=drivesdk
+
+Status
+Complete.
+
+Delivered
+- Market and lender research with 16 ranked providers and originator deduplication.
+- Homeowner avatar: Keep-the-Rate Kelly.
+- Qualified participant avatar: Deal-Ready Danielle.
+- Integrated offer system: Renovation Funding Map, Deal-Ready Profile, Project Finance Desk, and Ready Track.
+- Copy master for homeowner, participant, and contractor funnels.
+- Jeremy Haynes homeowner VSL.
+- Jeremy Haynes qualified participant VSL.
+- Meta acquisition, measurement, audience, unit-economics, and creative strategy.
+- Eight cold direct-response scripts.
+
+Proof
+- Fundhub ad checker: 10 scripts checked, all clean.
+- git diff --check: clean.
+
+No live ads, campaigns, lender applications, partner outreach, or customer actions were created.

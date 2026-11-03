@@ -1,0 +1,617 @@
+FUNDHUB REAL ESTATE LENDING OFFER ECOSYSTEM
+Built: November 2, 2026
+
+THE COMMERCIAL DECISION
+
+Launch one operating system with two separate front doors:
+
+1. Renovation Funding Map for homeowners with a real project.
+2. Deal-Ready Profile for people with strong documented income, credit, or both who want a defined path into real estate.
+
+The homeowner offer launches first because the demand, project, and lender route already exist. The Deal-Ready offer launches as a profile, readiness, and opportunity-matching product. Contractor acquisition becomes the third lane because contractors already control high-intent projects and several important lender programs.
+
+The initial promise is not one lender, one maximum amount, or one universal borrower structure. Fundhub organizes the project or participant, shows the best available route, prepares the file, coordinates the handoff, and keeps the next route ready.
+
+THE MARKET OPENING
+
+Homeowners spent heavily on large projects even as ordinary personal-loan limits stayed below many renovation budgets. Current public programs show:
+
+- HFS publicly advertises unsecured home-improvement financing to $450,000 through third-party lenders.
+- BHG publicly advertises unsecured home-improvement loans to $250,000.
+- Lyon repeatedly documents unsecured contractor financing to $200,000, with one current page also mentioning $250,000.
+- Hearth advertises a marketplace to $250,000.
+- Next-Financing and Enhancify advertise marketplace access to $200,000.
+- Navy Federal, FNBO Slice, Nelnet Bank, Amerant, and UNFCU reach $150,000 in narrower structures.
+
+The opportunity is bigger than a rate-comparison page. The customer needs to know whether a program fits the project amount, whether it pays the homeowner or contractor, what documents it needs, whether a joint applicant is accepted, and what the payment does to the household budget.
+
+The best starting customer is a household earning roughly $200,000 to $350,000+, self-reporting good-to-excellent credit, carrying manageable monthly debt, and planning a $75,000 to $175,000 project with a real estimate or contractor. The campaign can capture larger requests, but the offer wins through the quality of the route map, not through the largest advertised maximum.
+
+THE NAMED ECOSYSTEM
+
+Umbrella: Fundhub Property Capital Network
+
+Homeowner mechanism: Renovation Funding Map
+
+Participant mechanism: Deal-Ready Exchange
+
+Contractor mechanism: Fundhub Project Finance Desk
+
+Readiness mechanism: Fundhub Ready Track
+
+The name Fundhub Property Capital Network can sit above several products without forcing the homeowner and participant into the same message.
+
+OFFER 1: RENOVATION FUNDING MAP
+
+WHO IT IS FOR
+
+Homeowners with a defined $50,000 to $250,000+ project who want to understand the payment, documents, funding recipient, contractor requirements, and best next application before they start applying.
+
+CORE PROMISE
+
+See the best realistic path for funding a major home project while keeping control of the first-mortgage decision.
+
+DREAM OUTCOME
+
+The homeowner completes the renovation they actually want, keeps the current mortgage unchanged when an unsecured route fits, preserves enough cash for overruns, and knows exactly how the project will be funded.
+
+WHAT THE CUSTOMER GETS
+
+1. Project Map
+   - project type, amount, state, property, contractor, timeline, and payment schedule;
+   - full-project amount and any practical phase-one amount.
+
+2. Capacity Map
+   - household income type and range;
+   - housing payment and existing monthly debt;
+   - self-reported credit band;
+   - joint-applicant availability;
+   - estimated payment range at several terms and APR assumptions.
+
+3. Route Map
+   - direct-to-homeowner options;
+   - contractor-funded options;
+   - suitable multi-lender marketplace paths;
+   - separate secured alternatives when the customer chooses to compare them;
+   - a smaller project or readiness route when the full request does not fit.
+
+4. Readiness Pack
+   - identity checklist;
+   - W-2, self-employed, commission, retirement, or joint-applicant income checklist;
+   - ownership and housing documents;
+   - contractor estimate, contract, and project documents;
+   - missing-item tracker.
+
+5. Application Handoff
+   - selected provider or partner route;
+   - organized handoff packet;
+   - application milestones;
+   - status follow-up;
+   - second route preserved if the first route changes.
+
+6. Project Funding Tracker
+   - application started;
+   - documents pending;
+   - decision received;
+   - amount and terms offered;
+   - borrower acceptance;
+   - homeowner or contractor funded;
+   - project follow-up.
+
+THE OFFER STACK
+
+Core asset: Personalized Renovation Funding Map.
+
+Bonus 1: Payment Range Builder
+The homeowner sees what $50,000, $100,000, $150,000, $200,000, and $250,000 mean as monthly obligations under several planning assumptions.
+
+Bonus 2: Direct Funding vs. Contractor Funding Guide
+The homeowner knows who receives the money and what that changes before selecting a route.
+
+Bonus 3: Major Project Document Vault
+One organized place for income, ownership, project, and contractor records.
+
+Bonus 4: Joint Applicant Route Check
+Shows which researched paths publicly support a co-applicant, co-borrower, or cosigner and what needs direct confirmation.
+
+Bonus 5: Project Gap Plan
+If the offered amount is below the budget, Fundhub maps a smaller phase, another product category, or a readiness period instead of leaving the homeowner with an incomplete answer.
+
+Bonus 6: Second-Route Review
+If the first selected provider does not return a workable offer, Fundhub reviews the next appropriate path using the completed intake.
+
+PRICE
+
+Launch the Renovation Funding Map at $0 to the homeowner.
+
+This is the right starting price because:
+
+- the customer is already taking on a substantial financing decision;
+- a free project-first map creates more qualified applications than a generic lead form;
+- Fundhub can build revenue from confirmed provider, contractor, marketplace, and later advisory relationships;
+- no public partner compensation is assumed in the model.
+
+Do not add a consumer preparation fee at launch. Add a paid concierge only after the team can show that customers want Fundhub to do work beyond matching, preparation, and handoff.
+
+SERVICE PROMISE
+
+Once the homeowner completes the required intake, Fundhub delivers the route summary, document checklist, and next-step recommendation within two business days. If information is missing, the homeowner receives the exact missing-item list instead of a silent delay.
+
+CALL TO ACTION
+
+Build My Renovation Funding Map
+
+WHO GETS ROUTED TO A LIVE CALL
+
+- owns the project property or fits a provider-specific ownership structure;
+- requests $50,000 or more;
+- has a contractor, estimate, or serious project timeline;
+- supplies the high-signal financial fields;
+- appears capable of supporting a substantial monthly payment;
+- wants help comparing and moving into a real application.
+
+WHO GETS AN AUTOMATED ROUTE FIRST
+
+- early inspiration with no estimate;
+- project below $50,000;
+- missing ownership or contractor facts;
+- timing beyond 12 months;
+- clearly incomplete documentation;
+- needs readiness work before an application.
+
+OFFER 2: DEAL-READY PROFILE
+
+WHO IT IS FOR
+
+People with strong, verifiable income, good credit, manageable obligations, or a useful combination of those strengths who want a real estate path but do not have the property, project, contractor network, financing route, or operating process.
+
+CORE PROMISE
+
+Turn the financial strength you already built into a clear real estate participation path, with the profile, documents, role selection, opportunity view, and coordination needed to make an informed decision.
+
+DREAM OUTCOME
+
+The participant stops watching real estate from the outside and enters a defined opportunity with a role they understand, complete information, organized documents, visible economics, a clear timeline, and a planned exit.
+
+WHAT THE CUSTOMER GETS
+
+1. Financial Readiness Profile
+   - income source and documentation;
+   - credit range and history summary supplied by the participant;
+   - housing payment and current monthly obligations;
+   - liquidity and timing;
+   - state and location preferences.
+
+2. Role Selector
+   - direct borrower;
+   - co-applicant or joint borrower where a selected provider accepts it;
+   - property owner or co-owner;
+   - project or capital partner;
+   - direct buyer;
+   - readiness-track participant;
+   - future product customer.
+
+3. Deal-Ready File
+   - identity and income documents;
+   - participation preferences;
+   - borrowing goals;
+   - role boundaries;
+   - near-term personal financing goals;
+   - missing-item plan.
+
+4. Standard Opportunity View
+   - property or project;
+   - parties involved;
+   - requested role;
+   - use of funds;
+   - responsibilities;
+   - financing path;
+   - timeline;
+   - economics;
+   - decision points;
+   - planned exit.
+
+5. Match and Coordination
+   - current product or opportunity lane;
+   - document coordination;
+   - provider, homeowner, contractor, or project handoff;
+   - status tracking;
+   - future match when the current opportunity is not right.
+
+6. Ready Track
+   - exact baseline;
+   - measurable credit, document, debt, income-seasoning, or liquidity milestones;
+   - monthly checkpoint;
+   - re-profile when milestones are complete;
+   - routing into the best current product.
+
+THE OFFER STACK
+
+Core asset: Deal-Ready Profile.
+
+Bonus 1: Role Fit Map
+The participant selects how they want to be involved before seeing an opportunity.
+
+Bonus 2: Deal Review Template
+Every opportunity is viewed through the same questions, so the customer is not evaluating random pitches in random formats.
+
+Bonus 3: Document Vault
+The participant organizes the records needed for future matching and financing.
+
+Bonus 4: 90-Day Ready Plan
+People who are close but not ready leave with measurable milestones and a re-profile date.
+
+Bonus 5: Lifetime Product Route
+One profile can lead to owner-occupied renovation, direct personal financing, investment-property financing, DSCR, bank-statement, contractor, business-capital, or future property opportunities as the customer changes.
+
+PRICE
+
+Launch the Deal-Ready Profile and initial lane recommendation at $0.
+
+Do not charge for access to an undefined opportunity. Monetize only after Fundhub has a real delivered service, a confirmed commercial relationship, or a specific participation agreement. The first paid extension to test is a preparation concierge, not a vague membership.
+
+Recommended beta preparation offer:
+
+Fundhub Deal-Ready Concierge
+- price to test: $1,000 one time;
+- includes complete document organization, readiness plan, two profile rebuilds, and 90 days of coordination;
+- use the current Fundhub $1,000 done-for-you service infrastructure where the scope fits;
+- do not present this as a live price until the owner activates it.
+
+Recommended downsell:
+
+Two-Round Ready Trial
+- existing Fundhub price: $200;
+- two rounds of guided optimization and a revised Deal-Ready Profile;
+- route into the full concierge only when the customer needs more work.
+
+SERVICE PROMISE
+
+Fundhub completes the profile, lane recommendation, and missing-item plan after the participant supplies the requested information. Preparation clients receive the agreed profile rebuilds and remain in the Ready Track through the stated service period.
+
+CALL TO ACTION
+
+Build My Deal-Ready Profile
+
+WHO GETS ROUTED TO MATCHING
+
+- strong verifiable income, credit, or both;
+- manageable current monthly obligations;
+- complete documents;
+- clear desired role, state, and timeline;
+- willing to review the property, parties, responsibilities, economics, and exit before deciding.
+
+WHO GETS ROUTED TO READY TRACK
+
+- strong income with a weak current credit profile;
+- strong credit with complex or incomplete income evidence;
+- debt load too high for the intended opportunity;
+- not enough liquidity for the selected role;
+- unclear real estate goal;
+- timing or documents need development.
+
+OFFER 3: PROJECT FINANCE DESK FOR CONTRACTORS
+
+WHO IT IS FOR
+
+Licensed home-improvement contractors, builders, pool companies, outdoor-living companies, roofers, window companies, HVAC companies, and project partners with qualified homeowners and projects that outgrow one finance program.
+
+CORE PROMISE
+
+Give the contractor one finance desk that prepares the homeowner, selects the right consumer-funded or contractor-funded route, follows the application, and reports the outcome.
+
+DELIVERABLES
+
+- branded homeowner intake;
+- provider and route matrix;
+- direct-to-homeowner and contractor-funded paths;
+- document checklist;
+- homeowner follow-up;
+- application status tracking;
+- funded-project attribution;
+- second-route review;
+- contractor dashboard;
+- monthly performance review.
+
+ENTRY OFFER
+
+Free Project Finance Coverage Review:
+
+- current lender and project limits;
+- lost-job analysis by amount and borrower type;
+- recommended additional coverage;
+- onboarding plan for a branded financing link.
+
+MAIN OFFER
+
+Fundhub Project Finance Desk
+
+Pricing is set after partner economics, contractor volume, service burden, and attribution are confirmed. The strongest models to test are:
+
+- platform or subscription fee;
+- confirmed provider-paid referral economics;
+- contractor-paid setup and service fee;
+- hybrid setup plus funded-project reporting.
+
+No commission amount is used until it is in an executed partner agreement.
+
+THE MONEY MODEL
+
+ATTRACTION OFFERS
+
+Homeowner:
+- free Renovation Funding Map;
+- payment builder;
+- direct versus contractor funding explainer.
+
+Participant:
+- free Deal-Ready Profile;
+- role selector;
+- readiness scorecard.
+
+Contractor:
+- free Project Finance Coverage Review.
+
+UPSELL OFFERS
+
+- $1,000 Deal-Ready Concierge beta using existing Fundhub service infrastructure;
+- contractor Project Finance Desk after commercial terms are set;
+- project document coordination;
+- self-employed income document preparation;
+- joint-applicant readiness;
+- future investor, mortgage, and business-capital services.
+
+DOWNSELL OFFERS
+
+- existing $200 Two-Round Ready Trial;
+- smaller $25,000 to $100,000 personal-loan routes;
+- project phasing;
+- contractor point-of-sale financing;
+- credit optimization and document readiness;
+- smaller first real estate step;
+- separate secured alternative when selected by the customer.
+
+CONTINUITY
+
+Do not launch a recurring consumer fee first. Earn continuity through useful status and future-product relationships:
+
+- readiness checkpoints;
+- profile refreshes;
+- future project financing;
+- next real estate opportunity;
+- contractor reporting;
+- post-project services;
+- refinance, DSCR, bank-statement, business-capital, and property products when the customer has a real need.
+
+WHY THIS STACK WORKS
+
+- The free front ends create qualified first-party demand.
+- The paid work is attached to real preparation and coordination.
+- Every non-match receives a useful next product.
+- The same operating system supports homeowner, participant, and contractor acquisition.
+- Fundhub can add providers without rebuilding the promise.
+- The model does not depend on one unpublished commission or one lender's maximum.
+
+THE ROUTING LOGIC
+
+HOMEOWNER ROUTING
+
+Route A: Direct-to-homeowner high-limit
+- defined project;
+- wants control of contractor payment;
+- strong documented profile;
+- HFS or BHG first, then appropriate marketplace routes.
+
+Route B: Contractor-funded
+- approved contractor or project category;
+- customer accepts staged contractor payment;
+- Lyon, FNBO Slice, Nelnet, GreenSky, Upgrade, or network platform as appropriate.
+
+Route C: Joint applicant
+- household needs combined strength;
+- route only to providers that accept the actual applicant relationship;
+- Navy Federal is the clearest public high-limit co-applicant example, with other providers confirmed case by case.
+
+Route D: Smaller unsecured
+- $25,000 to $100,000 need;
+- SoFi, Acorn, Upgrade, GreenSky, or other confirmed products.
+
+Route E: Ready Track
+- income, credit, debt, documents, ownership, or project timing needs work.
+
+Route F: Separate property-backed product
+- customer chooses a HELOC, home-equity loan, refinance, or renovation mortgage comparison.
+
+PARTICIPANT ROUTING
+
+Route 1: Match ready
+- complete Deal-Ready Profile;
+- documented strength;
+- clear role;
+- real opportunity available.
+
+Route 2: Direct financing fit
+- participant has their own eligible project or acquisition goal;
+- route to the product family that fits that goal.
+
+Route 3: Income strong, credit not ready
+- Two-Round Ready Trial or Deal-Ready Concierge.
+
+Route 4: Credit strong, documentation complex
+- income-document preparation and a product family suited to the available evidence.
+
+Route 5: Opportunity curious
+- role education, milestone plan, smaller first step, and future re-profile.
+
+THE CONVERSION FUNNEL
+
+AD
+
+One problem, one audience, one CTA.
+
+Homeowner CTA: Build My Renovation Funding Map.
+
+Participant CTA: Build My Deal-Ready Profile.
+
+LANDING PAGE
+
+Homeowner headline:
+See how to fund a major renovation without automatically replacing your first mortgage.
+
+Participant headline:
+Turn the income and credit you already built into a clear path into real estate.
+
+VSL
+
+Use the Jeremy Haynes sequence:
+
+1. Say exactly what Fundhub can help with.
+2. Establish Chris and Fundhub as the guide.
+3. Sell the bigger opportunity.
+4. Present the offer and entry price.
+5. Handle the main objections.
+6. Explain who the offer is and is not for.
+7. Give the CTA.
+8. Show real proof as it becomes available.
+9. Restate the value and CTA.
+
+INTAKE
+
+Homeowner:
+- project type and amount;
+- state and ownership;
+- contractor and timeline;
+- household income;
+- employment type;
+- housing payment;
+- current monthly debt;
+- self-reported credit band;
+- joint applicant;
+- preferred funding method;
+- contact permission.
+
+Participant:
+- state;
+- desired role;
+- income type and range;
+- documentation strength;
+- self-reported credit band;
+- current monthly debt;
+- housing payment;
+- liquidity;
+- timeline;
+- real estate experience;
+- contact permission.
+
+RESULT
+
+Return one of four useful answers:
+
+- ready for a route review;
+- ready for document preparation;
+- ready for matching;
+- ready for a milestone plan.
+
+Do not use a dead thank-you page.
+
+THE 90-DAY LAUNCH
+
+DAYS 1 TO 14
+
+- contact HFS, BHG, Lyon, Hearth, Next-Financing, Enhancify, FNBO Slice, and Nelnet;
+- confirm commercial relationship, status reporting, borrower structures, state coverage, disbursement, and attribution;
+- build provider matrix;
+- build the two intake forms and result pages;
+- build the document checklist and tracking states;
+- recruit three to five contractor design partners.
+
+DAYS 15 TO 30
+
+- launch the homeowner Funding Map organically and through contractor referrals;
+- run the homeowner VSL and first four direct-response ads;
+- begin Deal-Ready Profile waitlist;
+- record every intake, route, provider, application, decision, offered amount, funded amount, and reason for non-match.
+
+DAYS 31 TO 60
+
+- activate the strongest confirmed provider routes;
+- start a small homeowner paid-media test;
+- open the Deal-Ready Profile beta;
+- offer the existing $200 trial and $1,000 done-for-you path only to readiness clients who fit the scope;
+- publish process proof and actual customer language from completed cases.
+
+DAYS 61 TO 90
+
+- compare consumer, contractor, and participant acquisition quality;
+- expand the provider matrix;
+- build contractor reporting;
+- add the first separate HELOC, DSCR, non-QM, or fix-and-flip branch;
+- scale the winning avatar and offer based on funded outcomes, not raw lead cost.
+
+THE SCOREBOARD
+
+Acquisition:
+- cost per completed Funding Map;
+- cost per completed Deal-Ready Profile;
+- contractor-sourced applications;
+- paid-media-sourced applications.
+
+Quality:
+- owner and project verified;
+- income and documents complete;
+- requested amount;
+- payment-capacity screen;
+- route-ready rate;
+- readiness-track rate.
+
+Application:
+- route accepted;
+- application started;
+- application completed;
+- decision received;
+- amount and terms offered;
+- offer accepted;
+- funded;
+- days to decision and funding.
+
+Commercial:
+- average funded amount;
+- revenue per funded customer;
+- acquisition cost per funded customer;
+- gross contribution;
+- revenue by provider and contractor;
+- cross-sell revenue;
+- clawbacks and unresolved attribution.
+
+THE FIRST CREATIVE TEST
+
+Homeowner majority angles:
+
+1. Keep the first mortgage.
+2. A $150,000 project is not a normal personal-loan search.
+3. Direct-to-homeowner versus contractor-paid financing.
+4. Enough money to finish, not only enough to start.
+
+Participant majority angles:
+
+1. You have the profile, but not the deal.
+2. Turn strong income and credit into a Deal-Ready Profile.
+3. See the role, numbers, timeline, and exit before deciding.
+4. Get a measurable readiness path if today is too early.
+
+Contractor majority angles:
+
+1. Stop losing six-figure projects because one lender caps out.
+2. Add direct-to-homeowner and staged contractor funding to the same desk.
+3. Know exactly where every financing application stands.
+4. Turn declined or partial approvals into a second route.
+
+FINAL RECOMMENDATION
+
+Launch the Renovation Funding Map first. It has the clearest customer, project, provider universe, and contractor distribution path.
+
+Build the Deal-Ready Profile at the same time as a separate front door. Begin with readiness and defined roles. Add live opportunity matching only as actual opportunities, provider structures, and operating partners are available.
+
+Use the contractor Project Finance Desk to acquire homeowners with a real project already attached.
+
+This creates one ecosystem with three acquisition lanes, a shared document and matching engine, and several honest ways to create lifetime value without forcing every person into the same loan.
