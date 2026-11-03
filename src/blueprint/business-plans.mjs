@@ -101,7 +101,7 @@ function existingView(row) {
 async function shape(db, scope, state, audit = auditCompanies) {
   const actual = (await db.query(`SELECT id, name, age_months, entity_data FROM businesses WHERE org_id = $1::uuid AND client_id = $2::uuid ORDER BY created_at, id`, [scope.orgId, scope.clientId])).rows;
   const docs = await documentRows(db, scope, evidenceIds(state));
-  const businesses = state.businesses.map(b => ({ ...b, evidence: { formation: evidenceView(b, "formation", docs), ein: evidenceView(b, "ein", docs) } }));
+  const businesses = state.businesses.map(b => ({ ...b, bankPreparation: { documentsReady: false, accountOpeningIssue: false, relationships: [], ...b.bankPreparation }, evidence: { formation: evidenceView(b, "formation", docs), ein: evidenceView(b, "ein", docs) } }));
   const advice = audit(actual, { plans: businesses, targetBusinessCount: state.targetBusinessCount });
   return { ...state, orgId: scope.orgId, clientId: scope.clientId, businesses, existingBusinesses: actual.map(existingView), businessPreparation: advice.businessPreparation || null };
 }
@@ -121,12 +121,51 @@ function settings(state, input, now) {
   if (has(input, "hasExistingBusiness")) { if (input.hasExistingBusiness !== null && typeof input.hasExistingBusiness !== "boolean") fail("invalid_existing_business", "Choose yes, no, or unknown for existing businesses."); state.hasExistingBusiness = input.hasExistingBusiness; }
   if (has(input, "started")) { if (typeof input.started !== "boolean") fail("invalid_started", "started must be true or false."); if (input.started && !state.startedAt) state.startedAt = now.toISOString(); }
 }
+function bankRelationship(input, now) {
+  allowedFields(input, ["id", "bankName", "accountType", "status", "plannedOpenOn", "openedOn", "depositPlanCents", "depositReportedCents", "depositedOn", "seasoningDays", "nextReviewOn"]);
+  const id = uuid(input.id, "bank relationship");
+  const bankName = text(input.bankName, "bank name", 120, true);
+  if (!["personal_checking", "business_checking", "savings"].includes(input.accountType)) fail("invalid_account_type", "Choose personal checking, business checking, or savings.");
+  if (!["planned", "reported_open", "reported_funded"].includes(input.status)) fail("invalid_relationship_status", "A bank relationship can be planned, reported open, or reported funded.");
+  const plannedOpenOn = day(input.plannedOpenOn, "planned opening date", now, true);
+  const openedOn = day(input.openedOn, "reported opening date", now);
+  const depositedOn = day(input.depositedOn, "reported deposit date", now);
+  const nextReviewOn = day(input.nextReviewOn, "next review date", now, true);
+  const depositPlanCents = has(input, "depositPlanCents") ? cents(input.depositPlanCents, "planned deposit") : null;
+  const depositReportedCents = has(input, "depositReportedCents") ? cents(input.depositReportedCents, "reported deposit") : null;
+  let seasoningDays = null;
+  if (input.seasoningDays !== null && input.seasoningDays !== undefined) {
+    if (!Number.isInteger(input.seasoningDays) || input.seasoningDays < 0 || input.seasoningDays > 730) fail("invalid_seasoning_days", "Seasoning days must be a whole number from 0 through 730, or unknown.");
+    seasoningDays = input.seasoningDays;
+  }
+  if (input.status === "planned" && (openedOn || depositedOn || depositReportedCents !== null)) fail("planned_relationship_has_no_reported_deposit", "Use a reported relationship status before recording an opening or deposit.");
+  if (input.status !== "planned" && !openedOn) fail("opening_date_required", "Add the actual date for an account you report open.");
+  if (input.status === "reported_open" && (depositedOn || depositReportedCents !== null)) fail("funded_status_required", "Use reported funded when recording an actual deposit.");
+  if (input.status === "reported_funded" && (!depositedOn || depositReportedCents === null)) fail("deposit_details_required", "Add the reported deposit amount and actual deposit date.");
+  if (depositedOn && openedOn && depositedOn < openedOn) fail("deposit_before_opening", "A reported deposit date cannot be before the reported opening date.");
+  return { id, bankName, accountType: input.accountType, status: input.status, plannedOpenOn, openedOn, depositPlanCents, depositReportedCents, depositedOn, seasoningDays, nextReviewOn };
+}
+function bankPreparation(input, previous, now) {
+  allowedFields(input, ["documentsReady", "accountOpeningIssue", "relationships"]);
+  const next = { documentsReady: false, accountOpeningIssue: false, relationships: [], ...previous };
+  for (const key of ["documentsReady", "accountOpeningIssue"]) if (has(input, key)) {
+    if (typeof input[key] !== "boolean") fail("invalid_bank_preparation", "Bank preparation answers must be yes or no.");
+    next[key] = input[key];
+  }
+  if (has(input, "relationships")) {
+    if (!Array.isArray(input.relationships) || input.relationships.length > 3) fail("invalid_relationship_count", "Keep no more than three bank relationships on each business plan.");
+    next.relationships = input.relationships.map(r => bankRelationship(r, now));
+    if (new Set(next.relationships.map(r => r.id)).size !== next.relationships.length) fail("duplicate_relationship_id", "Use a different saved ID for each bank relationship.");
+  }
+  return next;
+}
+
 async function saveBusiness(db, scope, state, input, now, makeId) {
   allowedFields(input, EDITABLE_BUSINESS);
   const id = has(input, "id") ? uuid(input.id, "business plan") : makeId();
   const previous = state.businesses.find(b => b.id === id);
   if (!previous && state.businesses.length >= state.targetBusinessCount) fail("business_plan_limit", `Your plan already has ${state.targetBusinessCount} businesses.`, 409);
-  const next = { id, name: null, activity: null, formationState: null, operatingState: null, formationStatus: "planned", formationDate: null, ownershipSince: null, operatingSince: null, businessId: null, entityId: null, website: null, bankPreparation: { documentsReady: false, accountOpeningIssue: false }, evidence: { formation: { documentId: null }, ein: { documentId: null } }, ...previous };
+  const next = { id, name: null, activity: null, formationState: null, operatingState: null, formationStatus: "planned", formationDate: null, ownershipSince: null, operatingSince: null, businessId: null, entityId: null, website: null, bankPreparation: { documentsReady: false, accountOpeningIssue: false, relationships: [] }, evidence: { formation: { documentId: null }, ein: { documentId: null } }, ...previous };
   for (const [key, max] of [["name", 120], ["activity", 1500]]) if (has(input, key)) next[key] = text(input[key], key, max, true);
   if (!next.name || !next.activity) fail("required_field", "Add a business name and its actual activity.");
   for (const key of ["formationState", "operatingState"]) if (has(input, key)) next[key] = stateCode(input[key], key);
@@ -138,7 +177,7 @@ async function saveBusiness(db, scope, state, input, now, makeId) {
   for (const key of ["businessId", "entityId"]) if (has(input, key)) next[key] = uuid(input[key], key, true);
   if (next.businessId) { const row = (await db.query(`SELECT id, entity_data FROM businesses WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid`, [next.businessId, scope.orgId, scope.clientId])).rows[0]; if (!row) fail("business_not_found", "Choose an existing business from your own file.", 404); if (next.entityId && row.entity_data?.entity_id && row.entity_data.entity_id !== next.entityId) fail("business_entity_mismatch", "Choose the account group for this existing business.", 409); if (state.businesses.some(b => b.id !== id && businessIdFrom(b) === next.businessId)) fail("business_already_linked", "That existing business already has a preparation plan.", 409); }
   if (next.entityId) { const row = (await db.query(`SELECT id FROM entities WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid AND kind = 'business' AND archived_at IS NULL`, [next.entityId, scope.orgId, scope.clientId])).rows[0]; if (!row) fail("entity_not_found", "Choose an active business from your own file.", 404); if (state.businesses.some(b => b.id !== id && b.entityId === next.entityId)) fail("entity_already_linked", "That business account group already has a preparation plan.", 409); }
-  if (has(input, "bankPreparation")) { allowedFields(input.bankPreparation, ["documentsReady", "accountOpeningIssue"]); for (const key of ["documentsReady", "accountOpeningIssue"]) if (has(input.bankPreparation, key)) { if (typeof input.bankPreparation[key] !== "boolean") fail("invalid_bank_preparation", "Bank preparation answers must be yes or no."); next.bankPreparation = { ...next.bankPreparation, [key]: input.bankPreparation[key] }; } }
+  if (has(input, "bankPreparation")) next.bankPreparation = bankPreparation(input.bankPreparation, next.bankPreparation, now);
   next.updatedAt = now.toISOString();
   if (previous) state.businesses = state.businesses.map(b => b.id === id ? next : b); else state.businesses.push(next);
   return id;
