@@ -50,6 +50,7 @@ const NARROW = {
   "galaxy.html": OWNER_ADMIN,
   "finance-os.html": OWNER_ADMIN,
   "company-brain.html": STAFF,             // approved staff source search; owner-tier stays server-restricted
+  "company-cash.html": ["owner"],         // private company cash, reached only through the owner account menu
   "agent-editor.html": OWNER_ADMIN,
   "ops-admin.html": OWNER_ADMIN,
   "content-admin.html": OWNER_ADMIN,
@@ -100,9 +101,17 @@ const HOME = {
 };
 
 async function visit(role, file) {
-  const page = await makePage(lab, { role });
+  const company = file === "company-cash.html";
+  const page = await makePage(lab, { role, ...(company ? {
+    staff: { id: "00000000-0000-4000-8000-000000000091", org_id: "00000000-0000-4000-8000-000000000092" },
+    api: (call) => {
+      if (call.path === "/api/owner/company-bank") return { ok: true, configured: false, items: [], accounts: [], transactions: [] };
+      if (call.path === "/api/owner/company-cash") return { ok: true, account: null, obligations: [], recurring_candidates: [],
+        summary: { month: "2026-11-01", missing: ["business_bank_balance", "crs_invoice", "ad_review", "tech_review"] } };
+    },
+  } : {}) });
   await page.goto(`${lab.origin}/app/${file}`, { waitUntil: "domcontentloaded" });
-  const home = HOME[role];
+  const home = HOME[role] || liftGate().allowedFor(role)[0];
   const allowed = NARROW[file] ? NARROW[file].includes(role) : STAFF.includes(role);
   if (allowed) {
     await page.waitForFunction(() => document.documentElement.classList.contains("fh-page-access-confirmed"), null, { polling: 100, timeout: 20_000 });
@@ -111,8 +120,23 @@ async function visit(role, file) {
     await page.waitForURL((u) => u.pathname === `/app/${home}`, { timeout: 15_000 }).catch(() => {});
     assert.equal(new URL(page.url()).pathname, `/app/${home}`, `${role} is sent from ${file} to ${home}`);
   }
+  if (company) {
+    assert.equal(await page.locator('#side a.navitem[href="company-cash.html"]').count(), 0, "company cash has no sidebar row");
+    if (allowed) {
+      await page.locator("#ccEmpty").waitFor({ state: "visible" });
+      await page.locator("#fh-shell-chip-show").click();
+      assert.equal(await page.locator('a.fh-account-company[href="company-cash.html"]').isVisible(), true, "the owner account menu reaches company cash");
+    } else {
+      assert.equal(await page.locator("a.fh-account-company").count(), 0, `${role} has no private owner link`);
+      assert.equal(page.apiCalls.filter((call) => call.path.startsWith("/api/owner/company-")).length, 0, `${role} never loads company cash data`);
+    }
+  }
   await page.close();
 }
+
+test("role gate: company cash admits only the owner and redirects every other known or unknown role", { timeout: 420_000 }, async () => {
+  for (const role of [...Object.keys(HOME), "wizard"]) await visit(role, "company-cash.html");
+});
 
 test("role gate: bank outreach opens for managers and outbound reps, while outbound reps stay out of client work", { timeout: 420_000 }, async () => {
   for (const role of Object.keys(HOME)) await visit(role, "bank-outreach.html");

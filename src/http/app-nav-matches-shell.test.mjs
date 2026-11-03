@@ -1,4 +1,4 @@
-/* Every screen's inline sidebar must be identical to shell.js's SIDEBAR_HTML.
+/* Inline sidebars must match shell.js; the owner company page mounts that shared sidebar dynamically.
  *
  * THE DEFECT THIS FILE EXISTS FOR. The sidebar is written twice: once inline in
  * each of the 35 gated screens, and once as SIDEBAR_HTML inside shell.js.
@@ -113,6 +113,32 @@ function inlineSidebar(html) {
   return m ? m[0] : null;
 }
 
+// This owner-only page reserves the shared rail before shell.js mounts its canonical markup.
+// It is still a staff-sidebar page; it is not part of NO_SIDEBAR.
+const DYNAMIC_SIDEBAR = new Set(["company-cash.html"]);
+function assertDynamicSidebar(html) {
+  const aside = inlineSidebar(html);
+  assert.ok(aside, "the shared sidebar needs a real mount");
+  assert.match(aside, /^<aside class="side" id="side" aria-label="Workspace navigation">\s*<\/aside>$/, "the mount is empty and accessible");
+  assert.equal((html.match(/<aside\b/g) || []).length, 1, "one shared rail mount");
+  assert.match(html, /<html[^>]*class="[^"]*\bfh-staff-workspace\b/, "reserve the staff frame before scripts run");
+  assert.match(html, /<link id="fh-crm-sidebar-css" rel="stylesheet" href="\/app\/crm-sidebar\.css(?:\?[^"]*)?">/, "shared rail CSS loads before mounting");
+  assert.match(html, /<link id="fh-workspace-css" rel="stylesheet" href="\/app\/workspace-ui\.css">/, "shared workspace layout loads before mounting");
+  assert.equal((html.match(/<script defer src="shell\.js"><\/script>/g) || []).length, 1, "the actual guarded shared shell mounts once");
+}
+
+test("dynamic company sidebar contract rejects missing mounts, scripts, styles, and extra rows", () => {
+  const html = fs.readFileSync(path.join(APP, "company-cash.html"), "utf8");
+  assertDynamicSidebar(html);
+  for (const broken of [
+    html.replace(inlineSidebar(html), ""),
+    html.replace('</aside>', '<a class="navitem" href="company-cash.html">Company cash</a></aside>'),
+    html.replace('<script defer src="shell.js"></script>', ""),
+    html.replace(/<link id="fh-crm-sidebar-css"[^>]*>/, ""),
+    html.replace(/<link id="fh-workspace-css"[^>]*>/, ""),
+  ]) assert.throws(() => assertDynamicSidebar(broken));
+});
+
 describe("inline sidebars match shell.js", () => {
   const canonical = canonicalSidebar();
   const want = navHrefs(canonical);
@@ -128,7 +154,11 @@ describe("inline sidebars match shell.js", () => {
   for (const screen of screens) {
     const html = fs.readFileSync(path.join(APP, screen), "utf8");
 
-    test(`${screen}: inline sidebar carries the same rows, in the same order, as shell.js`, () => {
+    test(`${screen}: shared sidebar follows its inline or dynamic mount contract`, () => {
+      if (DYNAMIC_SIDEBAR.has(screen)) {
+        assertDynamicSidebar(html);
+        return;
+      }
       const aside = inlineSidebar(html);
       assert.ok(aside, `${screen} has no <aside class="side"> for shell.js to replace — mountSidebar bails and the screen renders with no navigation`);
 
