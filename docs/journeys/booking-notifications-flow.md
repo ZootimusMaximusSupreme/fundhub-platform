@@ -9,6 +9,44 @@ half hours, 46 of them the same message, to customers who had already booked.
 Three separate faults stacked up, and no single document showed how the pieces
 connected, so nobody could see it coming.
 
+## Forward booking workflow handoff (2026-11-02 source repair)
+
+`src/events/bus.mjs` saves a new, non-demo `booking.created` event and its
+`booking-created-inngest-v1` retry ticket in one SQL statement before local
+handlers run. If the ticket cannot be saved, the event is not saved and the
+webhook fails. ClickFunnels can retry; its booking row is written by the local
+handler after this statement, not before it. A duplicate event creates no new
+ticket, and an old event without a ticket is never adopted or replayed.
+
+After local handlers, the first provider attempt runs without holding the HTTP
+response open. The existing five-minute message sweeper also checks at most four
+due tickets. Each attempt claims a one-minute compare-and-set lease, checks the
+same organization/client and the saved booking's active status and original
+future time, and uses the same top-level provider event ID. Only tickets created
+after the explicit cutover `2026-11-03T00:36:56.000Z` qualify. Attempts stop after
+15 minutes or seven sends; an expired or invalid ticket remains exhausted and
+visible as a failed sweeper result. A moved or cancelled booking is ignored with
+a dated receipt. No historical booking search or backfill runs.
+
+A usable Inngest `{ ids: [id] }` response resolves the ticket as **accepted by
+Inngest**, not SMS delivery. An empty response, transport error, lost receipt or
+two-second wait timeout stays pending. The SDK request is not falsely cancelled;
+a late response can settle only the same lease. Its stable event ID keeps retries
+within Inngest's documented 24-hour deduplication window; existing downstream
+message idempotency and consent, template, company-switch and quiet-hour gates
+are unchanged. A handoff error cannot stop normal queued-message draining.
+
+Local unit proof is separate from the required real-Postgres CI cases and from
+production proof. The four previously observed missing-message findings remain
+red: this repair neither establishes their historical cause nor resends them.
+After deployment, read only the new ticket, acceptance and worker receipts first.
+Any controlled test booking/provider action needs the coordinator's exact scope
+review and the existing designated test client; never replay an old event or send
+to real customers just to obtain a green proof.
+
+Primary provider contract: [Inngest send acknowledgement](https://www.inngest.com/docs/durable-execution/guides-and-advanced/events-and-triggers/send-events)
+and [event ID deduplication](https://www.inngest.com/docs/durable-execution/guides-and-advanced/idempotency).
+
 ## Pre-call slideshow lessons (2026-11-01)
 
 BS-01 keeps its existing booking SMS. When both `EMAIL-BS-DECK-LESSON` and

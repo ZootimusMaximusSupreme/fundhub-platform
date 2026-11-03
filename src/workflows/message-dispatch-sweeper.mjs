@@ -104,6 +104,7 @@ import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { DEFAULT_BATCH } from "../messaging/dispatch.mjs";
 import { drainAll } from "../messaging/outbox.mjs";
+import { sweepBookingHandoffs } from "../events/booking-handoff.mjs";
 
 /** How often a pass would run once this is registered. Every five minutes: the
     quiet-hours window opens on the hour, and a text held overnight should go out
@@ -119,7 +120,11 @@ export const SOURCE_WORKFLOW = "message-dispatch-sweeper";
    it, because the next pass is the recovery: every message it did not finish is
    still queued and still due. The error is returned so a caller can log it. */
 export async function sweep(db, options = {}) {
-  const { limit = DEFAULT_BATCH, ...rest } = options;
+  const { limit = DEFAULT_BATCH, bookingHandoffImpl = sweepBookingHandoffs, ...rest } = options;
+  // Independent of the message drain: a handoff error cannot strand existing
+  // queued mail. Only the newly ticketed booking namespace is read by this job.
+  const handoff = Promise.resolve().then(() => bookingHandoffImpl(db)).catch(() =>
+    ({ scanned: 0, accepted: 0, pending: 0, exhausted: 0, ignored: 0, errors: 1 }));
   try {
     /* THROUGH outbox.drainAll(), NOT dispatchDue() DIRECTLY. That is what makes
        the per-company switch and the daily cap apply to the scheduled run as
@@ -127,7 +132,8 @@ export async function sweep(db, options = {}) {
        would ignore both, and an operator who paused sending would find it still
        sending on the hour. */
     const result = await drainAll(db, { ...rest, limit });
-    return { ok: true, ...result };
+    const bookingHandoffs = await handoff;
+    return { ...result, bookingHandoffs, ok: bookingHandoffs.errors===0 && bookingHandoffs.exhausted===0 };
   } catch (err) {
     return {
       ok: false,

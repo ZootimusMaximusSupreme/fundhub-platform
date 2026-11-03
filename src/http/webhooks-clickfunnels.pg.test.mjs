@@ -94,11 +94,21 @@ describe("ClickFunnels booked call: create → move → cancel on one row", { sk
     if (!orgId) return;
     const like = `%${NONCE}%`;
     const ids = (await db.query(`SELECT id FROM clients WHERE org_id = $1 AND email LIKE $2`, [orgId, like])).rows.map((r) => r.id);
+    // Preserve append-only receipts and their event FKs. Retire only this
+    // suite's still-open tickets; accepted/resolved receipts stay unchanged.
+    await db.query(`UPDATE failed_events q SET status='ignored',resolved_at=now(),
+      next_attempt_at=NULL,resolution_note='ClickFunnels scratch fixture retired'
+      FROM events e WHERE q.event_id=e.id AND q.org_id=$1 AND e.org_id=$1
+        AND e.payload->>'email' LIKE $2 AND q.status IN ('pending','exhausted')`, [orgId, like]);
     await db.query(`DELETE FROM bookings WHERE org_id = $1 AND attendee_email LIKE $2`, [orgId, like]);
     if (ids.length) await db.query(`DELETE FROM tasks WHERE client_id = ANY($1)`, [ids]);
-    await db.query(`DELETE FROM events WHERE org_id = $1 AND payload->>'email' LIKE $2`, [orgId, like]);
+    await db.query(`DELETE FROM events e WHERE e.org_id = $1 AND e.payload->>'email' LIKE $2
+      AND NOT EXISTS (SELECT 1 FROM failed_events q WHERE q.event_id=e.id)`, [orgId, like]);
     await db.query(`DELETE FROM webhook_captures WHERE provider = 'clickfunnels' AND raw_body LIKE $1`, [like]);
-    if (ids.length) await db.query(`DELETE FROM clients WHERE id = ANY($1)`, [ids]);
+    // A retained event/receipt also retains its fixture subject under the FK.
+    if (ids.length) await db.query(`DELETE FROM clients c WHERE c.org_id=$1 AND c.id = ANY($2::uuid[])
+      AND NOT EXISTS (SELECT 1 FROM events e WHERE e.client_id=c.id)
+      AND NOT EXISTS (SELECT 1 FROM failed_events q WHERE q.client_id=c.id)`, [orgId, ids]);
   }
 
   before(async () => {

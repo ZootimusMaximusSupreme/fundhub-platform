@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert";
 import { emit, replay, _resetOrgCache } from "./bus.mjs";
 import { on, clearHandlers } from "./registry.mjs";
+import { INSERT_SQL } from "./booking-handoff.mjs";
 
 // Fake db: routes by SQL keyword, returns canned rows. `events` array is the store.
 function fakeDb({ dedup = false, store = [] } = {}) {
@@ -114,4 +115,22 @@ test("replay: re-dispatches stored events", async () => {
   const res = await replay(db, { name: "round.funded" });
   assert.equal(res.dispatched, 2);
   assert.deepEqual(seen, [1, 2]);
+});
+
+test("booking ticket must persist before local handlers or webhook success", async () => {
+  clearHandlers(); const seen=[];
+  on("booking.created",()=>seen.push("handler"));
+  const db={async query(sql){assert.equal(sql,INSERT_SQL);throw Error("ticket persistence failed");}};
+  await assert.rejects(()=>emit(db,"booking.created",{startTime:new Date(Date.now()+3600000).toISOString()},
+    {orgId:"org-1",idempotencyKey:"new-booking"}),/ticket persistence failed/);
+  assert.deepEqual(seen,[]);
+});
+
+test("booking duplicate does not recreate a ticket or dispatch an old booking", async () => {
+  clearHandlers();let dispatched=0,queries=0;
+  on("booking.created",()=>dispatched++);
+  const db={async query(sql){queries++;assert.equal(sql,INSERT_SQL);return{rows:[]};}};
+  assert.deepEqual(await emit(db,"booking.created",{startTime:new Date(Date.now()+3600000).toISOString()},
+    {orgId:"org-1",idempotencyKey:"old-booking"}),{id:null,deduped:true});
+  assert.equal(queries,1);assert.equal(dispatched,0);
 });

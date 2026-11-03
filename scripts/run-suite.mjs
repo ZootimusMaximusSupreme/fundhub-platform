@@ -97,6 +97,9 @@ function run(label, files, concurrency) {
      with the flag in the wrong place, which is why CLAUDE.md section 12 says the
      number "has never been stable". It was not the environment moving. */
   const args = ["--test"];
+  // Node 22 can emit a failed suite after-hook while returning exit0. Keep
+  // the standard TAP stream, but make every typed PG failure fail the job.
+  if (label === "pg") args.push(`--test-reporter=${path.join(ROOT, "scripts", "pg-strict-reporter.mjs")}`);
   if (concurrency != null) args.push(`--test-concurrency=${concurrency}`);
   args.push(...files);
   process.stderr.write(`\n[run-suite] ${label}: ${files.length} files` +

@@ -245,18 +245,31 @@ async function makePerson(label, { score = null, first = "Wendy" } = {}) {
 }
 
 async function purge() {
+  const like = `w4-booked-%+fhtest-${NONCE}@example.invalid`;
   const swept = (await db.query(
-    `SELECT id FROM clients WHERE email LIKE 'w4-booked-%+fhtest-%@example.invalid'`)).rows.map((r) => r.id);
+    `SELECT id FROM clients WHERE org_id=$1 AND email LIKE $2`, [orgId, like])).rows.map((r) => r.id);
   const ids = [...new Set([...created.clientIds, ...swept])];
+  // The ledger forbids deletion. Keep its linked events, and close only this
+  // run's open fixture tickets without rewriting accepted/resolved receipts.
+  await db.query(`UPDATE failed_events q SET status='ignored',resolved_at=now(),
+    next_attempt_at=NULL,resolution_note='Booked-lane scratch fixture retired'
+    FROM events e WHERE q.event_id=e.id AND q.org_id=$1 AND e.org_id=$1
+      AND (e.client_id=ANY($2::uuid[]) OR e.payload->>'email' LIKE $3)
+      AND q.status IN ('pending','exhausted')`, [orgId, ids, like]);
   if (ids.length) {
     await db.query(`DELETE FROM messages WHERE client_id = ANY($1::uuid[])`, [ids]);
     await db.query(`DELETE FROM tasks WHERE client_id = ANY($1::uuid[])`, [ids]);
-    await db.query(`DELETE FROM events WHERE client_id = ANY($1::uuid[])`, [ids]);
+    await db.query(`DELETE FROM events e WHERE e.org_id=$1 AND e.client_id = ANY($2::uuid[])
+      AND NOT EXISTS (SELECT 1 FROM failed_events q WHERE q.event_id=e.id)`, [orgId, ids]);
   }
-  await db.query(`DELETE FROM events WHERE payload->>'email' LIKE 'w4-booked-%+fhtest-%@example.invalid'`);
+  await db.query(`DELETE FROM events e WHERE e.org_id=$1 AND e.payload->>'email' LIKE $2
+    AND NOT EXISTS (SELECT 1 FROM failed_events q WHERE q.event_id=e.id)`, [orgId, like]);
   await db.query(`DELETE FROM bookings WHERE attendee_email LIKE 'w4-booked-%+fhtest-%@example.invalid'`);
   await db.query(`DELETE FROM account_magic_links WHERE email LIKE 'w4-booked-%+fhtest-%@example.invalid'`);
-  if (ids.length) await db.query(`DELETE FROM clients WHERE id = ANY($1::uuid[])`, [ids]);
+  // Preserve the client subject of retained immutable events/receipts too.
+  if (ids.length) await db.query(`DELETE FROM clients c WHERE c.org_id=$1 AND c.id = ANY($2::uuid[])
+    AND NOT EXISTS (SELECT 1 FROM events e WHERE e.client_id=c.id)
+    AND NOT EXISTS (SELECT 1 FROM failed_events q WHERE q.client_id=c.id)`, [orgId, ids]);
   // The one staff row the staff-alert check makes (and any a crashed run left behind).
   const staffIds = [...new Set([...created.staffIds, ...(await db.query(
     `SELECT id FROM staff WHERE email LIKE 'w4-setter+fhtest-%@example.invalid'`)).rows.map((r) => r.id)])];
