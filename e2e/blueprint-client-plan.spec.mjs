@@ -14,7 +14,7 @@ const RESPONSE_VERSION='e0000000-0000-4000-8000-00000000000e';
 const json=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
 function initial(started=false){return{orgId:ORG,clientId:CLIENT,targetBusinessCount:3,setupStep:0,startedAt:started?'2026-11-02T12:00:00Z':null,hasExistingBusiness:null,homeState:started?'AZ':null,postalCode:started?'85004':null,availableCashCents:null,monthlyIncomeCents:null,cashBufferCents:null,oneTimePayoffCents:null,payoffPlan:null,availableEvidence:[],businesses:[],existingBusinesses:[],stepProgress:[],businessPreparation:{}};}
 function record(){return{id:PLAN,name:'Cedar Grove LLC',activity:'Web design for local shops',formationState:'AZ',formationStatus:'planned',formationDate:null,ownershipSince:null,operatingSince:null,evidence:{formation:{status:'not_added'},ein:{status:'not_added'}},bankPreparation:{documentsReady:false,accountOpeningIssue:false,relationships:[]}};}
-async function open(page,{started=false,business=false,denied=false,malformedPlan=false,failSave=false,failSaveOnce=false,failUpload=false,failAttachOnce=false,seed={},nativeProgress=null,bankPlan=null,mailing=null,responseRows=[],letterFiles=[],clientName='Pat'}={}){
+async function open(page,{started=false,business=false,denied=false,malformedPlan=false,failSave=false,failSaveOnce=false,failUpload=false,failAttachOnce=false,seed={},nativeProgress=null,bankPlan=null,mailing=null,responseRows=[],letterFiles=[],clientName='Pat',planAccess=null,portalSummary={},entitlementRows=[]}={}){
   const state={...initial(started),...structuredClone(seed)};if(business&&!state.businesses.length)state.businesses=[record()];
   const requests=[],downloads=[],uploadFields=[],mailRequests=[],bureauUploads=[];const downloadState={missing:false};
   const responseDocuments=structuredClone(responseRows),mailingData=structuredClone(mailing||{letters:[],orders:[],capabilities:{mailSupported:false,reason:'offline_provider_unavailable'}});
@@ -41,7 +41,7 @@ async function open(page,{started=false,business=false,denied=false,malformedPla
   await page.route('**/api/**',async route=>{
     const url=new URL(route.request().url()),path=url.pathname,method=route.request().method();
     if(path==='/api/auth/session')return json(route,{ok:true,principal:'client',staff:{id:CLIENT,client_id:CLIENT,role:'client',name:'Pat Buyer',status:'active'}});
-    if(path==='/api/blueprint/plan')return denied?json(route,{ok:false,error:'blueprint_access_inactive'},403):json(route,malformedPlan?{ok:true,items:[]}:await payload());
+    if(path==='/api/blueprint/plan'){if(planAccess?.wait)await planAccess.wait;return (planAccess?.denied??denied)?json(route,{ok:false,error:'blueprint_access_inactive'},403):json(route,malformedPlan?{ok:true,items:[]}:await payload());}
     if(path==='/api/blueprint/letter-mailing'){
       if(method==='GET')return json(route,{ok:true,...structuredClone(mailingData)});
       const body=route.request().postDataJSON();mailRequests.push(body);
@@ -95,8 +95,8 @@ async function open(page,{started=false,business=false,denied=false,malformedPla
       return json(route,{ok:true,document:{id:url.searchParams.get('id'),download:downloadState.missing?null:'/api/documents/'+url.searchParams.get('id')+'?exp=2000000000&sig=offline-fixture-signature'}});
     }
     if(path==='/api/chat/portal-message'&&method==='POST'){requests.push({chat:route.request().postDataJSON()});return json(route,{ok:true,message:{id:'message-browser-contract'}});}
-    if(path.includes('portal-summary'))return json(route,{ok:true,documents:[],scores:{},soft_pull_complete:false,dispute_consent:{allowed:false},stage:{key:'paid'},upcoming_call:null});
-    if(path.includes('read/entitlements'))return json(route,{ok:true,items:[]});
+    if(path.includes('portal-summary'))return json(route,{ok:true,documents:[],scores:{},soft_pull_complete:false,dispute_consent:{allowed:false},stage:{key:'paid'},upcoming_call:null,...portalSummary});
+    if(path.includes('read/entitlements'))return json(route,{ok:true,items:entitlementRows});
     return json(route,{ok:true,items:[],rows:[],documents:[],payments:[]});
   });
   // The portal welcome chat can open while a long form is in use. Close that
@@ -115,7 +115,65 @@ test('paid buyer starts one question at a time and server state survives reload'
   await page.evaluate(()=>{for(const key of Object.keys(localStorage))if(key.startsWith('fundhub-blueprint'))localStorage.removeItem(key);});await page.reload();await expect(app.getByText('Review the balances on your file',{exact:true})).toBeVisible();
 });
 test('nonbuyer gets no paid plan controls',async({page})=>{const{app}=await open(page,{denied:true});await expect(app).toBeHidden();});
-test('incomplete successful API response cannot invent a saved buyer plan',async({page})=>{const{app}=await open(page,{malformedPlan:true});await expect(app).toContainText('Your Blueprint couldn’t load.');await expect(app.getByRole('button',{name:'Try again'})).toBeVisible();await expect(app).not.toContainText('Saved to your client file');});
+for(const paymentFlag of[false,true])test(`paid Blueprint includes the missing report without a diagnostic purchase (legacy paid flag ${paymentFlag})`,async({page})=>{
+  const{app,requests}=await open(page,{portalSummary:{soft_pull_complete:paymentFlag}});
+  const tile=page.locator('[data-tile="SOFT_PULL"]');
+  await expect(page.locator('body')).toHaveAttribute('data-blueprint-plan','active');
+  await expect(tile.locator('.lockrow')).toHaveText('Included with Blueprint');
+  await expect(tile.locator('.tp')).toHaveText('Included with Blueprint — report not ready yet');
+  await expect(tile.locator('.tacts [data-book]:visible,.tacts [data-unlock]:visible')).toHaveCount(0);
+  await expect(page.locator('#unlock-note')).not.toContainText('$32');
+  await expect(page.locator('#soft-pull-entry-link')).toHaveAttribute('href','#blueprint-plan');
+  await tile.getByRole('button',{name:'View report status',exact:true}).click();
+  await expect(app.getByRole('heading',{name:preparationGuidance().find(x=>x.key==='credit_review').title,exact:true})).toBeVisible();
+  await expect(app.getByRole('button',{name:'Save this step',exact:true})).toBeVisible();
+  await expect(page.locator('#unlock-modal')).not.toHaveClass(/\bon\b/);
+  expect(requests).toHaveLength(0);
+});
+test('roadmap ownership alone leaves the non-Blueprint diagnostic at its original price',async({page})=>{
+  await open(page,{denied:true,entitlementRows:[{entitlement_code:'credit-optimization-roadmap',active:true}]});
+  const tile=page.locator('[data-tile="SOFT_PULL"]');
+  await expect(page.locator('#blueprint-plan')).toBeHidden();
+  await expect(tile).toHaveClass(/\blocked\b/);await expect(tile.locator('.tp')).toHaveText('$32');
+  await expect(tile.getByRole('button',{name:'Talk to an advisor',exact:true})).toBeVisible();
+  await expect(page.locator('#soft-pull-entry-link')).toHaveAttribute('href','/app/soft-pull-approve.html?portal=1');
+});
+test('a delayed authenticated Blueprint plan repaints an already loaded diagnostic offer',async({page})=>{
+  let release;const wait=new Promise(resolve=>{release=resolve;});
+  await open(page,{planAccess:{wait},entitlementRows:[{entitlement_code:'credit-optimization-roadmap',active:true}]});
+  const tile=page.locator('[data-tile="SOFT_PULL"]');
+  try{
+    await expect(page.locator('[data-tile="UWIQ_DELIVERABLES"]')).not.toHaveClass(/\blocked\b/);
+    await expect(tile.locator('.tp')).toHaveText('$32');
+  }finally{release();}
+  await expect(tile.locator('.lockrow')).toHaveText('Included with Blueprint');
+  await expect(tile.locator('.tp')).toContainText('report not ready yet');
+});
+test('revoked paid-year access removes the included diagnostic display on the same page',async({page})=>{
+  const access={denied:false};const{app}=await open(page,{started:true,planAccess:access,entitlementRows:[{entitlement_code:'credit-optimization-roadmap',active:true}]});
+  const tile=page.locator('[data-tile="SOFT_PULL"]');
+  await expect(tile.locator('.lockrow')).toHaveText('Included with Blueprint');
+  await app.getByRole('button',{name:'Letters and responses',exact:true}).click();
+  access.denied=true;await app.getByRole('button',{name:'Refresh letters and reviews',exact:true}).click();
+  await expect(tile.locator('.tp')).toHaveText('$32');await expect(tile).toHaveClass(/\blocked\b/);
+  await expect(tile.getByRole('button',{name:'Talk to an advisor',exact:true})).toBeVisible();
+  await expect(page.locator('#unlock-note')).toContainText('$32');
+  await expect(page.locator('#soft-pull-entry-link')).toHaveAttribute('href','/app/soft-pull-approve.html?portal=1');
+});
+test('an actual saved credit-analysis report still displays Done for the paid buyer',async({page})=>{
+  await open(page,{portalSummary:{soft_pull_complete:true,documents:[{id:DOCUMENT,kind:'deliverable',subtype:'credit_analysis_report',title:'Credit Analysis Report',download:null}]}});
+  const tile=page.locator('[data-tile="SOFT_PULL"]');
+  await expect(tile.locator('.lockrow')).toHaveText('Done');
+  await expect(tile.locator('.tp')).toHaveText('Your credit assessment result is on file');
+  await expect(tile).not.toContainText('report not ready yet');
+  await expect(tile.locator('.tacts [data-book]:visible')).toHaveCount(0);
+});
+test('incomplete successful API response cannot invent a saved buyer plan',async({page})=>{
+  const{app}=await open(page,{malformedPlan:true});await expect(app).toContainText('Your Blueprint couldn’t load.');
+  await expect(app.getByRole('button',{name:'Try again'})).toBeVisible();await expect(app).not.toContainText('Saved to your client file');
+  await expect(page.locator('body')).toHaveAttribute('data-blueprint-plan','error');
+  await expect(page.locator('a[href*="finance-os"]:visible,a[href*="financeos"]:visible,#money-link:visible')).toHaveCount(0);
+});
 test('business plan saves supported actual details and uses the same identity on retry',async({page})=>{
   const{app,state,requests}=await open(page,{started:true,failSaveOnce:true});await app.getByRole('button',{name:'Businesses',exact:true}).click();await app.getByRole('button',{name:'Add a business plan',exact:true}).click();await app.locator('input[name=name]').fill('Maple Studio LLC');await app.locator('textarea[name=activity]').fill('Photography for local businesses');await app.getByRole('button',{name:'Save business plan',exact:true}).click();await expect(app.getByText('The saved plan is temporarily unavailable.',{exact:true})).toBeVisible();const firstId=requests.at(-1).business.id;await app.getByRole('button',{name:'Save business plan',exact:true}).click();await expect.poll(()=>requests.length).toBe(2);expect(requests.at(-1).business.id).toBe(firstId);
   await expect(app.getByText('Saved to your client file.',{exact:true})).toBeVisible();expect(state.businesses).toHaveLength(1);expect(requests.at(-1).business.formationStatus).toBe('planned');expect(requests.at(-1).business.evidence).toBeUndefined();await page.reload();await app.getByRole('button',{name:'Businesses',exact:true}).click();await expect(app.getByRole('heading',{name:'Maple Studio LLC',exact:true})).toBeVisible();

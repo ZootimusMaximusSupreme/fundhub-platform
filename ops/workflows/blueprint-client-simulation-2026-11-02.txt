@@ -430,3 +430,18 @@ Final repair source and independent receipts
 - R07realChrome nowshows letterpacknotready+Preparebusinesses with1of4persistedscratchplans, no mailbeforefile/no fabricatedproviderresult.
 - R35independentactualHTTP at2032/1440/390PASS:all5offers, unchangedprices, hiddenstates,18titles/16body+price/44targets,nooverflow,courseopen/realinstruction/close. Supportequalcolumns verified860/860,564/564,358mobile. Exactraw/markedreceiptsunderignoredfinal/r35.
 - Rootownssolecommit. PR388 staysDRAFT/autoOFF; next ship-change--resume safelyreplays recorded a0parentdeltaonto current387parentpercontrollerhandoff. Source/published/deployed/authenticatedproductionproof remain separate.
+
+
+R36 — observed included-report display mismatch
+- Actual paidConsultingPackage grants onlyroadmap/Metro2 initially, whileofferincludesCreditAnalysisReport; oldtile showedlocked32untilreportarrived. RealgrantfunctionconfirmednotQAinvention. Standalonediagnosticremainsseparate32SKU.
+- Validatedauthenticatedpaidplanpublishesincludedbenefit; reportwaitingnotDone; reusescredit_review guidance. Nogrant/price/pull/providerchanges. Denials revoke;500/malformedstatesremainerrorandkeepFinanceOShidden.
+- Buyerbrowser40PASS; broaderlegacy32PASS+1staleplaceholderFAIL thenexactscenario1PASS requiringactualinstructions. Final7access/errorcasesPASS. Guards33PASS/lint4661/typecheck/diffPASS. Rejectednew-loginverificationpathnotretried; rootreadOnlyexistingChromeGET/reloadconfirmedIncluded/NotReady+1receiveddoc. NoPOSTconsent.
+
+Specific release-control approval and exact handoff
+- Initial reviewedpatchapply/commit was rejectedBEFOREprocesscreation byautomaticapprovalreview: sharedreleaseguardscopebeyondBlueprint. No workaround/indirectexecution.
+- User answered exactsharedreleasecheckquestion: Approve the shared release-check fix. Sameexplicitapprovalalsoincontrollerchat. Onlyreviewed2filepatch e4677090... applied;afterhashes12f33230.../e3db2f...match. Committed2a69c28b2, focused42PASS0skip; originalsource640preserved.
+- Connectedold-a0preflightnowrecognizesverifiedparentbranch. It preservesdirty/unrelated/forged/movedsourceblocks;controller2filecopiesclean. Normalship-change resume remainsrequired, sameDRAFT388, no manualstack.
+
+Actual isolated software-upload proof
+- Formationupload200, attach200, reloadretainedplanned/evidence_received/noReview. Signeddownloadidentical1051bytes/SHA256d2f7313f...c4893f97. UserChromeextensionfilepickerpermissionunchanged.
+- Bureauactualuploadnotyetproved: repeatedsuccessfulclientsignins hitexistingstaff-firstloginlimiter(emailFails5/ipFails5/15min). No authrowreset orbypass. Separateauthownerleftoverrecorded; responseunit/PGproofstillvalidasitsownsubset.
