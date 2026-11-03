@@ -45,13 +45,14 @@ test("the website prompt reuses real business context and keeps missing facts as
   assert.match(websitePrompt(), /\[business name\]/);
 });
 
-test("pending source programs remain honest review tasks and preserved requested topics", () => {
+test("optional programs remain honest review tasks and preserve requested topics", () => {
   const guides = preparationGuidance();
   const businessCredit = guides.find(g => g.key === "business_credit");
   const merchant = guides.find(g => g.key === "merchant_tools");
   assert.equal(businessCredit.optional, true);
   assert.equal(businessCredit.applicability, "review_needed");
-  assert.match(businessCredit.steps.join(" "), /David.*still needed/);
+  assert.match(businessCredit.steps.join(" "), /which optional tools fit your actual plan/);
+  assert.doesNotMatch(JSON.stringify(businessCredit), /David|gas-card-material-pending/);
   assert.match(merchant.steps.join(" "), /Whop, Commas or Clarity/);
   assert.match(guides.find(g => g.key === "business_listings").steps.join(" "), /Yellow Pages/);
   assert.match(guides.find(g => g.key === "calendar").steps.join(" "), /Google Calendar/);
@@ -69,8 +70,16 @@ test("fleet-provider discovery stays optional and cannot become an approval or r
   assert.match(instructions, /credit checks, personal guarantees/);
   assert.match(instructions, /whether the issuer reports this exact account/);
   assert.match(instructions, /Do not apply just to create activity/);
-  assert.match(instructions, /David.*still needed/);
+  assert.match(instructions, /current reviewed program when suitable/);
   assert.match(guide.proof, /not approval or proof of reporting/);
+});
+
+test("buyer guidance and generated website prompts exclude the owner-removed programs", () => {
+  const removedPrograms = /\bnav\b|\bnet[\s-]*30s?\b|\bduns?\b|dun\s*(?:&|and)\s*bradstreet/i;
+  for (const context of [{}, { homeState: "AZ", business: { name: "Cedar LLC", activity: "Landscape maintenance", formationStatus: "reported_formed" }, creditContext: { authorizedUserReviewRequired: true, securedCreditReviewRequired: true } }]) {
+    assert.doesNotMatch(JSON.stringify(preparationGuidance(context)), removedPrograms);
+    assert.doesNotMatch(websitePrompt(context.business), removedPrograms);
+  }
 });
 
 test("client reporting and elapsed time cannot become verified funding or formation", () => {
