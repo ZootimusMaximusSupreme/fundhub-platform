@@ -1366,6 +1366,12 @@ var PRODUCTS = {
     openM(unlockM);
   }
   document.addEventListener('click', function(e){
+    var blueprintReport = e.target.closest('[data-blueprint-report-status], [data-status="SOFT_PULL"]');
+    if (blueprintReport && document.body.dataset.blueprintPlan === 'active') {
+      e.preventDefault();
+      document.dispatchEvent(new Event('fh:blueprint-report-status'));
+      return;
+    }
     var statusBtn = e.target.closest('[data-status]');
     if (statusBtn) {
       var sk = statusBtn.dataset.status;
@@ -2251,34 +2257,87 @@ document.addEventListener("DOMContentLoaded", async function () {
      the race decide. */
   function repaintTiles() {
     var out = { unlocked: 0, locked: 0 };
-    if (!entActive) return out;
+    // Only the authenticated paid-year plan read publishes active access.
+    // A roadmap grant alone must never turn a diagnostic into a paid benefit.
+    var blueprintIncluded = !demoMode && document.body.dataset.blueprintPlan === "active";
+    var blueprintReportReady = document.body.dataset.blueprintReportReady === "true" || docsOnFile.some(function (d) {
+      return d && d.id && d.kind === "deliverable" && d.subtype === "credit_analysis_report";
+    });
+    var active = entActive || {};
     var tiles = document.querySelectorAll("[data-tile]");
     for (var i = 0; i < tiles.length; i++) {
       var key = tiles[i].getAttribute("data-tile");
       var code = MAP[key];
-      var owned = !!(code && entActive[code]);
+      var owned = !!(code && active[code]);
       var words = null;
       if (key === "SOFT_PULL" && !owned && softPullDone) {
         owned = true;
         words = { badge: "Done", price: "Already run — this is where your scores came from" };
       }
+      if (key === "SOFT_PULL" && blueprintIncluded) {
+        owned = true;
+        words = blueprintReportReady
+          ? { badge: "Done", price: "Your credit assessment result is on file" }
+          : { badge: "Included with Blueprint", price: "Included with Blueprint — report not ready yet" };
+      }
       if (key === "UWIQ_DELIVERABLES" && !owned && sloPaid) owned = true;
       paintTile(tiles[i], owned, words);
+      if (key === "SOFT_PULL") {
+        var copy = tiles[i].querySelector(".td");
+        if (copy && !copy.hasAttribute("data-diagnostic-copy")) copy.setAttribute("data-diagnostic-copy", copy.textContent);
+        if (copy) copy.textContent = blueprintIncluded
+          ? (blueprintReportReady ? "Your credit assessment result is on file. Open your included report guidance and saved documents."
+            : "Your credit analysis is included with Blueprint. Your report is not ready yet. You can prepare your businesses while your file is reviewed.")
+          : copy.getAttribute("data-diagnostic-copy");
+        var advisor = tiles[i].querySelector(".tacts [data-book]");
+        if (advisor) advisor.hidden = blueprintIncluded;
+        var reportStatus = tiles[i].querySelector('[data-status="SOFT_PULL"]');
+        if (reportStatus && blueprintIncluded) reportStatus.textContent = "View report status";
+      }
       if (owned) out.unlocked++; else out.locked++;
     }
     /* Not on the demo: the demo exists so every card can be looked at, and
        hiding the test run because the demo also holds the letter pack is the
        one rule that would empty a card Chris asked to see. */
-    if (!demoMode && entActive["metro2-letter-pack"]) {
+    if (!demoMode && active["metro2-letter-pack"]) {
       var trial = document.querySelector('[data-tile="REPAIR_TRIAL"]');
       if (trial) trial.classList.add("hidden");
     }
-    if (softPullDone) {
-      var note = document.getElementById("unlock-note");
-      if (note) note.textContent = "Everything here — book a call for pricing";
+    var note = document.getElementById("unlock-note");
+    if (note) {
+      if (!note.hasAttribute("data-diagnostic-note")) note.setAttribute("data-diagnostic-note", note.textContent);
+      note.textContent = blueprintIncluded ? "Your credit analysis is included with Blueprint. Other offers — book a call for pricing"
+        : softPullDone ? "Everything here — book a call for pricing" : note.getAttribute("data-diagnostic-note");
     }
+    paintBlueprintReportEntry(blueprintIncluded, blueprintReportReady);
     return out;
   }
+
+  function paintBlueprintReportEntry(included, reportReady) {
+    var link = document.getElementById("soft-pull-entry-link"), status = document.getElementById("soft-pull-entry-status");
+    if (!link || !status) return;
+    if (included) {
+      if (!link.hasAttribute("data-diagnostic-href")) {
+        link.setAttribute("data-diagnostic-href", link.getAttribute("href"));
+        link.setAttribute("data-diagnostic-label", link.textContent);
+        status.setAttribute("data-diagnostic-status", status.textContent);
+      }
+      link.setAttribute("data-blueprint-report-status", "");
+      link.href = "#blueprint-plan";
+      link.textContent = "View included report status";
+      status.textContent = reportReady ? "Your assessment result is on file. Review your included report guidance and saved documents."
+        : "Your credit analysis is included with Blueprint. Your report is not ready yet. You can continue preparing your businesses.";
+    } else if (link.hasAttribute("data-diagnostic-href")) {
+      link.href = link.getAttribute("data-diagnostic-href");
+      link.textContent = link.getAttribute("data-diagnostic-label");
+      status.textContent = status.getAttribute("data-diagnostic-status");
+      link.removeAttribute("data-blueprint-report-status");
+      link.removeAttribute("data-diagnostic-href");
+      link.removeAttribute("data-diagnostic-label");
+      status.removeAttribute("data-diagnostic-status");
+    }
+  }
+  document.addEventListener("fh:blueprint-plan-access", repaintTiles);
 
   document.addEventListener("click", function (e) {
     /* What You Own's course row: open that course's own card and go to it. */
@@ -3321,6 +3380,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           .then(function (r) { return r.json(); })
           .then(function (s) {
             if (!s || !s.ok) return;
+            if (document.body.dataset.blueprintPlan === "active") { repaintTiles(); return; }
             var pull = s.pull || {};
             if (pull.result_ready) softPullStatus.textContent = "Your assessment result is on file. Open it to see the current status.";
             else if (pull.status === "failed") softPullStatus.textContent = "Your report request needs attention. Your advisor can check it.";
