@@ -87,3 +87,11 @@ test("preparation count reports a real integrity exception without exposing clie
     assert.ok(beat.PREPARATION_EVIDENCE_SQL.includes(predicate), predicate);
   }
 });
+
+
+test("preparation hourly evidence uses the canonical staff-reviewed business before upload metadata", () => {
+  const canonical = "COALESCE(r.entity_id::text, NULLIF(d.metadata->>'entity_id', ''))";
+  assert.equal(beat.PREPARATION_EVIDENCE_SQL.split(canonical).length - 1, 2);
+  assert.equal(beat.PREPARATION_EVIDENCE_SQL, gap.PREPARATION_EVIDENCE_SQL);
+  assert.doesNotMatch(beat.PREPARATION_EVIDENCE_SQL, /COALESCE\(NULLIF\(d\.metadata/);
+});
