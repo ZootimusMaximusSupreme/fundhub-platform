@@ -1,24 +1,17 @@
 // The come-back link. The 6 a.m. deep check for GET /api/public/survey-resume. Read only.
 //
-// CONTAINMENT (2026-10-31): THE DOOR MUST STAY SHUT. /apply accepts an existing
-// lead's email with a new phone and writes that phone onto the record, so a signed
-// resume code texted to "the lead" can reach a stranger. The code only proves it was
-// minted, not who holds it, and the door used to hand back that lead's saved contact
-// and answers. So the door is closed (api/public/survey-resume.mjs) and S-00/S-02
-// send the plain /apply link. What a customer feels if this goes red: anyone holding
-// a resume code can read that lead's saved answers.
+// A v3 code is bound to the saved email. Old v1 text codes stay invalid.
 //
 // HOW IT JUDGES. It takes the newest real lead of the last 7 days, mints that
-// person's code with the server's real key (surveyResumeToken), and reads it the way
-// the door does (readSurveyResume, imported from the handler, no web call). PASS only
-// when nothing comes back. Anything that comes back is a FAIL. No signing key is a
-// skip: there is no real code to try the door with.
+// person's v3 code with the server's real key, and reads it through the door.
+// PASS when the saved answers and next question match that lead's record.
 //
 // WHAT IT NEVER DOES. No write statement, no transaction control, no web call, no
 // text, no email. The detail names the client code, never a name or an address.
 
 import { surveyResumeToken, surveyResumeSecret } from "../../survey/resume-link.mjs";
 import { readSurveyResume } from "../../../api/public/survey-resume.mjs";
+import { nextSurveyKey, savedSurveyAnswers } from "../../survey/resume-state.mjs";
 import { testAddressSql } from "../beats/lib/handoff-truth.mjs";
 
 export const CHECK_ID = "survey:resume-link-opens";
@@ -46,9 +39,8 @@ SELECT c.id, c.client_code, lower(c.email) AS email, c.custom_fields
  ORDER BY e.created_at DESC
  LIMIT 1`.trim();
 
-const FIX = "Open api/public/survey-resume.mjs. readSurveyResume must answer null for every code until a " +
-  "resume link can prove the person opening it owns the record: /apply lets a new phone onto an existing " +
-  "lead's email, so a code can reach a stranger. Read only: this check sends nothing and changes nothing.";
+const FIX = "Check the v3 email link and api/public/survey-resume.mjs. It must read this lead's saved " +
+  "answers and next question. Keep old v1 text codes invalid and all SMS links plain /apply.";
 
 function row(status, detail, suggestedFix = null) {
   return { id: CHECK_ID, status, detail, suggestedFix: status === "FAIL" ? suggestedFix || FIX : null };
@@ -87,13 +79,17 @@ export async function gapChecks(ctx = {}, deps = {}) {
   const who = lead.client_code || "the newest lead";
   let answer;
   try {
-    const token = tokenOf({ clientId: lead.id, now, secret, env });
+    const token = tokenOf({ clientId: lead.id, email: lead.email, now, secret, env });
     answer = await readLink({ query: (sql, params) => read(sql, params) }, token, { now, secret, env });
   } catch (err) {
     return [row("FAIL", `The come-back link for ${who} could not be read: ${String(err?.message || err).slice(0, 120)}`)];
   }
-  if (answer != null) {
-    return [row("FAIL", `A resume code for ${who} opened their saved record. The door must stay shut until a link proves who is opening it.`)];
+  const expected = savedSurveyAnswers(lead.custom_fields);
+  if (answer?.ok !== true ||
+      String(answer.contact?.email || "").toLowerCase() !== lead.email ||
+      JSON.stringify(answer.answers) !== JSON.stringify(expected) ||
+      answer.next_key !== nextSurveyKey(expected)) {
+    return [row("FAIL", `The v3 email link for ${who} did not open the saved survey at the next question.`)];
   }
-  return [row("PASS", `A real resume code for ${who} opens nothing: no saved contact or answer leaves the door.`)];
+  return [row("PASS", `The v3 email link for ${who} opens the saved survey at the next question.`)];
 }
