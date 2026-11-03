@@ -32,7 +32,7 @@
     "messaging.html", "calendar.html", "documents.html", "company-brain.html",
     "ops-admin.html", "galaxy.html",
     "agent-editor.html", "automations.html", "products-commissions.html",
-    "staff-teams.html",
+    "staff-teams.html", "company-cash.html",
     /* The CSM's own desk. /api/read/csm-queue has always returned their day —
        who to call, what they owe, what they already have — and until
        2026-09-17 no page in the app had ever asked it for anything, so the
@@ -121,7 +121,7 @@
      partner-training is the partner's own classroom (docs/specs/W7-curriculum.md);
      staff record against it through /api/training-progress, not through this
      screen, so no employee sidebar links to it either. */
-  var PRINCIPAL_ONLY = ["partner-galaxy.html", "brand-studio.html", "partner-training.html"];
+  var PRINCIPAL_ONLY = ["partner-galaxy.html", "brand-studio.html", "partner-training.html", "company-cash.html"];
 
   /* NOT PART OF THE SHARED STAFF SURFACE — waiting on a human approval, not on
      a nav decision, or gated narrower than STAFF at the API itself.
@@ -289,7 +289,7 @@
      src/http/app-nav-reachability.test.mjs can lift it — that file reads this
      one as TEXT and only understands a literal. The test asserts this list
      still contains all of PORTAL_ONLY, so the two cannot drift apart. */
-  var ADMIN_BLOCKED = ["client-portal.html", "affiliate.html", "partner-galaxy.html"];
+  var ADMIN_BLOCKED = ["client-portal.html", "affiliate.html", "partner-galaxy.html", "company-cash.html"];
 
   /* NAV_HIDDEN — leave the menu, keep the URL.
      Owner-set 2026-08-19 kill pass. These screens stay in ALL and in
@@ -314,6 +314,8 @@
      Social Studio and Creative Factory. This list only ever answered "does the
      row paint at all", never "who may open it". */
   var NAV_HIDDEN = [
+    // Company cash has a live owner-only account-menu link, not a staff rail row.
+    "company-cash.html",
     "finance-os.html",
     "consent-capture.html",
     "galaxy.html",
@@ -2431,8 +2433,8 @@
       copy.textContent = "Collect verified lender product facts from bankers.";
       remembered = "";
     }
-    if (PAGE === "company-brain.html") {
-      header.setAttribute("data-fh-scope", "company-knowledge");
+    if (PAGE === "company-brain.html" || PAGE === "company-cash.html") {
+      header.setAttribute("data-fh-scope", PAGE === "company-cash.html" ? "company-cash" : "company-knowledge");
       remembered = "";
       header.querySelector("#fh-workspace-scope").remove();
     }
@@ -2518,6 +2520,8 @@
     var canLinkPayoutBank = !demo && role !== "owner" && role !== "admin" &&
       (role === "closer" || role === "sales_manager" ||
        staffRoles.indexOf("closer") >= 0 || staffRoles.indexOf("sales_manager") >= 0);
+    var companyCashHtml = !demo && role === "owner"
+      ? '<a class="fh-account-company" href="company-cash.html">Company cash</a>' : '';
     var payoutBankHtml = canLinkPayoutBank
       ? '<div class="fh-account-payout" id="fh-account-payout"><strong>Payout bank</strong>' +
         '<p id="fh-account-payout-status" role="status">Checking your payout bank…</p>' +
@@ -2529,7 +2533,7 @@
       '<span class="fh-account-shortname">' + esc(name.split(/\s+/)[0]) + '</span></summary>' +
       '<div class="fh-account-menu"><div class="fh-account-person">' + (role === "outbound_rep" ? '' : avatarChipHtml(staff.avatarUrl)) +
       '<div><strong>' + esc(name) + '</strong><span class="fh-account-role">' + esc(roleLabel) + '</span></div></div>' +
-      payoutBankHtml +
+      payoutBankHtml + companyCashHtml +
       '<button id="fh-shell-out" type="button">Sign out</button>' +
       '<a class="fh-account-privacy" href="/privacy/">Privacy policy</a>' +
       '<details class="fh-account-technical" id="fh-shell-account-diagnostics"><summary>Technical details</summary>' +

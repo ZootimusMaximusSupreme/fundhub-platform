@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="fh-staff-workspace">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,20 +7,21 @@
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/app/fundhub-font.css">
-  <link rel="stylesheet" href="/app/fundhub-brand.css">
-  <link rel="stylesheet" href="/app/crm-sidebar.css">
+  <link rel="stylesheet" href="/app/fundhub-brand.css?v=workspace-20261018">
+  <link id="fh-crm-sidebar-css" rel="stylesheet" href="/app/crm-sidebar.css?v=workspace-20261018">
+  <link id="fh-workspace-css" rel="stylesheet" href="/app/workspace-ui.css">
   <link rel="stylesheet" href="/app/company-cash.css">
   <link rel="stylesheet" href="/app/fundhub-astra.css">
   <link rel="stylesheet" href="/app/fundhub-astra-staff.css">
   <script defer src="/app/fundhub-font.js"></script>
-  <script defer src="/app/shell.js"></script>
   <script defer src="/app/company-cash.js"></script>
+  <script defer src="shell.js"></script>
 </head>
 <body class="fh-astra fh-astra-staff fh-astra--company-cash">
   <div class="app">
     <aside class="side" id="side" aria-label="Workspace navigation"></aside>
     <div class="main">
-      <header class="topbar"><h1>Company cash</h1><span class="spacer"></span><span class="crumb">Owner workspace</span></header>
+      <header class="topbar"><h1>Company cash</h1><span class="spacer"></span><span class="crumb">Owner workspace</span><a class="fh-astra-action" href="staff-teams.html">Team &amp; payouts</a></header>
       <main class="fh-astra-page cc-page" id="companyCash">
         <div class="fh-astra-heading cc-heading"><div><p class="cc-eyebrow">Fundhub LLC</p><h2>Company cash</h2><p class="fh-astra-subtitle">Business bank balances, bills, and reserves in one place.</p></div><button class="fh-astra-action fh-astra-primary" id="ccPrimary" type="button" hidden>Finish setup</button></div>
         <section id="ccLoading" aria-label="Loading company cash" aria-live="polite">

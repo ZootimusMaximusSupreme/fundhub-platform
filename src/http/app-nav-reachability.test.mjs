@@ -188,6 +188,7 @@ describe("app shell — the lists this test reads", () => {
         "agent-editor.html",
         "automations.html",
         "brand-studio.html",
+        "company-cash.html",
         /* company-brain.html was here until 2026-08-27, when the owner put the
            row back. Removed from this fixture rather than the assertion being
            loosened: the point of the list is that a row cannot appear or vanish
@@ -254,6 +255,17 @@ describe("app shell — the lists this test reads", () => {
 /* ── the defect ───────────────────────────────────────────────────────────── */
 
 describe("app shell — every screen it opens can be reached", () => {
+  test("company cash is owner-only and joins the shared shell guard", () => {
+    const screen = "company-cash.html";
+    assert.ok(GATED.includes(screen), "the company page must load the guarded shared shell");
+    assert.ok(OWNER_TABS.includes(screen));
+    assert.ok(PRINCIPAL_ONLY.includes(screen));
+    assert.ok(NAV_HIDDEN.includes(screen), "company cash belongs in the owner account menu");
+    for (const tabs of [ADMIN_TABS, STAFF_TABS, CLOSER_TABS, SALES_MANAGER_TABS, ADVISOR_TABS]) {
+      assert.ok(!tabs.includes(screen), "a non-owner must not inherit company treasury");
+    }
+    assert.ok(screenLinks(HTML.get(screen)).has("staff-teams.html"), "the owner must have a way back out");
+  });
   test("the sidebar offers every screen the shell lists", () => {
     // partner-galaxy.html is documented in shell.js as the one screen no
     // sidebar links to: employees get the real Galaxy instead.

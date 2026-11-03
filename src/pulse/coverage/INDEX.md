@@ -6,6 +6,8 @@ retention-review — monthly count-only review; src/pulse/heartbeats.mjs checks 
 
 auth/plaid-mfa — the registry safely pings GET for a 405 without creating a challenge or grant; gap-auth.mjs and beat-auth-links.mjs share the same read-only MFA and consent integrity check each morning and hour.
 
+owner/company-bank, owner/company-cash, company-cash.html — owner-only company cash. The daily `gap-company-cash.mjs` and existing hourly `money-operations` beat share `company-cash:integrity`: one scoped stored-data read checks business bank consent/owner scope, selected USD depository, exact posted debit for paid obligations, and duplicate CRS months or payment matches. A missing read is red. No link means no company cash balance or transfer readiness; the check never calls Plaid or moves money.
+
 ops-manager-review — daily 7:15 a.m. Arizona staff-only KPI review; src/pulse/heartbeats.mjs checks its job_heartbeats receipt, and src/ops/manager-kpi-review.test.mjs proves the threshold, manager assignment, due date and dedupe. It does not automatically start a PIP.
 
 affiliate-payout-autopay — owner-set 2026-10-20 pay-on-clear affiliate payouts through Plaid (495): gap-partners.mjs partners:payout-overdue (unsent past the due day, or earned with no payout record after a day) and partners:payout-returned; the hourly partner-trip beat covers the job and affiliates/payouts, affiliates/payout-account, read/affiliate-payouts.

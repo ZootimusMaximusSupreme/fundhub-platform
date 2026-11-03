@@ -150,6 +150,8 @@ empty-day skip.
 
 ## The hourly pulse (added 2026-10-09)
 
+**Owner company cash:** `owner/company-bank`, `owner/company-cash` and `company-cash.html` share `company-cash:integrity`. The existing `money-operations` hourly beat and the daily `gap-company-cash` adapter read the same stored-data truth: owner/org consent, selected business USD depository, exact posted debit for paid obligations, and duplicate invoice/payment bindings. No stored bank link is not cash readiness. The check never opens Plaid Link, calls a bank provider or moves money.
+
 Every hour four small Netlify scheduled functions (outside Inngest, so they run even if Inngest is down) test the company on purpose. **Shifts (two on 2026-10-20, four on 2026-10-21):** the beats no longer fit one run's 13 s window, so they are split in one literal list, `src/pulse/beats/shifts.mjs`. `netlify/functions/pulse-hourly.mjs` runs shift A at minute 7, `netlify/functions/pulse-hourly-d.mjs` runs shift D at minute 22, `netlify/functions/pulse-hourly-b.mjs` runs shift B at minute 37 and `netlify/functions/pulse-hourly-c.mjs` runs shift C at minute 52. A beat whose file has not landed waits on `PENDING_SHIFT_BEATS` with its shift. Every beat is in exactly one shift (a test and the ship proof fail otherwise), so each beat still runs once an hour, and each shift gets its own 13 s window and 22 s budget. The pulse is the **read-only half**: each beat reads data through one of three boxes where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
 
 ```mermaid

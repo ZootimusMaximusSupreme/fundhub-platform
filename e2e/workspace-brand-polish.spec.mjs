@@ -140,3 +140,48 @@ test("a failed Kanban read gives one recovery step and keeps counts unknown", as
     await page.unroute("**/api/**");
   }
 });
+
+
+const COMPANY_OWNER = { ...OWNER, staff: { ...OWNER.staff,
+  id: "00000000-0000-4000-8000-000000000091", org_id: "00000000-0000-4000-8000-000000000092" } };
+const COMPANY_EMPTY_API = {
+  "/api/owner/company-bank": { ok: true, configured: false, items: [], accounts: [], transactions: [] },
+  "/api/owner/company-cash": { ok: true, summary: { month: "2026-11-01", bank_posted_cents: null,
+    bank_available_cents: null, available_cents: null, known_remaining_cents: null,
+    crs_reserve_cents: null, crs_fulfilled_pull_count: 0, crs_unpriced_pull_count: 0,
+    ad_approved_unpaid_cents: 0, tech_due_cents: 0, meta_spend_cents: null,
+    processor_receipts_cents: null, missing: ["business_bank_balance", "crs_invoice", "ad_review", "tech_review"] },
+    account: null, obligations: [], recurring_candidates: [] }
+};
+
+test("company cash is reached through the owner account menu and has a real way back", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openScreen(page, "/app/calendar.html", COMPANY_OWNER, COMPANY_EMPTY_API);
+  await page.locator("#fh-shell-chip-show").click();
+  const company = page.getByRole("link", { name: "Company cash", exact: true });
+  await expect(company).toBeVisible();
+  const menuBox = await company.boundingBox();
+  expect(menuBox.height).toBeGreaterThanOrEqual(44);
+  expect(await company.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
+  await company.click();
+  await expect(page).toHaveURL(/\/app\/company-cash\.html$/);
+  await expect(page.locator("#fh-workspace-header")).toHaveAttribute("data-fh-scope", "company-cash");
+  await expect(page.locator("#fh-workspace-scope")).toHaveCount(0);
+  const back = page.getByRole("link", { name: "Team & payouts", exact: true });
+  await expect(back).toBeVisible();
+  expect((await back.boundingBox()).height).toBeGreaterThanOrEqual(44);
+  expect(await back.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
+  await back.click();
+  await expect(page).toHaveURL(/\/app\/staff-teams\.html/);
+});
+
+for (const role of ["admin", "closer", "sales_manager", "setter"]) {
+  test(`${role} cannot see or open the company cash workspace`, async ({ page }) => {
+    const session = { ...COMPANY_OWNER, staff: { ...COMPANY_OWNER.staff, role } };
+    await openScreen(page, "/app/calendar.html", session);
+    await page.locator("#fh-shell-chip-show").click();
+    await expect(page.getByRole("link", { name: "Company cash", exact: true })).toHaveCount(0);
+    await page.goto("/app/company-cash.html");
+    await expect(page).not.toHaveURL(/\/app\/company-cash\.html$/);
+  });
+}

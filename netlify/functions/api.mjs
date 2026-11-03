@@ -91,6 +91,8 @@ import readMessageTests from "../../api/read/message-tests.mjs";
 import readStaff from "../../api/read/staff.mjs";
 import readStaffPayoutAccount from "../../api/read/staff-payout-account.mjs";
 import staffPayoutAccount from "../../api/staff/payout-account.mjs";
+import ownerCompanyBank from "../../api/owner/company-bank.mjs";
+import ownerCompanyCash from "../../api/owner/company-cash.mjs";
 import staffTelemetry from "../../api/staff/telemetry.mjs";
 import staffMonitoringConsent from "../../api/staff/monitoring-consent.mjs";
 import staffAvatar from "../../api/staff/avatar.mjs";
@@ -562,6 +564,9 @@ export const ROUTES = {
   "read/staff": readStaff,
   "read/staff-payout-account": readStaffPayoutAccount,
   "staff/payout-account": staffPayoutAccount,
+  // Company treasury is owner-only and uses company rows, never client funds.
+  "owner/company-bank": ownerCompanyBank,
+  "owner/company-cash": ownerCompanyCash,
   "staff/telemetry": staffTelemetry,
   "staff/monitoring-consent": staffMonitoringConsent,
   "staff/avatar": staffAvatar,

@@ -97,7 +97,7 @@
     "role": "Fundhub owner only",
     "one_job": "See company bank cash less unpaid CRS, approved ad funding and due tech obligations.",
     "first_question": "How much company cash is available after the bills and reserves?",
-    "reuse": "Existing requireAuth staff-session owner checks and recent staff MFA, shared Plaid HTTP/token encryption/transaction mapper, staff shell/Astra, existing CRS request and ad metrics sources. Company rows stay separate from client FinanceOS. Reuse existing money-operations hourly beat plus daily gap adapter, instead of adding another beat. Canonical sidebar navigation is sidebar.fragment.html; any generated staff sidebar copies come only from sync-sidebar.",
+    "reuse": "Existing requireAuth staff-session owner checks and recent staff MFA, shared Plaid HTTP/token encryption/transaction mapper, staff shell/Astra, existing CRS request and ad metrics sources. Company rows stay separate from client FinanceOS. Reuse existing money-operations hourly beat plus daily gap adapter, instead of adding another beat. Company cash is linked only from the existing owner account menu. The canonical staff sidebar and generated copies remain unchanged; no staff rail item is added.",
     "data": "New company-only bank and obligation storage; owner-only /api/owner/company-bank and /api/owner/company-cash. Exact amount is unknown when bank/cost inputs are incomplete. Processor receipts are not added to bank balances. Link is read only; no transfer action.",
     "backend_files": [
       "src/finance/company-plaid.mjs",
@@ -121,7 +121,6 @@
       "docs/journeys/finance-os-trends-flow.md",
       "docs/journeys/heartbeat-flow.md",
       "ops/workflows/finance-os-owner-cash-2026-11-02.json",
-      "public/app/sidebar.fragment.html",
       "src/pulse/beats/lib/money-company-cash-truth.mjs",
       "src/pulse/beats/lib/money-company-cash-truth.test.mjs",
       "src/pulse/coverage/gap-company-cash.mjs",
@@ -136,16 +135,23 @@
       "src/pulse/tripwires.mjs",
       "src/pulse/tripwires.test.mjs",
       "src/pulse/coverage/INDEX.md",
-      "ops/workflows/finance-os-company-pulse-pending-2026-11-02.patch.gz"
+      "ops/workflows/finance-os-company-pulse-pending-2026-11-02.patch.gz",
+      "public/app/workspace-ui.css",
+      "src/http/app-nav-reachability.test.mjs",
+      "e2e/workspace-brand-polish.spec.mjs",
+      "public/app/crm-sidebar.css",
+      "docs/journeys/role-owner-intended.md",
+      "docs/journeys/CHANGELOG.md"
     ],
     "risk": "Wrong company scope or double-counted/unpriced reserves could misstate available cash. Prove owner/other-role/other-org refusals, null-cost behavior, matched payment reconciliation, migration with actual fundhub_app, and browser states before release.",
-    "phase": "spec recorded; backend first, frontend after actual stored-data proof",
+    "phase": "Actual full-shell source integration verified; final immutable commit/ordered publication and production configuration remain pending.",
     "no_owner_assumptions": [
       "Do not choose Colin payee, amount, threshold or cadence",
       "Do not change employee commission rates",
       "Do not claim provider approval, live business bank link or actual transfers",
       "Do not incur paid plan/contract or submit a real money transfer"
-    ]
+    ],
+    "production_owner_plaid_configuration": "Read-only production-functions lookup on 2026-11-03 found all five OWNER_PLAID_* settings absent. No settings or credentials changed. Real account connection and cost inputs remain unproved."
   },
   "verified_pricing": {
     "status": "Actual provider cost evidence was checked privately. Use actual invoice amounts, products and surcharges in owner-only stored records; no rates, terms, or email identifiers are published in this source board.",
@@ -169,5 +175,57 @@
     "preparation": "Use normal helper to inherit current protected parent source, then stop before preflight/archive/push/PR so router/nav integration can finish under the conditional owner handoff. No public release or extra CI starts during this preparation.",
     "parked_patch_sha256": "1468d149bc983f19a9946a3fc7350f629b04c4f4bfc30c3535bf386bccda3a31",
     "parking_format": "gzip preserves the exact unified patch context, whose blank context lines otherwise trigger whitespace checks when embedded as plain source."
+  },
+  "integration_proof_2026_11_03": {
+    "company_browser": {
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Real shared shell, local synthetic owner/API fixtures, 1440/390 states and controls"
+    },
+    "owner_menu_browser": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    "focused_integration": {
+      "passed": 96,
+      "failed": 0,
+      "skipped": 0
+    },
+    "company_storage_pg": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "role": "fundhub_app",
+      "scope": "Actual loopback scratch SQL"
+    },
+    "pulse_pg": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "lint": "pass",
+    "typescript": "pass",
+    "rules": "pass",
+    "cdp_mobile": {
+      "lcp_ms": 1956,
+      "cls": 0.0817,
+      "interaction_ms": 96,
+      "scope": "Slow4G / 4x CPU, local fixture, no field INP"
+    },
+    "lighthouse_mobile_gzip": {
+      "version": "12.8.2",
+      "lcp_ms": 2497.31725,
+      "cls": 0.0805687,
+      "score": 0.96,
+      "scope": "Local synthetic owner fixture with actual gzip HTTP matching observed Netlify static delivery; same mobile Slow4G / 4x CPU profile",
+      "limitation": "LCP is only 2.68ms under budget; hosting and field INP unproved"
+    },
+    "original_uncompressed_lighthouse": {
+      "lcp_ms": 4073.5605,
+      "status": "red preserved; original server did not compress assets"
+    },
+    "production": "No company bank, cost inputs, provider readiness or payout proved"
   }
 }

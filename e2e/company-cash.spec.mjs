@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const EVIDENCE = join(process.cwd(), "ops/workflows/build-evidence/company-cash");
@@ -89,16 +89,19 @@ async function markedScreenshot(page, name, target, caption) {
   await locator.scrollIntoViewIfNeeded();
   const box = await locator.boundingBox();
   if (!box) throw new Error(`No review target for ${name}: ${target}`);
-  await page.evaluate(({ box, caption }) => {
+  await page.evaluate(({ box, caption, name }) => {
     const old = document.querySelector("#ccReviewMark"); if (old) old.remove();
     const wrap = document.createElement("div"); wrap.id = "ccReviewMark";
     wrap.style.cssText = `position:fixed;left:${Math.max(6, box.x - 7)}px;top:${Math.max(6, box.y - 7)}px;width:${Math.min(innerWidth - box.x - 6, box.width + 14)}px;height:${box.height + 14}px;border:4px solid #df2525;border-radius:18px;z-index:999999;pointer-events:none;box-shadow:0 0 0 2px #fff;`;
     const arrow = document.createElement("div"); arrow.textContent = "↘";
     arrow.style.cssText = "position:absolute;right:8px;top:-42px;color:#f6cd2e;font-size:42px;font-weight:900;text-shadow:0 2px 2px #000;";
     const label = document.createElement("div"); label.textContent = caption;
-    label.style.cssText = "position:absolute;left:0;bottom:-32px;background:#fff7cd;color:#1f2020;padding:3px 8px;border:1px solid #e5ba12;border-radius:5px;font:700 13px/1.2 sans-serif;white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis;";
+    label.style.cssText = (innerWidth < 600
+      ? name.startsWith("full-") ? "position:absolute;left:0;top:-50px;" : "position:fixed;right:8px;bottom:8px;"
+      : "position:absolute;left:calc(100% + 12px);top:4px;") +
+      "background:#fff7cd;color:#1f2020;padding:3px 8px;border:1px solid #e5ba12;border-radius:5px;font:700 13px/1.2 sans-serif;white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis;";
     wrap.appendChild(arrow); wrap.appendChild(label); document.body.appendChild(wrap);
-  }, { box, caption });
+  }, { box, caption, name });
   await page.screenshot({ path: join(EVIDENCE, name + ".png") });
   await page.locator("#ccReviewMark").evaluate(node => node.remove());
 }
@@ -180,6 +183,7 @@ test("owner controls save reviewed amounts, match only posted debits, and confir
   await page.getByRole("button", { name: "Match payment" }).first().click();
   await page.locator(`input[name="ccPayment"][value="${TX_ID}"]`).check();
   await page.locator("#ccSaveMatch").click();
+  await expect.poll(() => calls.at(-1)?.body.action).toBe("match_payment");
   expect(calls.at(-1).body).toMatchObject({ action: "match_payment", transaction_id: TX_ID, obligation_id: CRS_ID });
 
   await page.getByLabel("Category for CRS").selectOption("crs");
@@ -411,4 +415,63 @@ test("a forbidden owner bank GET clears the previous company view", async ({ pag
   expect(await page.locator("#ccBankAccounts").textContent()).not.toContain("Previous owner's bank");
   expect(await page.locator("#ccBankAccounts").innerHTML()).toBe("");
   expect(calls.map(call => call.body.action)).toEqual(["sync"]);
+});
+
+test("company cash mobile Slow 4G and 4x CPU stays within CRM page budgets", async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await cdp.send("Network.enable");
+  await cdp.send("Network.setCacheDisabled", { cacheDisabled: true });
+  await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 150,
+    downloadThroughput: 200000, uploadThroughput: 93750, connectionType: "cellular4g" });
+  await page.addInitScript(() => {
+    window.__companyCashPerf = { lcp_ms: 0, lcp_element: null, cls: 0, shifts: [], interaction_ms: 0 };
+    new PerformanceObserver(entries => { for (const entry of entries.getEntries()) {
+      window.__companyCashPerf.lcp_ms = entry.startTime;
+      window.__companyCashPerf.lcp_element = { tag: entry.element?.tagName, id: entry.element?.id,
+        className: String(entry.element?.className || ""), size: entry.size };
+    } }).observe({ type: "largest-contentful-paint", buffered: true });
+    new PerformanceObserver(entries => { for (const entry of entries.getEntries())
+      if (!entry.hadRecentInput) {
+        window.__companyCashPerf.cls += entry.value;
+        window.__companyCashPerf.shifts.push({ value: entry.value, at_ms: entry.startTime,
+          sources: entry.sources.map(source => ({ tag: source.node?.tagName, id: source.node?.id,
+            className: String(source.node?.className || ""), from: source.previousRect.toJSON(), to: source.currentRect.toJSON() })) });
+      } }).observe({ type: "layout-shift", buffered: true });
+    new PerformanceObserver(entries => { for (const entry of entries.getEntries())
+      if (entry.interactionId) window.__companyCashPerf.interaction_ms = Math.max(window.__companyCashPerf.interaction_ms, entry.duration);
+    }).observe({ type: "event", durationThreshold: 16, buffered: true });
+  });
+  await open(page);
+  await expect(page.locator("#ccAvailable")).toHaveText("$9,250.00");
+  await page.waitForTimeout(1000);
+  await page.locator("#ccAddObligation").click();
+  await expect(page.locator("#ccObligationDialog")).toBeVisible();
+  await page.waitForTimeout(300);
+  const metrics = await page.evaluate(() => {
+    const nav = performance.getEntriesByType("navigation")[0];
+    const resources = performance.getEntriesByType("resource").map(entry => ({
+      path: new URL(entry.name).pathname, bytes: entry.encodedBodySize,
+      start_ms: entry.startTime, end_ms: entry.responseEnd, duration_ms: entry.duration
+    }));
+    return { ...window.__companyCashPerf, ttfb_ms: nav.responseStart - nav.requestStart,
+      dom_content_loaded_ms: nav.domContentLoadedEventEnd,
+      fcp_ms: performance.getEntriesByType("paint").find(entry => entry.name === "first-contentful-paint")?.startTime ?? null,
+      js_bytes: resources.filter(entry => entry.path.endsWith(".js")).reduce((sum, entry) => sum + entry.bytes, 0),
+      page_bytes: nav.encodedBodySize + resources.reduce((sum, entry) => sum + entry.bytes, 0),
+      resources };
+  });
+  const report = { scope: "Local full shared shell with safe API fixtures; production backend, hosting, and field INP not measured. Not Lighthouse.",
+    viewport: "390x844", network: "150ms RTT / 1.6Mbps down / 750Kbps up", cpu: "4x slowdown",
+    measured_at: new Date().toISOString(), ...metrics };
+  mkdirSync(EVIDENCE, { recursive: true });
+  writeFileSync(join(EVIDENCE, "mobile-performance.json"), JSON.stringify(report, null, 2) + "\n");
+  expect(metrics.lcp_ms, "CRM LCP under 2.5s").toBeGreaterThan(0);
+  expect(metrics.lcp_ms).toBeLessThan(2500);
+  expect(metrics.cls, "CRM CLS under 0.1").toBeLessThan(0.1);
+  if (metrics.interaction_ms > 0) expect(metrics.interaction_ms, "measured interaction under 200ms").toBeLessThan(200);
+  expect(metrics.ttfb_ms, "local static TTFB under 600ms").toBeLessThan(600);
+  expect(metrics.js_bytes, "CRM JS under 500KB").toBeLessThan(500000);
+  expect(metrics.page_bytes, "CRM page under 2MB").toBeLessThan(2000000);
 });
