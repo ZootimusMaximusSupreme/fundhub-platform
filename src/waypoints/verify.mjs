@@ -15,8 +15,8 @@
 //   dispute_mail_receipt   A client_upload with subtype dispute_mail_receipt on
 //                          this client's documents row closes the step.
 //
-//   bureau_response_upload Any document with kind bureau_response on this client
-//                          closes the step.
+//   bureau_response_upload A current-version bureau response accepted by the
+//                          server reader closes this upload step.
 //
 //   no_new_credit  Evidence flows ONE WAY. A revolving account on the new file
 //                  that we can POSITIVELY SAY was not on the file at enrolment

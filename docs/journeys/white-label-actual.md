@@ -37,12 +37,12 @@ flowchart TD
     CAN --> A_top_level[Everything else — 7 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 266 routes]
+    WHO -->|Yes| CANT[Blocked — 269 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
     CANT --> B_auth[Signing in and out — 10 blocked]
     CANT --> B_banking[banking — 7 blocked]
-    CANT --> B_blueprint[blueprint — 2 blocked]
+    CANT --> B_blueprint[blueprint — 5 blocked]
     CANT --> B_chat[chat — 4 blocked]
     CANT --> B_company_brain[company-brain — 5 blocked]
     CANT --> B_consent[consent — 1 blocked]
@@ -72,7 +72,7 @@ flowchart TD
 
 ## What they can reach
 
-**81 of 347 routes.**
+**81 of 350 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -165,7 +165,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**266 of 347 routes.**
+**269 of 350 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -199,7 +199,10 @@ flowchart TD
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
 | `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager, closer |
 | `/api/banking/sync-transactions` | POST | owner, admin, sales_manager, closer |
+| `/api/blueprint/business-plans` | GET, POST | client |
 | `/api/blueprint/declines` | GET, POST | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
+| `/api/blueprint/letter-mailing` | — | client |
+| `/api/blueprint/plan` | — | client |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET, POST | staff, client |
 | `/api/call-outcomes` | POST | owner, admin, closer, sales_manager |

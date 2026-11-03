@@ -175,6 +175,15 @@ export function wrapperGates() {
     };
   }
 
+  if (exists("api/blueprint/business-plans.mjs")) {
+    const src = code(read("api/blueprint/business-plans.mjs"));
+    const kinds = principalsFromRequirePrincipal(src);
+    const paidGate = /await \(deps\.isBlueprintCoachClient \|\| isBlueprintCoachClient\)/.test(src);
+    out.requireBlueprintPlanScope = kinds && paidGate
+      ? { principals: kinds, note: "via api/blueprint/business-plans.mjs — own client session and active paid Blueprint access" }
+      : { unverified: "Blueprint plan session or paid-access gate changed and must be traced" };
+  }
+
   return out;
 }
 
