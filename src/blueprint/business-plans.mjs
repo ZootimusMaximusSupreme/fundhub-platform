@@ -165,7 +165,8 @@ function saveStep(state, input, now) {
   if (!STEP_STATES.has(input.status)) fail("invalid_step_status", "Progress can be not started, in progress, reported complete, or blocked.");
   const businessPlanId = uuid(input.businessPlanId, "business plan", true);
   if (businessPlanId && !state.businesses.some(b => b.id === businessPlanId)) fail("business_plan_not_found", "Choose one of your saved business plans.", 404);
-  const next = { stepKey: input.stepKey, businessPlanId, status: input.status, note: text(input.note, "note", 1500), targetDate: day(input.targetDate, "target date", now, true), reportedAt: now.toISOString(), verification: "client_reported" };
+  const previous = state.stepProgress.find(s => s.stepKey === input.stepKey && (s.businessPlanId || null) === businessPlanId);
+  const next = { stepKey: input.stepKey, businessPlanId, status: input.status, note: has(input, "note") ? text(input.note, "note", 1500) : previous?.note ?? null, targetDate: has(input, "targetDate") ? day(input.targetDate, "target date", now, true) : previous?.targetDate ?? null, reportedAt: now.toISOString(), verification: "client_reported" };
   state.stepProgress = state.stepProgress.filter(s => s.stepKey !== next.stepKey || (s.businessPlanId || null) !== businessPlanId);
   state.stepProgress.push(next);
 }
