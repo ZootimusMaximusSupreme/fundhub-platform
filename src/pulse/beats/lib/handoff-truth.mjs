@@ -372,13 +372,29 @@ ${tail()}
    AND NOT ${messageAfter(keyList([TEMPLATES.nobook, TEMPLATES.nobookSms]))}`.trim();
 
 /** $1 org, $2 ['survey.completed'], $3 window start, $4 cutoff (now minus the grace).
-    Finished, not booked within the grace, and no immediate or legacy call task. */
+    Match the exact six-hour completion cohort used by the local task handler.
+    Old S-NOBOOK tasks used the event ID and arrived 15 minutes after completion. */
 export const SETTER_TASK_SQL = `
 /* gap:handoff-setter-task */
-WITH ${leadCte()}
-${tail()}
+WITH ${leadCte()},
+task_lead AS (
+  SELECT l.*,
+         (SELECT e.id FROM events e
+           WHERE e.org_id = l.org_id AND e.name = 'survey.completed'
+             AND e.created_at <= l.created_at
+             AND e.created_at > l.created_at - interval '6 hours'
+             AND (e.client_id = l.cid OR (e.client_id IS NULL
+               AND lower(COALESCE(e.payload->>'email', '')) = lower(COALESCE(l.payload->>'email', ''))
+               AND COALESCE(l.payload->>'email', '') <> ''))
+             AND (COALESCE(e.payload->>'funnel', '') = COALESCE(l.payload->>'funnel', '')
+               OR COALESCE(e.payload->>'funnel', '') = ''
+               OR COALESCE(l.payload->>'funnel', '') = '')
+           ORDER BY e.created_at, e.id LIMIT 1) AS cohort_id
+    FROM lead l
+)
+${tail("task_lead l")}
  WHERE NOT ${IS_SUPPRESSED_REPEAT}
-   AND NOT ${BOOKED_BY(`l.created_at + interval '${SETTER_TASK_GRACE_MIN} minutes'`)}
+   AND NOT ${BOOKED_BY("l.created_at")}
    AND l.cid IS NOT NULL
    AND NOT EXISTS (
        SELECT 1 FROM tasks t
@@ -386,10 +402,11 @@ ${tail()}
           AND t.client_id = l.cid
           AND (
             (t.source_workflow IN ('${SETTER_TASK_PROMOTED_SOURCE}', '${SETTER_TASK_SOURCE}')
-              AND t.body LIKE 'survey-completed:%'
+              AND t.body = 'survey-completed:' || l.cohort_id::text
               AND t.updated_at >= l.created_at)
             OR (t.source_workflow = '${SETTER_TASK_SOURCE}'
-              AND t.created_at >= l.created_at)
+              AND t.body = l.id::text
+              AND t.created_at BETWEEN l.created_at AND l.created_at + interval '${SETTER_TASK_GRACE_MIN} minutes')
           )
      )`.trim();
 
@@ -888,7 +905,7 @@ function checkFirstTouches(env) {
         sql: SETTER_TASK_SQL,
         params: [env.orgId, survey, start, cutoff(now, SETTER_TASK_GRACE_MIN * MIN)],
         noun: "lead",
-        said: `finished the survey, did not book, and had no setter call task within ${SETTER_TASK_GRACE_MIN} minutes`
+        said: `finished the survey with no booking on file and had no setter call task within ${SETTER_TASK_GRACE_MIN} minutes`
       }
     ],
     passDetail:
