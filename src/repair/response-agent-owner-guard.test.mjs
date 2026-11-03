@@ -17,17 +17,20 @@ const BUREAU = "bureau_response";
 function fakeDocuments({ org = ORG, client = CLIENT, kind = BUREAU,
   expired = false, version = VERSION, documentId = DOC, missing = false } = {}) {
   const queries = [];
+  let metadata = {};
   return {
     queries,
     async query(sql, p) {
       queries.push({ sql: String(sql), params: p });
+      if (String(sql).includes("FROM clients WHERE")) return { rows: [{ first_name: "Alex", last_name: "Buyer" }] };
+      if (String(sql).startsWith("UPDATE documents SET metadata")) { metadata = { bureau_response_validation: JSON.parse(p[4]) }; return { rows: [{ id: documentId }] }; }
       if (!String(sql).includes("FROM documents d")) throw new Error("Unexpected unguarded database action");
       if (missing || String(documentId) !== String(p[0]) ||
           String(org) !== String(p[1]) || String(client) !== String(p[2]) ||
           kind !== p[3] || expired || (p[4] && String(version) !== String(p[4]))) {
         return { rows: [] };
       }
-      return { rows: [{ id: documentId }] };
+      return { rows: [{ id: documentId, current_version_id: version, metadata }] };
     }
   };
 }
@@ -118,6 +121,6 @@ describe("bureau-response upload owner fence", () => {
     assert.equal(out.status, "retake");
     assert.equal(sent.length, 1);
     assert.equal(sent[0].clientId, CLIENT);
-    assert.equal(events.length, 1);
+    assert.equal(events.length, 0, "retake does not move a repair card or count as accepted proof");
   });
 });

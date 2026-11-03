@@ -12,7 +12,7 @@ export const PREPARATION_PROGRESS_KEYS = Object.freeze([
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATES = new Set("AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY".split(" "));
 const STEP_STATES = new Set(["not_started", "in_progress", "reported_complete", "blocked"]);
-const SETTINGS = ["targetBusinessCount", "availableCashCents", "monthlyIncomeCents", "homeState", "postalCode", "hasExistingBusiness", "started"];
+const SETTINGS = ["targetBusinessCount", "availableCashCents", "monthlyIncomeCents", "homeState", "postalCode", "hasExistingBusiness", "started", "cashBufferCents", "oneTimePayoffCents"];
 const EDITABLE_BUSINESS = ["id", "name", "activity", "formationState", "operatingState", "formationStatus", "formationDate", "ownershipSince", "operatingSince", "businessId", "entityId", "website", "bankPreparation"];
 const DOC_TYPES = { formation: "articles_of_organization", ein: "ein_letter" };
 const has = (o, key) => Object.prototype.hasOwnProperty.call(o || {}, key);
@@ -57,7 +57,7 @@ function allowedFields(input, keys) {
   for (const key of Object.keys(input)) if (!keys.includes(key)) fail("field_not_accepted", `${key} cannot be changed here.`);
 }
 function emptyState() {
-  return { version: 1, setupStep: 0, targetBusinessCount: 4, availableCashCents: null, monthlyIncomeCents: null, homeState: null, postalCode: null, hasExistingBusiness: null, startedAt: null, businesses: [], stepProgress: [], updatedAt: null };
+  return { version: 1, setupStep: 0, targetBusinessCount: 4, availableCashCents: null, monthlyIncomeCents: null, cashBufferCents: null, oneTimePayoffCents: null, payoffPlan: null, homeState: null, postalCode: null, hasExistingBusiness: null, startedAt: null, businesses: [], stepProgress: [], updatedAt: null };
 }
 function savedState(customFields) {
   const stored = customFields?.[BLUEPRINT_PLANS_FIELD];
@@ -88,11 +88,11 @@ function evidenceView(plan, kind, rows) {
   if (!ref) return { documentId: null, status: "not_added", filename: null, receivedAt: null, reviewedAt: null };
   const doc = rows.find(d => String(d.id) === ref && d.kind === "client_upload" && d.subtype === DOC_TYPES[kind]);
   if (!doc) return { documentId: ref, status: "unavailable", filename: null, receivedAt: null, reviewedAt: null };
-  const entity = doc.metadata?.entity_id || doc.reviewed_entity_id || null;
+  const entity = doc.reviewed_entity_id || doc.metadata?.entity_id || null;
   const correctBusiness = !entity || entity === plan.entityId;
   const recentReview = doc.reviewed_at && new Date(doc.reviewed_at) >= new Date(doc.generated_at);
   const reviewed = correctBusiness && recentReview && ["accepted", "rejected"].includes(doc.review_status);
-  return { documentId: ref, status: reviewed ? (doc.review_status === "accepted" ? "reviewed" : "rejected") : "evidence_received", filename: doc.metadata?.original_filename || doc.title || null, receivedAt: doc.generated_at, reviewedAt: reviewed ? doc.reviewed_at : null };
+  return { documentId: ref, status: !correctBusiness ? "unavailable" : reviewed ? (doc.review_status === "accepted" ? "reviewed" : "rejected") : "evidence_received", filename: doc.metadata?.original_filename || doc.title || null, receivedAt: doc.generated_at, reviewedAt: reviewed ? doc.reviewed_at : null };
 }
 function existingView(row) {
   const d = row.entity_data || {};
@@ -101,9 +101,16 @@ function existingView(row) {
 async function shape(db, scope, state, audit = auditCompanies) {
   const actual = (await db.query(`SELECT id, name, age_months, entity_data FROM businesses WHERE org_id = $1::uuid AND client_id = $2::uuid ORDER BY created_at, id`, [scope.orgId, scope.clientId])).rows;
   const docs = await documentRows(db, scope, evidenceIds(state));
+  const attached = new Set(evidenceIds(state));
+  const availableEvidence = (await db.query(`SELECT d.id, d.subtype, d.title, d.generated_at, d.metadata, r.entity_id AS reviewed_entity_id
+    FROM documents d LEFT JOIN document_vault_reviews r ON r.document_id = d.id AND r.org_id = d.org_id AND r.client_id = d.client_id
+    WHERE d.org_id = $1::uuid AND d.client_id = $2::uuid AND d.kind = 'client_upload'
+      AND d.subtype = ANY($3::text[]) ORDER BY d.generated_at DESC, d.id LIMIT 100`, [scope.orgId, scope.clientId, Object.values(DOC_TYPES)])).rows
+    .filter(d => !attached.has(String(d.id)))
+    .map(d => ({ documentId: String(d.id), kind: Object.keys(DOC_TYPES).find(k => DOC_TYPES[k] === d.subtype), filename: d.metadata?.original_filename || d.title || 'Saved document', receivedAt: d.generated_at, entityId: d.reviewed_entity_id || d.metadata?.entity_id || null }));
   const businesses = state.businesses.map(b => ({ ...b, bankPreparation: { documentsReady: false, accountOpeningIssue: false, relationships: [], ...b.bankPreparation }, evidence: { formation: evidenceView(b, "formation", docs), ein: evidenceView(b, "ein", docs) } }));
   const advice = audit(actual, { plans: businesses, targetBusinessCount: state.targetBusinessCount });
-  return { ...state, orgId: scope.orgId, clientId: scope.clientId, businesses, existingBusinesses: actual.map(existingView), businessPreparation: advice.businessPreparation || null };
+  return { ...state, orgId: scope.orgId, clientId: scope.clientId, businesses, availableEvidence, existingBusinesses: actual.map(existingView), businessPreparation: advice.businessPreparation || null };
 }
 export async function readBusinessPlans(db, scope, { auditCompaniesImpl = auditCompanies } = {}) {
   return shape(db, scope, await clientState(db, scope.orgId, scope.clientId), auditCompaniesImpl);
@@ -115,7 +122,7 @@ function settings(state, input, now) {
     if (input.targetBusinessCount < state.businesses.length) fail("saved_plans_exceed_target", "Keep the target at 4 while you have four saved business plans.", 409);
     state.targetBusinessCount = input.targetBusinessCount;
   }
-  for (const key of ["availableCashCents", "monthlyIncomeCents"]) if (has(input, key)) state[key] = cents(input[key], key);
+  for (const key of ["availableCashCents", "monthlyIncomeCents", "cashBufferCents", "oneTimePayoffCents"]) if (has(input, key)) state[key] = cents(input[key], key);
   if (has(input, "homeState")) state.homeState = stateCode(input.homeState, "home state");
   if (has(input, "postalCode")) { const postal = text(input.postalCode, "ZIP code", 10); if (postal !== null && !/^\d{5}(-\d{4})?$/.test(postal)) fail("invalid_postal_code", "Use a five-digit ZIP code."); state.postalCode = postal; }
   if (has(input, "hasExistingBusiness")) { if (input.hasExistingBusiness !== null && typeof input.hasExistingBusiness !== "boolean") fail("invalid_existing_business", "Choose yes, no, or unknown for existing businesses."); state.hasExistingBusiness = input.hasExistingBusiness; }
@@ -194,12 +201,29 @@ async function attachEvidence(db, scope, state, input) {
   const documentId = uuid(input.documentId, "document");
   const doc = (await documentRows(db, scope, [documentId]))[0];
   if (!doc || doc.kind !== "client_upload" || doc.subtype !== DOC_TYPES[input.kind]) fail("evidence_not_found", "Upload the matching document to your own file first.", 404);
-  const entity = doc.metadata?.entity_id || doc.reviewed_entity_id || null;
+  const entity = doc.reviewed_entity_id || doc.metadata?.entity_id || null;
   if (entity && entity !== plan.entityId) fail("evidence_business_mismatch", "That document belongs to a different business.", 409);
   if (state.businesses.some(b => b.id !== id && Object.values(b.evidence || {}).some(e => e?.documentId === documentId))) fail("evidence_already_linked", "That document is already attached to another business plan.", 409);
   if (input.kind === "ein" && !plan.evidence?.formation?.documentId) fail("formation_evidence_required", "Add this business's formation document first.", 409);
   plan.evidence = { ...plan.evidence, [input.kind]: { documentId } };
   return id;
+}
+function savePayoffPlan(state, input) {
+  allowedFields(input, ["strategy", "monthlyBudgetCents", "debts"]);
+  if (!["snowball", "avalanche"].includes(input.strategy)) fail("invalid_payoff_strategy", "Choose smallest balance first or highest interest first.");
+  if (!Array.isArray(input.debts) || input.debts.length > 20) fail("invalid_debt_list", "Save up to 20 debts.");
+  const ids = new Set();
+  const debts = input.debts.map(row => {
+    allowedFields(row, ["id", "label", "balanceCents", "aprBps", "minimumPaymentCents"]);
+    const id = uuid(row.id, "debt"); if (ids.has(id)) fail("duplicate_debt", "Each debt needs its own record."); ids.add(id);
+    const label = text(row.label, "debt name", 120, true), balanceCents = cents(row.balanceCents, "debt balance");
+    if (balanceCents === null) fail("debt_balance_required", "Add the actual current balance.");
+    const minimumPaymentCents = cents(row.minimumPaymentCents ?? null, "minimum payment");
+    const aprBps = row.aprBps ?? null;
+    if (aprBps !== null && (!Number.isSafeInteger(aprBps) || aprBps < 0 || aprBps > 100_000)) fail("invalid_apr", "Use the actual annual percentage rate or leave it unknown.");
+    return { id, label, balanceCents, aprBps, minimumPaymentCents };
+  });
+  state.payoffPlan = { strategy: input.strategy, monthlyBudgetCents: cents(input.monthlyBudgetCents ?? null, "monthly debt-payment budget"), debts };
 }
 function saveStep(state, input, now) {
   allowedFields(input, ["stepKey", "businessPlanId", "status", "note", "targetDate"]);
@@ -221,6 +245,7 @@ export async function writeBusinessPlans(db, scope, action, input, { now = new D
     else if (action === "save_business") businessPlanId = await saveBusiness(tx, scope, state, input, at, randomUUIDImpl);
     else if (action === "attach_evidence") businessPlanId = await attachEvidence(tx, scope, state, input);
     else if (action === "save_step") saveStep(state, input, at);
+    else if (action === "save_payoff_plan") savePayoffPlan(state, input);
     else fail("invalid_action", "Choose a supported preparation action.");
     if (businessPlanId) state.businesses.find(b => b.id === businessPlanId).updatedAt = at.toISOString();
     state.updatedAt = at.toISOString(); await persist(tx, scope.orgId, scope.clientId, state);

@@ -69,6 +69,8 @@ export default async function handler(req, res) {
             AND (
               (confidence IS NOT NULL AND confidence < 0.85)
               OR COALESCE(parse_json->>'heldForEscalation', 'false') = 'true'
+              OR COALESCE(parse_json->>'requiresDocumentValidation', 'false') = 'true'
+              OR COALESCE(parse_json->>'requiresHumanReview', 'false') = 'true'
             )
           ORDER BY created_at DESC LIMIT 100`,
         [orgId]

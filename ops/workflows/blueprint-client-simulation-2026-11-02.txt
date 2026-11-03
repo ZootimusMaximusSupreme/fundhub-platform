@@ -336,3 +336,40 @@ Validation currently observed
 - Managed archive of completed H worktree rejected as active-task-in-use; no forced
   cleanup. Root owns integrated source; child commits preserved.
 - Actual build has not been deployed or proved with a signed-in paid buyer.
+
+Owner additions after source review (authorized get it all done)
+R31 Payoff planning: snowball and highest-interest-first, actual statement inputs,
+    minimums/unknown APR preserved, no forecast or credit-change promise; protect
+    bills/buffer and one-time paydown commitments across business deposits.
+R32 Clear client credit-letter SOP: current generated downloads -> client review/
+    self-mail or optional Fundhub service -> mailing proof -> actual bureau replies
+    uploaded -> existing document validation -> evidence-led next step/new letters.
+R33 Owner price97USD per selected mailing batch (latest97 supersedes100). Explicit
+    client one-time confirmation; saved card only if provider support AND exact
+    verified client/customer/card ownership; otherwise secure hosted checkout.
+    No live charge or mail as test. Durable payment and per-envelope send claims.
+R34 Reuse existing document reader for real response validation: currentdocument
+    version, correct recipient/bureau/type, legibility/authenticity review;
+    upload existence cannot complete response step. Uncertain files stayheld.
+
+Current independent findings and repair status
+- Reviewed entity must override staleuploadmetadata: fixed store+hourly/dailySQL,
+  source tests; knownlinkedentity sentwithupload; server savedfilepickerrecovery
+  survivesreloadwithoutduplicatingupload (browserprovedoneupload).
+- Paidquote selectionchange invalidatesquote; exactlettertitles+price+consent shown.
+- Mailing ledger realconstraints checkout_expires_at/produced_kind: writer repairing
+  after independentreview; simplified PGfixture being replaced with actualconstraints.
+- Savedcard email-only lookup insufficient; independentrepro provedmisbinding;
+  writer told to require verified scopedproviderCustomerID orhostedonly.
+- Newletter version afterquote mustrefusecharge; afterpaymentmustholdmailing.
+- Existingbureau-reader strengthened, currentversionverdictsaved; waypointchecks
+  sameacceptedverdict. Rawtextalone held, nocreditresultfromuncheckedupload.
+-30browsercontractchecksPASS53.6sec0retries; stillofflinefixtures, notliveproof.
+- Newmoneyservice API/worker/migration545 underwriteowner; rootownsUI/router/
+  registry/manifest/heartbeatintegration aftercurrentPlaid387ownership clears.
+- SourceUIorder/loading/font fixes applied; finalperformance revisitpending.
+- Automaticreview refused childstaging becauseauthorizationchanged (noactionrun);
+  rootsolecommitter now. Validatorprivacyalternative retains identitylocally;
+  identitychecksremain intact. No deniedactionbypassed.
+
+Completed-child ownership handoff: both H and G checkouts clean, zero unmatched patch commits against root via git log --cherry-pick --right-only. Both checkouts detached at their unchanged exact HEAD to release completed branch ownership; all files/commits/branches preserved. No checkout removed, reset or force push. Managed archival remains deferred because app reports active-task-in-use; this did not remove an active checkout. Current work continues only in blueprint-real-client root.

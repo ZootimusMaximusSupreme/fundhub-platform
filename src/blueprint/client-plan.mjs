@@ -1,4 +1,5 @@
 // Read-only aggregation for the paid Blueprint buyer's actual saved plan.
+import { planMonthlyDebtPayments } from "./payoff-plan.mjs";
 import { readClientProgress as readProgress } from "../progress/read.mjs";
 import { bankStrategy as readBankStrategy } from "../finance/bank-strategy.mjs";
 import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
@@ -155,7 +156,33 @@ export async function buildBlueprintClientPlan(db, { orgId, clientId, now = new 
         businessId: kind === "existing" ? business.id : business.businessId ?? null, prompt });
     }
   }
+  let letterResponses;
+  try {
+    const rows = (await db.query(`SELECT id, current_version_id, title, generated_at, metadata
+      FROM documents WHERE client_id = $1::uuid AND org_id = $2::uuid AND kind = 'bureau_response'
+      ORDER BY generated_at DESC, id LIMIT 50`, [clientId, orgId])).rows;
+    letterResponses = rows.map(d => {
+      const v = d.metadata?.bureau_response_validation;
+      const current = v?.schema === 1 && v.validator === 'bureau-response-reader' && v.document_id === String(d.id) && v.version_id === String(d.current_version_id);
+      return { documentId: String(d.id), title: d.title || 'Bureau response', receivedAt: d.generated_at,
+        validationStatus: current && ['accepted','request_more','hold'].includes(v.status) ? v.status : 'pending',
+        reason: current ? text(v.reason) : null, reviewedAt: current ? v.reviewed_at : null };
+    });
+  } catch { letterResponses = null; warn("letter_responses_unavailable", "saved_document_reviews"); }
+  const knownDeposits = businessPlans.businesses.flatMap(b => b.bankPreparation?.relationships || []);
+  const depositTotal = knownDeposits.reduce((sum, r) => sum + (r.depositPlanCents ?? 0), 0);
+  const missingReservations = businessPlans.cashBufferCents == null || businessPlans.oneTimePayoffCents == null || knownDeposits.some(r => r.depositPlanCents == null);
+  const available = businessPlans.availableCashCents;
+  const commitmentTotal = depositTotal + (businessPlans.cashBufferCents ?? 0) + (businessPlans.oneTimePayoffCents ?? 0);
+  const cashPlan = { availableCashCents: available, bankDepositTotalCents: depositTotal, cashBufferCents: businessPlans.cashBufferCents ?? null,
+    oneTimePayoffCents: businessPlans.oneTimePayoffCents ?? null, knownCommitmentsCents: commitmentTotal,
+    status: available == null || missingReservations ? "review_needed" : commitmentTotal > available ? "overcommitted" : "ready",
+    remainingCashCents: available == null || missingReservations ? null : available - commitmentTotal,
+    banks: (Array.isArray(bankPlan?.recommended_banks) ? bankPlan.recommended_banks : []).slice(0, 5).map(bank => ({ name: bank.name,
+      minimumDepositReferenceCents: bank.minimum_deposit_cents ?? null,
+      cashFit: available == null || missingReservations || bank.minimum_deposit_cents == null ? "review_needed" : bank.minimum_deposit_cents <= available - commitmentTotal ? "within_reported_budget" : "exceeds_remaining_budget" })) };
+  const payoffCalculation = businessPlans.payoffPlan ? planMonthlyDebtPayments(businessPlans.payoffPlan) : null;
   const name = [text(client.first_name), text(client.last_name)].filter(Boolean).join(" ") || null;
   return { ok: true, client: { name }, businessPlans, progress, lessons,
-    localBanks, bankPlan, creditContext, businessLessons, websitePrompts, warnings: warnings.sort((a, b) => a.code.localeCompare(b.code)) };
+    localBanks, bankPlan, creditContext, businessLessons, websitePrompts, cashPlan, payoffCalculation, letterResponses, warnings: warnings.sort((a, b) => a.code.localeCompare(b.code)) };
 }

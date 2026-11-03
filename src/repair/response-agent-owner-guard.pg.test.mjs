@@ -60,6 +60,7 @@ test("tenant, kind, expiry and version fencing against actual SQL", {
     const goodVersion = await insertVersion(org, own);
     const foreignVersion = await insertVersion(org, anotherClient);
     const wrongTenantVersion = await insertVersion(otherOrg, own, 2);
+    await db.query("UPDATE documents SET current_version_id = $2 WHERE id = $1", [own, goodVersion]);
 
     const check = (documentId, versionId = null) => ownsBureauResponseDocument(db, {
       orgId: org, clientId: client, documentId, versionId
@@ -74,6 +75,33 @@ test("tenant, kind, expiry and version fencing against actual SQL", {
     assert.equal(await check(expired), false);
     assert.equal(await check(randomUUID()), false);
     assert.equal(await check("bad-document-id"), false);
+    const replacementVersion = await insertVersion(org, own, 3);
+    await db.query("UPDATE documents SET current_version_id = $2 WHERE id = $1", [own, replacementVersion]);
+    assert.equal(await check(own, goodVersion), false, "an older owned version is not current proof");
+    assert.equal(await check(own, replacementVersion), true);
+
+    await db.query("CREATE TEMP TABLE clients (id uuid PRIMARY KEY, org_id uuid NOT NULL, first_name text, last_name text) ON COMMIT DROP");
+    await db.query("INSERT INTO clients (id,org_id,first_name,last_name) VALUES ($1,$2,'Synthetic','Buyer')", [client, org]);
+    let reads = 0, tasks = 0;
+    const process = () => processBureauResponse(db, {
+      orgId: org, clientId: client, documentId: own, versionId: replacementVersion,
+      bytes: Buffer.from("synthetic response"), mimeType: "image/png", items: [],
+      callModelImpl: async () => { reads++; return { text: JSON.stringify({
+        quality: "pass", document_type: "bureau_response", recipient_name: "Synthetic Buyer",
+        authenticity: "clear", bureau_guess: "EX", text: "Experian response for Synthetic Buyer."
+      }) }; },
+      createTaskImpl: async () => { tasks++; return { created: true, id: "synthetic-review-task" }; },
+      sendTemplatedImpl: async () => { throw new Error("no provider send belongs in this fixture"); },
+      onEvent: async () => { throw new Error("a Blueprint response without a case must create no repair event"); }
+    });
+    const reviewed = await process();
+    assert.equal(reviewed.validation.status, "accepted");
+    assert.equal(reviewed.status, "reviewed");
+    const saved = (await db.query("SELECT metadata FROM documents WHERE id=$1", [own])).rows[0].metadata.bureau_response_validation;
+    assert.equal(saved.version_id, replacementVersion);
+    assert.equal(saved.validator, "bureau-response-reader");
+    assert.equal((await process()).cached, true);
+    assert.equal(reads, 1); assert.equal(tasks, 1);
 
     let modelCount = 0, mailCount = 0, eventCount = 0;
     const blocked = await processBureauResponse(db, {
