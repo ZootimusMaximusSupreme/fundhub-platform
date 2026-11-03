@@ -14,5 +14,5 @@ export async function sweepBlueprintLetterMailing(database=db,options={}){
   return result;
 }
 export async function handle({db:database=db,step}={}){return step?.run?step.run('reconcile-confirmed-mailing-orders',()=>sweepBlueprintLetterMailing(database)):sweepBlueprintLetterMailing(database);}
-export const blueprintLetterMailing=inngest.createFunction({id:SOURCE_WORKFLOW,name:'Confirmed Blueprint letter mailing recovery'}, {cron:SWEEP_CRON},handle);
+export const blueprintLetterMailing = inngest.createFunction({id:'blueprint-letter-mailing',name:'Confirmed Blueprint letter mailing recovery'}, {cron:SWEEP_CRON},handle);
 export default sweepBlueprintLetterMailing;

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { preparationGuidance, websitePrompt } from '../src/blueprint/preparation-guidance.mjs';
 import { buildBlueprintClientPlan } from '../src/blueprint/client-plan.mjs';
+import { readBlueprintLetterReadiness } from '../src/blueprint/letter-mailing.mjs';
 const CLIENT='20000000-0000-4000-8000-000000000002';
 const ORG='10000000-0000-4000-8000-000000000001';
 const PLAN='40000000-0000-4000-8000-000000000004';
@@ -13,7 +14,7 @@ const RESPONSE_VERSION='e0000000-0000-4000-8000-00000000000e';
 const json=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
 function initial(started=false){return{orgId:ORG,clientId:CLIENT,targetBusinessCount:3,setupStep:0,startedAt:started?'2026-11-02T12:00:00Z':null,hasExistingBusiness:null,homeState:started?'AZ':null,postalCode:started?'85004':null,availableCashCents:null,monthlyIncomeCents:null,cashBufferCents:null,oneTimePayoffCents:null,payoffPlan:null,availableEvidence:[],businesses:[],existingBusinesses:[],stepProgress:[],businessPreparation:{}};}
 function record(){return{id:PLAN,name:'Cedar Grove LLC',activity:'Web design for local shops',formationState:'AZ',formationStatus:'planned',formationDate:null,ownershipSince:null,operatingSince:null,evidence:{formation:{status:'not_added'},ein:{status:'not_added'}},bankPreparation:{documentsReady:false,accountOpeningIssue:false,relationships:[]}};}
-async function open(page,{started=false,business=false,denied=false,failSave=false,failSaveOnce=false,failUpload=false,failAttachOnce=false,seed={},nativeProgress=null,bankPlan=null,mailing=null,responseRows=[]}={}){
+async function open(page,{started=false,business=false,denied=false,malformedPlan=false,failSave=false,failSaveOnce=false,failUpload=false,failAttachOnce=false,seed={},nativeProgress=null,bankPlan=null,mailing=null,responseRows=[],letterFiles=[],clientName='Pat'}={}){
   const state={...initial(started),...structuredClone(seed)};if(business&&!state.businesses.length)state.businesses=[record()];
   const requests=[],downloads=[],uploadFields=[],mailRequests=[],bureauUploads=[];const downloadState={missing:false};
   const responseDocuments=structuredClone(responseRows),mailingData=structuredClone(mailing||{letters:[],orders:[],capabilities:{mailSupported:false,reason:'offline_provider_unavailable'}});
@@ -23,7 +24,7 @@ async function open(page,{started=false,business=false,denied=false,failSave=fal
   // the real monthly payment calculator. No duplicate financial arithmetic here.
   async function payload(){
     const db={query:async sql=>{
-      if(/FROM clients/.test(sql))return{rows:[{id:CLIENT,org_id:ORG,first_name:'Pat',last_name:'Buyer',custom_fields:{}}]};
+      if(/FROM clients/.test(sql))return{rows:[{id:CLIENT,org_id:ORG,first_name:clientName,last_name:clientName?'Buyer':null,custom_fields:{}}]};
       if(/FROM crs_results/.test(sql))return{rows:[]};
       if(/FROM documents/.test(sql))return{rows:structuredClone(responseDocuments)};
       throw new Error('Unexpected browser-fixture query');
@@ -31,6 +32,8 @@ async function open(page,{started=false,business=false,denied=false,failSave=fal
     return buildBlueprintClientPlan(db,{orgId:ORG,clientId:CLIENT,now:new Date('2026-11-02T20:00:00Z')},{
       readBusinessPlans:async()=>structuredClone(state),readClientProgress:async()=>structuredClone(savedProgress),
       bankStrategy:async()=>bankPlan?{ok:true,client:{id:CLIENT},...structuredClone(bankPlan)}:null,
+      readBlueprintLetterReadiness:(db,scope)=>readBlueprintLetterReadiness(db,scope,{repo:{
+        letters:async()=>structuredClone(letterFiles),orders:async()=>mailingData.orders.map(o=>({...o,state:o.status}))}}),
       preparationGuidance,websitePrompt,
       rankLocalCreditUnions:async()=>({status:'candidates_for_review',source:{name:'Offline official-directory fixture',asOf:'2026-06'},candidates:[]})
     });
@@ -38,7 +41,7 @@ async function open(page,{started=false,business=false,denied=false,failSave=fal
   await page.route('**/api/**',async route=>{
     const url=new URL(route.request().url()),path=url.pathname,method=route.request().method();
     if(path==='/api/auth/session')return json(route,{ok:true,principal:'client',staff:{id:CLIENT,client_id:CLIENT,role:'client',name:'Pat Buyer',status:'active'}});
-    if(path==='/api/blueprint/plan')return denied?json(route,{ok:false,error:'blueprint_access_inactive'},403):json(route,await payload());
+    if(path==='/api/blueprint/plan')return denied?json(route,{ok:false,error:'blueprint_access_inactive'},403):json(route,malformedPlan?{ok:true,items:[]}:await payload());
     if(path==='/api/blueprint/letter-mailing'){
       if(method==='GET')return json(route,{ok:true,...structuredClone(mailingData)});
       const body=route.request().postDataJSON();mailRequests.push(body);
@@ -112,6 +115,7 @@ test('paid buyer starts one question at a time and server state survives reload'
   await page.evaluate(()=>{for(const key of Object.keys(localStorage))if(key.startsWith('fundhub-blueprint'))localStorage.removeItem(key);});await page.reload();await expect(app.getByText('Review the balances on your file',{exact:true})).toBeVisible();
 });
 test('nonbuyer gets no paid plan controls',async({page})=>{const{app}=await open(page,{denied:true});await expect(app).toBeHidden();});
+test('incomplete successful API response cannot invent a saved buyer plan',async({page})=>{const{app}=await open(page,{malformedPlan:true});await expect(app).toContainText('Your Blueprint couldn’t load.');await expect(app.getByRole('button',{name:'Try again'})).toBeVisible();await expect(app).not.toContainText('Saved to your client file');});
 test('business plan saves supported actual details and uses the same identity on retry',async({page})=>{
   const{app,state,requests}=await open(page,{started:true,failSaveOnce:true});await app.getByRole('button',{name:'Businesses',exact:true}).click();await app.getByRole('button',{name:'Add a business plan',exact:true}).click();await app.locator('input[name=name]').fill('Maple Studio LLC');await app.locator('textarea[name=activity]').fill('Photography for local businesses');await app.getByRole('button',{name:'Save business plan',exact:true}).click();await expect(app.getByText('The saved plan is temporarily unavailable.',{exact:true})).toBeVisible();const firstId=requests.at(-1).business.id;await app.getByRole('button',{name:'Save business plan',exact:true}).click();await expect.poll(()=>requests.length).toBe(2);expect(requests.at(-1).business.id).toBe(firstId);
   await expect(app.getByText('Saved to your client file.',{exact:true})).toBeVisible();expect(state.businesses).toHaveLength(1);expect(requests.at(-1).business.formationStatus).toBe('planned');expect(requests.at(-1).business.evidence).toBeUndefined();await page.reload();await app.getByRole('button',{name:'Businesses',exact:true}).click();await expect(app.getByRole('heading',{name:'Maple Studio LLC',exact:true})).toBeVisible();
@@ -128,7 +132,7 @@ test('all seventeen requested lessons are usable, with business-specific website
 test('saved step date creates a usable Google calendar event link',async({page})=>{
   const{app,state}=await open(page,{started:true});await app.getByRole('button',{name:'Step-by-step help',exact:true}).click();await app.locator('[data-key=credit_review]').click();await app.locator('input[name=targetDate]').fill('2027-02-01');await app.locator('select[name=status]').selectOption('in_progress');await app.getByRole('button',{name:'Save this step',exact:true}).click();expect(state.stepProgress).toHaveLength(1);await app.getByRole('button',{name:'Timeline',exact:true}).click();const link=app.getByRole('link',{name:/Add to Google Calendar/});await expect(link).toHaveAttribute('href',/calendar\.google\.com\/calendar\/render/);expect(new URL(await link.getAttribute('href')).searchParams.get('dates')).toBe('20270201/20270202');
 });
-for(const width of[1440,390])test(`real buyer controls fit at ${width}px`,async({page})=>{await page.setViewportSize({width,height:1000});const{app}=await open(page,{started:true,business:true});for(const name of['Businesses','Step-by-step help','Letters and responses','Timeline','Get help','Today']){await app.getByRole('button',{name,exact:true}).click();expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);}await expect(app).toContainText('FinanceOS is not live yet.');});
+for(const width of[1440,390])test(`real buyer controls fit at ${width}px`,async({page})=>{await page.setViewportSize({width,height:1000});const{app}=await open(page,{started:true,business:true});for(const name of['Businesses','Step-by-step help','Letters and responses','Timeline','Get help','Today']){await app.getByRole('button',{name,exact:true}).click();expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);}await expect(app).toContainText('FinanceOS is not live yet.');await expect(page.locator('a[href*="finance-os"]:visible,a[href*="financeos"]:visible,#money-link:visible')).toHaveCount(0);});
 
 async function openBusiness(app){
   await app.getByRole('button',{name:'Businesses',exact:true}).click();
@@ -471,4 +475,34 @@ test('failed new debt save retains the same debt identity for a retry without cr
   const firstId=requests.at(-1).debts[0].id;expect(state.payoffPlan.debts).toHaveLength(0);await expect(form.locator('input[name=label]')).toHaveValue('Retry debt');
   await form.getByRole('button',{name:'Save debt details',exact:true}).click();await expect(app.getByText('Priority 1 · Retry debt',{exact:true})).toBeVisible();
   expect(requests.filter(r=>r.action==='save_payoff_plan').map(r=>r.debts[0].id)).toEqual([firstId,firstId]);expect(state.payoffPlan.debts).toHaveLength(1);
+});
+
+
+const nativeMailProgress=()=>({nextStep:{waypointId:'mail',owner:'client'},waypoints:[
+  {id:'ongoing',key:'no_new_credit',title:'Keep current credit habits',owner:'client',state:'not_started',closedBy:'ongoing',verifyKind:'no_new_credit'},
+  {id:'mail',key:'blueprint_dispute_mail_letters',title:'Print and mail your dispute letters',detail:'Print the letters.',owner:'client',state:'not_started'},
+  {id:'receipt',key:'blueprint_dispute_mail_receipt',title:'Upload your mailing receipt',owner:'client',state:'not_started'}]});
+const currentLetterFile=()=>({id:DOCUMENT,title:'Your saved inquiry letter',subtype:'funding_inquiry_removal',metadata:{bureau:'EX'},generated_at:'2026-11-02T12:00:00Z',version_id:RESPONSE_VERSION,version_storage_key:'offline-current-letter',version_checksum:'sha256:'+'a'.repeat(64),version_mime_type:'application/pdf',version_byte_size:120});
+test('new buyer without current letter files gets honest useful preparation instead of an impossible mail step',async({page})=>{
+  const nativeProgress=nativeMailProgress();const saved=structuredClone(nativeProgress);
+  const{app,requests,mailRequests}=await open(page,{started:true,nativeProgress,clientName:null});
+  await expect(app.getByRole('heading',{name:'Your next steps.',exact:true})).toBeVisible();
+  const next=app.locator('.bp-next');await expect(next).toContainText('Your current letter pack is not ready yet');
+  await expect(next).not.toContainText('Print and mail your dispute letters');await expect(next).not.toContainText('Upload your mailing receipt');
+  await expect(next.getByRole('link',{name:'Open this step →'})).toHaveCount(0);
+  await next.getByRole('button',{name:'Prepare businesses',exact:true}).click();await expect(app.getByRole('button',{name:'Add a business plan',exact:true})).toBeVisible();
+  await app.getByRole('button',{name:'Today',exact:true}).click();await app.locator('.bp-next').getByRole('button',{name:'Check my letters',exact:true}).click();
+  await expect(app).toContainText('No current generated letters are available here yet');
+  expect(requests).toHaveLength(0);expect(mailRequests).toHaveLength(0);expect(nativeProgress).toEqual(saved);
+});
+test('only current usable funding letters turn the native mail action into the actual letter workspace',async({page})=>{
+  const file=currentLetterFile();const{app,mailRequests}=await open(page,{started:true,nativeProgress:nativeMailProgress(),letterFiles:[file],mailing:{letters:[{documentId:DOCUMENT,title:file.title,subtype:file.subtype,bureau:'EX',generatedAt:file.generated_at,eligibleForMailing:true}],orders:[],capabilities:{mailSupported:true}}});
+  const next=app.locator('.bp-next');await expect(next).toContainText('Review and mail your current letters');await expect(next).not.toContainText('not ready yet');
+  await next.getByRole('button',{name:'Open my letters',exact:true}).click();await expect(app.getByRole('button',{name:'Download letter',exact:true})).toBeVisible();
+  await expect(app.getByRole('button',{name:'Mail these letters for me · $97',exact:true})).toBeVisible();expect(mailRequests).toHaveLength(0);
+});
+test('a saved mailing request opens status even when letter files are no longer available',async({page})=>{
+  const{app,mailRequests}=await open(page,{started:true,nativeProgress:nativeMailProgress(),mailing:{letters:[],orders:[{id:ORDER,status:'mailed',totalCents:9700,envelopes:[]}],capabilities:{mailSupported:false}}});
+  const next=app.locator('.bp-next');await expect(next).toContainText('Review your mailing request');await expect(next).not.toContainText('Print and mail');
+  await next.getByRole('button',{name:'Open letters and mailing status',exact:true}).click();await expect(app).toContainText('$97.00 · Submitted for mailing');expect(mailRequests).toHaveLength(0);
 });

@@ -186,10 +186,11 @@ function eventIdFor(name, orgId, clientId, payload = {}) {
  * handler asks at most once. No database means no way to prove "once", so
  * nothing is sent. */
 export const REPAIR_DOCS_NEEDED_EVENT = "repair.docs.needed";
-export const EMAIL_REPAIR_DOCS_NEEDED = DOC_REQUEST_EMAIL;
+// Keep the shared key live while inquiry-docs finishes loading through this cycle.
+export { DOC_REQUEST_EMAIL as EMAIL_REPAIR_DOCS_NEEDED };
 
 async function askForIdentityDocsOnce(db, { name, orgId, clientId, payload = {}, send }) {
-  const templateKey = EMAIL_REPAIR_DOCS_NEEDED;
+  const templateKey = DOC_REQUEST_EMAIL;
   if (!db?.query) return { sent: false, reason: "no_db", templateKey };
   if (await alreadySentDoc01(db, clientId)) return { sent: false, reason: "already_asked", templateKey };
   const claimed = await claimCustomFieldLock(db, clientId, DOC_01_LOCK);

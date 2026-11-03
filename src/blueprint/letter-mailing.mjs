@@ -13,7 +13,15 @@ export const MAX_MAILING_LETTERS=6;
 export const MAILING_AUTHORIZATION='I authorize Fundhub to charge $97 USD once for this selected mailing batch and mail these exact letters on my behalf using my recorded return address.';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SUBTYPES=['funding_inquiry_removal','funding_personal_info'];
-const hash=v=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
+// JSONB may reorder object keys after a fresh database read. Content hashes
+// must depend on values, while retaining the order of selected-file arrays.
+function canonicalJson(value){
+  if(value instanceof Date)return value.toJSON();
+  if(Array.isArray(value))return value.map(canonicalJson);
+  if(value&&typeof value==='object')return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonicalJson(value[key])]));
+  return value;
+}
+const hash=v=>createHash('sha256').update(JSON.stringify(canonicalJson(v))).digest('hex');
 export class LetterMailingError extends Error {constructor(code,message,status=409){super(message);this.code=code;this.status=status;}}
 function fail(code,message,status=409){throw new LetterMailingError(code,message,status);}
 function scopeCheck(s){if(!UUID.test(s?.orgId||'')||!UUID.test(s?.clientId||''))fail('forbidden','Sign in to your client account.',403);}
@@ -51,7 +59,8 @@ export function createMailingRepository(db){
       EXISTS(SELECT 1 FROM blueprint_letter_mailing_envelopes e WHERE e.org_id=d.org_id AND e.client_id=d.client_id
         AND e.checksum=v.checksum AND e.bureau=d.metadata->>'bureau' AND e.state IN ('sending','accepted','needs_review')) AS already_claimed
       FROM documents d JOIN document_versions v ON v.id=d.current_version_id AND v.document_id=d.id AND v.org_id=d.org_id
-      WHERE d.org_id=$1 AND d.client_id=$2 AND d.kind='deliverable' AND d.subtype=ANY($3::text[]) ORDER BY d.generated_at DESC LIMIT 30`,[s.orgId,s.clientId,SUBTYPES])).rows;},
+      WHERE d.org_id=$1 AND d.client_id=$2 AND d.kind='deliverable' AND d.subtype=ANY($3::text[])
+      AND d.checksum=v.checksum ORDER BY d.generated_at DESC LIMIT 30`,[s.orgId,s.clientId,SUBTYPES])).rows;},
     async current(s,f){return !!(await db.query(`SELECT 1 FROM documents d JOIN document_versions v
       ON v.id=d.current_version_id AND v.document_id=d.id AND v.org_id=d.org_id
       WHERE d.id=$1 AND d.org_id=$2 AND d.client_id=$3 AND d.current_version_id=$4
@@ -126,6 +135,16 @@ export function createMailingRepository(db){
     async heldCount(){return Number((await db.query(`SELECT count(*)::int AS n FROM blueprint_letter_mailing_orders WHERE state='needs_review'`)).rows[0]?.n||0);},
     async pending(limit){return (await db.query(`SELECT id,org_id,client_id FROM blueprint_letter_mailing_orders WHERE state IN ('awaiting_payment','payment_pending','mail_pending','mailing') ORDER BY CASE WHEN payment_state='paid' THEN 0 ELSE 1 END,updated_at LIMIT $1`,[limit])).rows;}
   };
+}
+// Read-only buyer readiness. Reuse the exact scoped current-version file rules,
+// without constructing a provider, checking capabilities or looking up cards.
+export async function readBlueprintLetterReadiness(db,s,{repo=createMailingRepository(db)}={}){
+  scopeCheck(s);
+  const [rows,orders]=await Promise.all([repo.letters(s),repo.orders(s)]);
+  const usableLetterCount=rows.filter(row=>eligible({...row,already_claimed:false},at(s))).length;
+  const requested=orders.filter(order=>order&&['payment_pending','awaiting_payment','mail_pending','mailing','mailed','needs_review'].includes(order.state));
+  const hasRequest=requested.length>0||rows.some(row=>row.already_claimed);
+  return {orgId:s.orgId,clientId:s.clientId,state:hasRequest?'requested':usableLetterCount?'ready':'not_ready',usableLetterCount,mailingOrderCount:requested.length};
 }
 function dependencies(db,deps){return {...deps,repo:deps.repo||createMailingRepository(db),providers:deps.providers||createMailingProviders(deps),
   loadFrom:deps.loadFrom||identityOf,active:deps.active||isBlueprintCoachClient,

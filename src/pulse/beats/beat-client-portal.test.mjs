@@ -4,6 +4,7 @@ import * as beat from "./beat-client-portal.mjs";
 import * as payLinks from "./beat-pay-links.mjs";
 import * as authLinks from "./beat-auth-links.mjs";
 import * as clientProgress from "./beat-client-progress.mjs";
+import * as blueprintDelivery from "./beat-blueprint-delivery.mjs";
 import * as truth from "./lib/portal-truth.mjs";
 import * as lane from "../coverage/gap-portal.mjs";
 import { checkBeatSelfTest, runBeat, validateBeat } from "./contract.mjs";
@@ -12,7 +13,7 @@ import { DEFAULT_ORG_SQL, SELF_TEST_ORG, laneSelfTest } from "./lib/money-hourly
 import { OWNER_HOLD_CLIENTS } from "../owner-hold.mjs";
 import { TRIPWIRES } from "../tripwires.mjs";
 
-const OTHER_BEATS = { "pay-links": payLinks, "auth-links": authLinks, "client-progress": clientProgress };
+const OTHER_BEATS = { "pay-links": payLinks, "auth-links": authLinks, "client-progress": clientProgress, "blueprint-delivery": blueprintDelivery };
 const compact = (text) => String(text).trim().replaceAll(/\s+/g, " ");
 
 /** A fake read over the pass rows, with some SQL answered differently (rows, or an Error to throw). */

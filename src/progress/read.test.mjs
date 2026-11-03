@@ -276,3 +276,16 @@ describe("ownedNotReady", () => {
       ["metro2-letter-pack"]);
   });
 });
+
+
+test("the public progress view exposes the stored stable waypoint key without changing its state", async () => {
+  const row = { id: "mail-step", key: "blueprint_dispute_mail_letters", position: 12,
+    title: "Renamed stored letter task", detail: "Stored instructions", owner_kind: "client", state: "not_started" };
+  const db = { query: async sql => ({ rows: /FROM client_waypoints/.test(sql) ? [row] : [] }) };
+  const out = await readClientProgress(db, { orgId: "11111111-1111-4111-8111-111111111111", clientId: "22222222-2222-4222-8222-222222222222" });
+  assert.equal(out.waypoints[0].key, "blueprint_dispute_mail_letters");
+  assert.equal(out.waypoints[0].title, row.title);
+  assert.equal(out.waypoints[0].state, "not_started");
+  assert.deepEqual(out.nextStep, { waypointId: row.id, owner: "client" });
+  assert.equal(row.state, "not_started");
+});

@@ -412,3 +412,21 @@ Final independent integration receipts
 - Netlify CLI localbuild refused sandbox config refresh; direct samezip-it-and-ship-it bundler avoids credential writes. APIbundle built; cronworker pending at this snapshot.
 - Owner does not know an existing paid testlogin. Separate scratch environment setup delegated; no realclient modifications or fabricated production purchases.
 - Protected parent queue retained; candidate publication is DRAFT, not completion or production proof.
+
+
+R35 — owner screenshot design correction (November 2 evening)
+- User supplied actual portal screenshot: oversized/inconsistent offer prices/actions and support rail squeezed into one grid column. Explicitly requested design fix.
+- Root owns existing fundhub-astra-client.css only for this layout; H continues R07 first-action readiness in separate named files. Existing board remains coordination path.
+- Compact responsive offer grid, restrained price/type, left-aligned44px actions, full-width2-column support rail; existing hidden/entitlement/course states preserved. Independent visual verification pending; not yet a deployed fix.
+- Actual scratchChrome sign-in/setup/businesssave/reload proved: CedarGroveLLC remains planned,1of4saved; noformedentity/creditresult fabricated. Browserfilechooser refused localfileaccess through extension, so that UIupload step remains unverified; no permission workaround performed.
+
+
+Final repair source and independent receipts
+- RealPostgreSQL16.15/pgvector scratch on49909:429migrations,51targetedchecksPASS0SKIP. Store6,mailing realledger/immutability, currentresponse/waypoints, coach54710, monitoring25 and app-role3 included in exact receipt. No productionrows used.
+- RealPG caught JSONB object-key order causingunchangedaddressrefusal; canonicalhash fixed+unitregression. Realaddresschange stillrefuses0payment/mail; independenthashreviewCLEAR28PASS. PGtestURL andbigint representations fixed, originalconstraintsretained.
+-547exactoldpromptreplacement preserves488/490bytes, otherorgs/voice/FOS/customtext/states/approvals. Existingnotify importcycle repairedwithlivebinding; originalsendlocks/templates unchanged.
+- Firstfull localsuite retainedRED:30995unitPASS/12FAIL/31SKIP; noDB PG88PASS/1274SKIP, neverpersistenceproof. Requiredfailures traced to registration/count/heartbeatmetadata/portalhourlymapping/oldfixtures andstrictnewvalidator; focusedrepairs subsequentlyPASS. Seven regeneratedoldbaselinePNGs preservedinprivate/tmp thenoriginalHEADbytesrestored, notchangedtofitUI.
+- Freshcombinedbrowser52PASS0retry; signature11PASS0skip; namedfinalfailurechecks23PASS0skip. AfterR07 addition,buyer34PASS0retry+94unitPASS0skip/lint/typecheck.
+- R07realChrome nowshows letterpacknotready+Preparebusinesses with1of4persistedscratchplans, no mailbeforefile/no fabricatedproviderresult.
+- R35independentactualHTTP at2032/1440/390PASS:all5offers, unchangedprices, hiddenstates,18titles/16body+price/44targets,nooverflow,courseopen/realinstruction/close. Supportequalcolumns verified860/860,564/564,358mobile. Exactraw/markedreceiptsunderignoredfinal/r35.
+- Rootownssolecommit. PR388 staysDRAFT/autoOFF; next ship-change--resume safelyreplays recorded a0parentdeltaonto current387parentpercontrollerhandoff. Source/published/deployed/authenticatedproductionproof remain separate.
