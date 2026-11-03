@@ -145,6 +145,10 @@ for (const width of [1440, 390, 320]) {
 test('sending and blocked response keep an accurate status and editable draft', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   let release; const options = { sendGate: new Promise(r => { release = r; }) }; const { sent } = await wire(page, options); await page.goto('/app/messaging.html'); await page.locator('.convo').first().click();
+  // Both conversation reads must finish before this test edits their prefilled destination.
+  await expect(page.locator('#thread')).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('#thread .msg')).toHaveCount(3);
+  await expect(page.locator('#composeTo')).toHaveValue('+15551234567');
   await page.locator('#composeTo').fill('+15557654321'); await page.locator('#composeBody').fill('Please use this number for this reply.'); await page.locator('#sendBtn').click();
   await expect(page.locator('#sendBtn')).toBeDisabled(); await expect(page.locator('#sendStatus')).toHaveText('Sending…'); await expect(page.locator('#sendBtn')).toHaveText('Sending…');
   await page.locator('#composeBody').press('Enter'); expect(sent).toHaveLength(1); release();

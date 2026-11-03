@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { preparationGuidance, websitePrompt } from '../src/blueprint/preparation-guidance.mjs';
 import { buildBlueprintClientPlan } from '../src/blueprint/client-plan.mjs';
 import { readBlueprintLetterReadiness } from '../src/blueprint/letter-mailing.mjs';
@@ -115,9 +116,10 @@ async function open(page,{started=false,business=false,denied=false,malformedPla
   // The portal welcome chat can open while a long form is in use. Close that
   // separate surface through its actual control; never force covered clicks.
   await page.addLocatorHandler(page.locator('#fh-chat-panel.open'),async()=>{await page.locator('#fh-chat-close').click();});
-  if(authControl)await page.addInitScript(token=>localStorage.setItem('fh_token',token),authControl.token);
+  if(authControl)await page.addInitScript(token=>{if(token===null)localStorage.removeItem('fh_token');else localStorage.setItem('fh_token',token);},authControl.token);
+  else await page.addInitScript(()=>{if(!localStorage.getItem('fh_token'))localStorage.setItem('fh_token','offline-same-client');});
   await page.goto('/app/client-portal.html');
-  const app=page.locator('#blueprint-plan');if(!denied)await expect(app).toBeVisible();
+  const app=page.locator('#blueprint-plan');if(!denied&&authControl?.token!==null&&authControl?.token!=='demo')await expect(app).toBeVisible();
   return{app,state,requests,downloads,downloadState,uploadFields,mailRequests,mailingData,responseDocuments,bureauUploads,httpRequests,wasUploaded:()=>uploads>0,uploadCount:()=>uploads};
 }
 
@@ -211,19 +213,57 @@ async function openBusiness(app){
   await app.getByRole('button',{name:'Open this business',exact:true}).first().click();
 }
 
-test('saved document action obtains an authenticated signed URL from documents-download',async({page,context})=>{
+function observePdfDelivery(page,context,expectedBytes){
+  const expectedUrl=new URL('/api/documents/'+DOCUMENT+'?exp=2000000000&sig=offline-fixture-signature',page.url()).href;
+  const requests=[],downloads=[];
+  const onRequest=request=>{if(request.url()===expectedUrl)requests.push(request);};
+  const onPage=popup=>popup.on('download',download=>downloads.push(download));
+  context.on('request',onRequest);context.on('page',onPage);
+  return async(popup,testInfo)=>{
+    try{
+      await expect.poll(()=>requests.length).toBe(1);
+      expect(requests[0].url()).toBe(expectedUrl);expect(requests[0].method()).toBe('GET');expect(requests[0].isNavigationRequest()).toBe(true);
+      // Full Chromium may open its PDF viewer. Headless shell downloads the
+      // same navigation and leaves the pre-opened window at about:blank.
+      await expect.poll(()=>downloads.length>0||popup.url()===expectedUrl).toBe(true);
+      let bytes,mode,contentProof;
+      if(downloads.length){
+        expect(downloads).toHaveLength(1);expect(downloads[0].url()).toBe(expectedUrl);
+        expect(await downloads[0].failure()).toBeNull();bytes=await readFile(await downloads[0].path());mode='download';
+        expect(bytes.equals(expectedBytes)).toBe(true);contentProof='download_bytes';
+      }else{
+        await expect(popup).toHaveURL(expectedUrl);const response=await requests[0].response();
+        expect(response).not.toBeNull();expect(response.status()).toBe(200);expect(response.headers()['content-type']).toContain('application/pdf');
+        bytes=await response.body();mode='navigation';
+        if(bytes.equals(expectedBytes))contentProof='response_bytes';
+        else{
+          // Chrome hands the original PDF stream to its native viewer and
+          // exposes this handler document to DevTools instead of the bytes.
+          const handler=bytes.toString();
+          expect(handler).toMatch(/chrome-extension:\/\/[^/]+\/pdf_embedder\.css/);
+          expect(handler).toMatch(/<template shadowrootmode="closed">/);
+          expect(handler).toMatch(/<iframe[^>]+type="application\/pdf"[^>]+internalid="[^"]+"/);
+          contentProof='native_pdf_handler';
+        }
+      }
+      await testInfo.attach('verified-pdf-handoff',{body:JSON.stringify({mode,exactSignedUrl:true,navigationRequest:true,contentProof,observedByteLength:bytes.length}),contentType:'application/json'});
+    }finally{context.off('request',onRequest);context.off('page',onPage);}
+  };
+}
+
+test('saved document action obtains an authenticated signed URL from documents-download',async({page,context},testInfo)=>{
   await page.addInitScript(()=>localStorage.setItem('fh_token','offline-fixture-token'));
-  await context.route('**/api/documents/'+DOCUMENT+'?*',route=>route.fulfill({status:200,contentType:'application/pdf',body:Buffer.from('%PDF-1.4\noffline browser fixture')}));
+  const pdf=Buffer.from('%PDF-1.4\noffline browser fixture');
+  await context.route('**/api/documents/'+DOCUMENT+'?*',route=>route.fulfill({status:200,contentType:'application/pdf',body:pdf}));
   const b=record();b.evidence.formation={documentId:DOCUMENT,status:'evidence_received'};
   const{app,downloads}=await open(page,{started:true,seed:{businesses:[b]}});
   await openBusiness(app);
-  const popupPromise=page.waitForEvent('popup');
+  const delivery=observePdfDelivery(page,context,pdf),popupPromise=page.waitForEvent('popup');
   await app.getByRole('button',{name:'Open saved document',exact:true}).click();
   const popup=await popupPromise;
   await expect.poll(()=>downloads.length).toBe(1);
   expect(downloads[0]).toEqual({id:DOCUMENT,authorization:'Bearer offline-fixture-token'});
-  await expect(popup).toHaveURL(new RegExp('/api/documents/'+DOCUMENT+'\\?exp=2000000000&sig=offline-fixture-signature'));
-  await popup.close();
+  await delivery(popup,testInfo);if(!popup.isClosed())await popup.close();
 });
 
 test('EIN upload waits for this business formation evidence without sending a file',async({page})=>{
@@ -458,13 +498,14 @@ async function openLetters(app){
   await expect(app.getByRole('button',{name:'Download letter',exact:true})).toHaveCount(3);
 }
 
-test('letters are directly downloadable through authenticated signed links and self-mailing instructions are usable',async({page,context})=>{
+test('letters are directly downloadable through authenticated signed links and self-mailing instructions are usable',async({page,context},testInfo)=>{
   await page.addInitScript(()=>localStorage.setItem('fh_token','offline-letter-token'));
-  await context.route('**/api/documents/'+DOCUMENT+'?*',route=>route.fulfill({status:200,contentType:'application/pdf',body:Buffer.from('%PDF-1.4\noffline letter fixture')}));
+  const pdf=Buffer.from('%PDF-1.4\noffline letter fixture');
+  await context.route('**/api/documents/'+DOCUMENT+'?*',route=>route.fulfill({status:200,contentType:'application/pdf',body:pdf}));
   const{app,downloads,mailRequests}=await open(page,{started:true,mailing:savedLetters()});await openLetters(app);
-  const popupPromise=page.waitForEvent('popup');await app.getByRole('button',{name:'Download letter',exact:true}).first().click();const popup=await popupPromise;
-  await expect(popup).toHaveURL(new RegExp('/api/documents/'+DOCUMENT+'\\?exp=2000000000&sig=offline-fixture-signature'));
-  expect(downloads).toEqual([{id:DOCUMENT,authorization:'Bearer offline-letter-token'}]);await popup.close();
+  const delivery=observePdfDelivery(page,context,pdf),popupPromise=page.waitForEvent('popup');await app.getByRole('button',{name:'Download letter',exact:true}).first().click();const popup=await popupPromise;
+  await delivery(popup,testInfo);
+  expect(downloads).toEqual([{id:DOCUMENT,authorization:'Bearer offline-letter-token'}]);if(!popup.isClosed())await popup.close();
   await app.getByText('How to send the letters yourself',{exact:true}).click();
   await expect(app).toContainText('Sign and date where required');await expect(app).toContainText('Keep a copy of your packet.');
   await expect(app.getByRole('link',{name:'Upload mailing proof in View progress',exact:true})).toHaveAttribute('href','/progress.html');
@@ -706,9 +747,50 @@ test('session principal stable account: quote and authorized payment result stay
   await form.getByRole('button',{name:'Confirm $97 and mail my letters',exact:true}).click();await expect(app.getByRole('link',{name:'Continue secure payment',exact:true})).toHaveAttribute('href','https://offline-checkout.example/order/'+ORDER);
   expect(httpRequests.filter(r=>r.action==='confirm')).toHaveLength(1);oldAccountOnly(httpRequests);
 });
-test('session principal stable account: delayed signed document opens only its authenticated saved URL',async({page,context})=>{
-  const auth=principalFixture(),gates={};await context.route('**/api/documents/'+DOCUMENT+'?*',route=>route.fulfill({status:200,contentType:'application/pdf',body:Buffer.from('%PDF-1.4\nstable document fixture')}));
+test('session principal stable account: delayed signed document opens only its authenticated saved URL',async({page,context},testInfo)=>{
+  const auth=principalFixture(),gates={},pdf=Buffer.from('%PDF-1.4\nstable document fixture');await context.route('**/api/documents/'+DOCUMENT+'?*',route=>route.fulfill({status:200,contentType:'application/pdf',body:pdf}));
   const b=record();b.evidence.formation={documentId:DOCUMENT,status:'evidence_received'};const{app,httpRequests}=await open(page,{started:true,authControl:auth,requestGates:gates,seed:{businesses:[b]}});await openBusiness(app);
-  const gate=requestBarrier();gates['GET /api/documents-download']=gate;const popupPromise=page.waitForEvent('popup');await app.getByRole('button',{name:'Open saved document',exact:true}).click();const popup=await popupPromise;await gate.arrived;
-  expect(popup.url()).toBe('about:blank');await finishBarrier(page,gate);await expect(popup).toHaveURL(new RegExp('/api/documents/'+DOCUMENT+'\\?exp=2000000000&sig=offline-fixture-signature'));oldAccountOnly(httpRequests);await popup.close();
+  const gate=requestBarrier();gates['GET /api/documents-download']=gate;const delivery=observePdfDelivery(page,context,pdf),popupPromise=page.waitForEvent('popup');await app.getByRole('button',{name:'Open saved document',exact:true}).click();const popup=await popupPromise;await gate.arrived;
+  expect(popup.url()).toBe('about:blank');await finishBarrier(page,gate);await delivery(popup,testInfo);oldAccountOnly(httpRequests);if(!popup.isClosed())await popup.close();
+});
+
+async function setHttpOnlySession(context,baseURL,value){
+  await context.addCookies([{name:'fundhub_session',value,url:baseURL,httpOnly:true,sameSite:'Lax'}]);
+}
+test('session principal cookie-only switch: no captured bearer means no private buyer state or save under cookie B',async({page,context,baseURL})=>{
+  await setHttpOnlySession(context,baseURL,'offline-cookie-a');
+  const auth={...principalFixture(),token:null};const{app,httpRequests}=await open(page,{started:true,business:true,clientName:'AveryPrivate',authControl:auth});
+  await expectPrivateWorkspaceCleared(page,app);expect(await page.evaluate(()=>document.cookie.includes('fundhub_session'))).toBe(false);
+  await expect(page.locator('a[href="/portal-login.html"]:visible')).toHaveCount(1);
+  auth.clientId=OTHER_CLIENT;auth.accountId=OTHER_ACCOUNT;await setHttpOnlySession(context,baseURL,'offline-cookie-b');
+  await page.bringToFront();await expectPrivateWorkspaceCleared(page,app);
+  await expect(page.getByRole('button',{name:'Save business plan',exact:true})).toHaveCount(0);
+  expect(httpRequests.filter(r=>r.path.startsWith('/api/blueprint/'))).toHaveLength(0);
+  expect(httpRequests.filter(r=>r.path==='/api/blueprint/business-plans'&&r.method==='POST')).toHaveLength(0);
+});
+test('session principal cookie-only logout: absent bearer never opens a private workspace or continues a request',async({page,context,baseURL})=>{
+  await setHttpOnlySession(context,baseURL,'offline-cookie-a');
+  const auth={...principalFixture(),token:null};const{app,httpRequests}=await open(page,{started:true,business:true,clientName:'AveryPrivate',authControl:auth});
+  await expectPrivateWorkspaceCleared(page,app);auth.signedOut=true;await context.clearCookies();await page.bringToFront();
+  await expectPrivateWorkspaceCleared(page,app);await expect(page.locator('a[href="/portal-login.html"]:visible')).toHaveCount(1);
+  expect(httpRequests.filter(r=>r.path.startsWith('/api/blueprint/')||r.path==='/api/documents-upload'||r.path==='/api/documents-download')).toHaveLength(0);
+  await page.getByRole('link',{name:'Sign in to your portal',exact:true}).click();
+  await expect(page).toHaveURL(new URL('/portal-login.html',baseURL).href);await expect(page.locator('#email')).toBeVisible();
+});
+test('session principal demo token cannot authorize a private cookie-backed Blueprint workspace',async({page,context,baseURL})=>{
+  await setHttpOnlySession(context,baseURL,'offline-cookie-a');
+  const auth={...principalFixture(),token:'demo'};const{app,httpRequests}=await open(page,{started:true,business:true,clientName:'AveryPrivate',authControl:auth});
+  await expectPrivateWorkspaceCleared(page,app);await expect(page.locator('a[href="/portal-login.html"]:visible')).toHaveCount(1);
+  expect(httpRequests.filter(r=>r.path.startsWith('/api/blueprint/'))).toHaveLength(0);
+});
+test('session principal captured bearer stays bound to its actual projection when an opaque cookie changes',async({page,context,baseURL})=>{
+  await setHttpOnlySession(context,baseURL,'offline-cookie-a');
+  const auth=principalFixture();const{app,httpRequests}=await open(page,{started:true,business:true,clientName:'AveryPrivate',authControl:auth});
+  await expect(app).toContainText('AveryPrivate');expect(await page.evaluate(()=>document.cookie.includes('fundhub_session'))).toBe(false);
+  // A real explicit bearer continues to resolve A even when a different
+  // HttpOnly cookie is present; it must never silently become cookie B.
+  await setHttpOnlySession(context,baseURL,'offline-cookie-b');await openBusiness(app);
+  await app.locator('input[name=name]').fill('Bearer-bound business');await app.getByRole('button',{name:'Save business plan',exact:true}).click();
+  await expect(app.getByText('Saved to your client file.',{exact:true})).toBeVisible();await expect(app.locator('input[name=name]')).toHaveValue('Bearer-bound business');
+  expect(httpRequests.filter(r=>r.action==='save_business')).toHaveLength(1);expect(countPlanReads(httpRequests)).toBe(2);oldAccountOnly(httpRequests);
 });

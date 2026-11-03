@@ -54,8 +54,8 @@ fs.mkdirSync(RAW, { recursive: true });
 const CLIENT_SESSION = {
   ok: true, principal: "client",
   staff: {
-    id: CLIENT_ID, name: "Sim Five-Academy", email: "sim.five@example.com",
-    role: "client", org_id: "org-1", status: "active"
+    id: "bbbbbbbb-2222-4222-8222-222222222222", client_id: CLIENT_ID, name: "Sim Five-Academy", email: "sim.five@example.com",
+    role: "client", org_id: "11111111-1111-4111-8111-111111111111", status: "active"
   }
 };
 
@@ -91,6 +91,10 @@ async function openPortal(page, { entitlements = [], summary = {} } = {}) {
 
   await page.route("**/api/**", async (route) => {
     const url = route.request().url();
+    // These course/funding-snapshot/repair states are not a paid Blueprint.
+    if (new URL(url).pathname === "/api/blueprint/plan") {
+      return json(route, { ok: false, error: "blueprint_access_inactive" }, 403);
+    }
     if (url.includes("/api/auth/session") || /\/api\/session\b/.test(url)) {
       return json(route, CLIENT_SESSION);
     }
@@ -167,7 +171,14 @@ async function bringIntoFrame(page, marks) {
     // Anchor on whichever marked element sits highest, so a group is pulled in
     // together rather than each one chasing the last out of frame.
     const i = boxes.findIndex((b) => b && b.y === top);
-    try { await page.locator(marks[i].selector).first().scrollIntoViewIfNeeded({ timeout: 2000 }); } catch { /* keep the last position */ }
+    try {
+      // Minimal scrolling can leave a fractional pixel outside the viewport.
+      // Center the real target in its scrollable ancestors; keep the exact
+      // screenshot guard below so a clipped annotation still fails.
+      await page.locator(marks[i].selector).first().evaluate(element => {
+        element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+      }, null, { timeout: 2000 });
+    } catch { /* keep the last position */ }
     await page.waitForTimeout(200);
   }
   return measure(page, marks);
