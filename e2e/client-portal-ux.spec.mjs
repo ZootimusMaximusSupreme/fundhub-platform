@@ -210,7 +210,7 @@ test.describe("client portal go-live UX", () => {
 
     await tile.locator(".tc-mod summary").first().click();
     await expect(tile.locator(".tc-mod").first()).toHaveAttribute("open", "");
-    await expect(tile.locator(".tc-empty").first()).toContainText(/Coming soon/i);
+    await expect(tile.locator(".tc-mod").first().locator(".tc-vid p")).toHaveText("Open the report in What You Own. Check its date, account ownership, balances and limits against your records. Tell the Fundhub team about anything incorrect or unclear.");
   });
 
   test("unlocked Funding Mastery tile expands the same way", async ({ page }) => {
