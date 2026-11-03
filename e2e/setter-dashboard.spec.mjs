@@ -64,6 +64,154 @@ test("setter score strip stays inside a phone viewport", async ({ page }) => {
   await expect(page.locator(".setter-numbers")).toBeVisible();
 });
 
+test("setter saves a lead-confirmed home address with an explicit Save", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const item = structuredClone(queue.items[0]);
+  let saved = null;
+  let writes = 0;
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": () => ({ ...queue, items: [{ ...item, residential_address: saved || {} }] }),
+    "/api/setter-dashboard": async route => {
+      const body = route.request().postDataJSON();
+      expect(body.action).toBe("save_address");
+      expect(body.client_id).toBe(item.client_id);
+      writes += 1;
+      saved = { ...body.address, source: "setter_confirmed", confirmed_at: "2026-11-02T20:00:00Z" };
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, address: saved }) });
+    }
+  });
+  await page.getByLabel("Street address").fill("123 Main St");
+  await page.getByLabel("City", { exact: true }).fill("Phoenix");
+  await page.getByLabel("State", { exact: true }).fill("AZ");
+  await page.getByLabel("ZIP code").fill("85001");
+  await page.getByLabel("The lead confirmed this is their current home address").check();
+  expect(writes).toBe(0);
+  await page.getByRole("button", { name: "Save home address" }).click();
+  await expect(page.locator("#setter-address-status")).toHaveText("Home address saved on this lead.");
+  expect(writes).toBe(1);
+  expect(saved.line1).toBe("123 Main St");
+  expect(saved.confirmed).toBe(true);
+  await page.getByRole("button", { name: "Refresh" }).click();
+  await expect(page.getByLabel("Street address")).toHaveValue("123 Main St");
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("setter can discard an incomplete optional address and keep working", async ({ page }) => {
+  const another = { ...queue.items[0], client_id: "bbbbbbbb-2222-4222-8222-222222222222", client_name: "Next Lead" };
+  let writes = 0;
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": { ...queue, count: 2, items: [queue.items[0], another] },
+    "/api/setter-dashboard": async route => { writes += 1; await route.fulfill({ status: 500, body: "{}" }); }
+  });
+  await page.getByLabel("Street address").fill("Partial address");
+  await page.locator('[data-client-id="' + queue.items[0].client_id + '"]').click();
+  await expect(page.getByLabel("Street address")).toHaveValue("Partial address");
+  await page.locator('[data-client-id="' + another.client_id + '"]').click();
+  await expect(page.locator("#setter-detail h2")).toHaveText(queue.items[0].client_name);
+  await page.getByRole("button", { name: "Cancel address edits" }).click();
+  await expect(page.getByLabel("Street address")).toHaveValue("");
+  await page.locator('[data-client-id="' + another.client_id + '"]').click();
+  await expect(page.locator("#setter-detail h2")).toHaveText("Next Lead");
+  expect(writes).toBe(0);
+});
+
+test("setter address fields stay locked until the saved request finishes", async ({ page }) => {
+  const another = { ...queue.items[0], client_id: "bbbbbbbb-2222-4222-8222-222222222222", client_name: "Next Lead" };
+  let finish;
+  let started;
+  const pending = new Promise(resolve => { finish = resolve; });
+  const requested = new Promise(resolve => { started = resolve; });
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": { ...queue, count: 2, items: [queue.items[0], another] },
+    "/api/setter-dashboard": async route => {
+      const body = route.request().postDataJSON();
+      expect(body.action).toBe("save_address");
+      expect(body.address.line1).toBe("123 Main St");
+      started();
+      await pending;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true,
+        address: { ...body.address, source: "setter_confirmed", confirmed_at: "2026-11-02T20:00:00Z" } }) });
+    }
+  });
+  await page.getByLabel("Street address").fill("123 Main St");
+  await page.getByLabel("City", { exact: true }).fill("Phoenix");
+  await page.getByLabel("State", { exact: true }).fill("AZ");
+  await page.getByLabel("ZIP code").fill("85001");
+  await page.getByLabel("The lead confirmed this is their current home address").check();
+  await page.getByRole("button", { name: "Save home address" }).click();
+  await requested;
+  await expect(page.getByLabel("Street address")).toBeDisabled();
+  await expect(page.getByLabel("The lead confirmed this is their current home address")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Cancel address edits" })).toBeDisabled();
+  await page.locator('[data-client-id="' + another.client_id + '"]').click();
+  await expect(page.locator("#setter-detail h2")).toHaveText(queue.items[0].client_name);
+  finish();
+  await expect(page.locator("#setter-address-status")).toHaveText("Home address saved on this lead.");
+  await expect(page.getByLabel("Street address")).toBeEnabled();
+  await expect(page.getByLabel("Street address")).toHaveValue("123 Main St");
+});
+
+test("a late queue refresh cannot replace an address saved after the refresh began", async ({ page }) => {
+  let reads = 0;
+  let finish;
+  let started;
+  const pending = new Promise(resolve => { finish = resolve; });
+  const requested = new Promise(resolve => { started = resolve; });
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": async route => {
+      reads += 1;
+      if (reads === 2) { started(); await pending; }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(queue) });
+    },
+    "/api/setter-dashboard": async route => {
+      const body = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true,
+        address: { ...body.address, source: "setter_confirmed", confirmed_at: "2026-11-02T20:00:00Z" } }) });
+    }
+  });
+  await page.getByRole("button", { name: "Refresh queue" }).click();
+  await requested;
+  await page.getByLabel("Street address").fill("123 Main St");
+  await page.getByLabel("City", { exact: true }).fill("Phoenix");
+  await page.getByLabel("State", { exact: true }).fill("AZ");
+  await page.getByLabel("ZIP code").fill("85001");
+  await page.getByLabel("The lead confirmed this is their current home address").check();
+  await page.getByRole("button", { name: "Save home address" }).click();
+  await expect(page.locator("#setter-address-status")).toHaveText("Home address saved on this lead.");
+  finish();
+  await expect(page.getByRole("button", { name: "Refresh queue" })).toBeEnabled();
+  await expect(page.getByLabel("Street address")).toHaveValue("123 Main St");
+  await expect(page.locator("#setter-address-status")).toHaveText("Home address saved on this lead.");
+});
+
+test("a pending dial response preserves a home address draft typed during the request", async ({ page }) => {
+  const item = structuredClone(queue.items[0]);
+  delete item.setter_handoff.complete_at;
+  let finish;
+  let started;
+  const pending = new Promise(resolve => { finish = resolve; });
+  const requested = new Promise(resolve => { started = resolve; });
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": { ...queue, items: [item] },
+    "/api/setter-dashboard": async route => {
+      const body = route.request().postDataJSON();
+      expect(body.action).toBe("log_dial");
+      started();
+      await pending;
+      const updated = { ...item, setter_handoff: { ...item.setter_handoff, call_attempts: 2 } };
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, item: updated }) });
+    }
+  });
+  await page.getByRole("button", { name: /Log dial/ }).click();
+  await requested;
+  await page.getByLabel("Street address").fill("Partial address");
+  finish();
+  await expect(page.locator("#setter-status")).toHaveText("Dial logged.");
+  await expect(page.getByLabel("Street address")).toHaveValue("Partial address");
+  await expect(page.locator("#setter-address-status")).toHaveText("Unsaved home address…");
+});
+
 test("a lead alert opens the exact contact and its call link", async ({ page }) => {
   const another = { ...queue.items[0], client_id: "bbbbbbbb-2222-4222-8222-222222222222",
     client_name: "Pat Rivera", phone: "+15550987654" };
