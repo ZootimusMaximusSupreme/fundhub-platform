@@ -8,6 +8,10 @@ export const LEASE_MS = 60_000;
 export const WAIT_MS = 2_000;
 export const MAX_BATCH = 4;
 
+// pg returns timestamptz as Date. Date.parse(Date) stringifies it first and
+// loses milliseconds; keep the exact JS instant for SQL timestamps.
+const timestamp = (value) => value instanceof Date ? value.getTime() : Date.parse(value);
+
 export function ticketEligible(name, payload = {}, opts = {}, now = Date.now()) {
   const start = Date.parse(payload.startTime || payload.start_time || "");
   return name === "booking.created" && opts.skipInngest !== true && opts.isDemo !== true &&
@@ -110,7 +114,7 @@ export async function attemptBookingHandoff(db, { orgId, eventId }, {
     await finish("exhausted","booking_scope_invalid","Booking source/client scope is unavailable");
     return { outcome: "exhausted" };
   }
-  const age = at-Date.parse(event.created_at);
+  const age = at-timestamp(event.created_at);
   const start = Date.parse(event.payload?.startTime || event.payload?.start_time || "");
   if (!Number.isFinite(age) || age<0 || age>=MAX_AGE_MS || claim.attempts>claim.max_attempts ||
       !Number.isFinite(start) || start<=at) {
@@ -127,7 +131,7 @@ export async function attemptBookingHandoff(db, { orgId, eventId }, {
     await finish("exhausted","booking_identity_ambiguous","Booking identity is ambiguous");
     return { outcome: "exhausted" };
   }
-  if (bookings[0].status!=="booked" || Date.parse(bookings[0].starts_at)!==start) {
+  if (bookings[0].status!=="booked" || timestamp(bookings[0].starts_at)!==start) {
     await finish("ignored","booking_no_longer_current","Booking was moved or is no longer active");
     return { outcome: "ignored" };
   }
@@ -144,8 +148,9 @@ export async function attemptBookingHandoff(db, { orgId, eventId }, {
     // Database/key reads may have taken long enough to cross the appointment,
     // age or ownership boundary. Check again at the actual provider boundary.
     const sentAt=Number(now());
-    if (!Number.isFinite(sentAt) || sentAt>=Date.parse(claim.lease_at)) return { staleLease: true };
-    if (sentAt>=start || sentAt-Date.parse(event.created_at)>=MAX_AGE_MS || sentAt<at) {
+    const leaseEndsAt=timestamp(claim.lease_at);
+    if (!Number.isFinite(sentAt) || !Number.isFinite(leaseEndsAt) || sentAt>=leaseEndsAt) return { staleLease: true };
+    if (sentAt>=start || sentAt-timestamp(event.created_at)>=MAX_AGE_MS || sentAt<at) {
       await finish("exhausted","booking_handoff_expired","Booking handoff expired before provider submission");
       return { expired: true };
     }

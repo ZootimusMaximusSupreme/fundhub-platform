@@ -28,7 +28,9 @@ async function fixture(run){
     const foreign=(await sql.query("INSERT INTO orgs(slug,name) VALUES($1,'Booking handoff fixture') RETURNING id",[`handoff-${randomUUID()}`])).rows[0].id;
     const email=`${randomUUID()}@example.test`;
     const client=(await sql.query("INSERT INTO clients(org_id,email,first_name,ghl_contact_id) VALUES($1,$2,'Handoff fixture','scratch-only') RETURNING id",[org,email])).rows[0].id;
-    const now=Date.parse((await sql.query("SELECT now() AS t")).rows[0].t);
+    // Preserve pg's Date milliseconds, then move past SQL's remaining
+    // microseconds so a just-created ticket is genuinely due in this fixture.
+    const now=new Date((await sql.query("SELECT now() AS t")).rows[0].t).getTime()+1;
     assert.ok(now>=Date.parse(CUTOVER_AT),"test must run after the explicit forward cutover");
     const payload={email,bookingUid:`scratch-${randomUUID()}`,startTime:new Date(now+3600000).toISOString(),source:"clickfunnels"};
     await run({sql,db,org,foreign,client,email,now,payload,provider});

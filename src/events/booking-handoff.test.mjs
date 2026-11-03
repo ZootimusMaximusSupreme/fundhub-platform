@@ -7,6 +7,7 @@ import {
 
 const BASE=Date.parse("2026-11-03T02:00:00Z"),ORG="00000000-0000-4000-8000-000000000001",ID="00000000-0000-4000-8000-000000000002",CLIENT="00000000-0000-4000-8000-000000000003";
 const pause=()=>new Promise(resolve=>setImmediate(resolve));
+const instant=value=>value instanceof Date?value.getTime():Date.parse(value);
 function fixture() {
   let clock=BASE;
   const q={id:"ticket",org_id:ORG,event_id:ID,status:"pending",next_attempt_at:new Date(BASE).toISOString(),attempts:0,max_attempts:7};
@@ -18,7 +19,7 @@ function fixture() {
     if(sql===CLAIM_SQL){if(q.status!=="pending"||p[0]!==ORG||p[1]!==ID||Date.parse(q.next_attempt_at)>Date.parse(p[2]))return{rows:[]};q.attempts++;q.next_attempt_at=new Date(Date.parse(p[2])+LEASE_MS).toISOString();return{rows:[{...q,lease_at:q.next_attempt_at}]};}
     if(sql===EVENT_SQL)return{rows:event?[event]:[]};
     if(sql===BOOKING_SQL)return{rows:bookings};
-    if(sql===SETTLE_SQL){assert.ok(["pending","resolved","ignored","exhausted"].includes(p[3]));if(p[0]!==q.id||p[1]!==ORG||q.status!=="pending"||q.next_attempt_at!==p[2])return{rows:[]};q.status=p[3];q.error_code=p[6];q.resolved_at=["resolved","ignored"].includes(q.status)?p[4]:null;if(q.status!=="pending")q.next_attempt_at=null;return{rows:[{id:q.id}]};}
+    if(sql===SETTLE_SQL){assert.ok(["pending","resolved","ignored","exhausted"].includes(p[3]));if(p[0]!==q.id||p[1]!==ORG||q.status!=="pending"||instant(q.next_attempt_at)!==instant(p[2]))return{rows:[]};q.status=p[3];q.error_code=p[6];q.resolved_at=["resolved","ignored"].includes(q.status)?p[4]:null;if(q.status!=="pending")q.next_attempt_at=null;return{rows:[{id:q.id}]};}
     if(sql===DUE_SQL){assert.equal(p[1],MAX_BATCH);return{rows:q.status==="pending"&&Date.parse(q.next_attempt_at)<=clock?[{org_id:ORG,event_id:ID}]:[]};}
     if(sql===EXHAUSTED_SQL)return{rows:[{n:q.status==="exhausted"?1:0}]};
     throw Error("Unexpected handoff SQL");
@@ -52,6 +53,39 @@ test("valid ACK resolves the ticket, not a claim of SMS delivery",async()=>{
   const f=fixture();assert.equal((await run(f,async()=>({ids:["receipt"]}))).outcome,"accepted");
   assert.equal(f.q.status,"resolved");assert.ok(f.q.resolved_at);assert.equal(f.q.next_attempt_at,null);
   assert.ok(!f.calls.some(x=>/INSERT INTO messages/.test(x.sql)));
+});
+
+test("SQL Date fractional booking timestamps match the original ISO instant, while a truly moved booking is refused",async()=>{
+  for(const moved of [false,true]){
+    const f=fixture();f.advance(125);f.event.created_at=new Date(BASE+125);
+    f.event.payload.startTime=new Date(BASE+3600125).toISOString();
+    f.bookings[0].starts_at=new Date(BASE+3600125+(moved?1:0));
+    let sent=0;const result=await run(f,async()=>{sent++;return{ids:["date-ack"]};});
+    assert.equal(result.outcome,moved?"ignored":"accepted");assert.equal(sent,moved?0:1);
+  }
+});
+
+test("SQL Date age retains the final eligible millisecond and still expires at exactly fifteen minutes",async()=>{
+  for(const expired of [false,true]){
+    const f=fixture();f.event.created_at=new Date(BASE-MAX_AGE_MS+(expired?0:1));
+    let sent=0;const result=await run(f,async()=>{sent++;return{ids:["age-ack"]};});
+    assert.equal(result.outcome,expired?"exhausted":"accepted");assert.equal(sent,expired?0:1);
+  }
+});
+
+test("SQL Date fractional leases stay valid until their exact boundary and cannot send after awaited reads cross it",async()=>{
+  for(const expired of [false,true]){
+    const f=fixture(),query=f.db.query.bind(f.db);f.advance(125);let sent=0;
+    f.db.query=async(sql,p)=>{
+      const r=await query(sql,p);
+      if(sql===CLAIM_SQL&&r.rows[0]){f.q.next_attempt_at=new Date(BASE+500).toISOString();r.rows[0].lease_at=new Date(BASE+500);}
+      if(sql===BOOKING_SQL)f.advance(expired?375:374);
+      return r;
+    };
+    const result=await run(f,async()=>{sent++;return{ids:["lease-ack"]};});
+    assert.equal(result.outcome,expired?"lease_changed":"accepted");assert.equal(sent,expired?0:1);
+    assert.equal(f.q.status,expired?"pending":"resolved");
+  }
 });
 
 test("empty ACK or transport rejection stays pending with its lease",async()=>{
