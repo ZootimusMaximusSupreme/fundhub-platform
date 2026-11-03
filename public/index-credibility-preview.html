@@ -332,21 +332,6 @@
   .trust-row i{width:10px;height:2px;background:var(--spectrum);border-radius:1px}
 </style>
 <script>(function(){try{if(sessionStorage.getItem('fh_boot_seen')==='1')document.documentElement.classList.add('fh-seen')}catch(e){}})();</script>
-<!-- Meta Pixel (Fundhub) -->
-<script>
-!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-document,'script','https://connect.facebook.net/en_US/fbevents.js');
-if(!window.__fhPv&&window.self===window.top){(function(w){var s='';try{s=w.sessionStorage.getItem('fh_sid')||'';}catch(e){}
-if(!/^[A-Za-z0-9_-]{8,80}$/.test(s)){s=(Math.random().toString(36).slice(2)+new Date().getTime().toString(36)+Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);try{w.sessionStorage.setItem('fh_sid',s);}catch(e){}}
-w.__fhPv='pv.'+s+'.'+Math.random().toString(36).slice(2,10);})(window);
-fbq('init', '2403674420141513');
-fbq('track', 'PageView', {}, {eventID: window.__fhPv});}
-</script>
-<noscript><img height="1" width="1" style="display:none" alt=""
-src="https://www.facebook.com/tr?id=2403674420141513&ev=PageView&noscript=1"/></noscript>
 </head>
 <body>
 <div class="fh-root">
@@ -811,9 +796,5 @@ src="https://www.facebook.com/tr?id=2403674420141513&ev=PageView&noscript=1"/></
   })();
 
 </script>
-<script src="/js/homepage-survey.js?v=meta-20261002" defer></script>
-<script src="/js/clarity.js" defer></script>
-<script src="/funnel/fh-events.js" defer></script>
-<script src="/funnel/rb2b.js"></script>
 </body>
 </html>
