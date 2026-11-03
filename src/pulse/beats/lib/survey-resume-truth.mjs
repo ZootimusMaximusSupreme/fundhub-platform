@@ -5,16 +5,13 @@
 //                               {"error":"token_required"}: the door is deployed and its own
 //                               handler answers (api/public/survey-resume.mjs). A 404 means the
 //                               route fell out of the ROUTES map; a 500 means it crashed.
-//   survey:resume-links-signed  CONTAINMENT (2026-10-31): the id is kept, the meaning flipped.
-//                               NO welcome or come-back message (SMS/EMAIL-S00-WELCOME,
-//                               SMS/EMAIL-S02-RESUME-*) written for a real person in the last 24
-//                               hours carries a resume code (apply.fundhub.ai/apply?r=...).
-//                               /apply lets a new phone onto an existing lead's email, so a code
-//                               in a text can reach a stranger. The links are the plain /apply page.
+//   survey:resume-links-signed  SMS stays on plain /apply; email carries a v2
+//                               saved-progress link. A code in SMS can reach a
+//                               stranger because /apply can overwrite a lead's phone.
 // No welcome or come-back message in 24 hours is "nothing to judge", never green and never red.
 //
 // The 6 a.m. check survey:resume-link-opens (src/pulse/coverage/gap-survey-resume.mjs) goes
-// deeper: it signs the newest real lead's code and proves the door hands back nothing.
+// deeper: it signs the newest real lead's v2 code and checks the saved answers.
 //
 // No code, link or page body is ever copied into a detail: paths, statuses and counts only.
 
@@ -24,11 +21,14 @@ export const CHECK_IDS = Object.freeze(["survey:resume-door-answers", "survey:re
 export const DOOR_PATH = "/api/public/survey-resume";
 export const LOOKBACK_HOURS = 24;
 
-/** $1 org, $2 now. Welcome and come-back messages for real people in the last day, and how many carry a resume code. */
+/** $1 org, $2 now. Check the SMS and email links separately. */
 export const COME_BACK_LINKS_SQL = `
 /* beat:survey-resume-links */
 SELECT count(*)::int AS total,
-       count(*) FILTER (WHERE m.rendered_body ~ 'apply\\.fundhub\\.ai/apply\\?r=')::int AS coded
+       count(*) FILTER (WHERE m.template_key LIKE 'SMS-%'
+                         AND m.rendered_body ~ 'apply\\.fundhub\\.ai/apply\\?r=')::int AS sms_coded,
+       count(*) FILTER (WHERE m.template_key LIKE 'EMAIL-%'
+                         AND m.rendered_body !~ 'apply\\.fundhub\\.ai/apply\\?r=')::int AS email_plain
   FROM messages m
   JOIN clients c ON c.org_id = m.org_id AND c.id = m.client_id
  WHERE m.org_id = $1::uuid
@@ -69,17 +69,18 @@ async function linksCheck(io) {
     return { id, status: "FAIL", detail: "the welcome and come-back messages could not be read" };
   }
   const total = Number(row?.total) || 0;
-  const coded = Number(row?.coded) || 0;
+  const smsCoded = Number(row?.sms_coded) || 0;
+  const emailPlain = Number(row?.email_plain) || 0;
   if (!total) {
     return { id, status: "SKIP", detail: `no welcome or come-back message was written in the last ${LOOKBACK_HOURS} hours, so there is nothing to judge` };
   }
-  if (coded > 0) {
+  if (smsCoded > 0 || emailPlain > 0) {
     return {
       id, status: "FAIL",
-      detail: `${coded} of ${total} welcome and come-back messages in the last ${LOOKBACK_HOURS} hours carry a resume code, which can reach a phone nobody proved is the lead's`
+      detail: `${smsCoded} text links expose saved progress and ${emailPlain} email links fail to resume, among ${total} welcome and come-back messages in the last ${LOOKBACK_HOURS} hours`
     };
   }
-  return { id, status: "PASS", detail: `none of ${total} welcome and come-back messages in the last ${LOOKBACK_HOURS} hours carries a resume code` };
+  return { id, status: "PASS", detail: `${total} welcome and come-back messages keep saved-progress codes in email only` };
 }
 
 /** io: { read, readWeb, orgId, now, baseUrl } from runLaneBeat. One result per CHECK_IDS entry. */

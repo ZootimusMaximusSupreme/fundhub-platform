@@ -34,7 +34,7 @@ import { normalizePhone } from "../messaging/providers/bland-voice.mjs";
 import { applyRepToContext } from "../auth/authorized-rep.mjs";
 import { creditTierFor } from "../config/survey-qualification.mjs";
 import { experimentFor, baseKeyOf, variantKeyFor, armFor } from "../messaging/experiments.mjs";
-import { RESUME_LINK_TAG } from "../survey/resume-link.mjs";
+import { RESUME_BASE_URL, RESUME_LINK_TAG, readSurveyResumeToken, surveyResumeTokenMatchesEmail } from "../survey/resume-link.mjs";
 
 /* Which column on the client record is the destination for a channel.
    The destination is recorded in the terms of the CHANNEL, not of whichever
@@ -234,6 +234,28 @@ async function pickTemplateRow(db, { orgId, clientId, templateKey }) {
   return { row: tpl.rows[0], sendKey: templateKey, split };
 }
 
+const RESUME_EMAIL_KEYS = new Set([
+  "EMAIL-S00-WELCOME", "EMAIL-S02-RESUME-1", "EMAIL-S02-RESUME-2",
+  "EMAIL-S02-RESUME-2-B", "EMAIL-S02-RESUME-3"
+]);
+const RESUME_EMAIL_COPY = [
+  ["This button starts the questions again from the first one.", "This button opens your saved questions right where you left off."],
+  ["The survey starts again at the first question.", "Your answers are saved. No starting over."],
+  ["Use the button below to start the questions again.", "Use the button below to pick up where you stopped."],
+  ["Start my questions", "Pick up my questions"],
+  ["If funding is still on your list, start the questions again and then pick a call time.",
+    "If funding is still on your list, pick up your questions and then pick a call time."]
+];
+
+function signedSurveyResumeEmailUrl(value, clientId, email) {
+  const prefix = `${RESUME_BASE_URL}?r=`;
+  if (typeof value !== "string" || !value.startsWith(prefix)) return null;
+  const token = value.slice(prefix.length);
+  if (!token || token.includes("&") || token.includes("#")) return null;
+  if (readSurveyResumeToken(token)?.clientId !== clientId) return null;
+  return surveyResumeTokenMatchesEmail(token, email) ? value : null;
+}
+
 export async function sendTemplated(db, { orgId, clientId, channel, templateKey, eventId, context = {}, staffId, shiftId }) {
   // A TEXT NEVER CARRIES THE COME-BACK LINK (review 2026-10-31). The link opens the
   // person's saved answers, and the phone on a record can belong to someone else: the
@@ -316,7 +338,20 @@ export async function sendTemplated(db, { orgId, clientId, channel, templateKey,
       console.warn(`[sendTemplated] {{unsubscribe}} left blank — ${String(err?.message || err)}`);
     }
   }
-  const rendered = stripEmptyWhereRow(renderTemplate(row.body, mergeContext));
+  // Seed 302 kept survey emails on plain /apply while the old text codes were
+  // contained. Render saved progress only for these email keys, with a v3 link
+  // bound to the address this message is about to use. SMS never enters here.
+  const resumeEmail = channel === "email" && RESUME_EMAIL_KEYS.has(sendKey);
+  const signedResume = resumeEmail
+    ? signedSurveyResumeEmailUrl(mergeContext[RESUME_LINK_TAG], clientId, base.contact?.email)
+    : null;
+  if (resumeEmail) mergeContext[RESUME_LINK_TAG] = signedResume || RESUME_BASE_URL;
+  let rendered = stripEmptyWhereRow(renderTemplate(row.body, mergeContext));
+  if (signedResume && !String(row.body || "").includes(`{{${RESUME_LINK_TAG}}}`) &&
+      String(row.body || "").includes(RESUME_BASE_URL) && !String(row.body || "").includes("?r=")) {
+    rendered = rendered.replaceAll(RESUME_BASE_URL, signedResume);
+    for (const [oldWords, newWords] of RESUME_EMAIL_COPY) rendered = rendered.replaceAll(oldWords, newWords);
+  }
 
   // THE SUBJECT IS RENDERED, NOT COPIED. It carries the same {{contact.*}} tags
   // the body does, and an unrendered subject line is the one part of a message

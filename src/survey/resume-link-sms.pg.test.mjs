@@ -6,7 +6,7 @@
 import { test, after } from "node:test";
 import assert from "node:assert";
 import { db, close } from "../db.mjs";
-import { RESUME_LINK_TAG, RESUME_BASE_URL } from "./resume-link.mjs";
+import { RESUME_LINK_TAG } from "./resume-link.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
 const HAS_DB = isLocalScratchDatabaseUrl(process.env.DATABASE_URL);
@@ -22,7 +22,7 @@ test("no text template names the come-back link, after every migration and seed"
   assert.deepEqual(rows.map((r) => r.template_key), []);
 });
 
-test("the come-back emails retain the plain survey link without saved-answer codes", { skip: !HAS_DB }, async () => {
+test("the come-back emails render a resume tag while texts stay plain", { skip: !HAS_DB }, async () => {
   const keys = ["EMAIL-S02-RESUME-1", "EMAIL-S02-RESUME-2", "EMAIL-S02-RESUME-3"];
   const { rows } = await db.query(
     `SELECT DISTINCT template_key, channel, body FROM message_templates
@@ -31,7 +31,7 @@ test("the come-back emails retain the plain survey link without saved-answer cod
   assert.deepEqual([...new Set(rows.map((r) => r.template_key))], keys);
   for (const row of rows) {
     assert.equal(row.channel, "email", row.template_key);
-    assert.ok(row.body.includes(RESUME_BASE_URL), `${row.template_key}: the plain survey URL is missing`);
-    assert.doesNotMatch(row.body, /\{\{survey_resume_link\}\}|\?r=/, `${row.template_key}: a saved-answer link is present`);
+    assert.ok(row.body.includes(`{{${RESUME_LINK_TAG}}}`), `${row.template_key}: the email resume tag is missing`);
+    assert.doesNotMatch(row.body, /\?r=/, `${row.template_key}: codes are rendered per lead, not stored in templates`);
   }
 });
