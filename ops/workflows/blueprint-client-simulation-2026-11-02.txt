@@ -373,3 +373,25 @@ Current independent findings and repair status
   identitychecksremain intact. No deniedactionbypassed.
 
 Completed-child ownership handoff: both H and G checkouts clean, zero unmatched patch commits against root via git log --cherry-pick --right-only. Both checkouts detached at their unchanged exact HEAD to release completed branch ownership; all files/commits/branches preserved. No checkout removed, reset or force push. Managed archival remains deferred because app reports active-task-in-use; this did not remove an active checkout. Current work continues only in blueprint-real-client root.
+
+Pre-publication reviewed source snapshot
+- Core buyer source96targetedtestsPASS,0skip. Browser30PASS,0retry.
+- Independent validator66PASS and mailing42PASS,0skip; exacthashes in ignored
+  final/validator-review.json and final/mailing-core-review.json.
+- New mailing writer43PASS+1PGSKIP,38existingpaid-service regressionsPASS,
+ 5outboundfencechecksPASS. No real provider writes.
+- New hourly/daily monitoring21PASS+4PGSKIP, old4SQLchecks preservedbyteexact.
+- UI4states1440/390 clear;20 markedshots, allfields16px and targets44px.
+- Raw local cold4G baseline retainedRED. ActualCDNusesBrotli; identicalcandidate
+ Brotlicomparison LCP864ms,firstaction1769ms,CLS.0293,encodedexternalJS96205B,
+ total353380B. This is fixturetransportcomparison,notauthenticatedliveproof.
+- Productionsettingsread-only: existingPostGrid/Commas configured, existingoutbound
+ settingsallowtransmission; no keysmodified orprovidercharge/mailperformed.
+- Actualproductionappscopehas35visibleclients withRLSactive; no explicitlymarked
+ QA+activepaidBlueprinttestaccount found. No credentials/purchasescreatedorfaked.
+- Preflight clean afterchildhandoff, branchrebasedovercurrentmain385.
+- First ship-change--resume correctlyrefused: brandnewbranchhasnopriorparenttip.
+ Noarchive/push/PRoccurred. Use normal initial ship-change withthisrequiredreceipt
+ update; it can safely select currentmain mergebase before orderedparentrebase.
+- Three API handlers/545/worker integration is still pending; initialPRmuststay
+ draftuntilthesearewiredontheordered387parent andfinalchecksarecomplete.
