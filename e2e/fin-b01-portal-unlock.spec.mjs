@@ -30,7 +30,7 @@ const PRODUCTS = {
   SOFT_PULL: { name: "UnderwriteIQ soft-pull assessment", price: "$32" },
   FUNDING_DFY: { name: "Funding, done-for-you", price: "On your call" },
   REPAIR_DFY: { name: "Capital readiness, done-for-you", price: "On your call" },
-  REPAIR_TRIAL: { name: "Capital readiness test run (first round, done for you)", price: "On your call" },
+  REPAIR_TRIAL: { name: "Capital readiness test run (two rounds, done for you)", price: "On your call" },
   UWIQ_DELIVERABLES: { name: "Capital Blueprint", price: "On your call" },
   FUNDING_MASTERY: { name: "Capital Academy", price: "On your call" },
 };
