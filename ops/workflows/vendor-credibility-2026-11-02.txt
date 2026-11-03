@@ -1,0 +1,23 @@
+Owner lane: front-house credibility. Integration checkout: vendor-credibility worktree. Goal: build a local preview of accurate, compact third-party trust copy for fundhub.ai and an App Store listing draft, preserving the current site design. Chris explicitly said simulation only now; live publication is a later step after the underlying integration is live.
+
+Parallel work:
+1) Evidence lane (read only): Search repo, connected Drive, and Gmail for executed partnership, reseller, integration, or data-provider agreements with Plaid, LexisNexis, Experian Business, Equifax, and TransUnion. Report exact source and what each document actually authorizes; do not infer endorsement from API access. Search current vendor brand-use rules on official sites. No writes, no account changes.
+2) Surface lane (read only): Identify the source files/route that render the main fundhub.ai page, its existing credibility/proof area, and the App Store listing metadata source and current live listing. Report exact insertion points and tests. Do not edit. Check open PRs and ownership before proposing files.
+3) Integration lane: Draft copy that describes verified use without claiming a formal partnership unless the agreement explicitly supports it. Build a local site preview and App Store listing draft using the existing design, then test them. Do not publish or ship these changes now. Live publication waits for Plaid production proof and an explicit later go-live direction.
+
+Evidence lane prompt: "Read only. Find Fundhub's actual executed agreements or approved public co-marketing language for Plaid, LexisNexis, Experian Business, Equifax, and TransUnion in repo, connected Drive, and Gmail. Also check each vendor's current official brand-use rules. Return a compact table: vendor, relationship proven, exact source path/link, public wording supported. Do not edit or send messages."
+
+Surface lane prompt: "Read only. Map the main fundhub.ai page's source and current proof/credibility design, plus the App Store listing source/live copy. Check open PR ownership. Give exact files, insertion locations, and relevant tests; do not edit or publish. Preserve existing visual design."
+
+Status: Plaid security PR #387 is ordered after PRs #385 and #386; its provider approval and production release are pending. Chris requested simulation only. No vendor relationship claim is published by this task.
+
+Evidence review: Plaid developer use supports a factual bank-connection reference after integration; no executed Plaid marketing partnership was found. Fundhub's executed CRS contract bars use of CRS and credit repository names/marks without prior written consent. No direct Experian, Equifax, TransUnion, or LexisNexis partnership permission was found. The preview therefore uses plain text and no third-party logos.
+
+Homepage preview: public/index-credibility-preview.html is a local copy of the existing homepage. Only the Trust section paragraph changed; the live public/index.html is untouched. Preview text: "Secure bank connections with Plaid. Credit insights from authorized reporting sources. Your funding work stays together in one private Fundhub workspace."
+
+App Store listing simulation (not submitted):
+Title: Fundhub Portal
+Subtitle: Your funding work, in one place
+Description: Keep your funding files, documents, and next steps together. Connect your business bank securely with Plaid and review credit insights from authorized reporting sources in your private Fundhub workspace. See what your advisor needs next and track your progress from your phone.
+
+Visual preview: the local-only page was opened at http://127.0.0.1:8765/index-credibility-preview.html#security and reviewed at desktop and 390px phone width. The Trust paragraph wraps inside the existing section without new CSS or layout changes. Screenshots: ops/workflows/build-evidence/vendor-credibility-preview/desktop.png and phone.png. The local server is a preview only; it is not a Netlify deploy.
