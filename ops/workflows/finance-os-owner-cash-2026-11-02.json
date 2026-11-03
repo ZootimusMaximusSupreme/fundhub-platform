@@ -1,7 +1,7 @@
 {
   "task": "Fundhub owner cash view and Plaid readiness",
   "owner_lane": "finance",
-  "status": "owner_cash_build_authorized_in_progress",
+  "status": "company_workspace_live_bank_settings_added_deployment_pending",
   "approved_2026_11_02": "Chris approved the employee account-menu Plaid placement and owner People status placement; he also requested a payout push notification. He wants distribution available after money clears but has not set a new payout rate or authorized an automatic money transfer.",
   "placement_draft": "ops/workflows/finance-os-payout-bank-placement-2026-11-02.html",
   "dots_comma_account_note": {
@@ -227,5 +227,116 @@
       "status": "red preserved; original server did not compress assets"
     },
     "production": "No company bank, cost inputs, provider readiness or payout proved"
+  },
+  "owner_bank_activation_2026_11_03": {
+    "state": "four_approved_settings_saved_and_independently_verified; protected_deployment_pending",
+    "source_base": "4a159733e13fb721e78e38bc9c8c529ca877cd43",
+    "route": "https://fundhub.ai/app/company-cash.html",
+    "owner_approval": {
+      "observed_at": "2026-11-03T14:51:00Z",
+      "reply": "Enable my Fundhub LLC business-bank connection",
+      "scope": "Read-only bank Transactions, existing Fundhub Plaid Production account, add only four absent production Functions settings; bank login and consent remain with Chris"
+    },
+    "configuration": {
+      "official_destination": "Netlify fundhub.ai project transcendent-wisp-888771",
+      "new_setting_names": [
+        "OWNER_PLAID_CLIENT_ID",
+        "OWNER_PLAID_SECRET",
+        "OWNER_PLAID_TOKEN_ENC_KEY",
+        "OWNER_PLAID_ENV"
+      ],
+      "scope": [
+        "functions"
+      ],
+      "secret_flag": true,
+      "populated_contexts": [
+        "production"
+      ],
+      "other_stored_contexts": {
+        "dev": "empty string",
+        "branch-deploy": "empty string",
+        "deploy-preview": "empty string",
+        "dev-server": "empty string"
+      },
+      "value_source": "Existing Fundhub team Production client ID and matching Production secret read directly from official Plaid dashboard; new 32-byte base64 encryption key generated once after the verified zero-token count; environment production",
+      "created_via": "normal official Netlify UI, four create submissions, no overwrite",
+      "ui_receipt": {
+        "file": "fundhub-owner-bank-approved-ui-creation-receipt.json",
+        "sha256": "9823d536a4d95c4535cec0c402934bf971e4c7907bf735708bf8e34ff67d18e9"
+      },
+      "official_before_metadata_sha256": "9d09df34e194e2d211b23c3d28401a444fcddf299909d6d13071eb48107f9318",
+      "official_env_first_metadata_sha256": "2368bde6a0909783186d0346c85a62a1282798fddc4be9919f13a26da94a2a59",
+      "independent_all_four_after_metadata": {
+        "file": "ops/workflows/build-evidence/survey-capital-2026-11-02/owner-bank-config-approved-after-metadata.json",
+        "sha256": "e464be76375a5b3ee6f12085a89fb2d2fb599b00374d363717fccdb5384d0824",
+        "observed_at": "2026-11-03T15:44:56.109Z",
+        "four_new_names_exact": true,
+        "site_only": true,
+        "all_secret": true,
+        "functions_only": true,
+        "only_production_populated": true,
+        "four_other_stored_contexts_exact_empty_strings": true,
+        "existing_client_plaid_metadata_unchanged": true,
+        "realtime_balance_flag_absent_default_off": true,
+        "metadata_does_not_prove_secret_format_or_provider_success": true
+      }
+    },
+    "pre_key_storage_guard": {
+      "observed_at": "2026-11-03T15:37:50.409Z",
+      "role": "fundhub_app",
+      "read_only_transaction": true,
+      "global_aggregate_visibility_verified": true,
+      "owner_items": 0,
+      "encrypted_owner_tokens": 0,
+      "owner_bank_accounts": 0,
+      "both_table_policy_visibility_guards": [
+        {
+          "table_name": "company_bank_accounts",
+          "rls_enabled": true,
+          "rls_forced": true,
+          "restrictive_select_policies_all_roles": 0,
+          "explicit_app_permissive_true_select_policies": 1
+        },
+        {
+          "table_name": "company_plaid_items",
+          "rls_enabled": true,
+          "rls_forced": true,
+          "restrictive_select_policies_all_roles": 0,
+          "explicit_app_permissive_true_select_policies": 1
+        }
+      ],
+      "migration_sha256": "1b342a087240f6a91b0143a18213bc1c391ccda22315ff0515de691e7f51ea69",
+      "script_sha256": "53b9f418287139aea4383d5d9b23adc515ab0db0eed25bc307e046f491ab018e",
+      "receipt_sha256": "7dea12f679fb93bc342bb5d7c3b54d343d51fca0b957ae1ee2a3b1ed90a8c644",
+      "token_values_read": false,
+      "stored_writes": 0
+    },
+    "product_scope": "Existing Trial Transactions only; realtime Balance remains off; no Transfer activation, product or plan upgrade, or contract acceptance",
+    "current_runtime": "Previous published deployment still needs replacement to consume the new Functions settings; configured=true and actual Plaid Link have not yet been proved",
+    "publication": "One finance board update through normal preflight and ship-change, Draft pull request with auto-merge off until independent review and release coordinator verifies current 14 required jobs and file ownership; then exact merged-main 14 and automatic Ship, source/health/configured readback and actual normal-owner Link initiation",
+    "user_handoff": "Chris completes actual Fundhub LLC USD business checking or savings bank login and consent in Plaid; no personal account substitution",
+    "workflow_split": [
+      {
+        "owner": "finance",
+        "task": "Save the four approved settings, record factual receipts, publish one board-only finance PR, then verify actual normal-owner Link readiness after coordinator confirms the protected deployment."
+      },
+      {
+        "owner": "independent configuration reviewer",
+        "task": "Verify official before/after metadata for exactly the new four names, production populated and nonproduction empty, unrelated variables unchanged and realtime Balance off."
+      },
+      {
+        "owner": "release coordinator",
+        "task": "Review the immutable one-file change, current 14 jobs and ownership, protected merge, main 14 and automatic Ship with actual live proof."
+      }
+    ],
+    "money_moved": false,
+    "bank_connection_completed": false,
+    "bank_data_loaded": false,
+    "no_values_in_source_or_evidence": true,
+    "local_validation": {
+      "lint": "PASS; 4676 files and inline scripts parse clean",
+      "json_record": "Old board fields preserved except status; exactly four allowed setting names; no raw values",
+      "runtime_code_changed": false
+    }
   }
 }
