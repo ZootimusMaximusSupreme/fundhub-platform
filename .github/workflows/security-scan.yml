@@ -45,7 +45,9 @@ jobs:
           needed=$(node -e 'const r=require(process.argv[1]); process.stdout.write(String(r.issueNeeded))' "$RUNNER_TEMP/security-scan.json")
           if [ "$needed" = true ]; then
             if [ -n "$existing" ]; then
-              gh issue edit "$existing" --body-file "$RUNNER_TEMP/security-scan.md"
+              # Keep the issue body, including a human-set owner and due date.
+              # A dated run comment records changed findings without erasing triage.
+              gh issue comment "$existing" --body-file "$RUNNER_TEMP/security-scan.md"
             else
               gh issue create --title "$title" --body-file "$RUNNER_TEMP/security-scan.md"
             fi

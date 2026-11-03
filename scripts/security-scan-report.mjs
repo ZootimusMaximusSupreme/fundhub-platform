@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 const SEVERITIES = ['critical', 'high', 'moderate', 'low', 'info'];
 
 export function buildSecurityScanReport(audit, { auditStatus = 0, runUrl = '' } = {}) {
+  const scannedAt = new Date().toISOString();
   const valid = audit && typeof audit === 'object' && !Array.isArray(audit);
   const vulnerabilities = valid && audit.vulnerabilities && typeof audit.vulnerabilities === 'object'
     ? audit.vulnerabilities : null;
@@ -22,6 +23,7 @@ export function buildSecurityScanReport(audit, { auditStatus = 0, runUrl = '' } 
   const lines = [
     '# Fundhub dependency scan',
     '',
+    `Scanned at: ${scannedAt}`,
     `Run: ${runUrl || 'local'}`,
     `Result: ${error ? 'scan incomplete' : failed ? 'high or critical findings' : packages.length ? 'findings to review' : 'no findings'}`,
     `Package findings: critical ${counts.critical}, high ${counts.high}, moderate ${counts.moderate}, low ${counts.low}, info ${counts.info}.`,
@@ -37,7 +39,7 @@ export function buildSecurityScanReport(audit, { auditStatus = 0, runUrl = '' } 
   }
   lines.push('', 'Owner: Fundhub engineering. Review findings, set repair dates, and rerun after fixes. This scan covers repository dependencies only; it does not scan laptops or every production asset.');
   return {
-    scannedAt: new Date().toISOString(),
+    scannedAt,
     source: 'npm audit --omit=dev',
     complete: !error,
     failed,

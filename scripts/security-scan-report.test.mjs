@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { buildSecurityScanReport } from './security-scan-report.mjs';
 
 test('high dependency finding requires an issue and fails the scan', () => {
@@ -10,6 +11,7 @@ test('high dependency finding requires an issue and fails the scan', () => {
   assert.equal(report.failed, true);
   assert.equal(report.issueNeeded, true);
   assert.equal(report.counts.high, 1);
+  assert.match(report.markdown, /Scanned at: \d{4}-\d{2}-\d{2}T/);
   assert.match(report.markdown, /repository dependencies only/);
 });
 
@@ -27,4 +29,10 @@ test('network or parser errors never masquerade as a clean inventory', () => {
     assert.equal(report.failed, true);
     assert.equal(report.issueNeeded, true);
   }
+});
+
+test('scheduled scan preserves owner and due date in an existing issue body', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/security-scan.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /gh issue comment "\$existing" --body-file/);
+  assert.doesNotMatch(workflow, /gh issue edit/);
 });
