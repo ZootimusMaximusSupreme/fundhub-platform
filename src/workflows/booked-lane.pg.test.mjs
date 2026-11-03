@@ -266,7 +266,10 @@ async function purge() {
     AND NOT EXISTS (SELECT 1 FROM failed_events q WHERE q.event_id=e.id)`, [orgId, like]);
   await db.query(`DELETE FROM bookings WHERE attendee_email LIKE 'w4-booked-%+fhtest-%@example.invalid'`);
   await db.query(`DELETE FROM account_magic_links WHERE email LIKE 'w4-booked-%+fhtest-%@example.invalid'`);
-  if (ids.length) await db.query(`DELETE FROM clients WHERE id = ANY($1::uuid[])`, [ids]);
+  // Preserve the client subject of retained immutable events/receipts too.
+  if (ids.length) await db.query(`DELETE FROM clients c WHERE c.org_id=$1 AND c.id = ANY($2::uuid[])
+    AND NOT EXISTS (SELECT 1 FROM events e WHERE e.client_id=c.id)
+    AND NOT EXISTS (SELECT 1 FROM failed_events q WHERE q.client_id=c.id)`, [orgId, ids]);
   // The one staff row the staff-alert check makes (and any a crashed run left behind).
   const staffIds = [...new Set([...created.staffIds, ...(await db.query(
     `SELECT id FROM staff WHERE email LIKE 'w4-setter+fhtest-%@example.invalid'`)).rows.map((r) => r.id)])];

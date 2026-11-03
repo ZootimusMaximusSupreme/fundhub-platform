@@ -105,7 +105,10 @@ describe("ClickFunnels booked call: create → move → cancel on one row", { sk
     await db.query(`DELETE FROM events e WHERE e.org_id = $1 AND e.payload->>'email' LIKE $2
       AND NOT EXISTS (SELECT 1 FROM failed_events q WHERE q.event_id=e.id)`, [orgId, like]);
     await db.query(`DELETE FROM webhook_captures WHERE provider = 'clickfunnels' AND raw_body LIKE $1`, [like]);
-    if (ids.length) await db.query(`DELETE FROM clients WHERE id = ANY($1)`, [ids]);
+    // A retained event/receipt also retains its fixture subject under the FK.
+    if (ids.length) await db.query(`DELETE FROM clients c WHERE c.org_id=$1 AND c.id = ANY($2::uuid[])
+      AND NOT EXISTS (SELECT 1 FROM events e WHERE e.client_id=c.id)
+      AND NOT EXISTS (SELECT 1 FROM failed_events q WHERE q.client_id=c.id)`, [orgId, ids]);
   }
 
   before(async () => {
