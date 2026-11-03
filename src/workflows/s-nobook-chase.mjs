@@ -7,7 +7,7 @@
 // chase used to treat a person who answered one question as finished.
 //
 // Timeline, counted from the finish:
-//   15 minutes   a setter task: call them now and book them on their calendar
+//   right away    the local survey.completed handler promotes the setter task
 //   2 hours      text + email 1
 //   +24 hours    text + email 2
 //   +72 hours    text + email 3
@@ -22,17 +22,18 @@
 //   text 2 at dripSendTime(text 1's moment + 24h)
 //   text 3 at dripSendTime(text 2's moment + 72h)
 // At each planned moment, in this order: sleep until it, stop if the person has
-// booked (hasBooked), stop if they replied (message.inbound, stop-on-reply.mjs),
-// then send. Every booking link follows the person's saved score
+// booked (hasBooked) or replied (message.inbound), then send. A setter
+// no-answer call suppresses SMS, while the useful emails keep going. Every booking link
+// follows the person's saved score
 // (tierBookingLink in messaging.mjs): 700 and up opens the first calendar,
 // everyone else the second.
 
 import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { resolveClient } from "../handlers/client-lifecycle.mjs";
-import { createTask } from "../lib/create-task.mjs";
 import { messageCohortId, sendTemplated } from "./messaging.mjs";
 import { hasReplied } from "./stop-on-reply.mjs";
+import { hasSetterNoAnswer } from "./stop-on-setter.mjs";
 import { dripSendTime } from "../messaging/send-window.mjs";
 import { surveyCompleted } from "./s-02-incomplete-survey-nudge.mjs";
 
@@ -44,11 +45,6 @@ export const SMS_NOBOOK_03 = "SMS-NOBOOK-03";
 export const EMAIL_NOBOOK_01 = "EMAIL-NOBOOK-01";
 export const EMAIL_NOBOOK_02 = "EMAIL-NOBOOK-02";
 export const EMAIL_NOBOOK_03 = "EMAIL-NOBOOK-03";
-
-// The task a setter sees 15 minutes after a finished survey with no booking.
-export const SETTER_TASK_SOURCE = "setter-survey-done";
-export const SETTER_TASK_TITLE = "Setter: call — finished the survey, no call booked";
-export const SETTER_TASK_DETAIL = "They finished the survey but did not pick a time. Call now and book them on their calendar.";
 
 const HOUR = 60 * 60 * 1000;
 // How long after the finish (text 1) or after the text before it (texts 2 and 3) each text is due.
@@ -69,7 +65,7 @@ export const CROSS_TRIGGER_WINDOW_MS = 5 * 24 * HOUR;
    trigger's cohort), so without this the person gets every text twice: once from
    each run. So before each message, a run asks: did a run of the OTHER trigger send
    this same text to this person since `since`? If it did, this message is skipped
-   and the run goes on (the setter task and the later checks still happen). The
+   and the run goes on (the later checks still happen). The
    other run is read from the send key itself, `workflow:<key>:<cohort event id>:<n>`:
    its third part is the event that run keyed on, and that event's name is its
    trigger. Two runs of the SAME trigger are not touched here: a new finished survey
@@ -169,15 +165,21 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   /* The name of the event that started THIS run. The Inngest wrapper below passes
      it. A run that was already asleep when the trigger moved from survey.submitted
      to survey.completed keeps going under the name it started with: same send keys
-     (no text goes out twice), no setter task (a first answer is not a finished
-     survey). Without a name the run is a survey.completed run. */
+     (no text goes out twice). Without a name the run is a survey.completed run. */
   const trigger = event.name || TRIGGER_EVENT;
   const finished = trigger === TRIGGER_EVENT;
   const replied = () => hasReplied(db, { clientId, eventId });
+  // A setter may call right after opt-in, before the lead finishes the survey.
+  // The three-text cadence can wait overnight for the next 9 a.m. window.
+  // A call in the past day may still own SMS when the survey is finished.
+  const setterNoAnswer = () => hasSetterNoAnswer(db, { clientId, eventId, lookbackHours: 24 });
 
   /* One message of text n, unless the other trigger's run already sent it (see
      sentByOtherTrigger). The window counts back from this run's own start. */
   async function sendOnce(cohortId, channel, templateKey, n) {
+    if (channel === "sms" && await setterNoAnswer()) {
+      return { skipped: "setter_no_answer" };
+    }
     const start = (await startedAt(db, { eventId, orgId })) ?? now();
     const since = new Date(start.getTime() - CROSS_TRIGGER_WINDOW_MS).toISOString();
     const otherTrigger = finished ? OLD_TRIGGER_EVENT : TRIGGER_EVENT;
@@ -188,34 +190,15 @@ export async function handle({ event, db, step, now = () => new Date() }) {
   }
 
   // A run started by the old trigger yields once this person finishes the survey.
-  // The completed-survey run owns the remaining chase and the setter task.
+  // The completed-survey run owns the remaining customer chase.
   const leadEmail = (event.payload || {}).email || null;
   const stepsAside = async (n) => !finished
     && step.run(`check-handed-over-${n}`, () => surveyCompleted(db, clientId, leadEmail, orgId));
   const HANDED_OVER = "handed-to-finished-chase";
 
-  /* 15 minutes in: a finished survey with no booking gets a person on the phone.
-     Skipped when they booked or wrote back in the meantime. This is a task for a
-     person, not a message, so it keeps its 15 minutes whatever the hour. */
-  let task = null;
-  if (finished) {
-    await step.sleep("wait-15m", "15m");
-    if (await step.run("check-booked-15m", () => hasBooked(db, clientId))) {
-      return { done: true, exitedAt: "after-wait-15m" };
-    }
-    if (await step.run("check-replied-15m", replied)) {
-      return { done: true, exitedAt: "replied" };
-    }
-    task = await step.run("setter-task", () => createTask(db, {
-      orgId, clientId,
-      title: SETTER_TASK_TITLE,
-      sourceWorkflow: SETTER_TASK_SOURCE,
-      assigneeRole: "setter",
-      eventId,
-      dueAt: now().toISOString(),
-      detail: SETTER_TASK_DETAIL
-    }));
-  }
+  // The local setter task handler promotes the existing opt-in task as soon as
+  // survey.completed arrives. This chase owns only the later customer messages.
+  const task = null;
 
   /* Wait for text n. A survey.completed run plans the moment in a step (inside the
      drip window, see the header) and sleeps until it, so the checks that follow run

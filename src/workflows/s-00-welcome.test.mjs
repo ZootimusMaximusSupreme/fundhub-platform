@@ -72,7 +72,7 @@ const CLIENT = "c3b1a9d2-5f4e-4c1a-8b7d-2e6f9a0b1c3d";
 const SECRET = "unit-test-resume-secret-0123456789abcdef0123456789";
 
 const linkTemplates = () => [
-  { org_id: ORG, template_key: EMAIL_TEMPLATE_KEY, channel: "email", subject: "Welcome", body: "Welcome. Pick up here: https://apply.fundhub.ai/apply", compliance_passed: true },
+  { org_id: ORG, template_key: EMAIL_TEMPLATE_KEY, channel: "email", subject: "Welcome", body: "Welcome. Pick up here: {{survey_resume_link}}", compliance_passed: true },
   { org_id: ORG, template_key: SMS_TEMPLATE_KEY, channel: "sms", body: "Welcome. Pick up here: https://apply.fundhub.ai/apply", compliance_passed: true }
 ];
 const pat = () => ({ id: CLIENT, org_id: ORG, email: "pat@example.com", phone: "+15551234567", first_name: "Pat", custom_fields: {} });
@@ -91,17 +91,16 @@ async function withSecret(secret, fn) {
   }
 }
 
-test("s-00: the text and the email carry the plain /apply link and never a resume code, even with a signing key", async () => {
+test("s-00: only the email carries a v3 resume code; the text opens plain /apply", async () => {
   const db = pgFake({ clients: [pat()], templates: linkTemplates() });
   const { value: res } = await withSecret(SECRET, () => handle({
     event: ev("entry.captured", {}, { orgId: ORG, clientId: CLIENT }), db, step: fakeStep()
   }));
   assert.equal(res.done, true);
   assert.deepEqual(db.messages.map((m) => m.template_key), [EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY]);
-  for (const m of db.messages) {
-    assert.equal(m.rendered_body, "Welcome. Pick up here: https://apply.fundhub.ai/apply", m.template_key);
-    assert.ok(!m.rendered_body.includes("?r="), `${m.template_key} carries no resume code`);
-  }
+  const [email, sms] = db.messages;
+  assert.match(email.rendered_body, /^Welcome\. Pick up here: https:\/\/apply\.fundhub\.ai\/apply\?r=/);
+  assert.equal(sms.rendered_body, "Welcome. Pick up here: https://apply.fundhub.ai/apply");
 });
 
 test("s-00: no signing key — the welcome still goes, with the same plain apply link", async () => {

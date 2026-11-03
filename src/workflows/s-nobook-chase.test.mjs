@@ -2,10 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert";
 import {
   handle as runChase, sNobookChase, SMS_NOBOOK_01, SMS_NOBOOK_02, SMS_NOBOOK_03, EMAIL_NOBOOK_01, EMAIL_NOBOOK_02, EMAIL_NOBOOK_03,
-  SETTER_TASK_SOURCE, SETTER_TASK_TITLE, SETTER_TASK_DETAIL
 } from "./s-nobook-chase.mjs";
 import { pgFake, fakeStep, ev } from "./test-support.mjs";
-import { withReplyRead } from "./stop-on-reply.test-support.mjs";
+import { withReplyRead, withSetterNoAnswerRead } from "./stop-on-reply.test-support.mjs";
 
 /* The event bus saves the trigger event before any workflow runs, and the
    workflow reads its created_at (when the survey was finished) and measures the
@@ -57,7 +56,7 @@ function withOtherTriggerRead(inner) {
 }
 
 function makeDb(seed = {}) {
-  return withOtherTriggerRead(withTriggerTime(withReplyRead(pgFake(seed))));
+  return withOtherTriggerRead(withTriggerTime(withReplyRead(withSetterNoAnswerRead(pgFake(seed)))));
 }
 
 const templates = () => [
@@ -277,58 +276,78 @@ test("nobook: somebody else's booking on the same phone number does NOT stop thi
   assert.equal(db.messages.length, 6);
 });
 
-/* ── The setter task, 15 minutes after a finished survey with no booking ──── */
-
-test("nobook: 15 minutes after the finish a setter task is made, before any text", async () => {
+test("nobook: the chase leaves the immediate setter task to the event handler", async () => {
   const db = makeDb({ clients: [{ ...PERSON }], templates: templates() });
   const step = recordingStep();
   const now = () => new Date("2026-10-31T23:15:00Z");
   const res = await handle({ event: finishedEvent({ id: "evt-done-1", createdAt: FINISHED_4PM }), db, step, now });
-  assert.deepEqual(step.calls.find((c) => c.id === "wait-15m"), { kind: "sleep", id: "wait-15m", length: "15m" });
-  inOrder(step, "wait-15m", "check-booked-15m", "check-replied-15m", "setter-task", "plan-msg1", "wait-until-msg1", "send-nobook-1");
-  assert.equal(res.task.created, true);
-  assert.equal(db.tasks.length, 1);
-  const task = db.tasks[0];
-  assert.equal(task.assignee_role, "setter");
-  assert.equal(task.source_workflow, SETTER_TASK_SOURCE);
-  assert.equal(task.source_workflow, "setter-survey-done");
-  assert.equal(task.title, SETTER_TASK_TITLE);
-  assert.equal(task.title, "Setter: call — finished the survey, no call booked");
-  assert.equal(task.client_id, "cl-1");
-  assert.equal(task.body, "evt-done-1", "keyed on the run's event id");
-  assert.equal(task.due_at, "2026-10-31T23:15:00.000Z", "due right away");
-  assert.equal(db.taskInserts[0][9], SETTER_TASK_DETAIL);
-  assert.equal(SETTER_TASK_DETAIL, "They finished the survey but did not pick a time. Call now and book them on their calendar.");
+  assert.equal(res.task, null);
+  assert.equal(db.tasks.length, 0);
+  assert.ok(!ids(step).includes("wait-15m"));
+  inOrder(step, "plan-msg1", "wait-until-msg1", "send-nobook-1");
 });
 
-test("nobook: nobody is called when they booked or wrote back inside the 15 minutes", async () => {
+test("nobook: booking or reply before text 1 stops the customer messages", async () => {
   const booked = makeDb({ clients: [{ ...PERSON }], templates: templates() });
   const resBooked = await handle({
     event: finishedEvent({ id: "evt-b", createdAt: FINISHED_4PM }), db: booked,
-    step: recordingStep({ wake: (id) => { if (id === "wait-15m") booked.events.push({ client_id: "cl-1", name: "booking.created" }); } })
+    step: recordingStep({ wake: (id) => { if (id === "wait-until-msg1") booked.events.push({ client_id: "cl-1", name: "booking.created" }); } })
   });
-  assert.equal(resBooked.exitedAt, "after-wait-15m");
+  assert.equal(resBooked.exitedAt, "after-wait-2h");
   assert.equal(booked.tasks.length, 0);
   assert.equal(booked.messages.length, 0);
 
   const replied = makeDb({ clients: [{ ...PERSON }], templates: templates() });
   const resReplied = await handle({
     event: finishedEvent({ id: "evt-r", createdAt: FINISHED_4PM }), db: replied,
-    step: recordingStep({ wake: (id) => { if (id === "wait-15m") replied.events.push(textReply("2026-10-31T23:10:00Z")); } })
+    step: recordingStep({ wake: (id) => { if (id === "wait-until-msg1") replied.events.push(textReply("2026-10-31T23:10:00Z")); } })
   });
   assert.equal(resReplied.exitedAt, "replied");
   assert.equal(replied.tasks.length, 0);
   assert.equal(replied.messages.length, 0);
 });
 
-test("nobook: the same event twice makes one setter task and one set of texts", async () => {
+test("nobook: the same event twice makes one set of texts", async () => {
   const db = makeDb({ clients: [{ ...PERSON }], templates: templates() });
   const event = finishedEvent({ id: "evt-dup-task", createdAt: FINISHED_4PM });
   await handle({ event, db, step: fakeStep() });
-  const again = await handle({ event, db, step: fakeStep() });
-  assert.equal(db.tasks.length, 1);
-  assert.equal(again.task.created, false);
+  await handle({ event, db, step: fakeStep() });
+  assert.equal(db.tasks.length, 0);
   assert.equal(db.messages.length, 6);
+});
+
+test("nobook: a setter no-answer event suppresses chase SMS but keeps email", async () => {
+  const db = makeDb({ clients: [{ ...PERSON }], templates: templates() });
+  const step = recordingStep({ wake: (id) => {
+    if (id === "wait-until-msg1") db.events.push({
+      id: "evt-no-answer", org_id: "org-1", client_id: "cl-1",
+      name: "setter.no_answer", payload: { disposition: "no_answer" },
+      created_at: "2026-10-31T23:10:00Z"
+    });
+  } });
+  const result = await handle({
+    event: finishedEvent({ id: "evt-completed", createdAt: FINISHED_4PM }),
+    db, step
+  });
+  assert.equal(result.exitedAt, "completed");
+  assert.deepEqual(db.messages.map((message) => message.channel), ["email", "email", "email"]);
+});
+
+test("nobook: a recent no-answer call before survey completion also owns SMS", async () => {
+  const db = makeDb({
+    clients: [{ ...PERSON }], templates: templates(),
+    events: [{
+      id: "evt-no-answer-first", org_id: "org-1", client_id: "cl-1",
+      name: "setter.no_answer", payload: { disposition: "no_answer" },
+      created_at: "2026-10-31T15:00:00Z"
+    }]
+  });
+  const result = await handle({
+    event: finishedEvent({ id: "evt-completed-later", createdAt: FINISHED_4PM }),
+    db, step: fakeStep()
+  });
+  assert.equal(result.exitedAt, "completed");
+  assert.deepEqual(db.messages.map((message) => message.channel), ["email", "email", "email"]);
 });
 
 /* ── When each text goes out: the drip window, 9 a.m. to 5 p.m. Arizona ────────
@@ -350,7 +369,7 @@ test("nobook: survey finished at 4 p.m. — text 1 is planned for 9 a.m. the nex
   assert.equal(plannedTimes(step)["wait-until-msg1"], "2026-11-01T16:00:00.000Z", "9:00 a.m. Arizona the next day");
   assert.equal(res.exitedAt, "after-wait-2h");
   assert.equal(db.messages.length, 0, "nothing was sent");
-  assert.equal(res.task.created, true, "the 15-minute setter task had already gone out");
+  assert.equal(res.task, null, "the setter task is handled on survey completion");
   // The booking is found because the check runs AFTER the sleep, not at 6 p.m. when text 1 first came due.
   inOrder(step, "plan-msg1", "wait-until-msg1", "check-booked-1");
   assert.ok(!ids(step).includes("send-nobook-1"));
@@ -506,7 +525,7 @@ test("nobook: an old-trigger run stops after its first text when the survey fini
   assert.deepEqual(db.messages.map((m) => m.template_key).sort(), [EMAIL_NOBOOK_01, SMS_NOBOOK_01].sort());
 });
 
-test("nobook: a first-answer chase already sent each text, then they finish: no text goes twice, the setter task still does", async () => {
+test("nobook: a first-answer chase already sent each text, then they finish: no text goes twice", async () => {
   const db = makeDb({ clients: [{ ...PERSON }], templates: templates() });
   const old = await handle({ event: oldTriggerEvent(), db, step: fakeStep() });
   const fresh = await handle({ event: finishEvent(), db, step: fakeStep() });
@@ -517,7 +536,7 @@ test("nobook: a first-answer chase already sent each text, then they finish: no 
   for (const n of [1, 2, 3]) {
     assert.deepEqual(fresh[`msg${n}`], { sms: { skipped: "sent_by_other_trigger" }, email: { skipped: "sent_by_other_trigger" } }, `text ${n}`);
   }
-  assert.equal(db.tasks.length, 1, "a finished survey still gets a setter on the phone");
+  assert.equal(db.tasks.length, 0, "this chase does not make setter tasks");
 });
 
 test("nobook: the finished-survey chase sent first, then the first-answer run wakes: it sends nothing again", async () => {

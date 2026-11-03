@@ -26,27 +26,26 @@ function fakeDb({ lead = { id: CLIENT, client_code: "FH-000901", email: "dana@re
 }
 const ctxOf = (db, extra = {}) => ({ db, orgId: ORG, now: NOW, env: ENV, ...extra });
 
-test("survey resume: the newest lead's real code opens nothing, and the database is asked only for the lead", async () => {
+test("survey resume: the newest lead's email code opens the saved survey", async () => {
   const db = fakeDb();
   const [r] = await gapChecks(ctxOf(db));
   assert.equal(r.id, CHECK_ID);
   assert.deepEqual(CHECK_IDS, [CHECK_ID]);
   assert.equal(r.status, "PASS", r.detail);
-  assert.match(r.detail, /resume code for FH-000901 opens nothing/);
+  assert.match(r.detail, /v3 email link for FH-000901 opens the saved survey/);
   assert.equal(r.suggestedFix, null);
   assert.doesNotMatch(r.detail, /dana|realmail/i, "the detail never names the person or their address");
   assert.deepEqual(db.calls[0].params, [ORG, "2026-10-24T18:00:00.000Z"], "seven days back");
-  assert.equal(db.calls.length, 1, "the closed door never reads the client's row");
+  assert.equal(db.calls.length, 2, "the door reads the newest lead and that lead's answers");
 });
 
-test("survey resume: a door that hands back the lead's record again is RED", async () => {
-  const reopened = async () => ({ ok: true, contact: { email: "dana@realmail.com" }, answers: HALF_DONE, next_key: "cf_svy_money_change_now" });
-  let [r] = await gapChecks(ctxOf(fakeDb()), { readSurveyResume: reopened });
+test("survey resume: a door that does not open the saved survey is red", async () => {
+  let [r] = await gapChecks(ctxOf(fakeDb()), { readSurveyResume: async () => null });
   assert.equal(r.status, "FAIL");
-  assert.match(r.detail, /FH-000901 opened their saved record/);
-  assert.match(r.suggestedFix, /readSurveyResume must answer null/);
+  assert.match(r.detail, /FH-000901 did not open the saved survey/);
+  assert.match(r.suggestedFix, /v3 email link/);
   assert.doesNotMatch(r.detail, /dana|realmail/i);
-  // Any answer at all counts, even one with no contact in it.
+  // A partial answer is also a failed resume.
   [r] = await gapChecks(ctxOf(fakeDb()), { readSurveyResume: async () => ({ ok: true }) });
   assert.equal(r.status, "FAIL");
 });

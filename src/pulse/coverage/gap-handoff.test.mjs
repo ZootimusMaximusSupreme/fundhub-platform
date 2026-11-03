@@ -42,6 +42,7 @@ import {
   NUDGE_DUE_MIN,
   NOBOOK_DUE_MIN,
   SETTER_TASK_SOURCE,
+  SETTER_TASK_PROMOTED_SOURCE,
   SETTER_TASK_DUE_MIN,
   SETTER_TASK_GRACE_MIN
 } from "./gap-handoff.mjs";
@@ -212,7 +213,7 @@ test("handoff: each first-touch branch goes red alone and says which one", async
   const cases = [
     ["nudge", /1 lead stopped partway through the survey and got no come-back text or email \(EMAIL-S02-RESUME-1\) when it was due \(20 minutes after signing up, or 9 a\.m\. Arizona after a night sign-up\)/, /welcome|chase/],
     ["nobook", /1 lead finished the survey, never booked or replied, and got no chase message \(EMAIL-NOBOOK-01\) when it was due \(2 hours after the survey, or 9 a\.m\. Arizona after a night survey\)/, /welcome email|come-back/],
-    ["setter-task", /1 lead finished the survey, did not book in 15 minutes, and no setter got a call task \(setter-survey-done\)/, /welcome email|come-back|chase message/]
+    ["setter-task", /1 lead finished the survey, did not book, and had no setter call task within 25 minutes/, /welcome email|come-back|chase message/]
   ];
   for (const [marker, want, notWant] of cases) {
     const r = byId(await gapChecks(ctxOf(fakeDb({ [marker]: { n: 1 } }))))["handoff:lead-first-touches-missing"];
@@ -509,7 +510,7 @@ test("handoff: the offer keys and the declined task are the ones the workflows r
   assert.equal(TEMPLATES.offerPrefix, "EMAIL-OFFER-");
 });
 
-test("handoff: the grace times are longer than the waits in the workflows", async () => {
+test("handoff: message grace follows waits, and the immediate setter task has a legacy grace", async () => {
   // S-02 and S-NOBOOK plan each first message at a fixed wait after the event, moved to 9 a.m.
   // Arizona when that lands outside the follow-up hours (dripSendTime; dripAtSql here). The
   // check's "due" offsets must be those waits, and its grace must be longer than them.
@@ -519,8 +520,14 @@ test("handoff: the grace times are longer than the waits in the workflows", asyn
   assert.equal(nobook.TEXT_GAP_MS[1], NOBOOK_DUE_MIN * MIN);
   assert.ok(NUDGE_GRACE_MIN > NUDGE_DUE_MIN);
   assert.ok(NOBOOK_GRACE_MIN > NOBOOK_DUE_MIN);
-  assert.equal(nobook.SETTER_TASK_SOURCE, SETTER_TASK_SOURCE);
-  assert.match(WF("s-nobook-chase.mjs"), new RegExp(`step\\.sleep\\("wait-15m",\\s*"${SETTER_TASK_DUE_MIN}m"\\)`));
+  const setter = fs.readFileSync(path.join(ROOT, "src/setter/tasks.mjs"), "utf8");
+  assert.equal(SETTER_TASK_SOURCE, "setter-survey-done");
+  assert.equal(SETTER_TASK_PROMOTED_SOURCE, "setter-entry");
+  assert.equal(SETTER_TASK_DUE_MIN, 0);
+  assert.match(setter, /on\("survey\.completed", escalateCompletedSurvey\)/);
+  assert.match(setter, /sourceWorkflow: "setter-survey-done"/);
+  assert.match(setter, /source_workflow IN \('setter-entry', 'setter-survey-done'\)/);
+  assert.match(setter, /due_at = now\(\)/);
   assert.ok(SETTER_TASK_GRACE_MIN > SETTER_TASK_DUE_MIN);
   assert.match(WF("slo-genuine-followup.mjs"), /WAIT_M1 = "15m"/);
   assert.ok(CONTACT_M1_GRACE_MIN > 15);
