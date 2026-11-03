@@ -20,6 +20,7 @@ import {
   handle as runChase, sentByOtherTrigger, CROSS_TRIGGER_WINDOW_MS,
   SMS_NOBOOK_01, SMS_NOBOOK_02, SMS_NOBOOK_03, EMAIL_NOBOOK_01, EMAIL_NOBOOK_02, EMAIL_NOBOOK_03
 } from "./s-nobook-chase.mjs";
+import { escalateCompletedSurvey } from "../setter/tasks.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
 // Writes and deletes its own rows, so it runs only on a loopback scratch or CI database.
@@ -191,6 +192,9 @@ test("S-NOBOOK: a first-answer chase, then the finish: six real messages, not tw
     const old = await runChase({ event: { id: firstAnswer, orgId, clientId, name: "survey.submitted", payload: {} }, db, step: instantStep() });
     // The first-answer chase happened before the survey was finished.
     const finished = await addEvent(orgId, clientId, "survey.completed", iso(now - 2 * 60 * MIN));
+    // The local survey.completed listener owns the immediate setter task now.
+    await escalateCompletedSurvey({ id: finished, orgId, clientId, name: "survey.completed" },
+      db, { SETTER_TASKS_ENABLED: "1" }, async () => ({ queued: 0 }));
     const fresh = await runChase({ event: { id: finished, orgId, clientId, name: "survey.completed", payload: {} }, db, step: instantStep() });
     assert.equal(old.exitedAt, "completed");
     assert.equal(fresh.exitedAt, "completed");
