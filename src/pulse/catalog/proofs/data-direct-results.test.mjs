@@ -39,7 +39,7 @@ test('Plaid Link executes its browser and consent result contracts with fake dat
 
   const plaidLink = read('src/banking/plaid-link.mjs');
   assert.match(plaidLink, /consent_granted_at, consent_scope/);
-  assert.match(plaidLink, /JSON\.stringify\(\["accounts"\]\)/);
+  assert.match(plaidLink, /JSON\.stringify\(consentScope \|\| \["accounts"\]\)/);
   const readers = [
     read('src/banking/plaid-refresh.mjs'),
     read('src/banking/plaid-transactions.mjs'),

@@ -1,11 +1,8 @@
 // POST /api/banking/link-token { client_id } → { ok, link_token, expiration, environment }
 //
-// Opens Plaid Link for one client. Two callers:
-//   * STAFF, ROLE_SETS.FINANCE_OS — the same gate as banking/sync-accounts, because
-//     finishing the link writes bank rows. The role check is its own
-//     requireRole() call: requireAuth drops a `roles` key.
-//   * A signed-in CLIENT (account session), for their OWN file only. The
-//     client_id comes off the session; a client_id in the body is never read.
+// Opens Plaid Link for a signed-in client on their OWN file, after an
+// authenticator code and a saved consent grant. Staff client Link requests are
+// refused because staff MFA cannot stand in for the client's consent.
 import { db } from "../../src/db.mjs";
 import { requireAuth, AUTH_UNAVAILABLE } from "../../src/http/middleware/requireAuth.mjs";
 import { resolvePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
@@ -13,6 +10,7 @@ import { installClientSamples } from "../../src/demo/client-portal-samples.mjs";
 import { ROLE_SETS, requireRole, isUuid } from "../../src/http/read-api.mjs";
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { startLink } from "../../src/banking/plaid-link.mjs";
+import { advanceAccountPlaidLink } from "../../src/auth/account-plaid-mfa.mjs";
 import { readBody } from "./sync-accounts.mjs";
 
 export default async function handler(req, res, deps = {}) {
@@ -30,6 +28,16 @@ export default async function handler(req, res, deps = {}) {
   const scope = await clientScope(req, res, { database, auth, resolve, env });
   if (!scope) return;
 
+  if (scope.kind === "client") {
+    const body = readBody(req.body) || {};
+    const grant = await (deps.advanceGrant || advanceAccountPlaidLink)(database, {
+      token: body.plaid_grant_token, orgId: scope.orgId, accountId: scope.accountId,
+      sessionId: scope.sessionId, targetKind: "client_bank", targetId: scope.clientId,
+      stage: "open"
+    });
+    if (!grant) return res.status(403).json({ ok: false, error: "plaid_mfa_consent_required" });
+  } else return res.status(403).json({ ok: false, error: "client_consent_required" });
+
   const r = await start({ clientId: scope.clientId, env });
   if (!r.ok) {
     const status = r.reason === "not_configured" ? 503 : 502;
@@ -45,8 +53,8 @@ export default async function handler(req, res, deps = {}) {
    each handler's own text shows its gate).
 
    A CLIENT session is pinned to its own client_id from the session. Staff go
-   through the unchanged staff gate: requireAuth, FINANCE, client_id in the
-   body, client in their org. Any other principal kind (affiliate, partner) is
+   through their role and org checks, then are refused for client Link. Any
+   other principal kind (affiliate, partner) is
    refused. No session at all falls through to requireAuth, which answers 401. */
 async function clientScope(req, res, { database, auth, resolve, env } = {}) {
   const who = await resolve(req, { db: database, env });
@@ -64,7 +72,8 @@ async function clientScope(req, res, { database, auth, resolve, env } = {}) {
       return null;
     }
     if (!(await requireClientInOrg(res, database, { org_id: orgId }, clientId))) return null;
-    return { orgId, clientId };
+    return { kind: "client", orgId, clientId, accountId: who.accountId,
+      sessionId: who.sessionId };
   }
   if (who && who.kind !== "staff") {
     res.status(403).json({ ok: false, error: "forbidden", message: "this endpoint serves staff, client" });
@@ -86,5 +95,5 @@ async function clientScope(req, res, { database, auth, resolve, env } = {}) {
     return null;
   }
   if (!(await requireClientInOrg(res, database, staff, String(clientId).trim()))) return null;
-  return { orgId: staff.org_id, clientId: String(clientId).trim() };
+  return { kind: "staff", orgId: staff.org_id, clientId: String(clientId).trim() };
 }

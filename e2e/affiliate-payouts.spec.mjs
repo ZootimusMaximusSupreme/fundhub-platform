@@ -170,10 +170,16 @@ const portal = (over = {}) => ({
 });
 
 test.describe("Affiliate payout bank (affiliate.html)", () => {
-  test("no bank: says so and Link your bank asks the server for a Plaid link", async ({ page }) => {
+  test("no bank: Link your bank requires email proof before asking for Plaid", async ({ page }) => {
     const posts = [];
+    const mfaPosts = [];
     await openScreen(page, "/app/affiliate.html", client, {
       "/api/read/affiliate-portal": portal(),
+      "/api/auth/plaid-mfa": async (route) => {
+        mfaPosts.push(route.request().postDataJSON());
+        return json(route, { ok: true, enrolled: false, email_verification_required: true,
+          email_sent: true });
+      },
       "/api/affiliates/payout-account": async (route) => {
         posts.push(route.request().postDataJSON());
         return json(route, { ok: false, error: "not_configured", message: "Bank linking is not set up yet." }, 503);
@@ -188,9 +194,10 @@ test.describe("Affiliate payout bank (affiliate.html)", () => {
     await mark(page, "#payBody tr", "Held until the bank is linked; shows its due day", 2);
     await page.screenshot({ path: `${EVIDENCE}/affiliate-payout-bank-MARKED.png`, fullPage: true });
     await page.locator("#payBankLink").click();
-    await expect(page.locator("#payBankMsg")).toHaveText("Bank linking is not set up yet.");
-    await expect(page.locator("#payBankLink")).toBeEnabled();
-    expect(posts).toEqual([{ action: "link_token" }]);
+    await expect(page.locator(".fh-plaid-stepup")).toBeVisible();
+    await expect(page.locator(".fh-plaid-stepup")).toContainText("Check your email");
+    expect(mfaPosts).toEqual([{ action: "setup", target_kind: "affiliate_payout" }]);
+    expect(posts).toEqual([]);
   });
 
   test("linked on Plaid test data: says no real payout can go there", async ({ page }) => {

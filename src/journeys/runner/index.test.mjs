@@ -209,7 +209,7 @@ import { isSyntheticRow } from "./synthetic.mjs";
    still in the registry, run by the Netlify cron clock instead of Inngest. */
 // The confirmed booking feed is a Netlify clock job with no journey event.
 // AI COO manager review is also cron-only; its direct task proof is in src/ops/manager-kpi-review.test.mjs.
-const REGISTERED = 106;
+const REGISTERED = 107;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

@@ -317,15 +317,25 @@ or a material change to the system. Record the review date and any open gaps her
   connecting a payout bank. Keep recovery codes in the account owner's password
   manager, never in source, a ticket, or a shared chat.
 - Do not describe a control as enabled until a live sign-in and the account's
-  security settings prove it. As of November 2, 2026, the Netlify account shows
-  two-factor authentication **off**. Staff app MFA is in build and is not live
-  proof. The Plaid questionnaire must reflect those facts until fixed.
+  security settings prove it. On November 2, 2026, the personal GitHub account
+  owning this repository completed authenticator enrollment and its security
+  page showed two-factor authentication enabled. The Netlify account security
+  page also showed two-factor authentication enabled. This repository is owned
+  by a personal GitHub account, not a GitHub organization. Staff payout-bank
+  MFA is deployed, but its live sign-in path has not
+  been verified. Client and affiliate bank-link MFA is pending release. The
+  Plaid questionnaire must reflect those facts until fixed.
 
 ### Data protection and incidents
 
 - Keep secrets in the provider's encrypted environment, never in git or a board.
-  The application encrypts Plaid access tokens before storage; confirm provider
-  encryption and backups before claiming all consumer data is encrypted at rest.
+  The application encrypts Plaid access tokens before storage. The production
+  database hostname resolves to Supabase's pooler; Supabase's published policy
+  covers database data and backups with AES-256. The identified downstream
+  processors for Plaid-derived summaries (Twilio, Resend, Anthropic, Inngest,
+  and Netlify logs) publish encryption-at-rest commitments. Review new storage
+  destinations before extending this claim; recipient mailboxes and phones are
+  outside Fundhub's storage boundary.
 - Use HTTPS for production traffic. Verify the deployed endpoint's TLS settings
   before attesting to a minimum version.
 - For suspected unauthorized access, stop the exposed credential or session,
@@ -340,15 +350,19 @@ or a material change to the system. Record the review date and any open gaps her
   deadline. Recheck after repair. Do not claim all-device scanning until there
   is a scan inventory and recent receipts for every in-scope device and asset.
 - Keep only the consumer data needed for the stated service and legal duties.
-  Review retention periods quarterly, execute the approved deletion schedule,
-  and record each run. The current database policy table alone does not run
-  deletion automatically; treat enforcement as an open gap until the job and
-  receipts exist.
+  Review retention periods quarterly and record count-only monthly review
+  receipts. A purge requires an owner/admin session with MFA verified within
+  ten minutes, signed retention periods, a dry-run review, and a durable apply
+  receipt. The purge is manual; do not claim scheduled deletion. Until the
+  retention periods are approved and a real run is proved, enforcement remains
+  an open gap.
 
-**Open evidence on November 2, 2026:** enable and verify Netlify MFA; prove app
-MFA in production; inventory device and production scans; confirm provider data
-encryption and TLS; set retention periods and prove scheduled deletion. Do not
-answer a Plaid control as completed from this written policy alone.
+**Open evidence on November 2, 2026:** prove app MFA in production; inventory
+MFA coverage for other critical provider accounts, device and production scans; confirm
+project backup configuration and downstream recipient handling; set retention periods and prove a real
+deletion run. Public TLS 1.2 passed and TLS 1.1 was refused, but this does not
+prove every production connection. Do not answer a Plaid control as completed
+from this written policy alone.
 
 ---
 

@@ -17,7 +17,7 @@ test("auth-links is valid, green when links send and sign-ins make sessions, red
   assert.deepEqual(await checkBeatSelfTest(beat), []);
   const passed = await runBeat(beat, makeFakeCtx(beat, beat.selfTest.pass()));
   assert.equal(passed.ok, true);
-  assert.equal(passed.detail, "2 sign-in checks passed");
+  assert.equal(passed.detail, "3 sign-in checks passed");
   const failed = await runBeat(beat, makeFakeCtx(beat, beat.selfTest.fail()));
   assert.equal(failed.ok, false);
   assert.equal(failed.step, "gap-auth-magic-link-dead");
@@ -38,10 +38,20 @@ test("auth-links: a missing or draft template is red, and a sign-in with no sess
   assert.match(broken.detail, /1 of 3 staff sign-ins said yes and made no session/);
 });
 
+test("auth-links: Plaid consent evidence is checked every hour and a broken receipt is red", async () => {
+  const broken = await runBeat(beat, makeFakeCtx(beat, withRows(replace(truth.PLAID_GRANT_SQL,
+    [{ recent_grants: 4, broken_grants: 1 }]))));
+  assert.equal(broken.ok, false);
+  assert.equal(broken.step, "gap-auth-plaid-consent-integrity");
+  assert.match(broken.detail, /1 of 4 recent Plaid Link grants/);
+  assert.ok(beat.covers.includes("route:auth/plaid-mfa"));
+});
+
 test("auth-links: the daily lane and the hourly beat share one SQL and one judge", () => {
   assert.equal(lane.MAGIC_DEAD_SQL, truth.MAGIC_DEAD_SQL);
   assert.equal(lane.MAGIC_TEMPLATE_SQL, truth.MAGIC_TEMPLATE_SQL);
   assert.equal(lane.SIGNIN_NO_SESSION_SQL, truth.SIGNIN_NO_SESSION_SQL);
+  assert.equal(lane.PLAID_GRANT_SQL, truth.PLAID_GRANT_SQL);
   assert.ok(lane.READ_ONLY_SQL.includes(truth.MAGIC_DEAD_SQL));
 });
 

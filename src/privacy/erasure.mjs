@@ -283,6 +283,16 @@ export async function eraseClient(db, { orgId, clientId, requestedBy, reason } =
     // social security number, so there is nothing to preserve.
     await tx.query(`DELETE FROM pii_identity WHERE client_id = $1`, [client]);
 
+    // Stop any in-flight bank connection. The consent text and timestamp stay
+    // as an audit receipt; routine session cleanup must not erase them.
+    await tx.query(
+      `UPDATE account_plaid_link_grants
+          SET consumed_at = COALESCE(consumed_at, now())
+        WHERE org_id = $1 AND target_kind = 'client_bank' AND target_id = $2
+          AND consumed_at IS NULL`,
+      [org, client]
+    );
+
     // Bank logins and their credentials. bank_accounts cascades from here (081).
     await tx.query(`DELETE FROM plaid_items WHERE client_id = $1 AND org_id = $2`, [client, org]);
 

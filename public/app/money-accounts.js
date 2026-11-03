@@ -567,7 +567,11 @@
       btn.textContent = "Opening your bank…";
       say("");
       var body = st.clientId ? { client_id: st.clientId } : {};
-      Promise.resolve(post("/api/banking/link-token", body)).then(function (res) {
+      if (!root.FHPlaidStepUp) { done(); say("Bank verification did not load. Refresh and try again."); return; }
+      root.FHPlaidStepUp.authorize("client_bank").then(function (grantToken) {
+        body.plaid_grant_token = grantToken;
+        return Promise.resolve(post("/api/banking/link-token", body));
+      }).then(function (res) {
         if (classify(res) !== "ok" || !res.body.link_token) { done(); say(linkWords(res)); return; }
         return loadPlaid().then(function () {
           var handler = root.Plaid.create({
@@ -577,7 +581,8 @@
               var inst = metadata && metadata.institution
                 ? { institution_id: metadata.institution.institution_id || null, name: metadata.institution.name || null }
                 : null;
-              var ex = { public_token: publicToken, institution: inst };
+              var ex = { public_token: publicToken, institution: inst,
+                plaid_grant_token: body.plaid_grant_token };
               if (st.clientId) ex.client_id = st.clientId;
               Promise.resolve(post("/api/banking/link-exchange", ex)).then(function (r2) {
                 if (classify(r2) !== "ok") { done(); say(linkWords(r2)); return; }
@@ -595,6 +600,9 @@
           done();
           say("The bank sign-in window did not load. Check your connection and try again.");
         });
+      }).catch(function (err) {
+        done();
+        if (!err || err.message !== "cancelled") say((err && err.message) || "Bank verification did not work. Try again.");
       });
     }
 
