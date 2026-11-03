@@ -15,7 +15,7 @@ describe("POST /api/repair/inbound-mail", () => {
     await handler({ method: "POST", body: { text: "hi" } }, res, { requireAuth: async () => ({ org_id: "11111111-1111-1111-1111-111111111111", id: "s", role: "owner" }), db: { query: async () => ({ rows: [] }) } });
     assert.equal(res.statusCode, 400);
   });
-  it("accepts text and marks v1.1", async () => {
+  it("holds pasted text for a source document and marks v1.1", async () => {
     const ORG = "11111111-1111-1111-1111-111111111111";
     const CLIENT = "22222222-2222-2222-2222-222222222222";
     let insertedBy = "unset";
@@ -33,7 +33,21 @@ describe("POST /api/repair/inbound-mail", () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.version, "v1.1");
     assert.equal(res.body.imap, false);
-    assert.equal(res.body.result.status, "advanced");
+    assert.equal(res.body.result.status, "held");
+    assert.equal(res.body.result.parseResult.requiresDocumentValidation, true);
     assert.equal(insertedBy, null);
+  });
+  it("a caller cannot substitute bytes, MIME or a typed validation verdict for the stored document", async () => {
+    let received;
+    const res = mockRes();
+    await handler({ method: "POST", body: { client_id: "22222222-2222-2222-2222-222222222222",
+      document_id: "66666666-6666-4666-8666-666666666666", bytes: "ZmFrZQ==", mime_type: "image/png",
+      bureau_response_validation: { status: "accepted" } } }, res, {
+      requireAuth: async () => ({ org_id: "11111111-1111-1111-1111-111111111111", role: "owner" }),
+      db: {}, processBureauResponse: async (_db, args) => { received = args; return { ok: false, reason: "stored_file_not_read" }; }
+    });
+    assert.equal(received.bytes, undefined); assert.equal(received.mimeType, undefined);
+    assert.equal(received.bureau_response_validation, undefined);
+    assert.equal(received.documentId, "66666666-6666-4666-8666-666666666666");
   });
 });

@@ -27,6 +27,7 @@ function fixture({ credit = null, missingClient = false } = {}) {
   const db = { async query(sql, params) {
     calls.queries.push({ sql, params });
     if (/FROM clients/.test(sql)) return { rows: missingClient ? [] : [client] };
+    if (/FROM documents/.test(sql)) return { rows: [] };
     if (/FROM crs_results/.test(sql)) return { rows: credit ? [credit] : [] };
     throw new Error("Unexpected query");
   } };
@@ -234,4 +235,26 @@ test("the per-business guidance loop refuses more than the four-plan storage lim
   f.businessPlans.businesses = Array.from({ length: 5 }, (_, i) => ({ id: `plan-${i}` }));
   await assert.rejects(buildBlueprintClientPlan(f.db, scope, f.deps), { code: "blueprint_plan_business_limit_exceeded" });
   assert.equal(f.calls.guidance.length, 0);
+});
+
+test("cash planning reserves shared cash once across businesses and flags unknowns",async()=>{
+  const f=fixture();Object.assign(f.businessPlans,{availableCashCents:100000,cashBufferCents:20000,oneTimePayoffCents:30000});
+  f.businessPlans.businesses[0].bankPreparation={relationships:[{depositPlanCents:40000}]};
+  f.bankPlan.recommended_banks=[{name:'Actual bank reference',minimum_deposit_cents:15000}];
+  let out=await buildBlueprintClientPlan(f.db,scope,f.deps);assert.equal(out.cashPlan.remainingCashCents,10000);assert.equal(out.cashPlan.banks[0].cashFit,'exceeds_remaining_budget');
+  f.businessPlans.businesses.push({id:'separate-plan',bankPreparation:{relationships:[{depositPlanCents:20000}]}});
+  out=await buildBlueprintClientPlan(f.db,scope,f.deps);assert.equal(out.cashPlan.status,'overcommitted');assert.equal(out.cashPlan.remainingCashCents,-10000);
+  f.businessPlans.cashBufferCents=null;out=await buildBlueprintClientPlan(f.db,scope,f.deps);assert.equal(out.cashPlan.status,'review_needed');assert.equal(out.cashPlan.remainingCashCents,null);assert.equal(out.cashPlan.banks[0].cashFit,'review_needed');
+});
+test("saved payoff choice derives exact smallest-balance and highest-rate payments without forecasts",async()=>{
+  const f=fixture();f.businessPlans.payoffPlan={strategy:'snowball',monthlyBudgetCents:10000,debts:[{id:'a',label:'Smaller balance',balanceCents:12000,aprBps:1000,minimumPaymentCents:1000},{id:'b',label:'Higher APR',balanceCents:50000,aprBps:2000,minimumPaymentCents:2000}]};
+  let out=await buildBlueprintClientPlan(f.db,scope,f.deps);assert.equal(out.payoffCalculation.status,'ready');assert.equal(out.payoffCalculation.priority[0],'a');assert.equal(out.payoffCalculation.allocatedCents,10000);
+  f.businessPlans.payoffPlan.strategy='avalanche';out=await buildBlueprintClientPlan(f.db,scope,f.deps);assert.equal(out.payoffCalculation.priority[0],'b');
+  assert.equal(out.payoffCalculation.payoffDate,undefined);
+});
+test("bureau response acceptance is shown only for exact current saved validation",async()=>{
+  const f=fixture(),base=f.db.query;const doc={id:'doc-a',current_version_id:'v2',title:'Actual response',metadata:{bureau_response_validation:{schema:1,validator:'bureau-response-reader',document_id:'doc-a',version_id:'v1',status:'accepted',reason:'Old review'}}};
+  f.db.query=async(sql,params)=>/FROM documents/.test(sql)?{rows:[doc]}:base(sql,params);
+  let out=await buildBlueprintClientPlan(f.db,scope,f.deps);assert.equal(out.letterResponses[0].validationStatus,'pending');
+  doc.metadata.bureau_response_validation.version_id='v2';out=await buildBlueprintClientPlan(f.db,scope,f.deps);assert.equal(out.letterResponses[0].validationStatus,'accepted');
 });

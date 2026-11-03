@@ -5,13 +5,13 @@
 export const id = "blueprint-delivery";
 export const title = "Blueprint staff links and delivery are sound";
 export const kind = "infra";
-export const covers = ["desk:csm-queue.html", "job:finance-os-pull-sweeper", "job:waypoint-nudge-sweeper", "route:blueprint/plan", "route:blueprint/business-plans"];
+export const covers = ["desk:csm-queue.html", "job:finance-os-pull-sweeper", "job:waypoint-nudge-sweeper", "route:blueprint/plan", "route:blueprint/business-plans", "route:blueprint/letter-mailing", "job:blueprint-letter-mailing"];
 export const box = false;
 export const reads = [];
-export const steps = ["real-advisor", "monthly-delivery", "coach-call-delivery", "preparation-evidence"];
+export const steps = ["real-advisor", "monthly-delivery", "coach-call-delivery", "preparation-evidence", "letter-mailing", "response-validation"];
 export const deadlineMs = 9000;
 export const damp = 1;
-export const CHECK_IDS = ["blueprint:real-advisor", "blueprint:monthly-delivery", "blueprint:coach-call-delivery", "blueprint:preparation-evidence"];
+export const CHECK_IDS = ["blueprint:real-advisor", "blueprint:monthly-delivery", "blueprint:coach-call-delivery", "blueprint:preparation-evidence", "blueprint:letter-mailing", "blueprint:response-validation"];
 export const ORG_SQL = "SELECT id FROM orgs WHERE slug = 'fundhub'";
 export const TEST_CLIENT_EMAIL_RE = String.raw`\+(walk|sim)-[0-9]+@|@example\.(com|net|org)$|\.(test|example|invalid|localhost|local)$`;
 
@@ -184,6 +184,105 @@ export const PREPARATION_EVIDENCE_SQL = `
       )
 `;
 
+export const LETTER_MAILING_SQL = `
+  /* gap:blueprint-letter-mailing */
+  SELECT count(*)::int AS n
+    FROM blueprint_letter_mailing_orders o
+    JOIN clients c ON c.org_id = o.org_id AND c.id = o.client_id
+    LEFT JOIN paid_service_requests p ON p.id = o.id
+      AND p.org_id = o.org_id AND p.client_id = o.client_id AND p.service_kind = 'letter_mailing'
+   WHERE o.org_id = $1::uuid
+     AND COALESCE(c.is_demo, false) = false
+     AND COALESCE(c.custom_fields->>'synthetic', '') <> 'true'
+     AND COALESCE(c.email, '') !~* $3::text
+     AND (
+       o.state = 'needs_review'
+       OR p.id IS NULL OR p.price_total_cents IS DISTINCT FROM 9700 OR p.currency IS DISTINCT FROM 'USD'
+       OR (o.payment_state = 'none' AND p.status IS DISTINCT FROM
+         CASE WHEN o.state = 'cancelled' THEN 'cancelled' ELSE 'quoted' END)
+       OR (o.payment_state IN ('charging', 'creating_checkout') AND (
+         o.attempt_started_at IS NULL OR o.attempt_started_at < $2::timestamptz - interval '15 minutes'
+         OR p.status NOT IN ('quoted', 'awaiting_payment')))
+       OR (o.payment_state = 'awaiting_payment' AND p.status IS DISTINCT FROM 'awaiting_payment')
+       OR (p.status IN ('paid', 'fulfilled') AND o.payment_state <> 'paid')
+       OR (o.payment_state <> 'paid' AND (o.provider_payment_ref IS NOT NULL OR o.paid_at IS NOT NULL))
+       OR (o.payment_state = 'paid' AND (
+         o.state NOT IN ('mail_pending', 'mailing', 'mailed', 'needs_review')
+         OR o.authorized_at IS NULL OR o.authorized_account_id IS NULL OR o.paid_at IS NULL
+         OR NULLIF(btrim(o.provider_payment_ref), '') IS NULL
+         OR p.amount_paid_cents IS DISTINCT FROM 9700 OR p.paid_at IS NULL
+         OR p.payment_ref IS DISTINCT FROM o.provider_payment_ref
+         OR p.status IS DISTINCT FROM CASE WHEN o.state = 'mailed' THEN 'fulfilled' ELSE 'paid' END))
+       OR (o.payment_state = 'paid' AND o.state IN ('mail_pending', 'mailing')
+         AND o.paid_at < $2::timestamptz - interval '15 minutes')
+       OR (SELECT count(*) FROM blueprint_letter_mailing_envelopes e WHERE e.order_id = o.id)
+         IS DISTINCT FROM CASE WHEN jsonb_typeof(o.snapshot->'files') = 'array'
+           THEN jsonb_array_length(o.snapshot->'files') ELSE 0 END
+       OR EXISTS (
+         SELECT 1 FROM blueprint_letter_mailing_envelopes e WHERE e.order_id = o.id AND (
+           e.org_id IS DISTINCT FROM o.org_id OR e.client_id IS DISTINCT FROM o.client_id
+           OR e.state = 'needs_review'
+           OR (e.state = 'sending' AND (e.claimed_at IS NULL
+             OR e.claimed_at < $2::timestamptz - interval '15 minutes'))
+           OR (e.state = 'accepted' AND (NULLIF(btrim(e.provider_id), '') IS NULL OR e.accepted_at IS NULL))
+           OR NOT EXISTS (
+             SELECT 1 FROM documents d
+             JOIN document_versions v ON v.id = e.document_version_id
+               AND v.document_id = d.id AND v.org_id = d.org_id
+              WHERE d.id = e.document_id AND d.org_id = o.org_id AND d.client_id = o.client_id
+                AND d.kind = 'deliverable' AND d.subtype IN ('funding_inquiry_removal', 'funding_personal_info')
+                AND v.mime_type = 'application/pdf' AND v.checksum = e.checksum
+                AND v.storage_key = e.snapshot->>'storageKey'
+                AND e.snapshot->>'documentId' = d.id::text
+                AND e.snapshot->>'versionId' = v.id::text
+                AND e.snapshot->>'checksum' = e.checksum AND e.snapshot->>'bureau' = e.bureau
+                AND EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(o.snapshot->'files') = 'array'
+                    THEN o.snapshot->'files' ELSE '[]'::jsonb END) selected(file)
+                  WHERE file->>'documentId' = e.document_id::text AND file->>'versionId' = e.document_version_id::text
+                    AND file->>'checksum' = e.checksum AND file->>'bureau' = e.bureau)
+                AND (o.state IN ('quoted', 'cancelled', 'mailed') OR (d.current_version_id = v.id
+                  AND (d.expires_at IS NULL OR d.expires_at > $2::timestamptz)))
+           )
+         )
+       )
+       OR (o.state = 'mailed' AND (
+         p.produced_kind IS DISTINCT FROM 'letter_mailing_batch' OR p.produced_ref IS DISTINCT FROM o.id
+         OR NOT EXISTS (SELECT 1 FROM blueprint_letter_mailing_envelopes e WHERE e.order_id = o.id)
+         OR EXISTS (SELECT 1 FROM blueprint_letter_mailing_envelopes e WHERE e.order_id = o.id
+           AND (e.state <> 'accepted' OR NULLIF(btrim(e.provider_id), '') IS NULL OR e.accepted_at IS NULL))
+       ))
+     )
+`;
+
+export const RESPONSE_VALIDATION_SQL = `
+  /* gap:blueprint-response-validation */
+  SELECT count(*)::int AS n
+    FROM client_waypoints w
+    JOIN clients c ON c.org_id = w.org_id AND c.id = w.client_id
+   WHERE w.org_id = $1::uuid AND w.state = 'done' AND w.verify_kind = 'bureau_response_upload'
+     AND COALESCE(c.is_demo, false) = false
+     AND COALESCE(c.custom_fields->>'synthetic', '') <> 'true'
+     AND COALESCE(c.email, '') !~* $3::text
+     AND NOT EXISTS (
+       SELECT 1 FROM documents d
+       CROSS JOIN LATERAL (SELECT d.metadata->'bureau_response_validation' AS v) reviewed
+        WHERE d.org_id = w.org_id AND d.client_id = w.client_id AND d.kind = 'bureau_response'
+          AND (d.expires_at IS NULL OR d.expires_at > $2::timestamptz)
+          AND d.current_version_id IS NOT NULL
+          AND EXISTS (SELECT 1 FROM document_versions current_v WHERE current_v.id = d.current_version_id
+            AND current_v.org_id = d.org_id AND current_v.document_id = d.id)
+          AND v->'schema' = '1'::jsonb AND v->>'validator' = 'bureau-response-reader'
+          AND v->>'document_id' = d.id::text AND v->>'version_id' = d.current_version_id::text
+          AND v->>'status' = 'accepted' AND v->>'quality' = 'pass'
+          AND v->>'document_type' = 'bureau_response' AND v->>'client_match' = 'match'
+          AND v->>'authenticity' = 'clear' AND v->>'bureau' IN ('EX', 'EQ', 'TU')
+          AND NULLIF(btrim(v->>'recipient_name'), '') IS NOT NULL
+          AND CASE WHEN v->>'reviewed_at' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$'
+            THEN isfinite((v->>'reviewed_at')::timestamptz) ELSE false END
+     )
+`;
+
+
 export const fixGuide = `A Blueprint client has a broken staff link, unfinished monthly delivery or an incomplete coach-call receipt.
 
 Likely causes:
@@ -198,6 +297,8 @@ Steps:
 - Do not request another paid credit pull or send to clients from this check.
 Files: src/blueprint/assign-csm.mjs, src/finance/finance-os-pull-fulfil.mjs, src/pulse/coverage/gap-blueprint.mjs
 Preparation evidence: repair a malformed saved plan or its missing/wrong-client document link through the authenticated Blueprint flow. Do not treat a reported step as reviewed proof.
+Letter mailing: reconcile the exact saved $97 payment, frozen letter versions and provider receipts. Do not repeat a charge or resend an uncertain envelope from a pulse alert.
+Bureau responses: a completed upload step requires an accepted reader verdict for an actual current-version response on that same client file. Reconcile the saved review through the response workflow; held or unreadable uploads stay unverified.
 `;
 
 async function countCheck(ctx, step, sql, params, description) {
@@ -232,6 +333,12 @@ export async function run(ctx) {
   await ctx.step("preparation-evidence", () => countCheck(ctx, "preparation-evidence", PREPARATION_EVIDENCE_SQL,
     [orgId, ctx.now.toISOString(), TEST_CLIENT_EMAIL_RE, "consulting-package", "succeeded"],
     "active Blueprint clients have malformed preparation state or invalid linked evidence"));
+  await ctx.step("letter-mailing", () => countCheck(ctx, "letter-mailing", LETTER_MAILING_SQL,
+    [orgId, ctx.now.toISOString(), TEST_CLIENT_EMAIL_RE],
+    "Blueprint mailing orders have held attempts, inconsistent receipts or invalid letter evidence"));
+  await ctx.step("response-validation", () => countCheck(ctx, "response-validation", RESPONSE_VALIDATION_SQL,
+    [orgId, ctx.now.toISOString(), TEST_CLIENT_EMAIL_RE],
+    "completed bureau-response steps lack accepted current-version review evidence"));
   return ctx.done("No broken staff link or open delivery exception was found. Counts do not prove a live customer delivery.");
 }
 
@@ -240,7 +347,9 @@ const world = () => ({ read: [
   { match: /gap:blueprint-real-advisor/, rows: [{ n: 0 }] },
   { match: /gap:blueprint-monthly-delivery/, rows: [{ n: 0 }] },
   { match: /gap:blueprint-coach-call-delivery/, rows: [{ n: 0 }] },
-  { match: /gap:blueprint-preparation-evidence/, rows: [{ n: 0 }] }
+  { match: /gap:blueprint-preparation-evidence/, rows: [{ n: 0 }] },
+  { match: /gap:blueprint-letter-mailing/, rows: [{ n: 0 }] },
+  { match: /gap:blueprint-response-validation/, rows: [{ n: 0 }] }
 ] });
 export const selfTest = { pass: world, fail: () => ({ read: [
   world().read[0], { match: /gap:blueprint-real-advisor/, rows: [{ n: 1 }] }

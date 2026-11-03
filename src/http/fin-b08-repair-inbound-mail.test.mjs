@@ -19,6 +19,7 @@ const ITEM_CHASE = "d1000000-0000-4000-8000-000000000001";
 const ITEM_AMEX = "d2000000-0000-4000-8000-000000000002";
 const FOREIGN_ITEM = "d9000000-0000-4000-8000-000000000009";
 const DOC = "d0c00000-0000-4000-8000-000000000001";
+const VERSION = "d0c00000-0000-4000-8000-000000000002";
 const PIPE = "0b110000-0000-4000-8000-000000000001";
 const STAGE_KEYS = ["intake", "analysis", "letters_generated", "in_transit", "awaiting_response", "response_received", "round_complete", "stalled"];
 const STAGE_ID = (key) => `57a60000-0000-4000-8000-${String(STAGE_KEYS.indexOf(key) + 1).padStart(12, "0")}`;
@@ -69,7 +70,7 @@ const item = (over = {}) => ({
 
 function repairFile({ items = [item()], roundsCap = null, stage = "awaiting_response", templates = TEMPLATES } = {}) {
   const state = {
-    items: items.map((i) => ({ ...i })), responses: [], decisions: [], eventsSeen: [], messages: [],
+    items: items.map((i) => ({ ...i })), responses: [], decisions: [], eventsSeen: [], messages: [], metadata: {},
     cards: [{ id: "k1000000-0000-4000-8000-000000000001", org_id: ORG_ID, client_id: CLIENT, pipeline_id: PIPE, stage_id: STAGE_ID(stage) }],
   };
   const stageKeyOf = (card) => STAGE_KEYS.find((k) => STAGE_ID(k) === card?.stage_id) || null;
@@ -77,9 +78,16 @@ function repairFile({ items = [item()], roundsCap = null, stage = "awaiting_resp
   const fake = fakeDb([
     // Existing-owned upload gate: uploaded bytes are never parsed without a
     // matching same-company, same-client, correct-kind document record.
-    [/^\s*SELECT d\.id\s+FROM documents d\b/i, (_s, p) =>
+    [/^\s*SELECT d\.id, d\.current_version_id, d\.metadata\s+FROM documents d\b/i, (_s, p) =>
       p[0] === DOC && p[1] === ORG_ID && p[2] === CLIENT &&
-      p[3] === "bureau_response" && p[4] == null ? [{ id: DOC }] : []],
+      p[3] === "bureau_response" && (p[4] == null || p[4] === VERSION) ? [{ id: DOC, current_version_id: VERSION, metadata: structuredClone(state.metadata) }] : []],
+    [/^\s*SELECT first_name, last_name FROM clients WHERE/i, (_s, p) => p[0] === CLIENT && p[1] === ORG_ID ? [{ first_name: "Pat", last_name: "Buyer" }] : []],
+    [/^\s*UPDATE documents SET metadata/i, (_s, p) => {
+      if (p[0] !== DOC || p[1] !== ORG_ID || p[2] !== CLIENT || p[3] !== VERSION) return [];
+      state.metadata.bureau_response_validation = JSON.parse(p[4]); return [{ id: DOC }];
+    }],
+    [/^\s*SELECT id FROM tasks/i, []],
+    [/^\s*INSERT INTO tasks/i, [{ id: "70000000-0000-4000-8000-000000000001" }]],
     // The open items: this company, this client, and ONLY the statuses the statement asks for.
     [/^\s*SELECT di\.id, di\.case_id, di\.org_id, di\.client_id, di\.creditor,/i, (s, p) => rowsWhere(state.items, s.slice(s.indexOf("WHERE")), p)
       .filter((r) => !/di\.status\s*=\s*ANY\(\$3::text\[\]\)/.test(s) || p[2].includes(r.status))],
@@ -132,15 +140,37 @@ async function call(body, fake, who = [staffSession({ role: "closer" })]) {
     query: (sql, params) => (/FROM live JOIN staff|UPDATE account_sessions|FROM accounts WHERE id/.test(typeof sql === "string" ? sql : sql.text) ? session.query(sql, params) : fake.query(sql, params)),
     connect: () => fake.connect(),
   };
-  await runWithSharedDb(combined, () => handler(req("POST", { body }), res, { db: combined }));
+  await runWithSharedDb(combined, () => handler(req("POST", { body }), res, { db: combined,
+    loadBytesImpl: async () => ({ buffer: Buffer.from("stored synthetic bureau-response bytes"), mimeType: "image/png" }) }));
   return { res, fake };
+}
+// Parser/round regressions below now enter through a real saved-document record
+// and its reader. Raw text alone is covered separately and may never advance.
+async function callValidated(body, fake, who) {
+  if (typeof body.text === "string" && body.text.trim()) {
+    modelAnswer = { quality: "pass", text: body.text, bureau_guess: "EX" };
+    body = { ...body, document_id: DOC };
+  }
+  if (modelAnswer) modelAnswer = { document_type: "bureau_response", recipient_name: "Pat Buyer", authenticity: "clear", ...modelAnswer };
+  return call(body, fake, who);
 }
 const DELETED = "Your dispute of the Chase account ending 4242 has been deleted from your file.";
 
 describe("POST /api/repair/inbound-mail", () => {
-  test("pasted text that says the account was deleted advances that item, stores the response as confirmed, and logs the decision", async () => {
+  test("pasted text alone remains unconfirmed and cannot advance items or queue result messages", async () => {
     const fake = repairFile();
     const { res } = await call({ client_id: CLIENT, text: DELETED }, fake);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.result.status, "held");
+    assert.equal(res.body.result.parseResult.requiresDocumentValidation, true);
+    assert.equal(fake.state.responses[0].confirmed, false);
+    assert.equal(fake.state.items[0].status, "sent");
+    assert.equal(fake.state.messages.length, 0);
+    assert.equal(modelCalls.length, 0);
+  });
+  test("a validated saved letter that says the account was deleted advances that item, stores the response as confirmed, and logs the decision", async () => {
+    const fake = repairFile();
+    const { res } = await callValidated({ client_id: CLIENT, text: DELETED }, fake);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.result.status, "advanced");
     assert.deepEqual(res.body.result.parseResult.outcomes, [{ itemId: ITEM_CHASE, outcome: "deleted", evidence: "deleted_language" }]);
@@ -167,14 +197,14 @@ describe("POST /api/repair/inbound-mail", () => {
     ];
     for (const [text, outcome] of cases) {
       const fake = repairFile();
-      const { res } = await call({ client_id: CLIENT, text }, fake);
+      const { res } = await callValidated({ client_id: CLIENT, text }, fake);
       assert.equal(res.body.result.parseResult.outcomes[0].outcome, outcome, text);
       assert.equal(fake.state.items[0].outcome, outcome);
       // A bureau that verified the account sends it on to the next round; an update closes this one.
       assert.deepEqual([fake.state.items[0].status, fake.state.items[0].round], outcome === "verified" ? ["escalated", "R2"] : ["updated", "R1"]);
     }
     const none = repairFile();
-    const { res } = await call({ client_id: CLIENT, text: "Thank you for contacting us. We received your letter." }, none);
+    const { res } = await callValidated({ client_id: CLIENT, text: "Thank you for contacting us. We received your letter." }, none);
     assert.equal(res.body.result.parseResult.outcomes[0].outcome, "unaddressed");
     assert.equal(res.body.result.status, "held", "a letter that says nothing about the account is not a confident read");
     assert.equal(none.state.items[0].status, "sent", "nothing is advanced on a held read");
@@ -182,7 +212,7 @@ describe("POST /api/repair/inbound-mail", () => {
 
   test("a read that is not confident enough is held for a person: nothing advances, the response is stored unconfirmed", async () => {
     const fake = repairFile({ items: [item(), item({ id: ITEM_AMEX, creditor: "Amex", account_last4: "1111" })] });
-    const { res } = await call({ client_id: CLIENT, text: "Thank you for contacting us. We received your letter and are reviewing it." }, fake);
+    const { res } = await callValidated({ client_id: CLIENT, text: "Thank you for contacting us. We received your letter and are reviewing it." }, fake);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.result.status, "held");
     assert.equal(res.body.result.event, "repair.parse.low_confidence");
@@ -194,7 +224,7 @@ describe("POST /api/repair/inbound-mail", () => {
 
   test("a confident read that would cross into the escalation rounds is held for a person, never advanced by the machine", async () => {
     const fake = repairFile({ items: [item({ round: "R3", status: "verified" })] });
-    const { res } = await call({ client_id: CLIENT, text: "The Chase account ending 4242 has been verified as accurate." }, fake);
+    const { res } = await callValidated({ client_id: CLIENT, text: "The Chase account ending 4242 has been verified as accurate." }, fake);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.result.status, "held");
     assert.equal(res.body.result.heldForEscalation, true);
@@ -210,7 +240,7 @@ describe("POST /api/repair/inbound-mail", () => {
       item({ id: FOREIGN_ITEM, org_id: OTHER_ORG_ID, creditor: "Chase", account_last4: "4242" }),
       item({ id: "d4000000-0000-4000-8000-000000000004", status: "deleted", creditor: "Closed", account_last4: "0000" }),
     ] });
-    const { res } = await call({ client_id: CLIENT, text: DELETED }, fake);
+    const { res } = await callValidated({ client_id: CLIENT, text: DELETED }, fake);
     assert.deepEqual(res.body.result.parseResult.outcomes.map((o) => o.itemId), [ITEM_CHASE]);
     assert.deepEqual(fake.state.items.map((i) => [i.id, i.status]), [
       [ITEM_CHASE, "deleted"],
@@ -220,16 +250,17 @@ describe("POST /api/repair/inbound-mail", () => {
     ]);
   });
 
-  test("with no open items nothing is written; with no text and no document it is 400; a bad client id is 400", async () => {
+  test("with no open items accepted proof gets team review without a dispute response; missing input and bad client IDs refuse", async () => {
     const empty = repairFile({ items: [] });
-    const a = await call({ client_id: CLIENT, text: DELETED }, empty);
-    assert.equal(a.res.body.result.ok, false);
-    assert.equal(a.res.body.result.reason, "no_open_items");
+    const a = await callValidated({ client_id: CLIENT, text: DELETED }, empty);
+    assert.equal(a.res.body.result.ok, true);
+    assert.equal(a.res.body.result.reason, "team_review_required");
+    assert.equal(a.res.body.result.validation.status, "accepted");
     assert.equal(empty.state.responses.length, 0);
-    const b = await call({ client_id: CLIENT, text: "   " }, repairFile());
+    const b = await callValidated({ client_id: CLIENT, text: "   " }, repairFile());
     assert.equal(b.res.statusCode, 400);
     assert.equal(b.res.body.error, "text_or_document_required");
-    const c = await call({ client_id: "nope", text: DELETED }, repairFile());
+    const c = await callValidated({ client_id: "nope", text: DELETED }, repairFile());
     assert.equal(c.res.statusCode, 400);
     assert.equal(c.res.body.error, "client_id_required");
   });
@@ -237,7 +268,7 @@ describe("POST /api/repair/inbound-mail", () => {
   test("an uploaded document is read by the model, then goes down the same road: a clear letter advances the item", async () => {
     modelAnswer = { quality: "pass", text: DELETED, bureau_guess: "EX", message_to_client: "" };
     const fake = repairFile();
-    const { res } = await call({ client_id: CLIENT, document_id: DOC, mime_type: "image/png", bytes: Buffer.from("not-a-real-image").toString("base64") }, fake);
+    const { res } = await callValidated({ client_id: CLIENT, document_id: DOC, mime_type: "image/png", bytes: Buffer.from("not-a-real-image").toString("base64") }, fake);
     assert.equal(res.statusCode, 200);
     assert.equal(modelCalls.length, 1, "one read of the upload");
     assert.equal(res.body.result.status, "advanced");
@@ -250,7 +281,7 @@ describe("POST /api/repair/inbound-mail", () => {
   test("an unreadable photo is sent back for a retake and no item is touched", async () => {
     modelAnswer = { quality: "retake", text: "", bureau_guess: "unknown", message_to_client: "Please retake the photo with all four corners in the frame." };
     const fake = repairFile();
-    const { res } = await call({ client_id: CLIENT, document_id: DOC, mime_type: "image/jpeg", bytes: Buffer.from("blurry").toString("base64") }, fake);
+    const { res } = await callValidated({ client_id: CLIENT, document_id: DOC, mime_type: "image/jpeg", bytes: Buffer.from("blurry").toString("base64") }, fake);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.result.status, "retake");
     assert.match(res.body.result.message_to_client, /all four corners/);
@@ -262,16 +293,16 @@ describe("POST /api/repair/inbound-mail", () => {
     const letIn = [];
     for (const role of STAFF_ROLES) {
       const fake = repairFile();
-      const { res } = await call({ client_id: CLIENT, text: DELETED }, fake, [staffSession({ role })]);
+      const { res } = await callValidated({ client_id: CLIENT, text: DELETED }, fake, [staffSession({ role })]);
       if (res.statusCode === 403) {
         assert.equal(fake.state.items[0].status, "sent", role);
         assert.equal(fake.calls.filter((c) => /FROM dispute_items/.test(c.sql)).length, 0, role);
       } else letIn.push(role);
     }
     assert.deepEqual(letIn.sort(), ["admin", "closer", "inquiry_specialist", "owner"]);
-    const client = await call({ client_id: CLIENT, text: DELETED }, repairFile(), accountSession({ kind: "client", clientId: CLIENT }));
+    const client = await callValidated({ client_id: CLIENT, text: DELETED }, repairFile(), accountSession({ kind: "client", clientId: CLIENT }));
     assert.equal(client.res.statusCode, 401);
-    const none = await call({ client_id: CLIENT, text: DELETED }, repairFile(), []);
+    const none = await callValidated({ client_id: CLIENT, text: DELETED }, repairFile(), []);
     assert.equal(none.res.statusCode, 401);
   });
 });
@@ -292,7 +323,7 @@ describe("which items a reply is read against", () => {
       id: `d6000000-0000-4000-8000-00000000000${i + 1}`, creditor: `Done Co ${i}`, account_last4: `900${i}`, status,
     }));
     const fake = repairFile({ items: [...closed, ...open] });
-    const { res } = await call({ client_id: CLIENT, text: "Thank you for contacting us." }, fake);
+    const { res } = await callValidated({ client_id: CLIENT, text: "Thank you for contacting us." }, fake);
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body.result.parseResult.outcomes.map((o) => o.itemId).sort(), open.map((o) => o.id).sort());
     const read = fake.calls.find((c) => /FROM dispute_items di/.test(c.sql));
@@ -319,7 +350,7 @@ describe("how the words of a reply are read", () => {
   test("each phrase a bureau uses reads as its own answer, advances the item that way and names the language it relied on", async () => {
     for (const [phrase, text, outcome] of PHRASES) {
       const fake = repairFile();
-      const { res } = await call({ client_id: CLIENT, text }, fake);
+      const { res } = await callValidated({ client_id: CLIENT, text }, fake);
       assert.equal(res.body.result.status, "advanced", phrase);
       assert.deepEqual(res.body.result.parseResult.outcomes, [{ itemId: ITEM_CHASE, outcome, evidence: `${outcome}_language` }], phrase);
       assert.deepEqual([fake.state.items[0].status, fake.state.items[0].round], AFTER[outcome], phrase);
@@ -329,25 +360,25 @@ describe("how the words of a reply are read", () => {
 
   test("when one reply holds two answers, a deletion wins over a verification, and a verification wins over an update", async () => {
     const a = repairFile();
-    const ra = await call({ client_id: CLIENT, text: "The Chase account ending 4242 was verified last year but has now been deleted." }, a);
+    const ra = await callValidated({ client_id: CLIENT, text: "The Chase account ending 4242 was verified last year but has now been deleted." }, a);
     assert.equal(ra.res.body.result.parseResult.outcomes[0].outcome, "deleted");
     assert.equal(a.state.items[0].status, "deleted");
     const b = repairFile();
-    const rb = await call({ client_id: CLIENT, text: "The Chase account ending 4242 was corrected and then verified as accurate." }, b);
+    const rb = await callValidated({ client_id: CLIENT, text: "The Chase account ending 4242 was corrected and then verified as accurate." }, b);
     assert.equal(rb.res.body.result.parseResult.outcomes[0].outcome, "verified");
     assert.deepEqual([b.state.items[0].status, b.state.items[0].round], ["escalated", "R2"]);
   });
 
   test("the confidence is saved with the response, on the row and in the reading: 0.9 for a read that found every account", async () => {
     const fake = repairFile();
-    await call({ client_id: CLIENT, text: DELETED }, fake);
+    await callValidated({ client_id: CLIENT, text: DELETED }, fake);
     assert.equal(fake.state.responses[0].confidence, 0.9);
     assert.equal(fake.state.responses[0].parse_json.confidence, 0.9);
     assert.equal(fake.state.responses[0].parse_json.needsConfirm, false);
     assert.equal(fake.state.responses[0].confirmed_by, null, "a machine read is not a person");
     const half = repairFile({ items: [item(), item({ id: ITEM_AMEX, creditor: "Amex", account_last4: "1111" })] });
     // The letter names the Chase account far down the page; the Amex account is never named.
-    await call({ client_id: CLIENT, text: `${"Thank you for contacting us. ".repeat(20)}${DELETED}` }, half);
+    await callValidated({ client_id: CLIENT, text: `${"Thank you for contacting us. ".repeat(20)}${DELETED}` }, half);
     assert.equal(half.state.responses[0].confidence, 0.625, "one of two accounts found");
     assert.equal(half.state.responses[0].confirmed, false);
   });
@@ -356,7 +387,7 @@ describe("how the words of a reply are read", () => {
 describe("where the repair file goes, and what is written down and sent", () => {
   test("a confident reply that is acted on moves the repair card to round complete and writes the confirmation to the case log", async () => {
     const fake = repairFile();
-    await call({ client_id: CLIENT, text: DELETED }, fake);
+    await callValidated({ client_id: CLIENT, text: DELETED }, fake);
     assert.equal(fake.state.stageOf(), "round_complete");
     const [d] = decided(fake, "parse.confirmed");
     assert.ok(d, "the confirmation is logged");
@@ -369,7 +400,7 @@ describe("where the repair file goes, and what is written down and sent", () => 
 
   test("a bureau that verified the account sends it on: the client is told the next round, and the card still ends on round complete", async () => {
     const fake = repairFile();
-    const { res } = await call({ client_id: CLIENT, text: "The Chase account ending 4242 has been verified as accurate." }, fake);
+    const { res } = await callValidated({ client_id: CLIENT, text: "The Chase account ending 4242 has been verified as accurate." }, fake);
     assert.equal(res.body.result.status, "advanced");
     assert.equal(fake.state.stageOf(), "round_complete", "the response being parsed is the last word on the card");
     const next = queued(fake, "EMAIL-REPAIR-ROUND-ADVANCED");
@@ -384,7 +415,7 @@ describe("where the repair file goes, and what is written down and sent", () => 
 
   test("a deletion tells the client the account is no longer listed; nothing about a next round goes out", async () => {
     const fake = repairFile();
-    await call({ client_id: CLIENT, text: DELETED }, fake);
+    await callValidated({ client_id: CLIENT, text: DELETED }, fake);
     const results = queued(fake, "EMAIL-REPAIR-RESPONSE-RESULTS").find((m) => /Chase ending 4242 \(Experian\)/.test(m.rendered_body));
     assert.ok(results, "a results email that names the account");
     assert.match(results.rendered_body, /no longer listed on that bureau letter/);
@@ -394,7 +425,7 @@ describe("where the repair file goes, and what is written down and sent", () => 
 
   test("a held read leaves the card on response received, sends the client nothing and advances no item", async () => {
     const fake = repairFile({ items: [item(), item({ id: ITEM_AMEX, creditor: "Amex", account_last4: "1111" })] });
-    const { res } = await call({ client_id: CLIENT, text: "Thank you for contacting us. We received your letter." }, fake);
+    const { res } = await callValidated({ client_id: CLIENT, text: "Thank you for contacting us. We received your letter." }, fake);
     assert.equal(res.body.result.status, "held");
     assert.equal(fake.state.stageOf(), "response_received");
     assert.equal(fake.state.messages.length, 0);
@@ -403,7 +434,7 @@ describe("where the repair file goes, and what is written down and sent", () => 
 
   test("a confident read held at the escalation rounds is logged as held for a person with the round it wanted, and nothing is told to the client", async () => {
     const fake = repairFile({ items: [item({ round: "R3", status: "verified" })] });
-    const { res } = await call({ client_id: CLIENT, text: "The Chase account ending 4242 has been verified as accurate." }, fake);
+    const { res } = await callValidated({ client_id: CLIENT, text: "The Chase account ending 4242 has been verified as accurate." }, fake);
     assert.equal(res.body.result.heldForEscalation, true);
     const [d] = decided(fake, "parse.held_escalation_needs_human");
     assert.ok(d, "the hold is logged");
@@ -421,12 +452,12 @@ describe("an uploaded reply: what the client is sent", () => {
   test("a retake request goes to the client by email with the instructions the reader wrote", async () => {
     modelAnswer = { quality: "retake", text: "", bureau_guess: "unknown", message_to_client: "Please retake the photo with all four corners in the frame." };
     const fake = repairFile();
-    await call({ client_id: CLIENT, document_id: DOC, mime_type: "image/jpeg", bytes: png }, fake);
+    await callValidated({ client_id: CLIENT, document_id: DOC, mime_type: "image/jpeg", bytes: png }, fake);
     const [mail] = queued(fake, "EMAIL-REPAIR-RETAKE-PHOTO");
     assert.ok(mail, "a retake email was queued");
     assert.equal(mail.channel, "email");
     assert.equal(mail.client_id, CLIENT);
-    assert.equal(mail.provider_ref, `workflow:EMAIL-REPAIR-RETAKE-PHOTO:bureau-retake:${DOC}`);
+    assert.equal(mail.provider_ref, `workflow:EMAIL-REPAIR-RETAKE-PHOTO:bureau-retake:${DOC}:${VERSION}`);
     assert.equal(mail.rendered_body, "Retake: Please retake the photo with all four corners in the frame.");
     assert.equal(queued(fake, "EMAIL-REPAIR-RESPONSE-RESULTS").length, 0);
   });
@@ -434,9 +465,9 @@ describe("an uploaded reply: what the client is sent", () => {
   test("a clear upload that is acted on sends the client the results, with the outcome words of this reading", async () => {
     modelAnswer = { quality: "pass", text: DELETED, bureau_guess: "EX", message_to_client: "" };
     const fake = repairFile();
-    const { res } = await call({ client_id: CLIENT, document_id: DOC, mime_type: "image/png", bytes: png }, fake);
+    const { res } = await callValidated({ client_id: CLIENT, document_id: DOC, mime_type: "image/png", bytes: png }, fake);
     assert.equal(res.body.result.status, "advanced");
-    const mail = fake.state.messages.find((m) => m.provider_ref === `workflow:EMAIL-REPAIR-RESPONSE-RESULTS:bureau-results:${DOC}`);
+    const mail = fake.state.messages.find((m) => m.provider_ref === `workflow:EMAIL-REPAIR-RESPONSE-RESULTS:bureau-results:${DOC}:${VERSION}`);
     assert.ok(mail, "the results email for this upload");
     assert.equal(mail.client_id, CLIENT);
     assert.match(mail.rendered_body, /deleted/);
@@ -446,7 +477,7 @@ describe("an uploaded reply: what the client is sent", () => {
   test("a clear upload that is only held for a person sends no results email", async () => {
     modelAnswer = { quality: "pass", text: "Thank you for contacting us. We received your letter.", bureau_guess: "EX", message_to_client: "" };
     const fake = repairFile();
-    const { res } = await call({ client_id: CLIENT, document_id: DOC, mime_type: "image/png", bytes: png }, fake);
+    const { res } = await callValidated({ client_id: CLIENT, document_id: DOC, mime_type: "image/png", bytes: png }, fake);
     assert.equal(res.body.result.status, "held");
     assert.equal(fake.state.messages.length, 0);
     assert.equal(fake.state.stageOf(), "response_received");
