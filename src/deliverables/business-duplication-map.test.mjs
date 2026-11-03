@@ -25,7 +25,7 @@ import { buildBlackReportClient, emptyBlackReportClient } from "../underwrite/bl
 import { scoreCompanyReports } from "../underwrite/letter-pack.mjs";
 import { businessAgeMultiplier } from "../underwrite/business-funding.mjs";
 import { FUNDING_SEQUENCE_STEPS } from "../underwrite/funding-sequence.mjs";
-import { APPROVED_NAICS, SHELL_LLC_SUGGESTION_TEXT } from "../underwrite/company-audit.mjs";
+import { SHELL_LLC_SUGGESTION_TEXT } from "../underwrite/company-audit.mjs";
 import { CLOSING_CTA_URL } from "./chrome.mjs";
 import { usd } from "./format.mjs";
 import {
@@ -151,7 +151,7 @@ describe("the page", () => {
       const eyebrows = [...f.doc.html.matchAll(/<div class="eyebrow">(\d\d) \/ ([^<]+)<\/div>/g)]
         .map((m) => `${m[1]} ${m[2]}`);
       assert.deepEqual(eyebrows, ["01 BOTH FILES", "02 YOUR BUSINESS TODAY", "03 BY AGE",
-        "04 QUARTERLY PLAN", "05 SET UP"]);
+        "04 QUARTERLY REVIEWS", "05 SET UP"]);
     });
 
     test(`${name}: nothing unknown prints as a word for nothing`, () => {
@@ -167,11 +167,12 @@ describe("the page", () => {
     });
   }
 
-  test("the sales-page sample's wording is kept where the file supports it", () => {
+  test("the page gives preparation reviews without assumed filings or funding approval", () => {
     const t = BUSINESS.text;
-    assert.match(t, /Why you need this: you keep getting funded after round one, one aged company after another\./);
-    assert.match(t, /Keep opening one to two a quarter and aged companies keep coming ready for funding\./);
-    assert.match(t, /Rivera Supply LLC turns 24 months in August 2027\. That is when its funding doubles\./);
+    assert.match(t, /Why you need this: prepare each business with clear records/);
+    assert.match(t, /three or four separate single-member LLC plans/);
+    assert.match(t, /Rivera Supply LLC reaches its recorded 24-month formation milestone in August 2027/);
+    assert.doesNotMatch(t, /one to two a quarter|five to ten companies|That is when its funding doubles/);
   });
 });
 
@@ -197,7 +198,8 @@ describe("01 — the personal side comes off the engine", () => {
   test("REPAIR: a file the engine holds says so and puts the personal file first", () => {
     assert.equal(REPAIR.map.personal.onHold, true);
     assert.match(REPAIR.text, new RegExp(`decision on your personal file is "${REPAIR.engine.decision_label}"`));
-    assert.match(REPAIR.text, /shows \$0 for personal and business funding today\. Fix the personal file first\./);
+    assert.match(REPAIR.text, /shows \$0 for personal and business funding today\. Fix the personal file first for funding readiness\./);
+    assert.match(REPAIR.text, /Business documents and preparation can move alongside your credit work/);
     assert.match(REPAIR.text, /so a company adds \$0 until the personal file is fixed/);
   });
 });
@@ -238,10 +240,12 @@ describe("02 — the Experian Business check", () => {
     assert.match(BUSINESS.doc.html, /updates it\.<br>Late payments: Bills are paid 45 days/,
       "each blemish's fix sits on its own line in the table");
     assert.equal(r["Business balances"].status, "9% USED");
-    assert.equal(r["NAICS code"].status, "484110 FLAGGED");
-    for (const n of APPROVED_NAICS) assert.ok(r["NAICS code"].fix.includes(`${n.code} ${n.label}`));
+    assert.equal(r["NAICS code"].status, "484110 REVIEW");
+    assert.match(r["NAICS code"].fix, /Keep it if it accurately describes the business/);
+    assert.doesNotMatch(r["NAICS code"].fix, /Pick a code|Use the code.*low-risk list/);
     assert.equal(r["Business name"].status, "FLAGGED");
-    assert.match(r["Business name"].fix, /Take crypto, trucking out of the name\./);
+    assert.match(r["Business name"].fix, /registered legal name consistently/);
+    assert.doesNotMatch(r["Business name"].fix, /Take crypto, trucking out/);
     assert.match(r["Business name"].fix, /Experian Business lists the company as "CT HOLDINGS LLC"\. Use one exact name everywhere\./);
   });
 
@@ -289,7 +293,8 @@ describe("a fact not on the file is said to be not on the file", () => {
       assert.equal(by[label].fix, "No Experian Business report for this company is on the file.");
     }
     assert.equal(by["NAICS code"].status, "NOT ON FILE");
-    assert.match(by["NAICS code"].fix, /^No NAICS code is saved for this company\./);
+    assert.match(by["NAICS code"].fix, /no industry code/);
+    assert.match(by["NAICS code"].fix, /matches that activity/);
     assert.equal(c.funding.amount, null);
     const t = textOf(buildBusinessDuplicationMap(emptyBlackReportClient(),
       duplicationMapFacts({ companies: [{ name: "Plain Co LLC", state: "AZ", ageMonths: 3 }], now: NOW })));
@@ -310,9 +315,7 @@ describe("a fact not on the file is said to be not on the file", () => {
     assert.match(t, /Personal funding today - /);
     assert.match(t, /Business funding today Not on the file/);
     assert.match(t, /Your card funding is not on the file, so the dollar side of this table cannot be worked out yet\./);
-    // The one dollar figure that is not about this file: the Arizona filing fee
-    // in the owner-set shell-LLC rule.
-    assert.doesNotMatch(t.replace(SHELL_LLC_SUGGESTION_TEXT, ""), /\$\d/,
+    assert.doesNotMatch(t, /\$\d/,
       "no dollar figure on a file that has none");
   });
 
@@ -348,37 +351,32 @@ describe("03 — the age bands are the engine's multipliers", () => {
 describe("04 — the quarterly plan", () => {
   const asOf = { year: 2026, month: 9 };
 
-  test("no company: one new company a quarter for eight quarters, each new one's 12-month mark inside the plan", () => {
+  test("no company: review points do not create companies or invent formation dates", () => {
     const plan = quarterlyPlan([], asOf);
-    const opens = plan.filter((r) => /^Open company/.test(r.step));
-    assert.equal(opens.length, PLAN_QUARTERS);
-    assert.deepEqual(opens.map((r) => r.quarter),
+    assert.equal(plan.length, PLAN_QUARTERS);
+    assert.deepEqual(plan.map((r) => r.quarter),
       ["Q4 2026", "Q1 2027", "Q2 2027", "Q3 2027", "Q4 2027", "Q1 2028", "Q2 2028", "Q3 2028"]);
-    assert.equal(opens[0].step, "Open company one, set up right: a clean name, a NAICS code from the low-risk "
-      + "list, and reporting from day one.");
-    assert.equal(opens[1].step, "Open company two the same way.");
-    const marks = plan.filter((r) => /passes 12 months/.test(r.step));
-    assert.deepEqual(marks.map((r) => `${r.quarter} ${r.step.split(".")[0]}`), [
-      "Q4 2027 Company one passes 12 months", "Q1 2028 Company two passes 12 months",
-      "Q2 2028 Company three passes 12 months", "Q3 2028 Company four passes 12 months"
-    ]);
+    assert.match(plan[0].step, /Review existing businesses and plan three or four separate/);
+    assert.ok(plan.some((r) => /12-month preparation horizon/.test(r.step)));
+    assert.doesNotMatch(JSON.stringify(plan), /Open company|low-risk list|Its funding/);
   });
 
-  test("a saved company's own 12- and 24-month marks land in the right quarter", () => {
+  test("saved formation milestones trigger review, not automatic funding", () => {
     const c = companyFacts({ name: "Young LLC", state: "AZ", incorporatedDate: "2026-03" }, null, asOf);
     assert.equal(c.ageMonths, 7);
     assert.deepEqual(c.turns12, { year: 2027, month: 2 });
     assert.deepEqual(c.turns24, { year: 2028, month: 2 });
     const plan = quarterlyPlan([c], asOf);
-    assert.ok(plan.some((r) => r.quarter === "Q1 2027" && r.step === "Young LLC passes 12 months. Its funding goes from half to equal your card funding."));
-    assert.ok(plan.some((r) => r.quarter === "Q1 2028" && r.step === "Young LLC passes 24 months. Its funding doubles."));
-    assert.equal(plan[0].step.startsWith("Open company two"), true, "one company saved, so the next is company two");
+    assert.ok(plan.some((r) => r.quarter === "Q1 2027" && /recorded 12-month formation milestone/.test(r.step)));
+    assert.ok(plan.some((r) => r.quarter === "Q1 2028" && /recorded 24-month formation milestone/.test(r.step)));
+    assert.ok(plan.filter((r) => /formation milestone/.test(r.step)).every((r) => /age alone does not approve/.test(r.step)));
   });
 
-  test("BUSINESS: the plan on the page names the next company after the two on file", () => {
-    assert.match(BUSINESS.text, /Q4 2026 Open company three, set up right/);
-    assert.match(BUSINESS.text, /Q3 2027 Rivera Supply LLC passes 24 months\. Its funding doubles\./);
+  test("the rendered plan retains saved businesses without adding a numbered company", () => {
+    assert.match(BUSINESS.text, /Q4 2026 Review existing businesses and plan three or four separate/);
+    assert.match(BUSINESS.text, /Q3 2027 Rivera Supply LLC reaches its recorded 24-month formation milestone/);
     assert.match(BUSINESS.text, /Starting October 2026\./);
+    assert.doesNotMatch(BUSINESS.text, /Open company three|Give it a NAICS code from the low-risk list/);
   });
 });
 
