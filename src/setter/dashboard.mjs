@@ -34,6 +34,28 @@ function jsonObject(v) {
   return v;
 }
 
+export function sanitizeSetterResidentialAddress(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input) || input.confirmed !== true) {
+    return { error: "Confirm the lead's current home address before saving." };
+  }
+  const limits = { line1: 120, line2: 80, city: 80, state: 2, zip: 10 };
+  const address = {};
+  for (const [key, max] of Object.entries(limits)) {
+    const value = input[key];
+    if (typeof value !== "string" || value.length > max || /[\r\n<>]/.test(value)) {
+      return { error: `Invalid ${key}.` };
+    }
+    address[key] = value.trim();
+  }
+  if (!address.line1 || /^\s*(?:p\.?\s*o\.?\s*box|post office box)\b/i.test(address.line1)
+      || !address.city || !/^[A-Za-z]{2}$/.test(address.state)
+      || !/^\d{5}(?:-\d{4})?$/.test(address.zip)) {
+    return { error: "Enter a complete current home address, including state and ZIP." };
+  }
+  address.state = address.state.toUpperCase();
+  return { address };
+}
+
 function phoenixDay(value) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Phoenix", year: "numeric", month: "2-digit", day: "2-digit"
@@ -156,6 +178,7 @@ function mapItem(row, staff) {
     needs_work: row.done !== true,
     survey: surveySummary(cf),
     survey_edits: jsonObject(cf.setter_survey_edits),
+    residential_address: jsonObject(cf.setter_residential_address),
     setter_handoff: handoff,
     setter_staff_id: handoff.setter_staff_id || row.setter_staff_id || staff.id,
     closer_staff_id: handoff.closer_staff_id || row.closer_staff_id || (staff.role === "owner" ? staff.id : null)
@@ -403,7 +426,7 @@ async function startNoAnswerCadence(db, { orgId, clientId, previous, next, patch
   }
 }
 
-export async function updateSetterHandoff(db, staff, { client_id, action, handoff: input = {}, survey_edits, operation_id, event_id, expected_call_attempts }, deps = {}) {
+export async function updateSetterHandoff(db, staff, { client_id, action, handoff: input = {}, survey_edits, address, operation_id, event_id, expected_call_attempts }, deps = {}) {
   const transactionalDial = action === "undo_dial" || action === "log_dial";
   if (transactionalDial && !deps.dialTransaction) {
     const result = await withTransaction(db, writer => updateSetterHandoff(writer, staff,
@@ -438,6 +461,63 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     if (!assigned.rows[0] || (assigned.rows[0].assignee_staff_id && assigned.rows[0].assignee_staff_id !== staff.id)) {
       return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
     }
+  }
+  if (action === "save_address") {
+    const checked = sanitizeSetterResidentialAddress(address);
+    if (checked.error) return { status: 400, body: { ok: false, error: checked.error } };
+    return withTransaction(db, async writer => {
+      const locked = await writer.query(
+        `SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2
+          AND custom_fields->>'crm_archived_at' IS NULL FOR UPDATE`,
+        [client_id, staff.org_id]
+      );
+      if (!locked.rows.length) return { status: 404, body: { ok: false, error: "client_not_found" } };
+      const fields = jsonObject(locked.rows[0].custom_fields);
+      if (needsSetterAssignment(staff)) {
+        const handoff = jsonObject(fields.setter_handoff);
+        if (handoff.setter_staff_id && handoff.setter_staff_id !== staff.id) {
+          return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
+        }
+        const task = (await writer.query(
+          `SELECT id, assignee_staff_id FROM tasks
+            WHERE org_id = $1 AND client_id = $2 AND assignee_role = 'setter'
+            ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,
+          [staff.org_id, client_id]
+        )).rows[0];
+        if (!task || (task.assignee_staff_id && task.assignee_staff_id !== staff.id)) {
+          return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
+        }
+        const claim = await writer.query(
+          `UPDATE tasks SET assignee_staff_id = $4, updated_at = now()
+            WHERE id = $1 AND org_id = $2 AND client_id = $3
+              AND (assignee_staff_id IS NULL OR assignee_staff_id = $4) RETURNING id`,
+          [task.id, staff.org_id, client_id, staff.id]
+        );
+        if (!claim.rows.length) return { status: 403, body: { ok: false, error: "assigned_to_other_setter" } };
+      }
+      const previous = jsonObject(fields.setter_residential_address);
+      const same = Object.keys(checked.address).every(key => previous[key] === checked.address[key]);
+      if (same && previous.source === "setter_confirmed") {
+        return { status: 200, body: { ok: true, address: previous } };
+      }
+      const at = (deps.now || (() => new Date()))();
+      const saved = {
+        ...checked.address, source: "setter_confirmed",
+        confirmed_at: new Date(at).toISOString(), confirmed_by_staff_id: staff.id
+      };
+      const result = await writer.query(
+        `UPDATE clients SET custom_fields = jsonb_set(
+          jsonb_set(COALESCE(custom_fields, '{}'::jsonb), '{setter_residential_address}', $3::jsonb, true),
+          '{setter_residential_address_history}',
+          COALESCE(custom_fields->'setter_residential_address_history', '[]'::jsonb)
+            || CASE WHEN custom_fields ? 'setter_residential_address'
+              THEN jsonb_build_array(custom_fields->'setter_residential_address') ELSE '[]'::jsonb END,
+          true)
+         WHERE id = $1 AND org_id = $2 RETURNING custom_fields->'setter_residential_address' AS address`,
+        [client_id, staff.org_id, JSON.stringify(saved)]
+      );
+      return { status: 200, body: { ok: true, address: jsonObject(result.rows[0]?.address) } };
+    });
   }
   if (action === "undo_dial") {
     const eventResult = await db.query(

@@ -186,6 +186,9 @@ function setterSorted(items) {
   var saveTimer = 0;
   var busy = false;
   var surveyDirty = false;
+  var addressDirty = false;
+  var addressSaving = false;
+  var addressVersion = 0;
   var surveySavePromise = null;
   var surveyVersion = 0;
   var latestUndoableDial = null;
@@ -251,7 +254,7 @@ function setterSorted(items) {
   function undoLastDial() {
     var event = latestUndoableDial;
     if (!event || undoDialBusy || busy) return;
-    if (saveTimer || surveyDirty) { say("Finish saving your edits, then try Undo.", "error"); return; }
+    if (saveTimer || surveyDirty || addressDirty) { say("Finish saving your edits, then try Undo.", "error"); return; }
     undoDialBusy = true;
     paintUndoDial();
     say("Undoing the dial log…");
@@ -458,7 +461,7 @@ function setterSorted(items) {
   function paintDetail() {
     var item = currentItem();
     if (!item) { detailEl.innerHTML = '<div class="setter-state">Choose a lead to start.</div>'; return; }
-    var h = handoffOf(item), target = item.target_dial_by || setterDialTarget(item), booked = item.lead_type === "booked";
+    var h = handoffOf(item), a = item.residential_address || {}, target = item.target_dial_by || setterDialTarget(item), booked = item.lead_type === "booked";
     var arrived = item.booked_at || item.created_at;
     var afterHours = target && arrived && Date.parse(target) - Date.parse(arrived) > 60000;
     var sameStaff = item.setter_staff_id && item.closer_staff_id && item.setter_staff_id === item.closer_staff_id;
@@ -483,6 +486,16 @@ function setterSorted(items) {
       '<p>After the booking webhook arrives, refresh this queue and finish the handoff.</p></section>';
 
     html += '<section class="setter-section"><h3>Survey · edit during the call</h3>' + surveyHtml(item.survey, item.survey_edits) + '</section>' +
+      '<section class="setter-section" id="setter-address-section"><h3>Current home address</h3><p>Ask the lead to confirm their current home address. Save it separately from their survey answers.</p>' +
+      (a.confirmed_at ? '<p>Confirmed on ' + setterEsc(setterDate(a.confirmed_at)) + '.</p>' : '<p>No confirmed home address saved yet.</p>') +
+      '<div class="setter-fields"><div class="setter-field wide"><label for="setter-address-line1">Street address</label><input id="setter-address-line1" autocomplete="street-address" maxlength="120" value="' + setterEsc(a.line1 || "") + '"></div>' +
+      '<div class="setter-field"><label for="setter-address-line2">Apartment or unit (optional)</label><input id="setter-address-line2" maxlength="80" value="' + setterEsc(a.line2 || "") + '"></div>' +
+      '<div class="setter-field"><label for="setter-address-city">City</label><input id="setter-address-city" autocomplete="address-level2" maxlength="80" value="' + setterEsc(a.city || "") + '"></div>' +
+      '<div class="setter-field"><label for="setter-address-state">State</label><input id="setter-address-state" autocomplete="address-level1" maxlength="2" value="' + setterEsc(a.state || "") + '"></div>' +
+      '<div class="setter-field"><label for="setter-address-zip">ZIP code</label><input id="setter-address-zip" autocomplete="postal-code" maxlength="10" value="' + setterEsc(a.zip || "") + '"></div></div>' +
+      '<div class="setter-checks"><label><input id="setter-address-confirmed" type="checkbox"><span>The lead confirmed this is their current home address</span></label></div>' +
+      '<div class="setter-actions"><button type="button" class="fh-astra-action" data-action="save-address">Save home address</button><button type="button" class="fh-astra-action" data-action="cancel-address">Cancel address edits</button></div>' +
+      '<div class="setter-status" id="setter-address-status" role="status" aria-live="polite"></div></section>' +
       '<section class="setter-section" id="setter-details-section"><h3>Setter questions · during the call</h3><p>Confirm the business answers above when they apply. Offer personal funding too, even when they have a business. These call notes do not change the survey.</p>' +
       '<div class="setter-fields"><div class="setter-field"><label for="setter-use">Funding paths discussed</label><select id="setter-use" name="triage_personal_or_business">' + option("", "Not discussed yet", h.triage_personal_or_business || "") + option("business", "Business", h.triage_personal_or_business) + option("personal", "Personal", h.triage_personal_or_business) + option("both", "Business and personal", h.triage_personal_or_business) + '</select></div>' +
       '<div class="setter-field"><label for="setter-employment">Employment</label><select id="setter-employment" name="employment_status">' + option("", "Not asked yet", h.employment_status || "") + option("w2", "W-2 employee", h.employment_status) + option("self_employed", "Self-employed", h.employment_status) + option("retired", "Retired", h.employment_status) + option("not_working", "Not working", h.employment_status) + option("other", "Other income", h.employment_status) + option("not_shared", "Declined to share", h.employment_status) + '</select></div>' +
@@ -506,6 +519,60 @@ function setterSorted(items) {
       '<div class="setter-status" id="setter-status" role="status" aria-live="polite"></div></section>';
     detailEl.innerHTML = html;
     surveyDirty = false;
+    addressDirty = false;
+  }
+
+  function readAddress() {
+    function value(id) { return document.getElementById(id).value.trim(); }
+    return { line1: value("setter-address-line1"), line2: value("setter-address-line2"),
+      city: value("setter-address-city"), state: value("setter-address-state"),
+      zip: value("setter-address-zip"), confirmed: document.getElementById("setter-address-confirmed").checked };
+  }
+
+  function saveAddress() {
+    if (!selected || busy) return;
+    var clientId = selected.client_id;
+    var address = readAddress();
+    var status = document.getElementById("setter-address-status");
+    var controls = detailEl.querySelectorAll('#setter-address-section input, #setter-address-section button');
+    if (status) { status.textContent = "Saving home address…"; status.className = "setter-status"; }
+    controls.forEach(function (control) { control.disabled = true; });
+    addressSaving = true;
+    addressVersion += 1;
+    busy = true;
+    request("/api/setter-dashboard", { method: "POST", body: {
+      client_id: clientId, action: "save_address", address: address
+    } }).then(function (result) {
+      if (result.status < 200 || result.status >= 300 || !result.body || !result.body.ok) {
+        if (status) { status.textContent = result.body && result.body.error || messageFor(result); status.className = "setter-status error"; }
+        return;
+      }
+      var item = queue.find(function (row) { return row.client_id === clientId; });
+      if (item) item.residential_address = result.body.address;
+      if (selected && selected.client_id === clientId) selected.residential_address = result.body.address;
+      addressDirty = false;
+      addressVersion += 1;
+      if (status) { status.textContent = "Home address saved on this lead."; status.className = "setter-status success"; }
+    }).catch(function () {
+      if (status) { status.textContent = messageFor(null); status.className = "setter-status error"; }
+    }).finally(function () {
+      busy = false;
+      addressSaving = false;
+      controls.forEach(function (control) { control.disabled = false; });
+    });
+  }
+
+  function cancelAddressEdits() {
+    if (addressSaving) return;
+    var saved = currentItem() && currentItem().residential_address || {};
+    ["line1", "line2", "city", "state", "zip"].forEach(function (key) {
+      document.getElementById("setter-address-" + key).value = saved[key] || "";
+    });
+    document.getElementById("setter-address-confirmed").checked = false;
+    addressDirty = false;
+    addressVersion += 1;
+    var status = document.getElementById("setter-address-status");
+    if (status) { status.textContent = "Unsaved home address edits discarded."; status.className = "setter-status"; }
   }
 
   function readSurveyEdits() {
@@ -637,7 +704,7 @@ function setterSorted(items) {
             ? { client_id: clientId, event_id: dialEvent.event_id, undo_until: dialEvent.undo_until } : null;
           paintUndoDial();
         }
-        if (action !== "save") paintDetail();
+        if (action !== "save" && !addressDirty && !addressSaving) paintDetail();
         var savedHandoff = result.body.item && result.body.item.setter_handoff || {};
         if (latestUndoableDial && latestUndoableDial.client_id === clientId &&
             (savedHandoff.complete_at || savedHandoff.disposition === "no_answer")) {
@@ -677,10 +744,11 @@ function setterSorted(items) {
     var statusText = preserveStatus && document.getElementById("setter-status") &&
       document.getElementById("setter-status").textContent;
     var requestId = ++loadRequestId;
+    var startedAddressVersion = addressVersion;
     refreshBtn.disabled = true;
     queueEl.setAttribute("aria-busy", "true");
     request(queueUrl()).then(function (result) {
-      if (requestId !== loadRequestId) return;
+      if (requestId !== loadRequestId || startedAddressVersion !== addressVersion || addressDirty || addressSaving) return;
       if (result.status < 200 || result.status >= 300 || !result.body || !Array.isArray(result.body.items)) {
         queueEl.innerHTML = '<div class="setter-state fh-astra-state"><h2>Could not load the call queue</h2><p>' + setterEsc(messageFor(result)) + '</p><button type="button" class="fh-astra-action" data-action="retry">Try again</button></div>';
         detailEl.innerHTML = '<div class="setter-state">The checklist will appear when the queue loads.</div>';
@@ -701,7 +769,7 @@ function setterSorted(items) {
       if (statusText && !(requestedClientId && index < 0)) say(statusText, "success");
       if (wanted && index < 0) detailEl.innerHTML = '<div class="setter-state" role="alert">That lead is not in the setter queue. Choose another lead or refresh.</div>';
     }).catch(function () {
-      if (requestId !== loadRequestId) return;
+      if (requestId !== loadRequestId || startedAddressVersion !== addressVersion || addressDirty || addressSaving) return;
       queueEl.innerHTML = '<div class="setter-state fh-astra-state"><h2>Could not load the call queue</h2><p>Check your connection and try again.</p><button type="button" class="fh-astra-action" data-action="retry">Try again</button></div>';
       detailEl.innerHTML = '<div class="setter-state">The checklist will appear when the queue loads.</div>';
       countEl.textContent = "Queue unavailable";
@@ -719,6 +787,12 @@ function setterSorted(items) {
     var row = event.target.closest("[data-client-id]");
     if (row) {
       var next = queue.find(function (item) { return item.client_id === row.dataset.clientId; }) || null;
+      if (addressSaving) { say("Wait for the home address to finish saving.", "error"); return; }
+      if (selected && next && next.client_id === selected.client_id) return;
+      if (selected && next && next.client_id !== selected.client_id && addressDirty) {
+        say("Save or cancel the home address edits before choosing another lead.", "error");
+        return;
+      }
       if (selected && next && next.client_id !== selected.client_id && (saveTimer || surveyDirty)) {
         var hasHandoffChanges = !!saveTimer;
         clearTimeout(saveTimer);
@@ -735,6 +809,13 @@ function setterSorted(items) {
     }
   });
   detailEl.addEventListener("input", function (event) {
+    if (event.target.closest("#setter-address-section")) {
+      addressDirty = true;
+      addressVersion += 1;
+      var addressStatus = document.getElementById("setter-address-status");
+      if (addressStatus) { addressStatus.textContent = "Unsaved home address…"; addressStatus.className = "setter-status"; }
+      return;
+    }
     var surveyControl = event.target.closest('[data-survey-key]');
     if (surveyControl) {
       if (surveyControl.tagName === "FIELDSET") surveyControl.dataset.surveyChanged = "true";
@@ -746,6 +827,11 @@ function setterSorted(items) {
     saveSoon(!!event.target.closest("#setter-details-section"));
   });
   detailEl.addEventListener("change", function (event) {
+    if (event.target.closest("#setter-address-section")) {
+      addressDirty = true;
+      addressVersion += 1;
+      return;
+    }
     if (event.target.closest('[data-survey-key]')) return;
     if (event.target.name === "disposition") {
       var noAnswer = document.getElementById("setter-no-answer");
@@ -757,6 +843,10 @@ function setterSorted(items) {
     var button = event.target.closest("[data-action]");
     if (!button) return;
     var action = button.dataset.action;
+    if (action === "save-address") { saveAddress(); return; }
+    if (action === "cancel-address") { cancelAddressEdits(); return; }
+    if (addressSaving) { say("Wait for the home address to finish saving.", "error"); return; }
+    if (addressDirty) { say("Save or cancel the home address edits first.", "error"); return; }
     if (action === "save-survey") { saveSurvey(); return; }
     if (action === "save-details") {
       clearTimeout(saveTimer);
@@ -788,7 +878,11 @@ function setterSorted(items) {
       if (action === "save" || action === "complete" || action === "send_intro_video" || action === "send_handoff") sendAction(action, h);
     }).finally(function () { if (action === "log-dial") dialClickPending = false; });
   });
-  refreshBtn.addEventListener("click", function () { saveSurvey().then(function (ok) { if (ok) load(); }); });
+  refreshBtn.addEventListener("click", function () {
+    if (addressSaving) { say("Wait for the home address to finish saving.", "error"); return; }
+    if (addressDirty) { say("Save or cancel the home address edits before refreshing.", "error"); return; }
+    saveSurvey().then(function (ok) { if (ok) load(); });
+  });
   request("/funnel/fundhub-prompter-download.json").then(function (result) {
     var url = result.body && result.body.app_store_url;
     if (!/^https:\/\/apps\.apple\.com\//.test(url || "")) return;

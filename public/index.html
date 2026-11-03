@@ -129,6 +129,18 @@
   .sec-head{max-width:62ch;margin-bottom:48px}
   .sec-head h2{font-size:clamp(26px,3.4vw,34px);font-weight:700;letter-spacing:-.03em;margin-top:14px}
   .sec-head p{margin-top:12px;color:var(--gray);font-size:16px}
+  #security .sec-head{margin-bottom:28px}
+  .provider-rail{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:24px 0 30px;margin-bottom:36px}
+  .provider-rail .label{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray);margin-bottom:19px}
+  .provider-viewport{overflow:hidden;mask-image:linear-gradient(to right,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
+  .provider-logos{display:flex;width:max-content;animation:marq 32s linear infinite;will-change:transform}
+  .provider-set{display:flex;gap:12px;padding-right:12px;flex-shrink:0}
+  .provider-logo{flex:0 0 212px;width:212px;height:96px;display:flex;align-items:center;justify-content:center;padding:20px 16px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  .provider-logo img{display:block;width:100%;max-width:150px;max-height:44px;object-fit:contain}
+  .provider-logo img[alt="Plaid"]{max-height:52px}
+  .provider-logo img[alt="Experian Business"]{max-height:55px}
+  @media(max-width:520px){.provider-logo{flex-basis:168px;width:168px;height:84px;padding:16px 12px}.provider-viewport{mask-image:linear-gradient(to right,transparent,#000 12px,#000 calc(100% - 12px),transparent)}}
+  @media(prefers-reduced-motion:reduce){.provider-viewport{mask-image:none}.provider-logos{width:auto;animation:none;will-change:auto}.provider-set{width:100%;padding:0;flex-wrap:wrap;justify-content:center}.provider-logo{flex:1 1 160px;max-width:212px}.provider-set[aria-hidden="true"]{display:none}}
 
   /* steps */
   .steps{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper)}
@@ -310,6 +322,11 @@
   .ghost-mark .logo{display:block;width:96vw;aspect-ratio:2698/543;margin:0 auto;filter:invert(1);opacity:.05}
   .foot-top{display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;padding-bottom:36px;border-bottom:1px solid var(--cardline)}
   .foot-brand p{margin-top:12px;font-size:14px;color:var(--gray2);max-width:34ch}
+  .app-store{margin-top:24px}
+  .app-store .label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray2);margin-bottom:9px}
+  .app-store a{display:inline-block;line-height:0;border-radius:7px}
+  .app-store a:focus-visible{outline:2px solid #fff;outline-offset:5px}
+  .app-store img{display:block;width:180px;height:auto}
   .foot-cols{display:flex;gap:64px;flex-wrap:wrap}
   .foot-col h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);margin-bottom:14px}
   .foot-col a{display:block;font-size:14px;color:var(--gray2);margin-bottom:10px;transition:color .15s}
@@ -548,7 +565,28 @@ src="https://www.facebook.com/tr?id=2403674420141513&ev=PageView&noscript=1"/></
     <div class="sec-head rv">
       <div class="eyebrow">Trust</div>
       <h2>Security and compliance, by design.</h2>
-      <p>Built for U.S. financial data from day one. Three are live and three are underway. We list both rather than only the finished ones.</p>
+      <p>Bank connections with Plaid. Business intelligence informed by LexisNexis, Experian Business, TransUnion, and Equifax reports. One private Fundhub workspace.</p>
+    </div>
+    <div class="provider-rail rv" aria-label="Partnered with">
+      <div class="label">Partnered with</div>
+      <div class="provider-viewport">
+        <div class="provider-logos">
+        <div class="provider-set">
+          <div class="provider-logo"><img src="/assets/vendor-credibility/plaid.svg" alt="Plaid" width="150" height="55" loading="lazy"></div>
+          <div class="provider-logo"><img src="/assets/vendor-credibility/lexisnexis.svg" alt="LexisNexis" width="150" height="55" loading="lazy"></div>
+          <div class="provider-logo"><img src="/assets/vendor-credibility/experian.svg" alt="Experian Business" width="150" height="55" loading="lazy"></div>
+          <div class="provider-logo"><img src="/assets/vendor-credibility/transunion.svg" alt="TransUnion" width="150" height="55" loading="lazy"></div>
+          <div class="provider-logo"><img src="/assets/vendor-credibility/equifax.svg" alt="Equifax" width="150" height="55" loading="lazy"></div>
+        </div>
+        <div class="provider-set" aria-hidden="true">
+          <div class="provider-logo"><img src="/assets/vendor-credibility/plaid.svg" alt="Plaid" width="150" height="55" loading="lazy"></div>
+          <div class="provider-logo"><img src="/assets/vendor-credibility/lexisnexis.svg" alt="LexisNexis" width="150" height="55" loading="lazy"></div>
+          <div class="provider-logo"><img src="/assets/vendor-credibility/experian.svg" alt="Experian Business" width="150" height="55" loading="lazy"></div>
+          <div class="provider-logo"><img src="/assets/vendor-credibility/transunion.svg" alt="TransUnion" width="150" height="55" loading="lazy"></div>
+          <div class="provider-logo"><img src="/assets/vendor-credibility/equifax.svg" alt="Equifax" width="150" height="55" loading="lazy"></div>
+        </div>
+        </div>
+      </div>
     </div>
     <div class="opts rv">
       <div class="opt"><div class="ix">S-01</div><div class="t">AES-256 encryption</div><div class="d">Data encrypted in transit and at rest across the platform and its infrastructure.</div><div class="chip on"><span class="cd"></span>Active</div></div>
@@ -633,12 +671,13 @@ src="https://www.facebook.com/tr?id=2403674420141513&ev=PageView&noscript=1"/></
   </div>
 </section>
 
-<footer>
+<footer id="app-store">
   <div class="wrap">
     <div class="foot-top">
       <div class="foot-brand">
         <a href="/" class="brand"><span class="logo inv" role="img" aria-label="fundhub" style="width:118px;height:24px"></span></a>
         <p>Fundhub helps business owners find and apply for financing through a network of funding partners. We are not a direct lender.</p>
+        <div class="app-store"><span class="label">Fundhub Portal · iOS</span><a href="https://apps.apple.com/us/app/fundhub-portal/id6823985032" target="_blank" rel="noopener noreferrer" aria-label="Download Fundhub Portal on the App Store"><img src="/assets/vendor-credibility/app-store.svg" alt="Download on the App Store" width="180" height="60" loading="lazy"></a></div>
       </div>
       <div class="foot-cols">
         <div class="foot-col">
