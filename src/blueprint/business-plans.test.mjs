@@ -110,7 +110,7 @@ test("step reports whitelist keys and preserve per-business scope with honest st
   await write("save_step", { stepKey: "formation", businessPlanId: PLAN, status: "reported_complete", note: "Filed; waiting for the state response.", targetDate: "2026-12-01" });
   let view = await write("save_step", { stepKey: "formation", businessPlanId: PLAN2, status: "blocked", note: "Need help." });
   assert.equal(view.stepProgress.length, 2); assert.equal(view.stepProgress[0].verification, "client_reported"); assert.equal(view.businesses[0].evidence.formation.status, "not_added");
-  view = await write("save_step", { stepKey: "formation", businessPlanId: PLAN, status: "in_progress" }); assert.equal(view.stepProgress.length, 2);
+  view = await write("save_step", { stepKey: "formation", businessPlanId: PLAN, status: "in_progress" }); assert.equal(view.stepProgress.length, 2); assert.equal(view.stepProgress.find(s => s.businessPlanId === PLAN).note, "Filed; waiting for the state response."); assert.equal(view.stepProgress.find(s => s.businessPlanId === PLAN).targetDate, "2026-12-01");
   for (const input of [{ stepKey: "invented", status: "reported_complete" }, { stepKey: "budget", status: "in_progress", businessPlanId: DOC }, { stepKey: "budget", status: "in_progress", note: "a".repeat(1501) }, { stepKey: "budget", status: "in_progress", targetDate: "2026-02-31" }]) await assert.rejects(write("save_step", input));
   assert.equal(PREPARATION_PROGRESS_KEYS.length, 17);
 });
