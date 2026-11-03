@@ -177,10 +177,35 @@ test.describe("campaign manager: partner select", () => {
   test("switching to another partner re-reads for that partner, not the first", async ({ page }) => {
     const b = await open(page, { partner: PARTNER_A });
     await expect(page.locator("#scopeName")).toHaveText("Acme Funding");
+
+    // This select performs a full navigation. Stall the new document's real
+    // deferred reader past the label assertion's unchanged five-second limit.
+    // Start that stall only after selectOption has actually returned.
+    let selectionReturned;
+    const selected = new Promise((resolve) => { selectionReturned = resolve; });
+    let readerHeldMs = 0;
+    await page.route("**/app/data.js", async (route) => {
+      await selected;
+      const started = Date.now();
+      await new Promise((resolve) => setTimeout(resolve, 6_000));
+      readerHeldMs = Date.now() - started;
+      await route.continue();
+    });
+
+    const target = new URL(page.url());
+    target.searchParams.set("partner_id", PARTNER_B);
     await page.locator("#partnerSel").selectOption(PARTNER_B);
+    selectionReturned();
+    await expect(page).toHaveURL(target.href);
+    await page.waitForLoadState("domcontentloaded");
     await expect(page.locator("#scopeName")).toHaveText("Beta Capital");
+    await expect.poll(() => {
+      const last = b.calls.list[b.calls.list.length - 1];
+      return last ? new URL(last, "http://x").searchParams.get("partner_id") : null;
+    }).toBe(PARTNER_B);
     const last = b.calls.list[b.calls.list.length - 1];
     expect(new URL(last, "http://x").searchParams.get("partner_id")).toBe(PARTNER_B);
+    expect(readerHeldMs).toBeGreaterThan(5_000);
   });
 });
 
