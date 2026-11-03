@@ -9,7 +9,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function requireBlueprintPlanScope(req, res, deps = {}) {
   res.setHeader("cache-control", "private, no-store");
   const database = deps.db || db;
-  const principal = await (deps.requirePrincipal || requirePrincipal)(req, res, ["client"], { db: database });
+  const authenticate = deps.requirePrincipal || requirePrincipal;
+  const principal = await authenticate(req, res, ["client"], { db: database });
   if (!principal) return null;
   if (principal.kind !== "client" || !UUID.test(principal.orgId || "") || !UUID.test(principal.clientId || "")) { res.status(403).json({ ok: false, error: "forbidden", message: "Sign in with your client account to open your plan." }); return null; }
   const scope = { orgId: principal.orgId, clientId: principal.clientId, now: deps.now ? deps.now() : new Date() };

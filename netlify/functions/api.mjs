@@ -72,6 +72,9 @@ import readBankInbox from "../../api/read/bank-inbox.mjs";
 import readBlueprintCombinedApproval from "../../api/read/blueprint-combined-approval.mjs";
 import blueprintStaffActions from "../../api/blueprint/staff-actions.mjs";
 import blueprintDeclines from "../../api/blueprint/declines.mjs";
+import blueprintClientPlan from "../../api/blueprint/plan.mjs";
+import blueprintBusinessPlans from "../../api/blueprint/business-plans.mjs";
+import blueprintLetterMailing from "../../api/blueprint/letter-mailing.mjs";
 import readFundingRounds from "../../api/read/funding-rounds.mjs";
 import readAffiliates from "../../api/read/affiliates.mjs";
 import readAffiliatePortal from "../../api/read/affiliate-portal.mjs";
@@ -627,6 +630,9 @@ export const ROUTES = {
   // Client session = own file (read, paste, link a letter); staff = STAFF role
   // + client in org. Lender-book lines only for ROLE_SETS.LENDERS.
   "blueprint/declines": blueprintDeclines,
+  "blueprint/plan": blueprintClientPlan,
+  "blueprint/business-plans": blueprintBusinessPlans,
+  "blueprint/letter-mailing": blueprintLetterMailing,
 
   // read/underwrite runs the vendored UnderwriteIQ Lite engine over the same
   // tradeline rows read/tradelines and read/finance-os already serve to

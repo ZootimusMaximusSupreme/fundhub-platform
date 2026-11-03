@@ -411,9 +411,9 @@ test('a $97 quote does not confirm payment and explicit authorization submits it
   expect(mailRequests[1]).toEqual({action:'confirm',orderId:ORDER,quoteVersion:1,paymentOptionId:'offline-checkout',authorization:true,idempotencyKey:ORDER});
   await expect(app).toContainText('$97.00 · payment pending');await expect(app).toContainText('Payment, mailing acceptance and delivery are separate statuses.');
   mailingData.orders[0].status='mailed';mailingData.orders[0].envelopes=[{bureau:'EX',status:'accepted',trackingUrl:'https://offline-tracking.example/'+ORDER}];
-  await app.getByRole('button',{name:'Check request status',exact:true}).click();await expect(app).toContainText('$97.00 · mailed');
+  await app.getByRole('button',{name:'Check request status',exact:true}).click();await expect(app).toContainText('$97.00 · Submitted for mailing');
   expect(mailRequests.at(-1)).toEqual({action:'status',orderId:ORDER});
-  await page.reload();await openLetters(app);await expect(app).toContainText('$97.00 · mailed');
+  await page.reload();await openLetters(app);await expect(app).toContainText('$97.00 · Submitted for mailing');
   expect(mailRequests.filter(r=>r.action==='confirm')).toHaveLength(1);expect(state.stepProgress).toHaveLength(0);
 });
 

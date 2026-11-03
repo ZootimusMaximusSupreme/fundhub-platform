@@ -153,6 +153,17 @@ describe("the extraction is faithful to the code", () => {
       "these routes' gates could not be traced from the code");
   });
 
+  test("Blueprint buyer routes trace their shared session and paid-access gate", () => {
+    for (const key of ["blueprint/plan", "blueprint/business-plans", "blueprint/letter-mailing"]) {
+      const endpoint = data.endpoints.find((row) => row.key === key);
+      assert.equal(endpoint.gate.kind, "wrapper");
+      assert.deepEqual(endpoint.gate.principals, ["client"]);
+      assert.match(endpoint.gate.note, /own client session and active paid Blueprint/);
+      assert.equal(reaches({ type: "principal", subject: "client" }, endpoint.gate).reachable, true);
+      assert.equal(reaches({ type: "role", subject: "owner" }, endpoint.gate).reachable, false);
+    }
+  });
+
   test("staff payout gates trace the real shared duty helper and preserve the owner read-only branch", () => {
     const read = data.endpoints.find((endpoint) => endpoint.key === "read/staff-payout-account");
     const write = data.endpoints.find((endpoint) => endpoint.key === "staff/payout-account");
