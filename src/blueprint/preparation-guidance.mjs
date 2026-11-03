@@ -29,6 +29,42 @@ const SOURCES = Object.freeze({
 const text = (v, limit = 600) => typeof v === "string" ? v.trim().slice(0, limit) : "";
 const link = (label, url) => ({ label, url });
 
+// Official destinations checked 2026-11-02. The SBA directory is the fallback
+// when a direct destination could not be confirmed; do not copy its stale
+// Arizona SOS, tax-office, moved or CAPTCHA destinations into client links.
+const FORMATION_OFFICES = Object.freeze([
+  ["AL", "Alabama", "https://www.sos.alabama.gov/business-services"],
+  ["AZ", "Arizona", "https://azcc.gov/corporations"],
+  ["AR", "Arkansas", "https://www.sos.arkansas.gov/business-commercial-services-bcs"],
+  ["CA", "California", "https://www.sos.ca.gov/business-programs/business-entities/forms/"],
+  ["CO", "Colorado", "https://www.coloradosos.gov/pubs/business/businessHome.html"],
+  ["CT", "Connecticut", "https://business.ct.gov/"],
+  ["HI", "Hawaii", "https://hbe.ehawaii.gov/BizEx/home.eb"],
+  ["ID", "Idaho", "https://sos.idaho.gov/business-resources/"],
+  ["KS", "Kansas", "https://sos.ks.gov/businesses/businesses.html"],
+  ["KY", "Kentucky", "https://onestop.ky.gov/Pages/default.aspx"],
+  ["LA", "Louisiana", "https://geauxbiz.sos.la.gov/"],
+  ["MD", "Maryland", "https://businessexpress.maryland.gov/"],
+  ["MI", "Michigan", "https://www.michigan.gov/lara/bureau-list/cscl/corps/limited-liability-co"],
+  ["MS", "Mississippi", "https://www.ms.gov/sos/onestopshop"],
+  ["NE", "Nebraska", "https://sos.nebraska.gov/business-services/corporate-and-business"],
+  ["NV", "Nevada", "https://orion.nv.gov/portal/public/"],
+  ["NY", "New York", "https://dos.ny.gov/forming-limited-liability-company-new-york"],
+  ["OK", "Oklahoma", "https://www.sos.ok.gov/business/forms.aspx"],
+  ["OR", "Oregon", "https://sos.oregon.gov/business/register/pages/default.aspx"],
+  ["PA", "Pennsylvania", "https://www.pa.gov/agencies/dos/programs/business"],
+  ["RI", "Rhode Island", "https://www.sos.ri.gov/divisions/business-services"],
+  ["SC", "South Carolina", "https://sos.sc.gov/online-filings/business-entities"],
+  ["SD", "South Dakota", "https://sosenterprise.sd.gov/BusinessServices/Business/RegistrationInstr.aspx"],
+  ["IN", "Indiana", "https://inbiz.in.gov/BOS/BusinssEntity/StartMyBusiness"],
+  ["NC", "North Carolina", "https://www.sosnc.gov/divisions/business_registration"],
+  ["ND", "North Dakota", "https://www.sos.nd.gov/business"],
+  ["VA", "Virginia", "https://www.scc.virginia.gov/businesses/new-business-resources/"],
+  ["WA", "Washington", "https://www.sos.wa.gov/corporations-charities"],
+  ["WV", "West Virginia", "https://business4.wv.gov/Pages/default.aspx"],
+  ["WY", "Wyoming", "https://sos.wyo.gov/Business/Default.aspx"]
+]);
+
 export function websitePrompt(business = {}) {
   return [
     `Write a clear website for ${text(business.name || business.legalName, 120) || "[business name]"}.`,
@@ -43,8 +79,8 @@ export function websitePrompt(business = {}) {
 
 export function formationDestination(context = {}) {
   const state = text(context.business?.formationState || context.business?.state || context.homeState, 80);
-  // Arizona LLCs are filed with the Corporation Commission, not its SOS.
-  if (/^(AZ|Arizona)$/i.test(state)) return link("Open Arizona’s LLC filing guide", "https://azcc.gov/corporations");
+  const found = FORMATION_OFFICES.find(([code, name]) => [code, name.toUpperCase()].includes(state.toUpperCase()));
+  if (found) return link(`Open ${found[1]}’s ${found[0] === "AZ" ? "LLC filing guide" : "business filing office"}`, found[2]);
   return link(state ? `Find the ${state} filing office` : "Find your state filing office", SOURCES.stateOffice);
 }
 
