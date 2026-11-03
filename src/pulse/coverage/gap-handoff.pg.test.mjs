@@ -278,17 +278,27 @@ test("handoff SQL: immediate survey setter task and recent legacy task", { skip:
     { clients: [x], events: [s], tasks: [task()] }, 0);
   await expectN(t, "RED: unpromoted entry task is not a survey call task", T, params,
     { clients: [x], events: [s], tasks: [task({ body: "setter-entry:old" })] }, 1);
+  await expectN(t, "RED: a later survey task cannot cover this completion", T, params,
+    { clients: [x], events: [s], tasks: [task({ body: `survey-completed:${uuid()}` })] }, 1);
   await expectN(t, "GREEN: new survey fallback task", T, params,
     { clients: [x], events: [s], tasks: [task({ source_workflow: "setter-survey-done", created_at: ago(119) })] }, 0);
   await expectN(t, "GREEN: legacy 15-minute task in seven-day window", T, params,
     { clients: [x], events: [s], tasks: [task({ source_workflow: "setter-survey-done",
       body: s.id, created_at: ago(105), updated_at: ago(105) })] }, 0);
+  await expectN(t, "RED: a legacy task for another event cannot cover this completion", T, params,
+    { clients: [x], events: [s], tasks: [task({ source_workflow: "setter-survey-done",
+      body: uuid(), created_at: ago(105), updated_at: ago(105) })] }, 1);
   await expectN(t, "RED: task for another lead is not this lead's task", T, params,
     { clients: [x], events: [s], tasks: [task({ client_id: uuid() })] }, 1);
-  await expectN(t, "GREEN: booking within grace resolves the no-book task", T, params,
-    { clients: [x], events: [s, ev("booking.created", 110, x)] }, 0);
+  await expectN(t, "GREEN: booking already present at survey completion", T, params,
+    { clients: [x], events: [s, ev("booking.created", 121, x)] }, 0);
+  await expectN(t, "RED: booking ten minutes later does not hide the missed immediate task", T, params,
+    { clients: [x], events: [s, ev("booking.created", 110, x)] }, 1);
   await expectN(t, "RED: a reply does not cancel the immediate setter task", T, params,
     { clients: [x], events: [s, ev("message.inbound", 110, x)] }, 1);
+  const earlier = ev("survey.completed", 160, x, { email: "former@gmail.com" });
+  await expectN(t, "GREEN: task uses earliest six-hour cohort for same client", T, params,
+    { clients: [x], events: [earlier, s], tasks: [task({ body: `survey-completed:${earlier.id}` })] }, 0);
 });
 
 /* ------------------------------------------------------------------ check 2: /roadmap contact */
