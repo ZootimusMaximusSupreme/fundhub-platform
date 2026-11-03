@@ -20,7 +20,7 @@ export const SHELL_ALL = Object.freeze([
   "closer-dashboard.html", "setter-dashboard.html", "my-numbers.html", "sales-floor.html", "pipeline.html",
   "client-control-panel.html", "messaging.html", "calendar.html", "documents.html",
   "company-brain.html", "ops-admin.html", "galaxy.html", "agent-editor.html",
-  "automations.html", "products-commissions.html", "staff-teams.html", "csm-queue.html",
+  "automations.html", "products-commissions.html", "staff-teams.html", "company-cash.html", "csm-queue.html",
   "inquiry-remover.html", "affiliate.html", "client-portal.html", "partner-galaxy.html",
   "brand-studio.html", "partner-training.html", "campaign-manager.html", "social-studio.html",
   "creative-factory.html", "hiring.html", "marketing-command-center.html", "finance-os.html",
@@ -67,6 +67,8 @@ export const SIDEBAR_SECTION_DESKS = Object.freeze({
 
 const ALL = new Set(SHELL_ALL);
 const STAFF_MONEY = [...SHELL_STAFF_MONEY];
+// Owner account-menu desks are shell-routed but intentionally absent from sidebar groups.
+const ACCOUNT_MENU_DESKS = Object.freeze(["company-cash.html"]);
 
 /** Shell-guarded desks only — not orphan HTML on disk. */
 export function isRoutedDesk(file) {
@@ -77,7 +79,8 @@ export function isRoutedDesk(file) {
 export function scopedRoutedDesks() {
   const files = new Set([
     ...Object.values(SIDEBAR_SECTION_DESKS).flat(),
-    ...STAFF_MONEY
+    ...STAFF_MONEY,
+    ...ACCOUNT_MENU_DESKS
   ]);
   return [...files].filter(isRoutedDesk).sort();
 }

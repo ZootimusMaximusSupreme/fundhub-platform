@@ -42,6 +42,7 @@ flowchart TD
     CAN --> A_merchant[merchant — 1 route]
     CAN --> A_money[money — 17 routes]
     CAN --> A_ops[ops — 3 routes]
+    CAN --> A_owner[owner — 2 routes]
     CAN --> A_partner_brand[partner-brand — 1 route]
     CAN --> A_partner_marketing[partner-marketing — 5 routes]
     CAN --> A_partners[partners — 1 route]
@@ -71,7 +72,7 @@ flowchart TD
 
 ## What they can reach
 
-**334 of 350 routes.**
+**336 of 352 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -266,6 +267,8 @@ flowchart TD
 | `/api/ops/notify-owner` | POST | anyone |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
+| `/api/owner/company-bank` | GET, POST | owner |
+| `/api/owner/company-cash` | GET, POST | owner |
 | `/api/paid-services` | GET, POST | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
 | `/api/partner-addons` | GET, POST | owner, admin |
 | `/api/partner-brand` | GET, PUT | employees: owner, admin<br>plus: partner |
@@ -419,7 +422,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**16 of 350 routes.**
+**16 of 352 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

@@ -1,5 +1,6 @@
 // Finish-853 batch 20: the staff rail. public/app/sidebar.fragment.html is the one source; shell.js
-// carries a copy it mounts, and every desk carries an inline copy. A real Chromium opens desks as each
+// carries a copy it mounts. Existing desks carry inline copies; the owner-only company cash desk mounts
+// the same fragment into an empty aside through the guarded shell. A real Chromium opens desks as each
 // role (fake session, fake /api, nothing leaves the machine) and judges what the rail shows, how its
 // section heads fold, the collapse button, the phone drawer, and the eleven rows the file lists but no
 // role is shown.
@@ -16,6 +17,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.
 const APP = path.join(ROOT, "public/app");
 const FRAGMENT = fs.readFileSync(path.join(APP, "sidebar.fragment.html"), "utf8");
 const SHELL = fs.readFileSync(path.join(APP, "shell.js"), "utf8");
+const DYNAMIC_RAIL_DESK = "company-cash.html";
+const COMPANY_STAFF = { id: "00000000-0000-4000-8000-000000000002",
+  org_id: "00000000-0000-4000-8000-000000000001" };
 
 const decode = (t) => t.replace(/&amp;/g, "&");
 const ASIDE = FRAGMENT.replace(/^<!--[\s\S]*?-->\s*/, "").trim();
@@ -73,7 +77,7 @@ const shown = (page) => page.evaluate(() => ({
 }));
 
 // ---------------------------------------------------------------------------------------------
-test("the file carries seven current sections and 34 links, shell.js mounts the same markup, and every desk's inline copy matches", () => {
+test("the file carries seven current sections and 34 links, shell.js mounts the same markup, and each inline desk matches", () => {
   assert.deepEqual(GROUPS.map((g) => g.key), ["relationships", "work", "clients", "insights", "marketing", "automation", "settings"]);
   assert.deepEqual(GROUPS.map((g) => g.title), ["Relationships", "Your work", "Clients", "Insights", "Marketing", "Automation", "Manage"]);
   assert.equal(LINKS.length, 34);
@@ -89,11 +93,46 @@ test("the file carries seven current sections and 34 links, shell.js mounts the 
     .filter(([, text]) => /<aside\s+class="side"/.test(text));
   assert.ok(copies.length >= 30, `${copies.length} desks carry the rail`);
   for (const [file, text] of copies) {
+    if (file === DYNAMIC_RAIL_DESK) {
+      assert.match(text, /<aside class="side" id="side" aria-label="Workspace navigation"><\/aside>/,
+        "company cash has exactly the empty shared-shell mount");
+      assert.match(text, /<script defer src="shell\.js"><\/script>/,
+        "company cash loads the guarded shared shell");
+      assert.match(text, /<link id="fh-crm-sidebar-css" rel="stylesheet" href="\/app\/crm-sidebar\.css(?:\?v=workspace-20261018)?">/,
+        "company cash loads the canonical rail CSS");
+      assert.equal((text.match(/<aside\b/g) || []).length, 1, "company cash has no duplicate rail");
+      continue;
+    }
     const inline = text.match(/<aside\s+class="side"[^>]*>[\s\S]*?<div class="side-foot"[\s\S]*?<\/aside>/);
     assert.ok(inline, `${file} has the rail`);
     const normalized = inline[0].replace(/<a class="navitem on"/g, '<a class="navitem"');
     assert.equal(normalized, ASIDE, `${file}'s inline rail equals the fragment`);
   }
+});
+
+test("company cash mounts the canonical 34-row rail once and offers only the owner account-menu entry", { timeout: 60_000 }, async () => {
+  const page = await makePage(lab, { role: "owner", staff: COMPANY_STAFF,
+    api: (call) => call.path === "/api/owner/company-bank"
+      ? { ok: true, configured: false, items: [], accounts: [], transactions: [] }
+      : call.path === "/api/owner/company-cash"
+        ? { ok: true, summary: { available_cents: null, missing: ["business_bank_balance"] },
+          account: null, obligations: [], recurring_candidates: [] } : undefined });
+  await page.goto(`${lab.origin}/app/${DYNAMIC_RAIL_DESK}`, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => document.documentElement.classList.contains("fh-page-access-confirmed"),
+    null, { polling: 100, timeout: 20_000 });
+  await page.locator('#side[data-fh-wired="1"]').waitFor({ state: "attached" });
+  assert.equal(await page.locator("#side").count(), 1, "one rail mount");
+  const mounted = await page.locator("#side a.navitem").evaluateAll((nodes) =>
+    nodes.map((node) => node.getAttribute("href").split("?")[0]));
+  assert.deepEqual(mounted, LINKS.map((link) => link.href), "all 34 canonical links mount in order");
+  assert.deepEqual((await shown(page)).links.slice().sort(), OWNER.slice().sort(),
+    "company cash shows the same owner rail links as the other desks");
+  assert.equal(await page.locator('#side a.navitem[href="company-cash.html"]').count(), 0,
+    "company cash is an account-menu-only destination");
+  await page.locator("#fh-shell-chip-show").click();
+  assert.equal(await page.locator('.fh-account-menu a.fh-account-company[href="company-cash.html"]').isVisible(), true);
+  assert.equal(await page.locator(".fh-account-menu a.fh-account-company").count(), 1);
+  await page.close();
 });
 
 // ---------------------------------------------------------------------------------------------

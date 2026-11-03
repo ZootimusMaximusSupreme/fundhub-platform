@@ -1,7 +1,7 @@
 {
   "task": "Fundhub owner cash view and Plaid readiness",
   "owner_lane": "finance",
-  "status": "employee_payout_bank_build_in_progress",
+  "status": "owner_cash_build_authorized_in_progress",
   "approved_2026_11_02": "Chris approved the employee account-menu Plaid placement and owner People status placement; he also requested a payout push notification. He wants distribution available after money clears but has not set a new payout rate or authorized an automatic money transfer.",
   "placement_draft": "ops/workflows/finance-os-payout-bank-placement-2026-11-02.html",
   "dots_comma_account_note": {
@@ -41,9 +41,9 @@
     ]
   },
   "current_split": [
-    "finance_os_map: staff payout account data, self-link API, owner masked status API; no UI or money sends",
-    "employee_ui: signed-in closer/sales-manager account menu and owner People status after PR #378 ownership clears",
-    "root: commission.paid iPhone push and integration/release checks after backend and UI"
+    "backend: company-only bank storage/link/sync and cash obligations math; no client tables or money sends",
+    "root: urgent approved homepage publication in separate front-house release, then router/manifest and company UI integration",
+    "independent review: owner/org boundaries, cash unknowns and real scratch SQL; read only"
   ],
   "shared_context": "Chris wants Finance OS for his own internal use, tracking Commas, WAP, and financing receipts into Arizona Financial, a monthly CRS soft-pull reserve, Colin ad funding, tech subscriptions, and available cash. Existing FinanceOS is client-facing; its roll-up is client cash, not company treasury. Chrome confirms the Plaid team matching local keys has an unfinished full-production request. The free Trial form is open for real bank data; it includes Transactions and Balance but not Transfer.",
   "owner_cash_spec": {
@@ -63,30 +63,169 @@
   },
   "workflows": [
     {
-      "id": "plaid_status",
-      "owner": "plaid_status agent",
-      "status": "done",
-      "prompt": "Read-only: inspect Plaid configuration and official product terms. Determine which status is evidenced and which needs dashboard access. Never display secrets or initiate a transfer.",
-      "manifest": "No files changed. Local Plaid sandbox is configured; live transfer flag is absent. Plaid dashboard is not accessible from this session."
+      "id": "company_backend",
+      "owner": "vendor_surfaces",
+      "status": "verified_source_final_independent_regrade_pending",
+      "prompt": "Build only approved owner-only company bank/cash backend paths in new Finance branch; reuse reviewed prior draft patterns, no production/provider/customer actions, prove with meaningful unit and actual scratch PostgreSQL tests before frontend."
     },
     {
-      "id": "finance_os_map",
-      "owner": "finance_os_map agent",
-      "status": "done",
-      "prompt": "Read-only: map existing FinanceOS, cash receipt, CRS pull cost, ad spend and subscription sources. Identify the smallest owner cash workflow and exact source files. Do not change files.",
-      "manifest": "No files changed. Client FinanceOS and client transfers cannot represent company cash. Commas receipts exist; CRS pull count exists but per-request cost is null; Meta spend data exists. Arizona Financial company connection and actual invoice pricing are not observed."
-    },
-    {
-      "id": "owner_cash_spec",
+      "id": "homepage_release",
       "owner": "root",
-      "status": "waiting_for_account_facts",
-      "prompt": "Use the map and owner request to record the owner cash workflow, define source-of-truth fields and states, then implement only verified in-scope changes. Run required checks and use the protected PR release path. Do not move real money without exact recipient, amount, and owner authorization.",
-      "manifest": "This board only; spec recorded before back-end work."
+      "status": "priority_in_progress",
+      "prompt": "Publish reviewed homepage plus exact handed-off setter delta via normal protected ordered release; verify live assets and browser. Do not hold it for the new company view."
+    },
+    {
+      "id": "company_cash_tripwire",
+      "owner": "vendor_evidence",
+      "status": "verified_component_three_shared_paths_parked",
+      "prompt": "Add read-only company bank/cash stored-integrity truth shared by existing hourly money-operations and daily gap; register both new owner routes/page, prove malformed reads, cross-org/selected account and paid match drift red, zero connection not a readiness claim. No provider or money action; exact integration files owned in assignment."
+    },
+    {
+      "id": "company_ui",
+      "owner": "plaid_pulse_coverage",
+      "status": "prepared_awaiting_actual_shared_gate",
+      "prompt": "Four owner-only UI files prepared with frozen-principal fences and current API contract. Final browser proof must use real shared shell/nav/router; no diagnostic bypass may count as release proof."
     }
   ],
   "decisions_needed": [
-    "Plaid Dashboard for the same client ID as local .env shows one team, Fundub LLC. Production onboarding is unfinished, no products are selected, and Transfer is not enabled. Actual contract quote remains unknown.",
-    "Actual CRS wholesale rate per soft pull and billing terms",
-    "Colin ad funding account and replenishment rule before automating payment"
-  ]
+    "Business bank connection and selected business account must be completed in real Plaid Link; no connection observed yet",
+    "Actual current CRS invoice total and surcharges for exact monthly reconciliation",
+    "Colin recipient and replenishment rule are unknown; no automatic ad payout configured"
+  ],
+  "owner_cash_build_plan": {
+    "authorization": "Chris: Make everything ready; make sure it ships together. Later urgent homepage publication takes release priority; company setup continues in parallel without delaying that approved site.",
+    "role": "Fundhub owner only",
+    "one_job": "See company bank cash less unpaid CRS, approved ad funding and due tech obligations.",
+    "first_question": "How much company cash is available after the bills and reserves?",
+    "reuse": "Existing requireAuth staff-session owner checks and recent staff MFA, shared Plaid HTTP/token encryption/transaction mapper, staff shell/Astra, existing CRS request and ad metrics sources. Company rows stay separate from client FinanceOS. Reuse existing money-operations hourly beat plus daily gap adapter, instead of adding another beat. Company cash is linked only from the existing owner account menu. The canonical staff sidebar and generated copies remain unchanged; no staff rail item is added.",
+    "data": "New company-only bank and obligation storage; owner-only /api/owner/company-bank and /api/owner/company-cash. Exact amount is unknown when bank/cost inputs are incomplete. Processor receipts are not added to bank balances. Link is read only; no transfer action.",
+    "backend_files": [
+      "src/finance/company-plaid.mjs",
+      "src/finance/company-plaid.test.mjs",
+      "src/finance/company-cash.mjs",
+      "src/finance/company-cash.test.mjs",
+      "src/finance/company-cash.pg.test.mjs",
+      "api/owner/company-bank.mjs",
+      "api/owner/company-cash.mjs",
+      "src/http/company-cash.test.mjs",
+      "db/migrations/548_company_cash_workspace.sql"
+    ],
+    "integration_files": [
+      "db/expected-migrations.mjs",
+      "netlify/functions/api.mjs",
+      "public/app/company-cash.html",
+      "public/app/company-cash.js",
+      "public/app/company-cash.css",
+      "public/app/shell.js",
+      "e2e/company-cash.spec.mjs",
+      "docs/journeys/finance-os-trends-flow.md",
+      "docs/journeys/heartbeat-flow.md",
+      "ops/workflows/finance-os-owner-cash-2026-11-02.json",
+      "src/pulse/beats/lib/money-company-cash-truth.mjs",
+      "src/pulse/beats/lib/money-company-cash-truth.test.mjs",
+      "src/pulse/coverage/gap-company-cash.mjs",
+      "src/pulse/coverage/gap-company-cash.test.mjs",
+      "src/pulse/coverage/gap-company-cash.pg.test.mjs",
+      "src/pulse/beats/lib/money-hourly.mjs",
+      "src/pulse/beats/lib/money-hourly.test.mjs",
+      "src/pulse/beats/beat-money-operations.mjs",
+      "src/pulse/beats/beat-money-operations.test.mjs",
+      "src/pulse/coverage/modules.mjs",
+      "src/pulse/registry.mjs",
+      "src/pulse/tripwires.mjs",
+      "src/pulse/tripwires.test.mjs",
+      "src/pulse/coverage/INDEX.md",
+      "ops/workflows/finance-os-company-pulse-pending-2026-11-02.patch.gz",
+      "public/app/workspace-ui.css",
+      "src/http/app-nav-reachability.test.mjs",
+      "e2e/workspace-brand-polish.spec.mjs",
+      "public/app/crm-sidebar.css",
+      "docs/journeys/role-owner-intended.md",
+      "docs/journeys/CHANGELOG.md"
+    ],
+    "risk": "Wrong company scope or double-counted/unpriced reserves could misstate available cash. Prove owner/other-role/other-org refusals, null-cost behavior, matched payment reconciliation, migration with actual fundhub_app, and browser states before release.",
+    "phase": "Actual full-shell source integration verified; final immutable commit/ordered publication and production configuration remain pending.",
+    "no_owner_assumptions": [
+      "Do not choose Colin payee, amount, threshold or cadence",
+      "Do not change employee commission rates",
+      "Do not claim provider approval, live business bank link or actual transfers",
+      "Do not incur paid plan/contract or submit a real money transfer"
+    ],
+    "production_owner_plaid_configuration": "Read-only production-functions lookup on 2026-11-03 found all five OWNER_PLAID_* settings absent. No settings or credentials changed. Real account connection and cost inputs remain unproved."
+  },
+  "verified_pricing": {
+    "status": "Actual provider cost evidence was checked privately. Use actual invoice amounts, products and surcharges in owner-only stored records; no rates, terms, or email identifiers are published in this source board.",
+    "rule": "A ledger request may contain multiple products; do not multiply request count by a hardcoded wholesale price. Unknown costs remain unknown until covered by a verified invoice cutoff."
+  },
+  "current_source_receipt": {
+    "state": "backend_verified_ui_prepared_integration_held_for_earlier_release",
+    "backend": "22 focused unit/HTTP PASS, 3 real scratch PostgreSQL fundhub_app cases PASS0skip including encrypted Link/sync/manual Balance and repeatable-read snapshot; no fixtures remain. TypeScript/lint4651/diff PASS.",
+    "independent_review": "Independent root rerun on final nine-file source:22focused unit/HTTP PASS,3real fundhub_app PostgreSQL PASS0skip including fake-provider encryptedLink/sync/explicitBalance and repeatable-read snapshot; all rollback-only. Earlier independent review found no remaining concrete defect after its22unit/2PG regrade. No production/provider execution inferred.",
+    "ui": "Four new files prepared, syntax/lint pass. Actual shared-shell browser tests and marked release screenshots pending. Diagnostic screenshots are not release proof.",
+    "heartbeat": "14 focused tests and2realPG pass0skip; three shared source additions temporarily parked to unblock older Blueprint publication. Routing gate remains incomplete.",
+    "parking_manifest": "/private/tmp/fundhub-company-pulse-parking-20261102/manifest.json",
+    "release_priority": "Urgent approved fundhub.ai PR389 proceeds first. Company scope cannot block it or older Blueprint source. Router/nav handoff is conditional on inheriting final388+389 via normal release path.",
+    "external_prerequisites": [
+      "Real business bank connection/account choice not completed",
+      "Actual provider approval/contract pricing still external; no paid plan accepted",
+      "Exact current invoice and monthly ad/tech review records needed; Colin recipient/rule not chosen",
+      "No real transfer, provider bank request, push delivery or authenticated production company-cash path proved"
+    ],
+    "parked_repo_patch": "ops/workflows/finance-os-company-pulse-pending-2026-11-02.patch.gz",
+    "preparation": "Use normal helper to inherit current protected parent source, then stop before preflight/archive/push/PR so router/nav integration can finish under the conditional owner handoff. No public release or extra CI starts during this preparation.",
+    "parked_patch_sha256": "1468d149bc983f19a9946a3fc7350f629b04c4f4bfc30c3535bf386bccda3a31",
+    "parking_format": "gzip preserves the exact unified patch context, whose blank context lines otherwise trigger whitespace checks when embedded as plain source."
+  },
+  "integration_proof_2026_11_03": {
+    "company_browser": {
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Real shared shell, local synthetic owner/API fixtures, 1440/390 states and controls"
+    },
+    "owner_menu_browser": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    "focused_integration": {
+      "passed": 96,
+      "failed": 0,
+      "skipped": 0
+    },
+    "company_storage_pg": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "role": "fundhub_app",
+      "scope": "Actual loopback scratch SQL"
+    },
+    "pulse_pg": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "lint": "pass",
+    "typescript": "pass",
+    "rules": "pass",
+    "cdp_mobile": {
+      "lcp_ms": 1956,
+      "cls": 0.0817,
+      "interaction_ms": 96,
+      "scope": "Slow4G / 4x CPU, local fixture, no field INP"
+    },
+    "lighthouse_mobile_gzip": {
+      "version": "12.8.2",
+      "lcp_ms": 2497.31725,
+      "cls": 0.0805687,
+      "score": 0.96,
+      "scope": "Local synthetic owner fixture with actual gzip HTTP matching observed Netlify static delivery; same mobile Slow4G / 4x CPU profile",
+      "limitation": "LCP is only 2.68ms under budget; hosting and field INP unproved"
+    },
+    "original_uncompressed_lighthouse": {
+      "lcp_ms": 4073.5605,
+      "status": "red preserved; original server did not compress assets"
+    },
+    "production": "No company bank, cost inputs, provider readiness or payout proved"
+  }
 }

@@ -94,6 +94,7 @@ html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:var(--fh-side-w
 .fh-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
 .fh-scroll-x > table{min-width:max-content}
 .navitem:is(
+  [href="company-cash.html"],
   [href="finance-os.html"],
   [href="consent-capture.html"],
   [href="galaxy.html"],

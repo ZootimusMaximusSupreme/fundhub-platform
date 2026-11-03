@@ -75,6 +75,7 @@ test("slice 23-pages: scoped desks are routed, on disk, and in the pulse registr
   assert.ok(scoped.includes("financeos.html"));
   assert.ok(scoped.includes("lenders.html"));
   assert.ok(scoped.includes("bank-outreach.html"));
+  assert.ok(scoped.includes("company-cash.html"));
 
   for (const file of scoped) {
     assert.ok(fs.existsSync(path.join(APP_DIR, file)), `${file} missing on disk`);
@@ -100,6 +101,15 @@ test("slice 23-pages: buildChecks surfaces a desk dropped from the registry", ()
   assert.equal(missing[0].alreadyInRegistry, false);
   assert.match(missing[0].proof, /DESK_FILES/);
   assert.match(missing[0].proof, /Do not auto-fix/);
+});
+
+test("slice 23-pages: a missing owner account-menu desk goes red", () => {
+  const listed = new Set(PULSE_REGISTRY.map((row) => coverageKey(row)));
+  listed.delete("company-cash.html");
+  const missing = buildChecks(listed);
+  assert.deepEqual(missing.map((row) => row.file), ["company-cash.html"]);
+  assert.equal(missing[0].alreadyInRegistry, false);
+  assert.match(missing[0].proof, /DESK_FILES/);
 });
 
 test("slice 23-pages: the desk lists it carries equal public/app/shell.js, and every desk is on disk", () => {

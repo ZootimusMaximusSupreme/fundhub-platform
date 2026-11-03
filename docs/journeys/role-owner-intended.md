@@ -77,3 +77,12 @@ something to silently fix in either file.
 ## Staff payout destinations (owner-approved 2026-11-02)
 
 The People editor shows masked payout-bank status for an eligible closer or sales manager. Each employee links their own destination from their signed-in account menu. The owner view never shows Plaid credentials or changes the employee's bank. A bank link is not a money transfer, and the current commission Mark paid action only records a payout made outside Fundhub.
+
+
+## Company cash workspace (owner-approved 2026-11-02)
+
+Chris asked for his Fundhub LLC bank cash, exact CRS costs, reviewed ad replenishment and recurring tech expenses in one owner workspace, then directed the build and shared release. The owner opens Company cash from the account menu and returns through Team & payouts. Other staff, admins and clients cannot open company treasury or its APIs.
+
+Bank connection is to the business account with explicit read-only consent and recent MFA. The page keeps company bank data separate from client FinanceOS. Cash after tracked reserves stays unknown until the selected business bank and actual required costs are known. Exact posted-debit matching records a bill paid without moving money. Suggested recurring charges need owner review. No Colin recipient/rule, commission percentage or payout timing is invented. DOTS must use the business account; this build does not change its existing personal connection.
+
+Loading, empty, failed and populated states must work on desktop and phone. The page must clear private data and stop callbacks when the owner session changes or loses access. Source, fixture tests and deployment are distinct from an actual connected bank or real payout.

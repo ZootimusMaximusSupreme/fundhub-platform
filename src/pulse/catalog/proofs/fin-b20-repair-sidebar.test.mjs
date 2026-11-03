@@ -1,8 +1,8 @@
 // Finish-853 batch 20, repair cycle 1: the staff rail, held where the first cycle left a gap.
 //
-//   1. The exact set of desks. Every desk that loads shell.js carries the rail file's markup once, and the
-//      two pages that load it and carry none are named. A desk that loses its rail, or a new desk that
-//      forgets it, turns this red. (The first cycle only looked at desks that already had a rail and
+//   1. The exact set of desks. Existing desks carry the full inline rail once; company cash carries one
+//      empty aside for the guarded shared shell to mount. The two rail-less pages remain named. A desk
+//      that loses its rail, or a new desk that forgets it, turns this red. (The first cycle only looked at desks that already had a rail and
 //      asked for "at least 30".)
 //   2. All seven current section heads fold and unfold, including Automation with its menu rows
 //      un-hidden in a served copy of shell.js, and the heads inside the phone drawer.
@@ -34,12 +34,13 @@ const RAIL_DESKS = [
   "ops-admin.html", "partner-galaxy.html", "partner-training.html", "pipeline.html", "products-commissions.html",
   "sales-floor.html", "setter-dashboard.html", "social-studio.html", "staff-teams.html",
 ];
+const DYNAMIC_RAIL_DESKS = ["company-cash.html"];
 // Pages that load shell.js and draw no rail: the client's own portal (its own header) and the router page.
 const NO_RAIL = ["client-portal.html", "index.html"];
 
 const loadsShell = (text) => /<script[^>]*\bsrc=["'](?:\/app\/)?shell\.js(?:\?[^"']*)?["']/.test(text);
 
-test("rail desks: the exact set of pages that load shell.js with a rail is the named set, each carries the rail once, and only two pages load it without one", () => {
+test("rail desks: exact inline, dynamic shared-shell, and two rail-less page sets", () => {
   const pages = fs.readdirSync(APP).filter((f) => f.endsWith(".html") && f !== "sidebar.fragment.html").sort();
   const withShell = [];
   const asideCount = {};
@@ -48,11 +49,25 @@ test("rail desks: the exact set of pages that load shell.js with a rail is the n
     asideCount[file] = (text.match(/<aside\s+class="side"/g) || []).length;
     if (loadsShell(text)) withShell.push(file);
   }
-  const rail = withShell.filter((f) => asideCount[f] > 0);
+  const rail = withShell.filter((f) => asideCount[f] > 0 && !DYNAMIC_RAIL_DESKS.includes(f));
+  const dynamic = withShell.filter((f) => DYNAMIC_RAIL_DESKS.includes(f));
   const bare = withShell.filter((f) => asideCount[f] === 0);
   assert.deepEqual(rail, RAIL_DESKS, "the desks that carry the rail");
+  assert.deepEqual(dynamic, DYNAMIC_RAIL_DESKS, "only company cash uses the guarded dynamic mount");
   assert.deepEqual(bare, NO_RAIL, "the pages that load shell.js and carry no rail");
   for (const file of RAIL_DESKS) assert.equal(asideCount[file], 1, `${file} carries exactly one rail`);
+  for (const file of DYNAMIC_RAIL_DESKS) {
+    const text = fs.readFileSync(path.join(APP, file), "utf8");
+    assert.equal(asideCount[file], 1, `${file} has one rail mount`);
+    assert.match(text, /<aside class="side" id="side" aria-label="Workspace navigation"><\/aside>/,
+      `${file} starts with an empty rail mount`);
+    assert.match(text, /<script defer src="shell\.js"><\/script>/,
+      `${file} loads the guarded shared shell`);
+    assert.match(text, /<link id="fh-crm-sidebar-css" rel="stylesheet" href="\/app\/crm-sidebar\.css(?:\?v=workspace-20261018)?">/,
+      `${file} loads the canonical rail CSS`);
+    assert.equal(text.includes('<div class="side-foot"'), false,
+      `${file} must not duplicate the inline rail fragment`);
+  }
   for (const file of pages) {
     if (!withShell.includes(file)) assert.equal(asideCount[file], 0, `${file} draws a rail without loading shell.js, which wires it`);
   }
