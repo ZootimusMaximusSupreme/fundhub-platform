@@ -22,6 +22,8 @@ const opts = (env) => ({
 const cipherEnv = (env) => ({ ...env, PLAID_TOKEN_ENC_KEY: env.OWNER_PLAID_TOKEN_ENC_KEY });
 const cents = (value) => value === null || value === undefined ? null : toCents(value);
 const safeDay = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+const safeProviderCode = (value) => typeof value === "string" && /^[A-Z0-9_]{1,64}$/.test(value)
+  ? value : "PLAID_ERROR";
 
 async function transaction(db, fn) {
   const client = typeof db.connect === "function" ? await db.connect() : db === sharedDb ? await pool().connect() : db;
@@ -146,15 +148,26 @@ export async function companySync(db, { orgId, itemId, env = process.env, provid
   const accessToken = decryptPlaidToken(item.encrypted_access_token, {
     itemId: item.plaid_item_id, env: cipherEnv(env)
   });
-  const [accounts, changes] = await Promise.all([
-    provider.fetchAccounts(accessToken, opts(env)),
-    provider.syncTransactions(accessToken, { cursor: item.transactions_cursor }, opts(env))
-  ]);
-  if (!accounts.ok || !changes.ok) {
-    return { ok: false, reason: "plaid_error", errorCode: accounts.errorCode ?? changes.errorCode ?? null };
-  }
   const asOf = now.toISOString();
-  const result = await transaction(db, async (tx) => {
+  const failed = async code => {
+    const errorCode = safeProviderCode(code);
+    await db.query(`UPDATE company_plaid_items SET last_error_code=$3,
+      last_sync_attempt_at=$4,updated_at=now() WHERE id=$1 AND org_id=$2`,
+    [item.id, orgId, errorCode, asOf]);
+    return { ok: false, reason: "plaid_error", errorCode };
+  };
+  let accounts, changes;
+  try {
+    [accounts, changes] = await Promise.all([
+      provider.fetchAccounts(accessToken, opts(env)),
+      provider.syncTransactions(accessToken, { cursor: item.transactions_cursor }, opts(env))
+    ]);
+  } catch { return failed("PLAID_ERROR"); }
+  if (!accounts?.ok || !changes?.ok) {
+    return failed(accounts?.errorCode ?? changes?.errorCode);
+  }
+  let result;
+  try { result = await transaction(db, async (tx) => {
     const saved = await saveAccounts(tx, { orgId, itemId: item.id, accounts: accounts.accounts });
     const byPlaidId = new Map(saved.map((a) => [a.plaidAccountId, a.id]));
     const mapped = [];
@@ -179,31 +192,67 @@ export async function companySync(db, { orgId, itemId, env = process.env, provid
     }
     const updated = await tx.query(
       `UPDATE company_plaid_items SET transactions_cursor=$3, last_synced_at=$4,
-         last_error_code=NULL, updated_at=now()
+         last_sync_attempt_at=$4,last_error_code=NULL, updated_at=now()
        WHERE id=$1 AND org_id=$2 AND transactions_cursor IS NOT DISTINCT FROM $5
        RETURNING id`,
       [item.id, orgId, changes.nextCursor, asOf, item.transactions_cursor]
     );
-    if (!updated.rows[0]) throw new Error("company Plaid sync changed concurrently; retry");
+    if (!updated.rows[0]) {
+      const conflict = new Error("company Plaid sync changed concurrently");
+      conflict.code = "COMPANY_SYNC_CONFLICT";
+      throw conflict;
+    }
     return { accountCount: saved.length, transactionCount: mapped.length, removedCount: changes.removed.length };
-  });
+  }); } catch (error) {
+    if (error.code === "COMPANY_SYNC_CONFLICT") {
+      return { ok: false, reason: "sync_conflict", retryable: true };
+    }
+    throw error;
+  }
   return { ok: true, ...result, syncedAt: asOf };
 }
 
 export async function companyBankRead(db, { orgId, limit = 100 }) {
-  const [items, accounts, transactions] = await Promise.all([
-    db.query(`SELECT id, institution_name, last_synced_at, last_error_code, created_at
-                FROM company_plaid_items WHERE org_id=$1 ORDER BY created_at DESC`, [orgId]),
-    db.query(`SELECT id, company_plaid_item_id, name, mask, account_type, account_subtype, holder_category, selected_for_cash, business_confirmed_at,
+  const items = await db.query(`SELECT id, institution_name, last_synced_at, last_sync_attempt_at,
+                     last_error_code, created_at
+                FROM company_plaid_items WHERE org_id=$1 ORDER BY created_at DESC`, [orgId]);
+  const accounts = await db.query(`SELECT id, company_plaid_item_id, name, mask, account_type, account_subtype, holder_category, selected_for_cash, business_confirmed_at,
                      currency_code, available_balance_cents, current_balance_cents, balance_as_of
-                FROM company_bank_accounts WHERE org_id=$1 ORDER BY name, id`, [orgId]),
-    db.query(`SELECT id, company_bank_account_id, amount_cents, posted_on, authorized_on,
+                FROM company_bank_accounts WHERE org_id=$1 ORDER BY name, id`, [orgId]);
+  const transactions = await db.query(`SELECT id, company_bank_account_id, amount_cents, posted_on, authorized_on,
                      merchant_name, category, owner_category, is_pending
                 FROM company_bank_transactions
                WHERE org_id=$1 AND removed_at IS NULL
-               ORDER BY posted_on DESC NULLS LAST, id DESC LIMIT $2`, [orgId, limit])
-  ]);
+               ORDER BY posted_on DESC NULLS LAST, id DESC LIMIT $2`, [orgId, limit]);
   return { items: items.rows, accounts: accounts.rows, transactions: transactions.rows };
+}
+
+export async function companyPaymentMatches(db, { orgId, obligationId, beforePostedOn = null,
+  beforeId = null, limit = 25 }) {
+  const pageSize = Math.max(1, Math.min(50, Math.trunc(limit) || 25));
+  const result = await db.query(`SELECT t.id,t.posted_on,t.amount_cents,t.merchant_name,t.owner_category
+    FROM company_cash_obligations o
+    JOIN company_bank_accounts a ON a.org_id=o.org_id AND a.selected_for_cash=true
+      AND a.business_confirmed_at IS NOT NULL AND a.account_type='depository'
+      AND a.holder_category IS DISTINCT FROM 'personal' AND a.currency_code='USD'
+    JOIN company_bank_transactions t ON t.company_bank_account_id=a.id AND t.org_id=o.org_id
+    WHERE o.id=$2 AND o.org_id=$1 AND o.status IN ('planned','approved')
+      AND o.amount_cents IS NOT NULL AND t.amount_cents=-o.amount_cents AND t.amount_cents<0
+      AND t.posted_on IS NOT NULL AND NOT t.is_pending AND t.removed_at IS NULL
+      AND NOT EXISTS (SELECT 1 FROM company_cash_obligations used
+        WHERE used.org_id=o.org_id AND used.paid_bank_transaction_id=t.id)
+      AND ($3::date IS NULL OR (t.posted_on,t.id)<($3::date,$4::uuid))
+    ORDER BY t.posted_on DESC,t.id DESC LIMIT $5`,
+  [orgId, obligationId, beforePostedOn, beforeId, pageSize + 1]);
+  const hasMore = result.rows.length > pageSize;
+  const transactions = result.rows.slice(0, pageSize).map(row => ({
+    id: row.id, posted_on: row.posted_on instanceof Date ? row.posted_on.toISOString().slice(0, 10) : row.posted_on,
+    amount_cents: row.amount_cents, merchant_name: row.merchant_name,
+    owner_category: row.owner_category
+  }));
+  const last = hasMore ? transactions.at(-1) : null;
+  return { obligation_id: obligationId, transactions, has_more: hasMore,
+    next_before_posted_on: last?.posted_on ?? null, next_before_id: last?.id ?? null };
 }
 
 export async function companySelectAccount(db, { orgId, staffId, accountId, confirmed, now = new Date() }) {

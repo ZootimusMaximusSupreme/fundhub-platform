@@ -90,3 +90,38 @@ test("bank exchange pins owner identity and records consent; cash match pins org
   } });
   assert.equal(cash.statusCode, 200);
 });
+
+test("owner matching-debit lookup pins org, pages by date and id, and rejects staff", async () => {
+  const lookup = { method: "GET", query: { match_obligation_id: OTHER,
+    before_posted_on: "2026-10-12", before_id: STAFF } };
+  const denied = res();
+  await bankRoute(lookup, denied, { db: noDb, requireAuth: auth("closer"),
+    paymentMatches: () => { throw new Error("staff reached matching debits"); } });
+  assert.equal(denied.statusCode, 403);
+  const response = res();
+  await bankRoute(lookup, response, { db: noDb, requireAuth: auth(),
+    paymentMatches: async (_db, args) => {
+      assert.deepEqual(args, { orgId: ORG, obligationId: OTHER,
+        beforePostedOn: "2026-10-12", beforeId: STAFF });
+      return { obligation_id: OTHER, transactions: [], has_more: false,
+        next_before_posted_on: null, next_before_id: null };
+    } });
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.has_more, false);
+  const invalid = res();
+  await bankRoute({ method: "GET", query: { match_obligation_id: OTHER,
+    before_posted_on: "2026-02-31", before_id: STAFF } }, invalid,
+  { db: noDb, requireAuth: auth(), paymentMatches: () => {
+    throw new Error("invalid date must not query database");
+  } });
+  assert.equal(invalid.statusCode, 400);
+});
+
+test("sync conflict is retryable 409 with no server error", async () => {
+  const response = res();
+  await bankRoute({ method: "POST", body: { action: "sync", item_id: OTHER } }, response,
+  { db: noDb, requireAuth: auth(), sync: async () =>
+    ({ ok: false, reason: "sync_conflict", retryable: true }) });
+  assert.equal(response.statusCode, 409);
+  assert.deepEqual(response.body, { ok: false, reason: "sync_conflict", retryable: true });
+});

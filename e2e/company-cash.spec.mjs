@@ -40,16 +40,31 @@ const fullCash = () => ({ ok: true, summary: {
   ], recurring_candidates: [{ merchantDisplay: "Observed software charge", typicalAmountCents: -2500, cadence: "monthly", is_confirmed_tech: false }] });
 
 const reply = (route, body, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
-async function open(page, { bank = fullBank(), cash = fullCash(), bankError = false, cashGate = null, bankPost = null } = {}) {
+async function open(page, { bank = fullBank(), cash = fullCash(), bankError = false, cashGate = null,
+  bankPost = null, bankGet = null, matchLookup = null, authSession = null } = {}) {
   const calls = [];
   await page.addInitScript(() => localStorage.setItem("fh_token", "test-owner-session"));
   await page.route("**/api/**", async route => {
     const url = new URL(route.request().url());
     const path = url.pathname;
-    if (path === "/api/auth/session") return reply(route, { ok: true, staff: { id: "00000000-0000-4000-8000-000000000099", role: "owner", name: "Owner", org_id: "00000000-0000-4000-8000-000000000098" } });
+    if (path === "/api/auth/session") return authSession ? authSession(route) : reply(route, { ok: true, staff: { id: "00000000-0000-4000-8000-000000000099", role: "owner", name: "Owner", org_id: "00000000-0000-4000-8000-000000000098" } });
     if (path === "/api/health") return reply(route, { ok: true, db: "up", migrations: 548 });
     if (path === "/api/owner/company-bank") {
-      if (route.request().method() === "GET") return bankError ? reply(route, { ok: false }, 503) : reply(route, bank);
+      if (route.request().method() === "GET") {
+        if (url.searchParams.has("match_obligation_id")) {
+          if (matchLookup) return matchLookup(route, url.searchParams);
+          const obligationId = url.searchParams.get("match_obligation_id");
+          const obligation = cash.obligations.find(row => row.id === obligationId);
+          const selected = bank.accounts.find(row => row.selected_for_cash === true);
+          const transactions = obligation && selected ? bank.transactions.filter(row =>
+            row.company_bank_account_id === selected.id && !row.is_pending && row.posted_on &&
+            row.amount_cents === -obligation.amount_cents) : [];
+          return reply(route, { ok: true, obligation_id: obligationId, transactions, has_more: false,
+            next_before_posted_on: null, next_before_id: null });
+        }
+        if (bankGet) return bankGet(route, url);
+        return bankError ? reply(route, { ok: false }, 503) : reply(route, bank);
+      }
       const body = JSON.parse(route.request().postData() || "{}"); calls.push({ path, body });
       if (bankPost) return bankPost(route, body);
       if (body.action === "link_token") return reply(route, { ok: true, linkToken: "test-link-token" });
@@ -197,8 +212,10 @@ test("a stale staff MFA check offers the normal sign-in link and opens no bank w
   await page.locator("#ccBusinessConfirm").check(); await page.locator("#ccReadConsent").check();
   await page.locator("#ccConnect").click();
   await expect(page.locator("#ccMessage")).toContainText("fresh staff sign-in");
-  await expect(page.locator("#ccMessage a")).toHaveAttribute("href", "/app/login.html");
+  await expect(page.locator("#ccMessage a")).toHaveAttribute("href", "/login.html");
   expect(calls.map(c => c.body.action)).toEqual(["link_token"]);
+  await page.locator("#ccMessage a").click();
+  await expect(page).toHaveURL(/\/login\.html$/);
 });
 
 test("an unavailable live balance stays explicit, and bank labels render as text", async ({ page }) => {
@@ -321,4 +338,77 @@ test("cancel and pagehide remove each Plaid widget without exchanging an account
     accounts: [{ id: "late-account", name: "Late account", type: "depository" }]
   }));
   expect(calls.map(c => c.body.action)).toEqual(["link_token", "link_token"]);
+});
+
+test("payment matching reaches an exact posted debit beyond the newest 100 transactions", async ({ page }) => {
+  const idFor = number => `00000000-0000-4000-8000-${String(number).padStart(12, "0")}`;
+  const matches = Array.from({ length: 101 }, (_, index) => ({
+    id: idFor(101 - index), posted_on: "2026-11-02", amount_cents: -10000,
+    merchant_name: index === 100 ? "Old exact CRS debit" : `Exact debit ${index + 1}`, owner_category: null
+  }));
+  const lookupCalls = [];
+  const calls = await open(page, { matchLookup: (route, query) => {
+    lookupCalls.push(Object.fromEntries(query.entries()));
+    const before = query.get("before_id");
+    const start = before ? matches.findIndex(row => row.id === before) + 1 : 0;
+    const transactions = matches.slice(start, start + 25);
+    const hasMore = start + transactions.length < matches.length;
+    return reply(route, { ok: true, obligation_id: CRS_ID, transactions, has_more: hasMore,
+      next_before_posted_on: hasMore ? transactions.at(-1).posted_on : null,
+      next_before_id: hasMore ? transactions.at(-1).id : null });
+  } });
+  await page.getByRole("button", { name: "Match payment" }).first().click();
+  for (let pageIndex = 0; pageIndex < 4; pageIndex++) {
+    await expect(page.locator("#ccMatchMore")).toBeVisible();
+    await page.locator("#ccMatchMore").click();
+  }
+  await expect(page.getByText("Old exact CRS debit")).toBeVisible();
+  await expect(page.locator("#ccMatchMore")).toBeHidden();
+  await page.locator(`input[name="ccPayment"][value="${idFor(1)}"]`).check();
+  await page.locator("#ccSaveMatch").click();
+  await expect.poll(() => calls.at(-1)?.body.action).toBe("match_payment");
+  expect(calls.at(-1).body).toMatchObject({ obligation_id: CRS_ID, transaction_id: idFor(1) });
+  expect(lookupCalls).toHaveLength(5);
+  expect(lookupCalls[0]).toEqual({ match_obligation_id: CRS_ID });
+  expect(lookupCalls[4]).toMatchObject({ match_obligation_id: CRS_ID,
+    before_posted_on: "2026-11-02", before_id: idFor(2) });
+});
+
+test("same-token owner role revocation scrubs private data before any bank POST", async ({ page }) => {
+  let role = "owner";
+  const bank = fullBank(); bank.accounts[0].name = "Revoked owner's bank";
+  const cash = fullCash(); cash.obligations[0].label = "Revoked owner's invoice";
+  const calls = await open(page, { bank, cash, authSession: route => reply(route, { ok: true, staff: {
+    id: "00000000-0000-4000-8000-000000000099", role,
+    org_id: "00000000-0000-4000-8000-000000000098" } }) });
+  await expect(page.locator("#ccFull")).toBeVisible();
+  await page.locator("#ccAddObligation").click();
+  await page.locator("#ccLabel").fill("Revoked owner's unsaved draft");
+  await page.locator("#ccCancelObligation").click();
+  await page.locator("#ccBusinessConfirm").check();
+  await page.locator("#ccReadConsent").check();
+  role = "sales_manager";
+  await page.locator("#ccConnect").click();
+  await expect(page.locator("#ccErrorText")).toContainText("sign-in changed");
+  await expect(page.locator("#ccSignIn")).toHaveAttribute("href", "/login.html");
+  const oldData = await page.evaluate(() => ({ text: document.body.textContent,
+    draft: document.getElementById("ccLabel").value }));
+  expect(oldData.text).not.toContain("Revoked owner's bank");
+  expect(oldData.text).not.toContain("Revoked owner's invoice");
+  expect(oldData.draft).toBe("");
+  expect(calls).toEqual([]);
+});
+
+test("a forbidden owner bank GET clears the previous company view", async ({ page }) => {
+  let forbidden = false;
+  const bank = fullBank(); bank.accounts[0].name = "Previous owner's bank";
+  const calls = await open(page, { bank, bankGet: route => forbidden
+    ? reply(route, { ok: false, error: "forbidden" }, 403) : reply(route, bank) });
+  await expect(page.locator("#ccFull")).toBeVisible();
+  forbidden = true;
+  await page.locator("#ccSync").click();
+  await expect(page.locator("#ccErrorText")).toContainText("sign-in changed");
+  expect(await page.locator("#ccBankAccounts").textContent()).not.toContain("Previous owner's bank");
+  expect(await page.locator("#ccBankAccounts").innerHTML()).toBe("");
+  expect(calls.map(call => call.body.action)).toEqual(["sync"]);
 });

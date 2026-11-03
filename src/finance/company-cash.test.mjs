@@ -110,6 +110,46 @@ test("invoice cutoff covers earlier unpriced pulls and withholds later unknown c
   assert.equal(sameDayLater.available_cents, null, "a later pull on the invoice day is not covered");
 });
 
+test("older paid or unpaid invoice can explicitly cover this month's pulls without double counting", () => {
+  const older = { ...crs, billing_month: "2026-10-01", amount_cents: 2000,
+    invoice_verified_at: "2026-11-11T19:00:00Z", invoice_covers_through_on: "2026-11-11",
+    status: "paid", paid_transaction_posted: true };
+  const coveredPull = { status: "fulfilled", provider: "crs_softview", cost_cents: 50,
+    resolved_at: "2026-11-05T17:00:00Z" };
+  const paid = calculateCompanyCash({ account: bank, asOf: NOW,
+    obligations: [older, ...reviews], pulls: [coveredPull] });
+  assert.equal(paid.crs_reserve_cents, 0);
+  assert.equal(paid.available_cents, 100000);
+  const unpaid = calculateCompanyCash({ account: bank, asOf: NOW,
+    obligations: [{ ...older, status: "approved", paid_transaction_posted: false }, ...reviews],
+    pulls: [{ ...coveredPull, cost_cents: null }] });
+  assert.equal(unpaid.crs_reserve_cents, 2000);
+  assert.equal(unpaid.available_cents, 98000);
+  const malformed = calculateCompanyCash({ account: bank, asOf: NOW,
+    obligations: [{ ...older, invoice_covers_through_on: "2026-09-30" }, ...reviews],
+    pulls: [{ ...coveredPull, cost_cents: null }] });
+  assert.equal(malformed.available_cents, null, "cutoff before the billed month is invalid");
+  assert.ok(malformed.missing.includes("crs_invoice"));
+  const laterUnknown = calculateCompanyCash({ account: bank, asOf: NOW,
+    obligations: [older, ...reviews], pulls: [{ ...coveredPull, cost_cents: null,
+      resolved_at: "2026-11-12T17:00:00Z" }] });
+  assert.equal(laterUnknown.available_cents, null);
+  assert.ok(laterUnknown.missing.includes("crs_uncovered_pull_cost"));
+  assert.equal(validateObligation({ kind: "crs", label: "October CRS", billing_month: "2026-10-01",
+    source_ref: "October invoice", amount_cents: 2000, invoice_verified: true,
+    invoice_covers_through_on: "2026-11-11" }, NOW)?.invoiceCoversThrough, "2026-11-11");
+});
+
+test("a paid current invoice covers only through its verified cutoff", () => {
+  const early = { ...crs, status: "paid", paid_transaction_posted: true,
+    invoice_verified_at: "2026-11-01T20:00:00Z", invoice_covers_through_on: "2026-11-01" };
+  const out = calculateCompanyCash({ account: bank, asOf: NOW,
+    obligations: [early, ...reviews], pulls: [{ status: "fulfilled", provider: "crs_softview",
+      cost_cents: 50, resolved_at: "2026-11-05T17:00:00Z" }] });
+  assert.equal(out.crs_reserve_cents, 50);
+  assert.equal(out.available_cents, 99950);
+});
+
 test("invoice cutoff cannot be after verification or use an impossible calendar date", () => {
   assert.equal(validateObligation({ kind: "crs", label: "CRS", billing_month: "2026-11-01",
     source_ref: "invoice-1", amount_cents: 1185, invoice_verified: true,

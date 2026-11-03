@@ -11,6 +11,7 @@ CREATE TABLE company_plaid_items (
   linked_by_staff_id uuid NOT NULL REFERENCES staff(id),
   transactions_cursor text,
   last_synced_at timestamptz,
+  last_sync_attempt_at timestamptz,
   last_error_code text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
@@ -82,6 +83,10 @@ CREATE TABLE company_cash_obligations (
   CONSTRAINT company_cash_paid_ck CHECK(status <> 'paid' OR (amount_cents IS NOT NULL AND paid_bank_transaction_id IS NOT NULL)),
   CONSTRAINT company_cash_verified_invoice_ck CHECK(invoice_verified_at IS NULL OR
     (kind='crs' AND source_ref IS NOT NULL AND amount_cents IS NOT NULL AND invoice_covers_through_on IS NOT NULL)),
+  CONSTRAINT company_cash_invoice_cutoff_ck CHECK(invoice_covers_through_on IS NULL OR
+    (kind='crs' AND invoice_covers_through_on >= billing_month AND
+      (invoice_verified_at IS NULL OR invoice_covers_through_on <=
+       (invoice_verified_at AT TIME ZONE 'America/Phoenix')::date))),
   CONSTRAINT company_cash_month_ck CHECK(billing_month= date_trunc('month',billing_month)::date)
 );
 CREATE UNIQUE INDEX company_one_crs_invoice_per_month ON company_cash_obligations(org_id,billing_month) WHERE kind='crs' AND status<>'cancelled';

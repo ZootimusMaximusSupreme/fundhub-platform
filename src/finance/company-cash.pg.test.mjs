@@ -5,8 +5,9 @@ import { readFileSync } from "node:fs";
 import crypto from "node:crypto";
 import pg from "pg";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
-import { matchCompanyPayment, readCompanyCash } from "./company-cash.mjs";
-import { companyCompleteLink, companyRefreshBalance, companySync } from "./company-plaid.mjs";
+import { createCompanyObligation, matchCompanyPayment, readCompanyCash } from "./company-cash.mjs";
+import { companyBankRead, companyCompleteLink, companyPaymentMatches,
+  companyRefreshBalance, companySync } from "./company-plaid.mjs";
 
 const url = process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL;
 const scratch = isLocalScratchDatabaseUrl(url);
@@ -58,8 +59,16 @@ describe("company cash SQL with real fundhub_app role", {
       await db.query("RELEASE SAVEPOINT duplicate_bank");
       const debit = (await db.query(`INSERT INTO company_bank_transactions
         (org_id,company_bank_account_id,plaid_transaction_id,amount_cents,posted_on)
-        VALUES ($1,$2,'crs-debit',-1185,'2026-11-12') RETURNING id`,
+        VALUES ($1,$2,'crs-debit',-1185,'2026-10-12') RETURNING id`,
         [orgA, bank])).rows[0].id;
+      const olderDebit = (await db.query(`INSERT INTO company_bank_transactions
+        (org_id,company_bank_account_id,plaid_transaction_id,amount_cents,posted_on)
+        VALUES ($1,$2,'older-crs-debit',-1185,'2026-10-01') RETURNING id`,
+        [orgA, bank])).rows[0].id;
+      await db.query(`INSERT INTO company_bank_transactions
+        (org_id,company_bank_account_id,plaid_transaction_id,amount_cents,posted_on)
+        SELECT $1,$2,'distractor-'||n,-100,'2026-11-11'
+        FROM generate_series(1,110) AS n`, [orgA, bank]);
       const invoice = (await db.query(`INSERT INTO company_cash_obligations
         (org_id,kind,label,billing_month,source_ref,invoice_verified_at,invoice_covers_through_on,amount_cents,status,created_by_staff_id)
         VALUES ($1,'crs','CRS November','2026-11-01','invoice-1',$3,'2026-11-12',1185,'approved',$2) RETURNING id`,
@@ -71,11 +80,27 @@ describe("company cash SQL with real fundhub_app role", {
       const before = await readCompanyCash(db, { orgId: orgA, asOf, metaSpend: async () => null });
       assert.equal(before.summary.available_cents, 98815);
       assert.equal(before.account.id, bank);
+      const latest = await companyBankRead(db, { orgId: orgA });
+      assert.equal(latest.transactions.some(row => row.id === debit), false,
+        "newest 100 all-account transactions hide the valid older debit");
+      const firstMatches = await companyPaymentMatches(db, { orgId: orgA,
+        obligationId: invoice, limit: 1 });
+      assert.deepEqual(firstMatches.transactions.map(row => row.id), [debit]);
+      assert.equal(firstMatches.has_more, true);
+      const secondMatches = await companyPaymentMatches(db, { orgId: orgA,
+        obligationId: invoice, beforePostedOn: firstMatches.next_before_posted_on,
+        beforeId: firstMatches.next_before_id, limit: 1 });
+      assert.deepEqual(secondMatches.transactions.map(row => row.id), [olderDebit]);
+      assert.equal(secondMatches.has_more, false);
+      assert.deepEqual((await companyPaymentMatches(db, { orgId: orgB,
+        obligationId: invoice })).transactions, []);
       const foreign = await matchCompanyPayment(db, { orgId: orgB, obligationId: invoice, transactionId: debit });
       assert.equal(foreign.ok, false);
       assert.equal((await db.query("SELECT status FROM company_cash_obligations WHERE id=$1", [invoice])).rows[0].status, "approved");
       const paid = await matchCompanyPayment(db, { orgId: orgA, obligationId: invoice, transactionId: debit });
       assert.equal(paid.ok, true);
+      assert.deepEqual((await companyPaymentMatches(db, { orgId: orgA,
+        obligationId: invoice })).transactions, [], "paid obligations have no available matches");
       const afterPaid = await readCompanyCash(db, { orgId: orgA, asOf, metaSpend: async () => null });
       assert.equal(afterPaid.summary.crs_reserve_cents, 0);
       assert.equal(afterPaid.summary.available_cents, 100000);
@@ -86,6 +111,64 @@ describe("company cash SQL with real fundhub_app role", {
       const unknown = await readCompanyCash(db, { orgId: orgA, asOf, metaSpend: async () => null });
       assert.equal(unknown.summary.available_cents, null);
       assert.ok(unknown.summary.missing.includes("crs_invoice"));
+      await db.query("UPDATE company_cash_obligations SET status='cancelled' WHERE id=$1", [invoice]);
+      const olderInvoice = await createCompanyObligation(db, { orgId: orgA, staffId: staff,
+        now: asOf, input: { kind: "crs", label: "October invoice covering November",
+          billing_month: "2026-10-01", source_ref: "invoice-oct",
+          amount_cents: 1185, invoice_verified: true,
+          invoice_covers_through_on: "2026-11-11", status: "approved" } });
+      assert.equal(olderInvoice.ok, true);
+      assert.equal(olderInvoice.obligation.invoice_covers_through_on.toISOString().slice(0, 10),
+        "2026-11-11");
+      for (const invalidCutoff of ["2026-09-30", "2026-11-13"]) {
+        await db.query("SAVEPOINT invalid_invoice_cutoff");
+        await assert.rejects(() => db.query(`UPDATE company_cash_obligations
+          SET invoice_covers_through_on=$2 WHERE id=$1`,
+          [olderInvoice.obligation.id, invalidCutoff]), error => error.code === "23514");
+        await db.query("ROLLBACK TO SAVEPOINT invalid_invoice_cutoff");
+        await db.query("RELEASE SAVEPOINT invalid_invoice_cutoff");
+      }
+      assert.equal((await readCompanyCash(db, { orgId: orgA, asOf,
+        metaSpend: async () => null })).summary.available_cents, 98815);
+      const paidOlder = await matchCompanyPayment(db, { orgId: orgA,
+        obligationId: olderInvoice.obligation.id, transactionId: olderDebit });
+      assert.equal(paidOlder.ok, true);
+      assert.equal((await readCompanyCash(db, { orgId: orgA, asOf,
+        metaSpend: async () => null })).summary.available_cents, 100000);
+      const client = (await db.query(`INSERT INTO clients (org_id,first_name,last_name)
+        VALUES ($1,'Synthetic','Cash') RETURNING id`, [orgA])).rows[0].id;
+      const resultId = (await db.query(`INSERT INTO crs_results
+        (org_id,client_id,provider,provider_result_id,result)
+        VALUES ($1,$2,'crs_softview',$3,$4::jsonb) RETURNING id`,
+        [orgA, client, slug + "-covered",
+          JSON.stringify({ environment: "production", simulated: false })])).rows[0].id;
+      await db.query(`INSERT INTO soft_pull_requests
+        (org_id,client_id,requested_by_kind,requested_by_staff_id,reason,cost_cents,
+         crs_result_id,status,provider,requested_at,resolved_at)
+        VALUES ($1,$2,'staff',$3,'synthetic covered pull',NULL,$4,'fulfilled','crs_softview',
+          '2026-11-05T16:00:00Z','2026-11-05T17:00:00Z')`,
+      [orgA, client, staff, resultId]);
+      const covered = await readCompanyCash(db, { orgId: orgA, asOf,
+        metaSpend: async () => null });
+      assert.equal(covered.summary.crs_unpriced_pull_count, 1);
+      assert.equal(covered.summary.crs_reserve_cents, 0,
+        "paid October invoice covers earlier November unpriced pull");
+      assert.equal(covered.summary.available_cents, 100000);
+      const laterResult = (await db.query(`INSERT INTO crs_results
+        (org_id,client_id,provider,provider_result_id,result)
+        VALUES ($1,$2,'crs_softview',$3,$4::jsonb) RETURNING id`,
+        [orgA, client, slug + "-later",
+          JSON.stringify({ environment: "production", simulated: false })])).rows[0].id;
+      await db.query(`INSERT INTO soft_pull_requests
+        (org_id,client_id,requested_by_kind,requested_by_staff_id,reason,cost_cents,
+         crs_result_id,status,provider,requested_at,resolved_at)
+        VALUES ($1,$2,'staff',$3,'synthetic later pull',NULL,$4,'fulfilled','crs_softview',
+          '2026-11-12T16:00:00Z','2026-11-12T17:00:00Z')`,
+      [orgA, client, staff, laterResult]);
+      const uncovered = await readCompanyCash(db, { orgId: orgA, asOf,
+        metaSpend: async () => null });
+      assert.equal(uncovered.summary.available_cents, null);
+      assert.ok(uncovered.summary.missing.includes("crs_uncovered_pull_cost"));
     } finally {
       await db.query("ROLLBACK");
       db.release();
@@ -221,6 +304,40 @@ describe("company cash SQL with real fundhub_app role", {
       assert.equal(foreign.account, null);
       assert.equal((await companySync(scoped, { orgId: orgB, itemId: linked.itemId,
         env, provider })).reason, "not_found");
+      const syncedBeforeFailure = (await db.query(`SELECT transactions_cursor,last_synced_at
+        FROM company_plaid_items WHERE id=$1`, [linked.itemId])).rows[0];
+      provider.syncTransactions = async () => ({ ok: false,
+        errorCode: "UNSAFE\nsynthetic-access" });
+      const failedAt = new Date(asOf.getTime() + 60_000);
+      const failed = await companySync(scoped, { orgId: orgA, itemId: linked.itemId,
+        env, provider, now: failedAt });
+      assert.deepEqual(failed, { ok: false, reason: "plaid_error", errorCode: "PLAID_ERROR" });
+      const failedRow = (await db.query(`SELECT transactions_cursor,last_synced_at,
+        last_sync_attempt_at,last_error_code FROM company_plaid_items WHERE id=$1`,
+        [linked.itemId])).rows[0];
+      assert.equal(failedRow.transactions_cursor, syncedBeforeFailure.transactions_cursor);
+      assert.equal(failedRow.last_synced_at.toISOString(), syncedBeforeFailure.last_synced_at.toISOString());
+      assert.equal(failedRow.last_sync_attempt_at.toISOString(), failedAt.toISOString());
+      assert.equal(failedRow.last_error_code, "PLAID_ERROR");
+      provider.syncTransactions = async () => {
+        await db.query(`UPDATE company_plaid_items SET transactions_cursor='external'
+          WHERE id=$1 AND org_id=$2`, [linked.itemId, orgA]);
+        return { ok: true, nextCursor: "ours", added: [{ account_id: "business-1",
+          transaction_id: "raced", amount: 3, date: "2026-11-12", name: "raced",
+          pending: false }], modified: [], removed: [] };
+      };
+      const conflicted = await companySync(scoped, { orgId: orgA,
+        itemId: linked.itemId, env, provider, now: new Date(asOf.getTime() + 120_000) });
+      assert.deepEqual(conflicted, { ok: false, reason: "sync_conflict", retryable: true });
+      const afterConflict = (await db.query(`SELECT transactions_cursor,last_synced_at,
+        last_error_code FROM company_plaid_items WHERE id=$1`, [linked.itemId])).rows[0];
+      assert.equal(afterConflict.transactions_cursor, "external");
+      assert.equal(afterConflict.last_synced_at.toISOString(), syncedBeforeFailure.last_synced_at.toISOString());
+      assert.equal((await db.query(`SELECT count(*)::int AS n FROM company_bank_transactions
+        WHERE org_id=$1 AND plaid_transaction_id='raced'`, [orgA])).rows[0].n, 0,
+      "CAS conflict rolls back attempted transaction rows");
+      assert.equal((await db.query(`SELECT current_balance_cents FROM company_bank_accounts
+        WHERE id=$1`, [linked.selectedAccount.id])).rows[0].current_balance_cents, "100000");
     } finally {
       await db.query("ROLLBACK");
       db.release();

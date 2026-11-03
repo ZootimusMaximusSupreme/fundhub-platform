@@ -33,9 +33,12 @@ export function calculateCompanyCash({ account, obligations = [], pulls = [], me
   const monthEnd = endOfMonth(today);
   const missing = [];
   const verifiedInvoice = row => row.invoice_verified_at &&
+    row.kind === "crs" && row.status !== "cancelled" &&
+    dayOf(row.billing_month) <= month &&
     Number.isFinite(new Date(row.invoice_verified_at).getTime()) &&
     new Date(row.invoice_verified_at).getTime() <= now.getTime() &&
     cents(row.amount_cents) !== null && validDay(dayOf(row.invoice_covers_through_on)) &&
+    dayOf(row.invoice_covers_through_on) >= dayOf(row.billing_month) &&
     dayOf(row.invoice_covers_through_on) <= today &&
     dayOf(row.invoice_covers_through_on) <= phoenixDay(row.invoice_verified_at);
   const selected = account?.selected_for_cash === true && account?.business_confirmed_at &&
@@ -53,7 +56,10 @@ export function calculateCompanyCash({ account, obligations = [], pulls = [], me
     cents(row.amount_cents) !== null)) missing.push("ad_review");
   if (!current.some(row => row.kind === "tech" && row.status === "approved" &&
     cents(row.amount_cents) !== null)) missing.push("tech_review");
-  if (!current.some(row => row.kind === "crs")) missing.push("crs_invoice");
+  const coveringInvoices = obligations.filter(row => verifiedInvoice(row) &&
+    dayOf(row.invoice_covers_through_on) >= month &&
+    (row.status !== "paid" || row.paid_transaction_posted === true));
+  if (!coveringInvoices.length) missing.push("crs_invoice");
   let crsReserve = 0;
   for (const row of obligations) {
     if (row.kind !== "crs" || row.status === "cancelled" || dayOf(row.billing_month) > month) continue;
@@ -91,12 +97,13 @@ export function calculateCompanyCash({ account, obligations = [], pulls = [], me
   const realPulls = pulls.filter(row => row.status === "fulfilled" && row.provider === "crs_softview");
   const unpricedPullCount = realPulls.filter(row => cents(row.cost_cents) === null).length;
   const pricedPullCents = realPulls.reduce((sum, row) => sum + (cents(row.cost_cents) ?? 0), 0);
-  const currentInvoice = current.find(row => row.kind === "crs" && verifiedInvoice(row));
   for (const pull of realPulls) {
     const resolvedTime = pull.resolved_at ? new Date(pull.resolved_at).getTime() : NaN;
     const resolved = Number.isFinite(resolvedTime) ? phoenixDay(pull.resolved_at) : null;
-    if (resolved && currentInvoice && resolved <= dayOf(currentInvoice.invoice_covers_through_on) &&
-      resolvedTime <= new Date(currentInvoice.invoice_verified_at).getTime()) continue;
+    if (resolved && coveringInvoices.some(invoice =>
+      resolved >= dayOf(invoice.billing_month) &&
+      resolved <= dayOf(invoice.invoice_covers_through_on) &&
+      resolvedTime <= new Date(invoice.invoice_verified_at).getTime())) continue;
     const cost = cents(pull.cost_cents);
     if (cost === null || cost < 0) missing.push("crs_uncovered_pull_cost");
     else if (crsReserve !== null) crsReserve += cost;
@@ -199,7 +206,7 @@ export function validateObligation(input, now = new Date()) {
     (invoiceCoversThrough && !validDay(invoiceCoversThrough))) return null;
   if (invoiceVerified && kind !== "crs") return null;
   if (kind === "crs" && invoiceVerified && (amount === null || !invoiceRef ||
-    !invoiceCoversThrough || monthOf(invoiceCoversThrough) !== billingMonth ||
+    !invoiceCoversThrough || invoiceCoversThrough < billingMonth ||
     invoiceCoversThrough > phoenixDay(now))) return null;
   if (kind === "ad" && status === "approved" && amount === null) return null;
   return { kind, label, amount, status, due, billingMonth, invoiceRef, invoiceVerified,
@@ -245,9 +252,14 @@ export async function matchCompanyPayment(db, { orgId, obligationId, transaction
     FROM company_bank_transactions t
     JOIN company_bank_accounts a ON a.id=t.company_bank_account_id AND a.org_id=t.org_id
     WHERE o.id=$1 AND o.org_id=$2 AND t.id=$3 AND t.org_id=o.org_id
-      AND a.selected_for_cash=true AND t.posted_on IS NOT NULL AND NOT t.is_pending
+      AND a.selected_for_cash=true AND a.business_confirmed_at IS NOT NULL
+      AND a.account_type='depository' AND a.holder_category IS DISTINCT FROM 'personal'
+      AND a.currency_code='USD' AND t.posted_on IS NOT NULL AND NOT t.is_pending
       AND t.removed_at IS NULL AND t.amount_cents < 0 AND o.status IN ('planned','approved')
-      AND o.amount_cents=-t.amount_cents RETURNING o.*`,
+      AND o.amount_cents=-t.amount_cents
+      AND NOT EXISTS (SELECT 1 FROM company_cash_obligations used
+        WHERE used.org_id=o.org_id AND used.paid_bank_transaction_id=t.id)
+      RETURNING o.*`,
     [obligationId, orgId, transactionId]);
   return result.rows[0] ? { ok: true, obligation: result.rows[0] } :
     { ok: false, reason: "payment_not_matching_posted_business_debit" };

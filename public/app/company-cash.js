@@ -6,7 +6,7 @@
   var PLAID_SRC = "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
   var PAGE_SIZE = 25;
   var state = { bank: null, cash: null, auth: null, loadSeq: 0, obligationPage: 0, transactionPage: 0, recurringPage: 0,
-    editing: null, matching: null, pendingLink: null, accountMode: null, accountId: null };
+    editing: null, matching: null, matchSeq: 0, matchCursor: null, pendingLink: null, accountMode: null, accountId: null };
   var plaidLoading = null;
   var plaidHandler = null;
   function $(id) { return document.getElementById(id); }
@@ -45,8 +45,9 @@
       "ccBankStatus", "ccBankAsOf", "ccProcessor", "ccMissingText", "ccCandidateNote", "ccFormError", "ccAccountError",
       "ccMatchError", "ccObligationPage", "ccRecurringPage", "ccTransactionPage"].forEach(function (id) { $(id).textContent = ""; });
     $("ccObligationForm").reset();
+    $("ccMatchMore").hidden = true;
     ["ccBusinessConfirm", "ccReadConsent", "ccAccountConfirm"].forEach(function (id) { $(id).checked = false; });
-    ["ccConnect", "ccSync", "ccRefreshBalance", "ccSaveObligation", "ccSaveAccount", "ccSaveMatch"].forEach(function (id) {
+    ["ccConnect", "ccSync", "ccRefreshBalance", "ccSaveObligation", "ccSaveAccount", "ccSaveMatch", "ccMatchMore"].forEach(function (id) {
       var button = $(id);
       if (button.dataset.oldLabel) { button.textContent = button.dataset.oldLabel; delete button.dataset.oldLabel; }
       button.disabled = id === "ccConnect" || id === "ccSaveAccount";
@@ -55,7 +56,8 @@
   }
   function clearSensitive() {
     state.auth = null; state.bank = null; state.cash = null; state.pendingLink = null;
-    state.editing = null; state.matching = null; state.accountMode = null; state.accountId = null;
+    state.editing = null; state.matching = null; state.matchSeq += 1; state.matchCursor = null;
+    state.accountMode = null; state.accountId = null;
     state.loadSeq += 1;
     destroyPlaid(true);
     ["ccObligationDialog", "ccAccountDialog", "ccMatchDialog"].forEach(function (id) { var d = $(id); if (d && d.open) d.close(); });
@@ -63,6 +65,7 @@
     $("ccLoading").hidden = true; $("ccEmpty").hidden = true; $("ccFull").hidden = true;
     $("ccPrimary").hidden = true; $("ccError").hidden = false;
     $("ccErrorText").textContent = "Your sign-in changed. Sign in again to view company cash.";
+    $("ccSignIn").hidden = false;
     message("");
   }
   function guard(auth) {
@@ -83,7 +86,9 @@
   }
   async function revalidate(auth) {
     if (!guard(auth)) throw sessionChanged();
-    var principal = await sessionFor(auth.token);
+    var principal;
+    try { principal = await sessionFor(auth.token); }
+    catch (err) { if (guard(auth)) clearSensitive(); throw err; }
     if (principal.staffId !== auth.staffId || principal.orgId !== auth.orgId || !guard(auth)) {
       clearSensitive(); throw sessionChanged();
     }
@@ -106,6 +111,10 @@
     var data = await response.json().catch(function () { return null; });
     if (!guard(auth)) throw sessionChanged();
     if (!response.ok || !data || data.ok !== true) {
+      var code = data && (data.reason || data.error);
+      if (response.status === 401 || (response.status === 403 && code !== "mfa_required") || code === "forbidden" || code === "owner_required") {
+        clearSensitive(); throw sessionChanged();
+      }
       var err = new Error(friendly(data && (data.reason || data.error)));
       err.code = data && (data.reason || data.error);
       err.status = response.status;
@@ -117,7 +126,7 @@
     var box = $("ccMessage");
     box.textContent = text || "";
     box.classList.toggle("is-error", !!isError);
-    if (signIn) { var a = document.createElement("a"); a.href = "/app/login.html"; a.textContent = "Sign in again"; box.appendChild(document.createTextNode(" ")); box.appendChild(a); }
+    if (signIn) { var a = document.createElement("a"); a.href = "/login.html"; a.textContent = "Sign in again"; box.appendChild(document.createTextNode(" ")); box.appendChild(a); }
     box.hidden = !text;
   }
   function setBusy(button, busy, label) {
@@ -142,7 +151,7 @@
   }
   async function load(showSkeleton, expectedAuth) {
     var seq = ++state.loadSeq;
-    if (showSkeleton) { $("ccLoading").hidden = false; $("ccEmpty").hidden = true; $("ccError").hidden = true; $("ccFull").hidden = true; }
+    if (showSkeleton) { $("ccLoading").hidden = false; $("ccEmpty").hidden = true; $("ccError").hidden = true; $("ccSignIn").hidden = true; $("ccFull").hidden = true; }
     try {
       var token = expectedAuth ? expectedAuth.token : bearer();
       var principal = await sessionFor(token);
@@ -159,8 +168,10 @@
     } catch (err) {
       if (seq !== state.loadSeq) return false;
       if (err.code === "session_changed") { clearSensitive(); return false; }
+      if (err.code === "owner_required") { clearSensitive(); $("ccErrorText").textContent = "This view is for the Fundhub owner."; return false; }
       if (expectedAuth && !guard(expectedAuth)) return false;
       $("ccLoading").hidden = true; $("ccEmpty").hidden = true; $("ccFull").hidden = true; $("ccError").hidden = false;
+      $("ccSignIn").hidden = true;
       $("ccErrorText").textContent = err.code === "owner_required" ? "This view is for the Fundhub owner." : "Check the connection and try again.";
       return false;
     }
@@ -363,17 +374,53 @@
     else { $("ccFormError").textContent = "The bill did not save. Check the details and try again."; $("ccFormError").hidden = false; }
   }
   function openMatch(o) {
-    if (!guard(state.auth)) return;
-    state.matching = o;
-    var amount = cents(o.amount_cents), choices = selectedTransactions().filter(function (t) { return amount !== null && cents(t.amount_cents) === -amount && cents(t.amount_cents) < 0; });
-    var box = $("ccMatchOptions"); box.innerHTML = ""; $("ccMatchError").hidden = true;
-    if (!choices.length) box.innerHTML = '<p class="cc-empty-list">No exact posted debit matches this amount on the selected business account.</p>';
-    choices.forEach(function (t) {
-      var label = document.createElement("label"); label.className = "cc-option";
-      label.innerHTML = '<input type="radio" name="ccPayment" value="' + esc(t.id) + '"><span>' + esc(t.merchant_name || "Bank debit") + '<small>' + esc(day(t.posted_on)) + ' · ' + money(t.amount_cents) + '</small></span>';
-      box.appendChild(label);
-    });
+    var auth = state.auth;
+    if (!guard(auth)) return;
+    state.matching = o; state.matchCursor = null;
+    var seq = ++state.matchSeq;
+    var box = $("ccMatchOptions"); box.replaceChildren();
+    $("ccMatchError").hidden = true; $("ccMatchMore").hidden = true;
+    var loading = document.createElement("p"); loading.className = "cc-empty-list"; loading.textContent = "Finding exact posted debits…";
+    box.appendChild(loading);
     $("ccMatchDialog").showModal();
+    if (cents(o.amount_cents) === null || cents(o.amount_cents) <= 0) {
+      loading.textContent = "No payment match is needed for an unknown or zero amount."; return;
+    }
+    loadMatchPage(o, auth, seq, null);
+  }
+  async function loadMatchPage(o, auth, seq, cursor) {
+    if (!guard(auth) || state.matching !== o || state.matchSeq !== seq || !$("ccMatchDialog").open) return;
+    var button = $("ccMatchMore"); button.disabled = true; button.textContent = "Loading…";
+    var query = new URLSearchParams({ match_obligation_id: o.id });
+    if (cursor) { query.set("before_posted_on", cursor.postedOn); query.set("before_id", cursor.id); }
+    try {
+      var data = await request(BANK_URL + "?" + query.toString(), null, auth);
+      if (!guard(auth) || state.matching !== o || state.matchSeq !== seq || !$("ccMatchDialog").open) return;
+      if (data.obligation_id !== o.id) throw new Error("The posted payments could not be verified. Try again.");
+      var box = $("ccMatchOptions");
+      if (!cursor) box.replaceChildren();
+      var amount = cents(o.amount_cents);
+      list(data.transactions).forEach(function (t) {
+        if (!uuid(t.id) || !/^\d{4}-\d{2}-\d{2}$/.test(day(t.posted_on)) || cents(t.amount_cents) !== -amount) return;
+        var label = document.createElement("label"); label.className = "cc-option";
+        label.innerHTML = '<input type="radio" name="ccPayment" value="' + esc(t.id) + '"><span>' + esc(t.merchant_name || "Bank debit") + '<small>' + esc(day(t.posted_on)) + ' · ' + money(t.amount_cents) + '</small></span>';
+        box.appendChild(label);
+      });
+      if (!box.children.length) {
+        var empty = document.createElement("p"); empty.className = "cc-empty-list";
+        empty.textContent = "No exact posted debit matches this amount on the selected business account."; box.appendChild(empty);
+      }
+      var validCursor = data.has_more === true && /^\d{4}-\d{2}-\d{2}$/.test(data.next_before_posted_on || "") && uuid(data.next_before_id);
+      state.matchCursor = validCursor ? { postedOn: data.next_before_posted_on, id: data.next_before_id } : null;
+      button.hidden = !state.matchCursor;
+    } catch (err) {
+      if (guard(auth) && state.matching === o && state.matchSeq === seq && $("ccMatchDialog").open) {
+        $("ccMatchError").textContent = err.message || "Posted payments did not load. Try again.";
+        $("ccMatchError").hidden = false;
+      }
+    } finally {
+      if (guard(auth) && state.matching === o && state.matchSeq === seq) { button.disabled = false; button.textContent = "Load older matches"; }
+    }
   }
   function updateInvoiceFields() {
     var crs = $("ccKind").value === "crs";
@@ -488,6 +535,14 @@
     ["ccCloseAccount", "ccCancelAccount"].forEach(function (id) { $(id).addEventListener("click", function () { state.pendingLink = null; closeDialog("ccAccountDialog"); }); });
     $("ccAccountDialog").addEventListener("close", function () { state.pendingLink = null; state.accountMode = null; state.accountId = null; });
     ["ccCloseMatch", "ccCancelMatch"].forEach(function (id) { $(id).addEventListener("click", function () { closeDialog("ccMatchDialog"); }); });
+    $("ccMatchDialog").addEventListener("close", function () {
+      state.matching = null; state.matchCursor = null; state.matchSeq += 1;
+      $("ccMatchOptions").replaceChildren(); $("ccMatchMore").hidden = true;
+    });
+    $("ccMatchMore").addEventListener("click", function () {
+      if (!guard(state.auth) || !state.matching || !state.matchCursor || $("ccMatchMore").disabled) return;
+      loadMatchPage(state.matching, state.auth, state.matchSeq, state.matchCursor);
+    });
     $("ccSaveAccount").addEventListener("click", saveAccount); $("ccSaveMatch").addEventListener("click", saveMatch);
     $("ccAccountConfirm").addEventListener("change", updateAccountButton);
     $("ccAccountOptions").addEventListener("change", updateAccountButton);
