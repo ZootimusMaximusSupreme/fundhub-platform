@@ -19,8 +19,9 @@ export default async function handler(req, res, deps = {}) {
   res.setHeader("Cache-Control", "no-store");
   const database = deps.db || db;
   const env = deps.env || process.env;
-  const principal = await (deps.requirePrincipal || requirePrincipal)(req, res,
-    ["client", "affiliate"], { db: database, env });
+  const auth = deps.requirePrincipal || requirePrincipal;
+  const principal = await auth(req, res, ["client", "affiliate"],
+    { db: database, env });
   if (!principal) return;
   const body = readBody(req.body);
   if (!body || typeof body !== "object") return res.status(400).json({ ok: false, error: "bad_body" });
