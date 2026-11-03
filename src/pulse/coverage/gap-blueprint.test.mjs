@@ -192,6 +192,12 @@ test("preparation evidence failures have a scoped daily twin and keep database/c
   }
 });
 
+test("preparation daily evidence keeps reviewed-business precedence with empty upload metadata fallback", () => {
+  const canonical = "COALESCE(r.entity_id::text, NULLIF(d.metadata->>'entity_id', ''))";
+  assert.equal(PREPARATION_EVIDENCE_SQL.split(canonical).length - 1, 2);
+  assert.doesNotMatch(PREPARATION_EVIDENCE_SQL, /COALESCE\(NULLIF\(d\.metadata/);
+});
+
 test("actual preparation integrity SQL distinguishes absent work, missing proof and same-client proof", {
   skip: safe ? false : "no local test/scratch database; live databases refused"
 }, async () => {
@@ -232,6 +238,24 @@ test("actual preparation integrity SQL distinguishes absent work, missing proof 
     assert.equal(await count(), 0, "a genuine same-client linked upload is intact, not a claim of review or completion");
     await db.query(`UPDATE documents SET metadata='{"entity_id":""}'::jsonb WHERE id=$1`, [documentId]);
     assert.equal(await count(), 0, "empty legacy entity metadata agrees with the actual evidence reader");
+    const entityId = randomUUID(), reviewedElsewhere = randomUUID();
+    const businessLinked = base();
+    businessLinked.businesses[0].entityId = entityId;
+    await setState(businessLinked);
+    await db.query(`UPDATE documents SET metadata=$2::jsonb WHERE id=$1`, [documentId, JSON.stringify({ entity_id: entityId })]);
+    await db.query(`INSERT INTO document_vault_reviews (document_id,org_id,client_id,status,entity_id)
+      VALUES ($1,$2,$3,'accepted',$4)`, [documentId, org, client, reviewedElsewhere]);
+    assert.equal(await count(), 1, "matching upload metadata cannot override a staff review assigning proof to another business");
+    await db.query(`UPDATE documents SET metadata=$2::jsonb WHERE id=$1`, [documentId, JSON.stringify({ entity_id: reviewedElsewhere })]);
+    await db.query(`UPDATE document_vault_reviews SET entity_id=$2 WHERE document_id=$1`, [documentId, entityId]);
+    assert.equal(await count(), 0, "a matching reviewed business wins over stale upload metadata without a false alarm");
+    await db.query(`UPDATE document_vault_reviews SET entity_id=NULL WHERE document_id=$1`, [documentId]);
+    assert.equal(await count(), 1, "without a reviewed business, conflicting upload metadata remains an invalid link");
+    await db.query(`UPDATE documents SET metadata=$2::jsonb WHERE id=$1`, [documentId, JSON.stringify({ entity_id: entityId })]);
+    assert.equal(await count(), 0, "without a reviewed business, matching upload metadata still supplies the link");
+    await db.query(`DELETE FROM document_vault_reviews WHERE document_id=$1`, [documentId]);
+    await db.query(`UPDATE documents SET metadata='{"entity_id":""}'::jsonb WHERE id=$1`, [documentId]);
+    await setState(base());
     const duplicated = base();
     duplicated.businesses.push({ ...duplicated.businesses[0], id: randomUUID() });
     await setState(duplicated);

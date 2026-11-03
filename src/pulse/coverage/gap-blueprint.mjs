@@ -166,8 +166,8 @@ export const PREPARATION_EVIDENCE_SQL = `
              WHERE d.org_id = e.org_id AND d.client_id = e.client_id AND d.id::text = e.document_id
                AND d.kind = 'client_upload'
                AND d.subtype = CASE e.evidence_kind WHEN 'formation' THEN 'articles_of_organization' ELSE 'ein_letter' END
-               AND (COALESCE(NULLIF(d.metadata->>'entity_id', ''), r.entity_id::text) IS NULL
-                 OR COALESCE(NULLIF(d.metadata->>'entity_id', ''), r.entity_id::text) = e.entity_id)
+               AND (COALESCE(r.entity_id::text, NULLIF(d.metadata->>'entity_id', '')) IS NULL
+                 OR COALESCE(r.entity_id::text, NULLIF(d.metadata->>'entity_id', '')) = e.entity_id)
           ) OR EXISTS (
             SELECT 1 FROM evidence other WHERE other.org_id = e.org_id AND other.client_id = e.client_id
               AND other.document_id = e.document_id AND other.plan_id IS DISTINCT FROM e.plan_id
