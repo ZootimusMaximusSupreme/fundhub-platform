@@ -105,6 +105,9 @@ const API_KEYS = [
   "auth/logout",
   "auth/magic-link-verify",
   "auth/magic-link",
+  /* GET returns 405 without issuing a challenge, grant, or Link token. The
+     saved MFA/consent result is checked by gap-auth each morning. */
+  "auth/plaid-mfa",
   "auth/reset",
   "auth/send-portal-link",
   "auth/session",

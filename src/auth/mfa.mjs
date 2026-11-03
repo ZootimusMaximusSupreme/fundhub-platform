@@ -20,7 +20,7 @@ function keyFromEnv(env) {
 
 export const mfaConfigured = (env = process.env) => !!keyFromEnv(env);
 
-function base32Encode(bytes) {
+export function base32Encode(bytes) {
   let bits = 0, value = 0, out = "";
   for (const byte of bytes) {
     value = (value << 8) | byte;
@@ -44,7 +44,7 @@ function base32Decode(input) {
   return Buffer.from(bytes);
 }
 
-function encryptSecret(secret, staffId, env) {
+export function encryptSecret(secret, staffId, env) {
   const key = keyFromEnv(env);
   if (!key) throw new Error("MFA_SECRET_ENC_KEY is not configured");
   const iv = crypto.randomBytes(12);
@@ -54,7 +54,7 @@ function encryptSecret(secret, staffId, env) {
   return `v1:${iv.toString("base64")}:${cipher.getAuthTag().toString("base64")}:${data.toString("base64")}`;
 }
 
-function decryptSecret(ciphertext, staffId, env) {
+export function decryptSecret(ciphertext, staffId, env) {
   const key = keyFromEnv(env);
   if (!key) throw new Error("MFA_SECRET_ENC_KEY is not configured");
   const [version, iv, tag, data] = String(ciphertext).split(":");
@@ -76,7 +76,7 @@ export function totpAt(secret, counter) {
   return String(number).padStart(6, "0");
 }
 
-function matchingCounter(secret, code, at = Date.now()) {
+export function matchingCounter(secret, code, at = Date.now()) {
   if (!/^\d{6}$/.test(String(code))) return null;
   const current = Math.floor(at / 1000 / STEP_SECONDS);
   for (const offset of [-1, 0, 1]) {

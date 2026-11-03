@@ -1,0 +1,16 @@
+.fh-plaid-stepup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: 0; border: 0; border-radius: 16px; width: min(92vw, 480px); max-height: calc(100vh - 32px); overflow: auto; padding: 0; color: #172033; background: #fff; box-shadow: 0 24px 80px #0005; }
+.fh-plaid-stepup::backdrop { background: #091221a6; }
+.fh-plaid-stepup-box { display: grid; gap: 16px; padding: 24px; font: 16px/1.5 var(--sans, sans-serif); }
+.fh-plaid-stepup-box h2 { margin: 0; font-size: 23px; line-height: 1.2; }
+.fh-plaid-stepup-box p { margin: 0; }
+.fh-plaid-stepup-setup { display: grid; gap: 8px; }
+.fh-plaid-stepup-setup[hidden] { display: none; }
+.fh-plaid-stepup-secret { display: block; overflow-wrap: anywhere; padding: 12px; background: #eef2f7; border-radius: 8px; user-select: all; }
+.fh-plaid-stepup-code { display: grid; gap: 6px; }
+.fh-plaid-stepup-code input { min-height: 44px; padding: 10px; border: 1px solid #738197; border-radius: 8px; font: inherit; }
+.fh-plaid-stepup-consent { display: flex; align-items: flex-start; gap: 10px; }
+.fh-plaid-stepup-consent input { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.fh-plaid-stepup-error { color: #a92525; min-height: 1.5em; }
+.fh-plaid-stepup-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.fh-plaid-stepup-actions button { min-height: 44px; padding: 9px 15px; border-radius: 8px; font: inherit; cursor: pointer; }
+.fh-plaid-stepup-actions [data-continue] { color: #fff; border: 0; background: #1b5365; }

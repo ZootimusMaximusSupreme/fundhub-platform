@@ -2,6 +2,10 @@
 
 Morning pulse coverage notes. A job is red after 3 times its schedule.
 
+retention-review — monthly count-only review; src/pulse/heartbeats.mjs checks its job_heartbeats receipt after 3 times its schedule. src/workflows/retention-review.test.mjs proves each org gets one dated count-only receipt and a failed org makes the run fail. It does not purge customer data.
+
+auth/plaid-mfa — the registry safely pings GET for a 405 without creating a challenge or grant; gap-auth.mjs and beat-auth-links.mjs share the same read-only MFA and consent integrity check each morning and hour.
+
 ops-manager-review — daily 7:15 a.m. Arizona staff-only KPI review; src/pulse/heartbeats.mjs checks its job_heartbeats receipt, and src/ops/manager-kpi-review.test.mjs proves the threshold, manager assignment, due date and dedupe. It does not automatically start a PIP.
 
 affiliate-payout-autopay — owner-set 2026-10-20 pay-on-clear affiliate payouts through Plaid (495): gap-partners.mjs partners:payout-overdue (unsent past the due day, or earned with no payout record after a day) and partners:payout-returned; the hourly partner-trip beat covers the job and affiliates/payouts, affiliates/payout-account, read/affiliate-payouts.

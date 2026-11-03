@@ -138,7 +138,7 @@ export async function startAffiliateBankLink({ affiliateId, env = process.env, h
  */
 export async function completeAffiliateBankLink(db, {
   orgId, affiliateId, publicToken, accountId = null, institution = null,
-  linkedBy = "affiliate", now = new Date(), env = process.env, plaid = null
+  linkedBy = "affiliate", now = new Date(), consentAt = null, env = process.env, plaid = null
 } = {}) {
   if (!isUuid(orgId) || !isUuid(affiliateId)) return refuse(400, SEAM_REASONS.BAD_REQUEST, "org and affiliate are required");
   const p = plaid || { linkAccount, getAccounts };
@@ -178,7 +178,8 @@ export async function completeAffiliateBankLink(db, {
                      updated_at = now()
        RETURNING id, environment, institution_name, account_name, account_mask, account_subtype, status`,
       [orgId, affiliateId, environment, plaidItemId, a.plaidAccountId, encryptedAccessToken,
-       institutionName, a.name ?? null, a.mask ?? null, a.subtype ?? null, now, String(linkedBy).slice(0, 120)]
+       institutionName, a.name ?? null, a.mask ?? null, a.subtype ?? null,
+       consentAt || now, String(linkedBy).slice(0, 120)]
     )).rows[0];
   });
 

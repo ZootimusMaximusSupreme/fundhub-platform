@@ -62,6 +62,7 @@ export const CLOCK_JOBS = Object.freeze([
   ["pulse-instant-watch", "*/5 * * * *"],
   ["partner-production-floor", "0 14 1 * *"],
   ["plaid-transactions-sweeper", "0 7 * * *"],
+  ["retention-review", "0 4 1 * *"],
   ["slo-infinite-drip", "0 15 * * *"],
   ["subscription-billing-sweeper", "17 * * * *"],
   ["watch-curve-diagnosis-sweeper", "30 7 * * *"],

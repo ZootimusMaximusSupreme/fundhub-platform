@@ -74,13 +74,14 @@ export async function startLink({ clientId, env = process.env } = {}) {
 /**
  * completeLink(db, { orgId, clientId, publicToken, institution, asOf, env })
  *
- * Exchange → store the item (encrypted token, consent stamped: the client
- * finishing Link IS the consent) → read accounts → save them.
+ * Exchange → store the item (encrypted token, consent timestamp passed from
+ * the saved pre-Link grant) → read accounts → save them.
  *
  * @returns {{ ok, reason?, itemRowId, environment, written, accounts }}
  */
 export async function completeLink(db, {
-  orgId, clientId, publicToken, institution = null, asOf, env = process.env
+  orgId, clientId, publicToken, institution = null, asOf, consentAt = null,
+  consentScope = null, env = process.env
 } = {}) {
   if (!orgId || !clientId || !asOf) {
     return { ok: false, reason: SEAM_REASONS.BAD_REQUEST, missing: ["orgId, clientId and asOf are required"] };
@@ -103,10 +104,12 @@ export async function completeLink(db, {
      ON CONFLICT (org_id, plaid_item_id) WHERE plaid_item_id IS NOT NULL
      DO UPDATE SET encrypted_access_token = EXCLUDED.encrypted_access_token,
                    link_state = 'active',
+                   consent_granted_at = EXCLUDED.consent_granted_at,
+                   consent_scope = EXCLUDED.consent_scope,
                    updated_at = now()
      RETURNING id`,
     [orgId, clientId, plaidItemId, institution?.institution_id ?? null, institutionName,
-     encryptedAccessToken, asOf, JSON.stringify(["accounts"])]
+     encryptedAccessToken, consentAt || asOf, JSON.stringify(consentScope || ["accounts"])]
   );
   const itemRowId = item.rows[0].id;
 
