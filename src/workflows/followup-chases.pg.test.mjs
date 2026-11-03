@@ -23,8 +23,7 @@ import { db, close } from "../db.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 import {
   handle as runChase, SMS_NOBOOK_01, SMS_NOBOOK_02, SMS_NOBOOK_03,
-  EMAIL_NOBOOK_01, EMAIL_NOBOOK_02, EMAIL_NOBOOK_03,
-  SETTER_TASK_SOURCE, SETTER_TASK_TITLE, SETTER_TASK_DETAIL
+  EMAIL_NOBOOK_01, EMAIL_NOBOOK_02, EMAIL_NOBOOK_03
 } from "./s-nobook-chase.mjs";
 import {
   handle as runCadence, upcomingCall, rebookedSince,
@@ -33,6 +32,7 @@ import {
 import { formatAppointmentStart } from "./messaging.mjs";
 import { updateSetterHandoff } from "../setter/dashboard.mjs";
 import { inDripWindow } from "../messaging/send-window.mjs";
+import { hasSetterNoAnswer } from "./stop-on-setter.mjs";
 
 const HAS_DB = isLocalScratchDatabaseUrl(process.env.DATABASE_URL);
 const SLUG = "followup-chases-test";
@@ -104,6 +104,20 @@ async function trigger(name, clientId, at, payload = {}) {
   const id = await insertEvent({ name, clientId, payload, at });
   return { id, orgId, clientId, name, payload };
 }
+
+test("setter no-answer check is scoped to the lead, org and start event",
+  { skip: !HAS_DB }, async () => {
+    const lead = await makeClient();
+    const other = await makeClient();
+    const start = await insertEvent({ name: "entry.captured", clientId: lead, at: "2026-10-31T23:00:00Z" });
+    await insertEvent({ name: "setter.no_answer", clientId: other, at: "2026-10-31T23:10:00Z" });
+    assert.equal(await hasSetterNoAnswer(db, { clientId: lead, eventId: start }), false);
+    await insertEvent({ name: "setter.no_answer", clientId: lead, at: "2026-10-31T22:50:00Z" });
+    assert.equal(await hasSetterNoAnswer(db, { clientId: lead, eventId: start }), false);
+    assert.equal(await hasSetterNoAnswer(db, { clientId: lead, eventId: start, lookbackHours: 24 }), true);
+    await insertEvent({ name: "setter.no_answer", clientId: lead, at: "2026-10-31T23:20:00Z" });
+    assert.equal(await hasSetterNoAnswer(db, { clientId: lead, eventId: start }), true);
+  });
 
 async function insertBooking(clientId, { status = "booked", startsAt }) {
   seq += 1;
@@ -193,7 +207,7 @@ test("rebookedSince: a booking or a reschedule AFTER the run began counts; one f
 
 /* ── S-NOBOOK end to end ───────────────────────────────────────────────────── */
 
-test("S-NOBOOK, qualified: the setter task and all six messages are written, every link on the first calendar",
+test("S-NOBOOK, qualified: six messages are written, every link on the first calendar",
   { skip: !HAS_DB }, async () => {
     const clientId = await makeClient({ customFields: { cf_svy_self_reported_fico_label: "760-850" } });
     const event = await trigger("survey.completed", clientId, FINISHED_4PM);
@@ -201,16 +215,7 @@ test("S-NOBOOK, qualified: the setter task and all six messages are written, eve
     const res = await runChase({ event, db, step, now: IN_15_MIN });
     assert.equal(res.exitedAt, "completed");
 
-    const [task, ...extra] = await tasksOf(clientId);
-    assert.equal(extra.length, 0);
-    assert.equal(task.assignee_role, "setter");
-    assert.equal(task.assignee_staff_id, null, "open to any setter");
-    assert.equal(task.source_workflow, SETTER_TASK_SOURCE);
-    assert.equal(task.title, SETTER_TASK_TITLE);
-    assert.equal(task.detail, SETTER_TASK_DETAIL);
-    assert.equal(task.body, event.id);
-    assert.equal(task.done, false);
-    assert.equal(new Date(task.due_at).toISOString(), "2026-10-31T23:15:00.000Z");
+    assert.equal((await tasksOf(clientId)).length, 0, "setter task is promoted by the event handler");
 
     const rows = await queued(clientId);
     assert.deepEqual(rows.map((m) => m.template_key), [
@@ -259,7 +264,7 @@ test("S-NOBOOK: a text reply that has no person on its event stops text 2 (match
     const res = await runChase({ event, db, step, now: IN_15_MIN });
     assert.equal(res.exitedAt, "replied");
     assert.equal((await queued(clientId)).length, 2, "text 1 only");
-    assert.equal((await tasksOf(clientId)).length, 1, "the setter task had already been made");
+    assert.equal((await tasksOf(clientId)).length, 0);
   });
 
 test("S-NOBOOK: a booking made while text 1 waited for 9 a.m. stops it, and nothing is sent",
@@ -274,16 +279,16 @@ test("S-NOBOOK: a booking made while text 1 waited for 9 a.m. stops it, and noth
     const res = await runChase({ event, db, step, now: IN_15_MIN });
     assert.equal(res.exitedAt, "after-wait-2h");
     assert.equal((await queued(clientId)).length, 0);
-    assert.equal((await tasksOf(clientId)).length, 1);
+    assert.equal((await tasksOf(clientId)).length, 0);
   });
 
-test("S-NOBOOK: replaying the same event writes one task and one set of messages",
+test("S-NOBOOK: replaying the same event writes one set of messages",
   { skip: !HAS_DB }, async () => {
     const clientId = await makeClient();
     const event = await trigger("survey.completed", clientId, FINISHED_4PM);
     await runChase({ event, db, step: recordingStep(), now: IN_15_MIN });
     await runChase({ event, db, step: recordingStep(), now: IN_15_MIN });
-    assert.equal((await tasksOf(clientId)).length, 1);
+    assert.equal((await tasksOf(clientId)).length, 0);
     assert.equal((await queued(clientId)).length, 6);
   });
 
@@ -502,7 +507,7 @@ async function runLikeTheEngine({ startIso, fn, happenings = [] }) {
   throw new Error("the run never finished");
 }
 
-test("S-NOBOOK under the engine's replays: every text leaves at its planned moment inside 9 to 5 Arizona, and the setter task is made once",
+test("S-NOBOOK under the engine's replays: every text leaves at its planned moment inside 9 to 5 Arizona",
   { skip: !HAS_DB }, async () => {
     const clientId = await makeClient({ customFields: { cf_svy_self_reported_fico_label: "760-850" } });
     const event = await trigger("survey.completed", clientId, FINISHED_4PM);
@@ -511,10 +516,8 @@ test("S-NOBOOK under the engine's replays: every text leaves at its planned mome
       fn: (step, now) => runChase({ event, db, step, now })
     });
     assert.equal(result.exitedAt, "completed");
-    assert.equal((await tasksOf(clientId)).length, 1);
-    assert.equal(new Date((await tasksOf(clientId))[0].due_at).toISOString(), "2026-10-31T23:15:00.000Z", "due when the 15 minutes were up, not at a later replay");
+    assert.equal((await tasksOf(clientId)).length, 0);
     assert.deepEqual(slept.map((s) => [s.id, s.until]), [
-      ["wait-15m", "2026-10-31T23:15:00.000Z"],
       ["wait-until-msg1", "2026-11-01T16:00:00.000Z"],
       ["wait-until-msg2", "2026-11-02T16:00:00.000Z"],
       ["wait-until-msg3", "2026-11-05T16:00:00.000Z"]
@@ -540,7 +543,7 @@ test("S-NOBOOK under the engine's replays: a booking at 8 a.m. while text 1 wait
     assert.equal(result.exitedAt, "after-wait-2h");
     assert.deepEqual(sent, []);
     assert.equal((await queued(clientId)).length, 0);
-    assert.equal((await tasksOf(clientId)).length, 1);
+    assert.equal((await tasksOf(clientId)).length, 0);
   });
 
 test("AI-SET-03 under the engine's replays: No answer at 4:50 p.m. sends text 1 at once and texts 2 and 3 the next morning at 9:00 and 11:00",

@@ -13,10 +13,11 @@
 //   2. even a valid code minted for the lead (the link the old senders put in the text)
 //      opens nothing at the door, and the door never asks the database.
 import { test } from "node:test";
+import { createHmac } from "node:crypto";
 import assert from "node:assert/strict";
 import doorHandler from "../../api/public/survey-resume.mjs";
 import { resolveClient } from "../handlers/client-lifecycle.mjs";
-import { surveyResumeToken } from "../survey/resume-link.mjs";
+import { surveyResumeTokenMatchesEmail } from "../survey/resume-link.mjs";
 import { handle as welcome } from "../workflows/s-00-welcome.mjs";
 import { handle as comeBack, RESUME_TEMPLATE_KEYS } from "../workflows/s-02-incomplete-survey-nudge.mjs";
 import { pgFake, fakeStep } from "../workflows/test-support.mjs";
@@ -31,6 +32,15 @@ const STRANGER_PHONE_TYPED = "(555) 999-0000";
 const STRANGER_PHONE = "+15559990000";
 const SECRET = "collision-test-resume-secret-0123456789abcdef0123";
 const START = "2026-10-28T17:00:00Z"; // 10 a.m. Arizona, inside the drip window
+
+function legacySmsToken() {
+  const client = Buffer.from(LEAD.replace(/-/g, ""), "hex");
+  const expiry = (Math.floor((Date.parse(START) + 30 * 86400000) / 86400000) -
+    Math.floor(Date.UTC(2026, 0, 1) / 86400000)).toString(36);
+  const tag = createHmac("sha256", SECRET).update("survey-resume-v1|").update(client).update(expiry)
+    .digest().subarray(0, 16).toString("base64url");
+  return client.toString("base64url") + expiry + tag;
+}
 
 /* Five of eight questions answered. Every one of these words is private to the lead. */
 const SAVED = Object.freeze({
@@ -150,8 +160,17 @@ test("collision: S-00 and S-02 send the stranger's phone no resume code and none
   assert.deepEqual(sent.map((m) => m.template_key).sort(), [...WELCOME_KEYS, ...RESUME_TEMPLATE_KEYS].sort(),
     "the welcome and every come-back message still go, text and email");
   for (const m of sent) {
-    assert.ok(!m.rendered_body.includes("?r="), `${m.template_key} carries no resume code: ${m.rendered_body}`);
-    assert.ok(m.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), `${m.template_key}: ${m.rendered_body}`);
+    if (m.channel === "sms") {
+      assert.ok(!m.rendered_body.includes("?r="), `${m.template_key} carries no resume code: ${m.rendered_body}`);
+      assert.ok(m.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), `${m.template_key}: ${m.rendered_body}`);
+    } else {
+      assert.match(m.rendered_body, /here: https:\/\/apply\.fundhub\.ai\/apply\?r=/,
+        `${m.template_key}: email to the saved address resumes without exposing answers in the body`);
+      const link = m.rendered_body.match(/https:\/\/apply\.fundhub\.ai\/apply\?r=[A-Za-z0-9_-]+/)?.[0];
+      const token = new URL(link).searchParams.get("r");
+      assert.equal(surveyResumeTokenMatchesEmail(token, LEAD_EMAIL, { secret: SECRET }), true);
+      assert.equal(surveyResumeTokenMatchesEmail(token, "mallory@example.test", { secret: SECRET }), false);
+    }
     assert.ok(!/stopped at|taps left|more taps|where you were/i.test(m.rendered_body),
       `${m.template_key} must not reveal saved progress or promise a saved position`);
     for (const word of PRIVATE_WORDS) {
@@ -162,7 +181,7 @@ test("collision: S-00 and S-02 send the stranger's phone no resume code and none
 
 test("collision: the code the old senders texted to that phone opens nothing at the door", async () => {
   // The exact link S-00/S-02 put in the stranger's text before the containment.
-  const code = surveyResumeToken({ clientId: LEAD, now: () => Date.parse(START), secret: SECRET });
+  const code = legacySmsToken();
   const { res, calls } = await openAtDoor(code);
   assert.equal(res.statusCode, 404);
   assert.deepEqual(res.body, { ok: false });

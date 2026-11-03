@@ -2,11 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import {
-  RESUME_BASE_URL, RESUME_TTL_SECONDS, readSurveyResumeToken, surveyResumeSecret, surveyResumeToken, surveyResumeUrl
+  RESUME_BASE_URL, RESUME_TTL_SECONDS, readSurveyResumeToken, surveyResumeSecret, surveyResumeToken,
+  surveyResumeTokenMatchesEmail, surveyResumeUrl
 } from "./resume-link.mjs";
 
 const ORG = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const CLIENT = "c3b1a9d2-5f4e-4c1a-8b7d-2e6f9a0b1c3d";
+const EMAIL = "pat@example.com";
 const OTHER_CLIENT = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
 const SECRET = "unit-test-resume-secret-0123456789abcdef0123456789";
 const ENV = { UNSUBSCRIBE_TOKEN_SECRET: SECRET };
@@ -15,17 +17,20 @@ const DAY = 24 * 60 * 60 * 1000;
 const EPOCH_DAY = Date.UTC(2026, 0, 1) / DAY;
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
-const mint = (over = {}) => surveyResumeToken({ clientId: CLIENT, now: () => NOW, env: ENV, ...over });
+const mint = (over = {}) => surveyResumeToken({ clientId: CLIENT, email: EMAIL, now: () => NOW, env: ENV, ...over });
 const read = (token, over = {}) => readSurveyResumeToken(token, { now: () => NOW, env: ENV, ...over });
 
 /* The wire format written out a second time, independently of the module: 16 bytes of
    client, the expiry as base36 text, and the first 16 bytes of the HMAC-SHA256 of the
    scheme, the client's bytes and that text. Building tokens here is how the tests can
    make a validly signed token the module would never write. */
-function build({ client = CLIENT, expiry, secret = SECRET, scheme = "survey-resume-v1" }) {
+function build({ client = CLIENT, email = EMAIL, expiry, secret = SECRET, scheme = "survey-resume-email-v3" }) {
   const bytes = Buffer.from(client.replace(/-/g, ""), "hex");
-  const tag = createHmac("sha256", secret).update(`${scheme}|`).update(bytes).update(expiry).digest().subarray(0, 16);
-  return bytes.toString("base64url") + expiry + tag.toString("base64url");
+  const proof = scheme === "survey-resume-v1" ? "" : createHmac("sha256", secret)
+    .update(`${scheme}|email|`).update(email.toLowerCase()).digest().subarray(0, 8).toString("base64url");
+  const tag = createHmac("sha256", secret).update(`${scheme}|`).update(bytes).update(expiry).update(proof)
+    .digest().subarray(0, 16);
+  return bytes.toString("base64url") + expiry + proof + tag.toString("base64url");
 }
 const dayOf = (ms) => Math.floor(ms / DAY) - EPOCH_DAY;
 
@@ -46,18 +51,27 @@ test("a good token reads back the client", () => {
   assert.deepEqual(read(mint()), { clientId: CLIENT });
 });
 
-test("the token is 46 characters: 22 of client, 2 of expiry day, 22 of tag — and nothing about the person", () => {
+test("the link opens only while the saved email is the same", () => {
   const token = mint();
-  assert.equal(token.length, 46);
+  assert.equal(surveyResumeTokenMatchesEmail(token, EMAIL, { now: NOW, env: ENV }), true);
+  assert.equal(surveyResumeTokenMatchesEmail(token, " PAT@example.com ", { now: NOW, env: ENV }), true);
+  assert.equal(surveyResumeTokenMatchesEmail(token, "new@example.com", { now: NOW, env: ENV }), false);
+});
+
+test("the token is 57 characters: client, expiry, opaque email proof and tag", () => {
+  const token = mint();
+  assert.equal(token.length, 57);
   assert.match(token, /^[A-Za-z0-9_-]+$/);
   // The client part is the 16 bytes of the uuid. The expiry is the 30th day on, as whole days since
   // 2026-01-01 in base36. The tag is 16 bytes. There is no room for an email, a phone, a name or a company.
   assert.equal(Buffer.from(token.slice(0, 22), "base64url").toString("hex"), CLIENT.replace(/-/g, ""));
   assert.equal(token.slice(22, 24), dayOf(NOW + 30 * DAY).toString(36));
   assert.equal(token.slice(22, 24), "99", "30 November 2026");
-  assert.equal(Buffer.from(token.slice(24), "base64url").length, 16);
-  const extras = mint({ email: "pat.lee@example.com", phone: "+15551234567", name: "Pat Lee", orgId: ORG });
-  assert.equal(extras, token, "personal fields passed in change nothing; neither does the company");
+  assert.equal(Buffer.from(token.slice(24, 35), "base64url").length, 8);
+  assert.equal(Buffer.from(token.slice(35), "base64url").length, 16);
+  const changedEmail = mint({ email: "pat.lee@example.com", phone: "+15551234567", name: "Pat Lee", orgId: ORG });
+  assert.notEqual(changedEmail, token, "a changed saved email invalidates the old link");
+  assert.equal(mint({ orgId: ORG }), token, "the company does not change the token");
 });
 
 test("the wire format is pinned: a token built by hand from the spec is the token the module writes", () => {
@@ -65,11 +79,11 @@ test("the wire format is pinned: a token built by hand from the spec is the toke
   assert.deepEqual(read(build({ expiry: "99" })), { clientId: CLIENT });
 });
 
-test("the link is /apply?r= and short enough for a text: 79 characters", () => {
-  const url = surveyResumeUrl({ orgId: ORG, clientId: CLIENT, now: () => NOW, env: ENV });
+test("the email link is /apply?r= and 90 characters", () => {
+  const url = surveyResumeUrl({ orgId: ORG, clientId: CLIENT, email: EMAIL, now: () => NOW, env: ENV });
   assert.ok(url.startsWith(`${RESUME_BASE_URL}?r=`));
   assert.equal(RESUME_BASE_URL, "https://apply.fundhub.ai/apply");
-  assert.equal(url.length, 33 + 46);
+  assert.equal(url.length, 33 + 57);
   assert.deepEqual(read(new URL(url).searchParams.get("r")), { clientId: CLIENT });
 });
 
@@ -130,20 +144,22 @@ test("malformed input is null and never throws", () => {
 test("the signature is scoped to this purpose: a tag made under another scheme does not verify", () => {
   assert.equal(read(build({ expiry: "99", scheme: "unsub-v1" })), null);
   assert.equal(read(build({ expiry: "99", scheme: "survey-resume-v2" })), null);
-  assert.deepEqual(read(build({ expiry: "99", scheme: "survey-resume-v1" })), { clientId: CLIENT });
+  assert.equal(read(build({ expiry: "99", scheme: "survey-resume-v1" })), null, "old text links stay closed");
+  assert.equal(read(build({ expiry: "99", scheme: "survey-resume-email-v2" })), null);
+  assert.deepEqual(read(build({ expiry: "99", scheme: "survey-resume-email-v3" })), { clientId: CLIENT });
 });
 
 test("one spelling per token: the spare bits at the end of a base64 part cannot be rewritten", () => {
   const token = mint();
   // The last character of the client part and of the tag each carry four bits that decode to nothing.
   // Setting them gives a different string that decodes to the same bytes. It must not verify.
-  for (const [at, label] of [[21, "client"], [45, "tag"]]) {
+  for (const [at, label, start, end] of [[21, "client", 0, 22], [34, "email", 24, 35], [56, "tag", 35, 57]]) {
     const spare = ALPHABET.indexOf(token[at]) | 0b0001;
     const variant = token.slice(0, at) + ALPHABET[spare] + token.slice(at + 1);
     assert.notEqual(variant, token);
     assert.deepEqual(
-      Buffer.from(variant.slice(at < 22 ? 0 : 24, at < 22 ? 22 : 46), "base64url"),
-      Buffer.from(token.slice(at < 22 ? 0 : 24, at < 22 ? 22 : 46), "base64url"),
+      Buffer.from(variant.slice(start, end), "base64url"),
+      Buffer.from(token.slice(start, end), "base64url"),
       `${label}: the variant decodes to the same bytes`
     );
     assert.equal(read(variant), null, `${label}: and is refused`);
@@ -158,7 +174,7 @@ test("one spelling per token: the spare bits at the end of a base64 part cannot 
 test("an expiry of any length up to six characters reads back: the token grows after mid-2029", () => {
   const year2035 = Date.parse("2035-01-01T00:00:00Z");
   const token = mint({ now: () => year2035 });
-  assert.equal(token.length, 47);
+  assert.equal(token.length, 58);
   assert.deepEqual(read(token, { now: () => year2035 }), { clientId: CLIENT });
   assert.equal(read(token, { now: () => year2035 + 32 * DAY }), null);
   assert.deepEqual(read(build({ expiry: dayOf(Date.parse("2100-01-01T00:00:00Z")).toString(36) }), { now: () => Date.parse("2099-12-31T00:00:00Z") }), { clientId: CLIENT });
@@ -168,7 +184,7 @@ test("a clock before the epoch cannot make a token, and the link falls back to t
   const before = Date.parse("2025-06-01T00:00:00Z");
   assert.throws(() => mint({ now: () => before }), /outside the years a link can carry/);
   assert.throws(() => mint({ now: () => NaN }));
-  const { value: url, warnings } = quietly(() => surveyResumeUrl({ clientId: CLIENT, now: () => before, env: ENV }));
+  const { value: url, warnings } = quietly(() => surveyResumeUrl({ clientId: CLIENT, email: EMAIL, now: () => before, env: ENV }));
   assert.equal(url, "https://apply.fundhub.ai/apply");
   assert.ok(warnings.some((w) => /survey-resume/.test(w)));
 });
@@ -178,14 +194,14 @@ test("it uses the unsubscribe key, and falls back to the document key the same w
   const doc = "document-url-secret-0123456789abcdef0123456789ab";
   assert.equal(surveyResumeSecret({ DOCUMENT_URL_SECRET: doc }), doc);
   assert.equal(surveyResumeSecret({ UNSUBSCRIBE_TOKEN_SECRET: SECRET, DOCUMENT_URL_SECRET: doc }), SECRET);
-  const viaDoc = surveyResumeToken({ clientId: CLIENT, now: () => NOW, env: { DOCUMENT_URL_SECRET: doc } });
+  const viaDoc = surveyResumeToken({ clientId: CLIENT, email: EMAIL, now: () => NOW, env: { DOCUMENT_URL_SECRET: doc } });
   assert.deepEqual(read(viaDoc, { env: { DOCUMENT_URL_SECRET: doc } }), { clientId: CLIENT });
 });
 
 test("no key: the token refuses, the link falls back to the plain apply page, a read is null", () => {
-  assert.throws(() => surveyResumeToken({ clientId: CLIENT, env: {} }), /refusing to sign survey resume links/);
-  assert.throws(() => surveyResumeToken({ clientId: CLIENT, env: { UNSUBSCRIBE_TOKEN_SECRET: "too-short" } }));
-  const { value: url, warnings } = quietly(() => surveyResumeUrl({ orgId: ORG, clientId: CLIENT, env: {} }));
+  assert.throws(() => surveyResumeToken({ clientId: CLIENT, email: EMAIL, env: {} }), /refusing to sign survey resume links/);
+  assert.throws(() => surveyResumeToken({ clientId: CLIENT, email: EMAIL, env: { UNSUBSCRIBE_TOKEN_SECRET: "too-short" } }));
+  const { value: url, warnings } = quietly(() => surveyResumeUrl({ orgId: ORG, clientId: CLIENT, email: EMAIL, env: {} }));
   assert.equal(url, "https://apply.fundhub.ai/apply", "a working door, never a blank link");
   assert.ok(warnings.some((w) => /survey-resume/.test(w) && /missing or too short/.test(w)), String(warnings));
   assert.equal(readSurveyResumeToken(mint(), { env: {} }), null);
@@ -200,23 +216,23 @@ test("an id that is not a uuid never makes a token", () => {
 });
 
 test("the company is not in the token: it is accepted for the shared call shape and ignored", () => {
-  const a = surveyResumeUrl({ orgId: ORG, clientId: CLIENT, now: () => NOW, env: ENV });
-  const b = surveyResumeUrl({ orgId: "anything", clientId: CLIENT, now: () => NOW, env: ENV });
-  const c = surveyResumeUrl({ clientId: CLIENT, now: () => NOW, env: ENV });
+  const a = surveyResumeUrl({ orgId: ORG, clientId: CLIENT, email: EMAIL, now: () => NOW, env: ENV });
+  const b = surveyResumeUrl({ orgId: "anything", clientId: CLIENT, email: EMAIL, now: () => NOW, env: ENV });
+  const c = surveyResumeUrl({ clientId: CLIENT, email: EMAIL, now: () => NOW, env: ENV });
   assert.equal(a, b);
   assert.equal(a, c);
 });
 
 test("an upper-case client id is accepted and read back lower-case", () => {
-  const token = surveyResumeToken({ clientId: CLIENT.toUpperCase(), now: () => NOW, env: ENV });
+  const token = surveyResumeToken({ clientId: CLIENT.toUpperCase(), email: EMAIL, now: () => NOW, env: ENV });
   assert.equal(token, mint());
   assert.deepEqual(read(token), { clientId: CLIENT });
 });
 
 test("the clock may be a function, a number or a Date", () => {
-  const a = surveyResumeToken({ clientId: CLIENT, now: () => NOW, env: ENV });
-  const b = surveyResumeToken({ clientId: CLIENT, now: NOW, env: ENV });
-  const c = surveyResumeToken({ clientId: CLIENT, now: new Date(NOW), env: ENV });
+  const a = surveyResumeToken({ clientId: CLIENT, email: EMAIL, now: () => NOW, env: ENV });
+  const b = surveyResumeToken({ clientId: CLIENT, email: EMAIL, now: NOW, env: ENV });
+  const c = surveyResumeToken({ clientId: CLIENT, email: EMAIL, now: new Date(NOW), env: ENV });
   assert.equal(a, b);
   assert.equal(a, c);
   assert.ok(read(a, { now: new Date(NOW + DAY) }));

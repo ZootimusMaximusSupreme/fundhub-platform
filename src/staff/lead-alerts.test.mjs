@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { buildStaffPushPayload } from "../push/payload.mjs";
 import {
-  buildStaffLeadText, buildCloserSetText, buildCloserUpcomingText,
-  queueNewLeadAlerts, queueCloserSetAlert, queueCloserUpcomingAlert
+  buildStaffLeadText, buildStaffSurveyDoneText, buildCloserSetText, buildCloserUpcomingText,
+  queueNewLeadAlerts, queueSurveyCompletedAlerts, queueCloserSetAlert, queueCloserUpcomingAlert
 } from "./lead-alerts.mjs";
 
 const CLIENT = "11111111-1111-4111-8111-111111111111";
@@ -68,6 +69,42 @@ test("only setters and owner get the first SMS and push, once per client", async
   assert.deepEqual(drains, ["m-1", "m-2"]);
   assert.deepEqual(pushes.map(row => row.kind), ["lead", "lead", "lead", "lead"]);
   assert.ok(pushes.every(row => row.key === CLIENT));
+});
+
+test("finished survey gives the setter and owner one distinct call-now alert", async () => {
+  const { db, client, messages } = fakeDb();
+  const pushes = [];
+  const drains = [];
+  const opts = { orgId: "org-1", clientId: CLIENT, cohortId: "survey-cohort-1",
+    bookedImpl: async () => false,
+    drainNowImpl: async (_db, id) => { drains.push(id); return { sent: 1 }; },
+    pushImpl: async (_db, args) => { pushes.push(args); return { sent: 1 }; } };
+  const first = await queueSurveyCompletedAlerts(db, opts);
+  const replay = await queueSurveyCompletedAlerts(db, opts);
+  assert.equal(first.queued, 2);
+  assert.equal(replay.queued, 0);
+  assert.deepEqual(messages.map(row => row.to), [STAFF[0].phone, STAFF[1].phone]);
+  assert.ok(messages.every(row => row.ref.includes("survey-finished:survey-cohort-1")));
+  assert.ok(messages.every(row => row.body === buildStaffSurveyDoneText({ client, clientId: CLIENT })));
+  assert.match(messages[0].body, /^Survey finished: Pat\nCheck booking; call now if no time is booked\./);
+  assert.deepEqual(drains, ["m-1", "m-2"]);
+  assert.ok(pushes.every(row => row.kind === "lead" && row.key === "survey-finished:survey-cohort-1"));
+  assert.ok(pushes.every(row => JSON.parse(buildStaffPushPayload({ ...row,
+    audience: "staff" })).body === "A new lead is ready. Open Fundhub to call."));
+});
+
+test("finished survey stops staff sends when a booking lands between recipients", async () => {
+  const { db, messages } = fakeDb();
+  let checks = 0;
+  const result = await queueSurveyCompletedAlerts(db, {
+    orgId: "org-1", clientId: CLIENT, cohortId: "survey-cohort-1",
+    bookedImpl: async () => ++checks >= 3,
+    drainNowImpl: async () => ({ sent: 1 }), pushImpl: async () => ({ sent: 1 })
+  });
+  assert.equal(result.reason, "already_booked");
+  assert.equal(result.queued, 1);
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].to, STAFF[0].phone);
 });
 
 test("set text includes saved setter corrections, including when the owner is setter and closer", async () => {

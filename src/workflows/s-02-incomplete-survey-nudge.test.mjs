@@ -5,9 +5,10 @@ import {
   EMAIL_TEMPLATE_KEY, SMS_TEMPLATE_KEY, SEQUENCE_WINDOW_MS
 } from "./s-02-incomplete-survey-nudge.mjs";
 import { pgFake } from "./test-support.mjs";
-import { withReplyRead } from "./stop-on-reply.test-support.mjs";
+import { withReplyRead, withSetterNoAnswerRead } from "./stop-on-reply.test-support.mjs";
 import { inngestSim } from "./inngest-sim.mjs";
 import { DRIP_LAST_PLAN_MINUTE, inDripWindow, SEND_WINDOW_TZ } from "../messaging/send-window.mjs";
+import { readSurveyResumeToken } from "../survey/resume-link.mjs";
 
 /* ── The database ───────────────────────────────────────────────────────────────────────────────
    pgFake answers the shared reads (clients, templates, messages, the cohort, bookings), and
@@ -77,7 +78,7 @@ const lead = (over = {}) => ({
 
 function world({ start = AT_10AM, templates = RESUME_TEMPLATE_KEYS.map(template), clients = [lead()] } = {}) {
   const sim = inngestSim(start);
-  return { sim, db: withReads(withReplyRead(pgFake({ clients, templates })), sim) };
+  return { sim, db: withReads(withReplyRead(withSetterNoAnswerRead(pgFake({ clients, templates }))), sim) };
 }
 
 /** An opt-in: the entry.captured row (pgFake reads it for the send key) and the event the run gets. */
@@ -329,15 +330,18 @@ test("finished is checked first, then a reply, then a booking", async () => {
 
 // ── the words the message carries ────────────────────────────────────────────────────────────────
 
-test("every text and email carries the plain /apply link and never a resume code, even with a signing key", async () => {
-  // Containment (2026-10-31): /apply lets a new phone onto an existing lead's email, so a come-back
-  // text can reach a stranger. The signing key is set (before()), so a code COULD be minted, and is not.
+test("SMS stays plain while email carries a signed resume link to the saved lead", async () => {
   const w = world({ start: AT_10AM });
   await run(w, optIn(w));
   assert.equal(w.db.messages.length, 6);
   for (const m of w.db.messages) {
-    assert.ok(m.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), `${m.template_key}: ${m.rendered_body}`);
-    assert.ok(!m.rendered_body.includes("?r="), `${m.template_key} carries no resume code`);
+    if (m.channel === "sms") {
+      assert.ok(m.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), m.rendered_body);
+      assert.ok(!m.rendered_body.includes("?r="), "SMS carries no resume code");
+    } else {
+      const token = new URL(m.rendered_body.split("here: ")[1]).searchParams.get("r");
+      assert.equal(readSurveyResumeToken(token)?.clientId, CLIENT, "email can resume the saved lead");
+    }
     assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
     assert.ok(!m.rendered_body.includes("Pat"), "the neutral copy carries no saved name");
   }
@@ -396,7 +400,7 @@ test("even a stale template cannot render saved survey progress into a message",
     if (m.channel === "sms") {
       assert.doesNotMatch(m.rendered_body, /https?:\/\//, "a stale SMS merge tag renders no link");
     } else {
-      assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply$/, "the plain email link (containment 2026-10-31)");
+      assert.match(m.rendered_body, /https:\/\/apply\.fundhub\.ai\/apply\?r=/, "email can resume from saved answers");
     }
     assert.ok(!m.rendered_body.includes("{{"), "no merge tag is left over");
   }
@@ -416,7 +420,7 @@ test("one question left still gets a neutral message", async () => {
   const w = world({ start: AT_10AM, clients: [lead({ custom_fields: sevenAnswered })] });
   await run(w, optIn(w));
   assert.equal(w.db.messages.length, 6);
-  assert.ok(bodyOf(w, "EMAIL-S02-RESUME-1").includes("Start your questions here: https://apply.fundhub.ai/apply"));
+  assert.ok(bodyOf(w, "EMAIL-S02-RESUME-1").includes("Start your questions here: https://apply.fundhub.ai/apply?r="));
   assert.ok(!bodyOf(w, "EMAIL-S02-RESUME-1").includes("last question"));
 });
 
@@ -597,4 +601,17 @@ test("stopReason is null for a lead with no finish, reply or booking", async () 
   const w = world();
   const event = optIn(w);
   assert.equal(await stopReason(w.db, { orgId: ORG, clientId: CLIENT, email: EMAIL, eventId: event.id }), null);
+});
+
+test("a logged no-answer call hands SMS to the setter cadence while emails continue", async () => {
+  const w = world();
+  const event = optIn(w);
+  w.sim.at("2026-10-28T17:10:00Z", () => w.db.events.push({
+    id: "evt-no-answer", org_id: ORG, client_id: CLIENT,
+    name: "setter.no_answer", payload: { disposition: "no_answer" },
+    created_at: "2026-10-28T17:10:00Z"
+  }));
+  const result = await run(w, event);
+  assert.equal(result.done, true);
+  assert.deepEqual(w.db.messages.map((message) => message.channel), ["email", "email", "email"]);
 });
