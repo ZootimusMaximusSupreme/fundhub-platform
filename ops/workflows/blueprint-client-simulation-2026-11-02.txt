@@ -1,0 +1,338 @@
+Blueprint client simulation — November 2, 2026
+
+Owner: root. Discovery completed; user now requested a working buyer simulation
+before the step-by-step walkthrough. Owner subsequently corrected scope: the
+buyer experience must be REAL and usable by a person, including UnderwriteIQ.
+Scenario: fictional brand-new buyer of the high-ticket 12-month Capital Blueprint.
+Goal: walk the buyer through the current portal, jump time/change circumstances,
+and identify clearer actions, missing delivery, and useful offer additions.
+
+Workflow A — Blueprint steps and portal (read only)
+Prompt: Trace current Blueprint client steps, education, proof/verification,
+coach and calendar touchpoints. Compare the user's ideas with existing source.
+Return a short built / partial / proposed list with file:line evidence.
+Do not edit source, run providers, or treat source as live proof.
+
+Workflow B — UnderwriteIQ and FinanceOS (read only)
+Prompt: Trace existing business-profile, personal-credit and local banking
+recommendations and their verification. Search relevant Alec/Alex knowledge.
+Return the nearest reusable mechanisms and missing inputs with file:line evidence.
+Do not edit source, run providers, or recommend specific financial products.
+
+Workflow C — root synthesis and client roleplay
+Use both read-only reports to shape one coherent client experience.
+All feature suggestions remain proposals until the owner chooses changes.
+
+User brainstorm (deduplicated from two identical attachments)
+- State-specific business entity formation and additional businesses.
+- Credible business profile: website prompt, contact/address consistency,
+  listings and discoverability.
+- Optional business-credit starter steps; David's gas-card material pending.
+- Location-aware credit-union/bank relationships and ChexSystems readiness.
+- Sequence account opening, secured credit, deposits and seasoning by the
+  client's credit file, income, cash and existing relationships.
+- Calendar waypoints and Google Calendar reminders.
+- Merchant payment/financing partner referrals (provider names to verify).
+- Turn UnderwriteIQ recommendations into short lessons and exact actions.
+- Future FinanceOS evidence checks and existing bureau evidence can feed
+  progress and the next plan; FinanceOS is not live (owner correction below).
+- Employment/business-owner income documentation guidance.
+
+Source review completed — proposal, not a release or live customer test
+
+Freshness: connected GitHub compare found main one merge ahead of local
+origin/main f03eea246; changed files concern survey/Cortana, not the Blueprint,
+waypoint or FinanceOS paths reviewed here. Read-only agents reviewed matching
+origin/main source. No production client experience was exercised this turn.
+
+Current reusable mechanisms
+- src/waypoints/seed.mjs:135: saved client checklist from credit-file data.
+- db/migrations/362_waypoint_definitions_seed.sql:82: card paydowns,
+  no-new-credit, personal-loan conversation, LLC, EIN and business checking.
+- src/waypoints/verify.mjs:290: evidence-aware credit/dispute checks.
+- src/blueprint/coach.mjs:60: context-aware current-step coaching/help.
+- src/finance/business-info.mjs:70: saved entity/contact/industry fields.
+- src/finance/bank-strategy.mjs:381: opening/deposit/seasoning instructions.
+- src/finance/bank-strategy.mjs:637: saved relationship dates and ready dates.
+- src/finance/bank-strategy.mjs:1110: home/business-state bank guidance using
+  existing relationships, real credit evidence and UnderwriteIQ.
+- src/blueprint/paydown-simulator.mjs:80: cash-to-paydown allocation simulator.
+- docs/legacy-strong/README.md:3: Alec's historical banking/state datapoints.
+
+Current experience gaps (source findings, not witnessed client incidents)
+- public/progress.html:896 and :957: current-step/list rows omit waypoint
+  detail text, despite instructions existing in the stored definitions.
+- public/app/client-portal.html:530: next action uses generic account/doc
+  priorities rather than a personalized Blueprint action.
+- public/app/client-portal.html:977: five Blueprint course placeholders.
+- src/waypoints/self-attest.mjs:70: LLC/EIN/checking use client reporting;
+  bureau refresh cannot automatically establish completion of those tasks.
+- src/blueprint/coach.mjs:106: earliest-open-step focus; parallel business,
+  credit and banking paths need deliberate planning and clear dependencies.
+- src/waypoints/seed.mjs:145: existing-business applicability not established
+  by this seed path; avoid asking established owners to create another LLC.
+- Current bank geography is mostly state coverage, not membership/ZIP ranking.
+  Exact checking products, current links/fees and membership checks need data.
+- api/money/banks.mjs:122: bank progress writes are staff-only; stored opening
+  and deposit entries are not automatic verification from a connected account.
+- No Blueprint waypoint Google Calendar sync/export found in reviewed paths.
+- No guided ChexSystems, gas/fleet-card or listing workflow found; David's
+  material remains pending, and merchant referrals need partner-specific work.
+- src/underwrite/company-audit.mjs:72 and :129: canned Arizona/quarterly-entity
+  and low-risk-industry suggestions need replacement with guidance grounded in
+  real state/activity before expanding into a client formation experience.
+
+Proposed experience — not yet approved for implementation
+1. Confirm goal and existing business using already collected data; ask only
+   for gaps. Show credit, business, banking and optional revenue tracks.
+2. Home: Do now / Can do alongside this / Waiting for results. Show the next
+   three relevant actions, their dependencies and what the team owes.
+3. Each action: Why / exact steps and official destination / cost and funds
+   needed / proof / next check date / help. Offer a website prompt where useful.
+4. Keep reported complete, evidence received, verified and waiting distinct.
+   A changed bank balance does not by itself prove entity ownership or filing.
+5. Use one cash plan for bills, paydowns and bank deposits; avoid allocating
+   the same dollars to multiple tasks. Adjust the plan as circumstances change.
+6. Calendar dates follow the saved plan, completed evidence and actual waiting
+   periods; explain what changed when a milestone moves.
+7. Select AU, secured-credit and optional business-credit actions from actual
+   file needs. Choose bank count/pace by fit and cash rather than a blanket rule.
+8. Business guidance follows real state, entity, industry, employment and income
+   documentation. Formation, listings and merchant tools use current sources.
+9. Proposed next roleplay question: Do you already have a business, or are we
+   building your first one? New-buyer profile otherwise remains unspecified.
+
+Current official references checked for proposal wording
+- https://www.sba.gov/counseling/launch-your-business/state-registration-lookup/
+- https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/
+- https://www.irs.gov/businesses/small-businesses-self-employed/paying-yourself
+
+Owner clarifications — preserve wording and intent (November 2, 2026)
+- "Finance OS isn't live yet." Treat it as future functionality throughout
+  the simulation. Current buyer actions must work through clear instructions,
+  saved progress, submitted documents and actual available verification.
+  Code existence is not live FinanceOS delivery.
+- Fundhub is recommending steps as a consulting company. These are guided
+  client actions; this conversation does not authorize forming entities.
+- The recommended starting structure is a single-member LLC (owner also
+  said "sole member"), with a basic name. Later C-corporation/S-corporation
+  tax elections are a separate later decision, rather than the starting task.
+- The strategy includes three or four SEPARATE businesses "on the shelf"
+  for roughly 12 months down the road, with staged work to improve readiness.
+  This is not three/four members in one LLC and not just today's business.
+- Track every business separately: formation date and true age, ownership,
+  EIN/documents, actual business/profile details, accounts/relationships,
+  milestones, next dates and evidence. Entity age and actual operating history
+  are separate facts. Readiness is assessed at waypoints, not assumed at month12.
+- Business preparation runs alongside personal-credit optimization; build
+  useful foundations and bank relationships at the appropriate stage.
+- Use Alec Dupesh's actual repo material as the foundation. Do not replace
+  the named source with generic LLC advice or keep asking where it is.
+- Preserve the owner's wording/nuances as we continue the simulation; no new
+  buyer profile is chosen or approved by this clarification.
+
+Alec sources read directly for the clarification
+- docs/legacy-strong/README.md: identifies the full source tree below.
+- credentials/notion-scrape/output/opening-llc--59d3968e/page.md:
+  home-state formation preference, generic names, formation steps and docs.
+- credentials/notion-scrape/output/get-ein--fda2d58f/page.md:
+  member count, state, EIN steps and single-member treatment.
+- credentials/notion-scrape/output/details-aged-corp--1b8c3aa7/page.md:
+  banking during optimization and relationship/seasoning sequences.
+- credentials/notion-scrape/output/aged-corps-open-biz-checking--20dc3aa7/page.md:
+  entity/ownership/EIN document preparation for bank opening.
+- Source distinction: those aged-corp pages concern purchased or 2+ year
+  entities; the owner's present idea is to begin preparing several businesses
+  now for a future ~12-month point. Do not silently substitute one for the other.
+- Reuse the preparation structure; populate account openings/applications with
+  actual ownership, activity and supported financial facts, not the source's
+  canned assumed revenue/ownership answers or historical bank numbers.
+
+Status: owner nuances and source map saved locally. Feature changes remain
+proposals. No product source, customers, providers or bank accounts changed.
+
+Build request — working draft approved November 2, 2026
+1 Role: Blueprint buyer. Owner simulation controls live outside the buyer flow.
+2 One job: show the buyer's next useful action and walk them through it.
+3 First question: What should I do first now that I have paid?
+4 Reuse: approved Fundhub Astra/brand/font assets; existing checklist,
+  business fields, evidence states and Alec source as design/content references.
+5 Data: fictional local fixture only; browser-local persistence. No API route,
+  real credit pull, customer mutation, banking connection or paid action.
+6 Files: this board; ops/workflows/blueprint-client-simulation-2026-11-02/
+  preview/{index.html,simulation.css,simulation.js}; build-evidence/*.
+  Private preview packaging may mirror these files and shared assets into
+  the chat visualization directory. No production app source edits.
+7 Risk/proof: fixture can look like real service; persistent Simulation label,
+  explicit evidence states and FinanceOS future label. Check buyer progression,
+  refresh, four business records, time jumps, errors and responsive controls.
+
+Draft journey / observable ground truth
+- First visit opens welcome: 12-month Blueprint, one Start my plan action.
+- Start asks one relevant profile question; buyer can use saved fictional
+  profile or change it. Flow retains credit context without a fresh pull.
+- Save setup leads to Today with next action and parallel work visible.
+- Each action has why, instructions, evidence and one clear next action.
+- Add/manage 3–4 separate single-member LLC plans, basic names, individual
+  formation dates, documents, bank milestones and review dates.
+- Reported complete / evidence received / reviewed remain distinct.
+- Owner can jump to day30/90/365 or change scenario without a real provider.
+  Time alone never completes work, verifies proof or approves funding.
+- FinanceOS has no working connection or automatic verification claim.
+
+Build parallel prompts (read only)
+D — Portal layout: Review existing portal/shared Astra styles and report
+  the smallest set of brand assets/classes/layout traits to reuse. No edits.
+E — Lesson content: Review Alec LLC/EIN/banking source and owner nuances;
+  propose short new-buyer task copy with truthful evidence states. No edits.
+F — Root: implement the preview and package it; an independent agent checks
+  real rendered controls at desktop/phone after the build serves.
+
+Working preview delivered — November 2, 2026 (Phoenix)
+- Private simulation URL:
+  https://fundhub-blueprint-buyer-preview-nov2.stanbridgejchris.chatgpt.site
+- Site project: appgprj_6ae9249fbb788191a3d57aeff0f126e5
+- Source commit: b0d86a52539ab9ea352c9f1c816212361de1fcac
+- Saved version: appgprj_6ae9249fbb788191a3d57aeff0f126e5~appgver_dd033b74e6988191ba56ddb165601349
+- Deployment: appgdep_6ae92954c7dc8191b3a1b64e53d9f561; native result succeeded.
+- Authored preview source preserved in the adjacent preview/ directory.
+  Shared brand/font/Astra assets are copied unchanged into preview/assets/.
+- Welcome -> 3 one-question setup screens -> Today; 3/4 separate businesses,
+  business details, formation/EIN sample proof, banking checklist per business,
+  sample credit budget, website prompt, calendar file, sample help requests.
+- Owner controls: day1/30/90/180/365, cash/issue scenario, simulated document
+  review, screen-state preview, saved design notes and restart.
+- Fictional-only label, received vs reviewed evidence, real entity age vs
+  operating activity and FinanceOS-not-live wording retained throughout.
+- Independent QA: initial14 + followup3 passes; 22 rendered views checked for
+  no page overflow and >=44px targets. Bank-checklist state leak repaired and
+  independently retested. Phone navigation spacing repaired and reviewed.
+- Evidence: adjacent build-evidence/independent-qa-summary.json and eight
+  marked screenshots for full/loading/empty/error at1440px and390px.
+- npm run lint: 4587 files/inline scripts parse clean. npx tsc --noEmit: pass.
+  New preview JS node --check: pass. No DB tests invoked for local fixture.
+- Cold phone CDP4xCPU +150ms/200000bytes-sec: LCP1096ms, CLS0.00215,
+  total resources211304bytes, JS41687bytes; mobile-performance.json.
+  This is local Chromium measurement, not a Lighthouse or production result.
+  Lighthouse unavailable locally; production rollout still needs its gates.
+- First-screen layout movement found and repaired by pre-rendering welcome.
+- Publication is this owner-private fictional Site only. Existing Fundhub app,
+  APIs, real buyer/provider records and live FinanceOS are untouched.
+- Local preview test data reset to Welcome; the private Site starts fresh.
+- Walkthrough starts with one instruction: click Start my plan.
+
+Owner correction — real implementation required
+"Its fine but it needs to be real bro! Please make sure a person can use this!"
+"did you fix underwrite iq"
+The private simulation did NOT change UnderwriteIQ or the actual portal.
+New delivery target is the actual authenticated Blueprint buyer workflow:
+stored client data, actionable real instructions, saved progress, and business
+records with real company/client isolation. FinanceOS is still future.
+
+Implementation split (same owner; dependency contracts set before writes)
+G — UnderwriteIQ: actual recommendations and mapping into actionable business
+  preparation; single-member LLC/basic naming, existing-business awareness,
+  3–4 separate plans; keep actual activity/ownership/revenue facts. Own only
+  agreed src/underwrite paths and focused tests after clean checkout exists.
+H — Persistence: reuse existing business/waypoint/doc storage and auth boundaries;
+  scoped server persistence for client-owned records and progress. Own only
+  agreed API/store/tests paths; root owns any shared router/migration registry.
+I — Portal: replace fictional browser data with actual scoped endpoints and
+  teach existing next steps in the buyer portal. Root owns UI/docs/integration.
+G/H can inspect in parallel. Portal implementation waits for the endpoint
+contract. Root checks queue/ownership, integrates, verifies and delivers.
+The prior preview remains a design reference, not a delivered product claim.
+
+Full-request reread / coverage ledger — both original notes + every user clarification reread twice
+All rows below are REAL implementation requirements. No row is complete from the private demo.
+R01 Real authenticated high-ticket buyer start screen, one action/question at a time.
+R02 Real UnderwriteIQ recommendations become understandable, actionable next steps.
+R03 State-specific entity formation guidance and official filing destinations.
+R04 Single-member LLC default; basic name; later tax elections are later decisions.
+R05 Three/four SEPARATE planned businesses over a roughly12-month horizon.
+R06 Each business has separate dates, actual ownership/activity, documents and milestones.
+R07 Planned/formed/operating/eligible are separate facts; time never approves funding.
+R08 Existing-business awareness; additional plans do not overwrite existing companies.
+R09 Business-profile quality and flag review using actual saved details.
+R10 Website lesson + ready-to-copy prompt tailored to actual company details.
+R11 Business listings/Yellow Pages/Google visibility steps; no promised search ranking.
+R12 Optional business-credit/gas/fleet-card steps; David material sought/pending if absent.
+R13 Location-aware shortlist of up to5 actual local credit unions with source/eligibility context.
+R14 ChexSystems education, report/error-dispute steps and bank-opening issue handling.
+R15 Early1–3account relationship plan paced to cash/fit; no auto-openings.
+R16 Secured-credit guidance when actual thin-file/account facts call for it.
+R17 Cash/income/existing-account-aware bank/deposit/seasoning plan and milestones.
+R18 Personal credit and business/banking work can proceed alongside each other.
+R19 Dated waypoints and usable Google Calendar reminders; explain exact connection capability.
+R20 Merchant processing/customer-financing guidance and Whop/Clarity/Commas referral handoff.
+R21 Actual available provider/partner links; no claim that missing partnerships are configured.
+R22 Authorized-user education/action based on actual file; no blanket removal.
+R23 Employment/business-owner setup and supported income documentation for actual circumstances.
+R24 FinanceOS NOT LIVE; use available current proof/manual updates; existing real credit pulls retained.
+R25 Real uploads, self-reported vs evidence-received vs staff-reviewed states; server persistence.
+R26 Client/org isolation, premiumaccess boundary, refresh/readback and help for blocked steps.
+R27 Current Alec material is the knowledge foundation, with current official filing/bank sources.
+R28 Owner time-warp for rehearsal only; never changes real customer dates or proof.
+R29 Offer review can identify gaps; missing external inputs stay named until supplied/configured.
+R30 Finish required checks, GitHub delivery, deployment and authenticated person-usable path proof.
+
+Real build plan
+Role: authenticated paid Blueprint buyer. Job: act on the next useful saved step.
+First question: What should I do first now that I paid?
+Reuse: existing portal/Astra, client-progress/waypoint-tick, documents-upload and review,
+Blueprint paid-year gate, client custom_fields storage, actual UnderwriteIQ and banks data.
+Data: server-saved client business plans/step progress, existing file/credit/business records,
+official CU directory; no live FinanceOS connection required.
+Root files: public/app/client-portal.html, public/app/blueprint-plan.js/css,
+public/progress.html, api/blueprint/plan.mjs, src/blueprint/client-plan.mjs,
+netlify/functions/api.mjs, focused HTTP/browser tests, existing intended/actual/changelog/heartbeat docs,
+this board. Child file manifests remain those declared in their messages/board.
+Proof: scoped API/store persistence and negative tenant/year cases, saved real uploads,
+all client controls, desktop/phone states, codechecks and protected release/live readback.
+
+Owner source-selection review — November 2, latest steering
+Tradeline Secrets located in Shared with me, folder1LOQAteLXUjBx7uHfxzkhFnLBH6SPGoJM.
+Owner says this is his IP; he taught David, who made the course.
+Owner: not all needed; extract first, show useful parts before incorporating.
+Explicit exclusion: NAV, Net30s and DUNS entirely out of the buyer plan.
+No unreviewed course-specific buyer content added; approved generic optional fuel research retained.
+
+Recommended extraction for owner review (PROPOSED, not all implemented)
+1. Business identity consistency: match actual legal name, formation/EIN address,
+   website/contact details, accurate activity/industry code. Show missing vs conflicting
+   facts; save correction note and supporting file. Existing company keeps actual identity.
+2. Per-business document packet: accepted state formation, EIN, actual owner/signers,
+   separate formation/ownership/operating dates and ready-for-bank checklist. Keep
+   three/four separate single-member-LLC plans; don't duplicate one business's proof.
+3. Lean website/profile checklist: real services, name, contact, about, useful domain,
+   matching listings where appropriate; tailored copyable website prompt, saved URL
+   and review. No compulsory phone/address vendor or first-page-Google promise.
+4. Bank fit interview: local candidates -> ask current account fees/deposit, membership/
+   footprint, industry/history/financials, loan/card products and current seasoning terms.
+   Record the bank's actual answers and review date. Plan1–3relationships within cash.
+5. Optional real-expense fuel path: assess whether business has fuel expenses first;
+   compare actual official offers/stations/repayment/guarantees/reporting, record a
+   decision, due dates and evidence. No blanket three-card stack or old thresholds.
+6. Financial evidence and follow-through: bank/merchant statements, P&L/balance sheet
+   when relevant, actual cash/income commitments, payment/review dates and saved
+   reminders. Reported, evidence received and reviewed stay distinct before FinanceOS.
+
+Read sources
+- Shared PDF: https://drive.google.com/file/d/1KACNVV12KvKtprwMPJG3Di-PhbElzG8S/view
+- Tier1: https://docs.google.com/document/d/1U_T11eZDFK4cVgNCrvK_nDhHrdNc8PLCtip1w2ohTng/edit
+- Tier2: https://docs.google.com/document/d/1kxtZc77wxeV294O4cqAO_IpRtQrcwln3NkbJMDI5n2M/edit
+- Complete profile: https://docs.google.com/document/d/1WknGBKgfNk53kbPBWCpwwAvBMh3ptjNTH97i0gDVikc/edit
+- Bank interview: https://docs.google.com/document/d/1ZQBOmRGclPP7kbJAV-gwZrjdIKfID3I31gTPBGq1924/edit
+
+Validation currently observed
+- Browser contracts17PASS, all0retries; mocked APIs, not live runtime.
+- Source/API/store/coach selected run163PASS,0FAIL,6PGSKIP.
+- Additional monitoring/runtime27PASS,0FAIL,2PGSKIP.
+- Lint4635PASS, TypeScriptPASS. Full release checks still pending.
+- Router/tripwires owned by active Plaid-final branch; exact2route handoff requested
+  via Tether note2026-11-03T01:34:47Z; no competing router edits held.
+- Known historic marked buyer absent from current connected DB; no account,
+  password, entitlement, financial receipt, provider or customer record changed.
+- Managed archive of completed H worktree rejected as active-task-in-use; no forced
+  cleanup. Root owns integrated source; child commits preserved.
+- Actual build has not been deployed or proved with a signed-in paid buyer.

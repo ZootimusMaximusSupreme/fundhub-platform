@@ -57,7 +57,7 @@ function allowedFields(input, keys) {
   for (const key of Object.keys(input)) if (!keys.includes(key)) fail("field_not_accepted", `${key} cannot be changed here.`);
 }
 function emptyState() {
-  return { version: 1, targetBusinessCount: 4, availableCashCents: null, monthlyIncomeCents: null, homeState: null, postalCode: null, hasExistingBusiness: null, startedAt: null, businesses: [], stepProgress: [], updatedAt: null };
+  return { version: 1, setupStep: 0, targetBusinessCount: 4, availableCashCents: null, monthlyIncomeCents: null, homeState: null, postalCode: null, hasExistingBusiness: null, startedAt: null, businesses: [], stepProgress: [], updatedAt: null };
 }
 function savedState(customFields) {
   const stored = customFields?.[BLUEPRINT_PLANS_FIELD];
@@ -119,6 +119,9 @@ function settings(state, input, now) {
   if (has(input, "homeState")) state.homeState = stateCode(input.homeState, "home state");
   if (has(input, "postalCode")) { const postal = text(input.postalCode, "ZIP code", 10); if (postal !== null && !/^\d{5}(-\d{4})?$/.test(postal)) fail("invalid_postal_code", "Use a five-digit ZIP code."); state.postalCode = postal; }
   if (has(input, "hasExistingBusiness")) { if (input.hasExistingBusiness !== null && typeof input.hasExistingBusiness !== "boolean") fail("invalid_existing_business", "Choose yes, no, or unknown for existing businesses."); state.hasExistingBusiness = input.hasExistingBusiness; }
+  if (has(input, "hasExistingBusiness") && input.hasExistingBusiness !== null) state.setupStep = Math.max(state.setupStep || 0, 1);
+  if (has(input, "targetBusinessCount")) state.setupStep = Math.max(state.setupStep || 0, 2);
+  if (state.homeState && state.postalCode) state.setupStep = Math.max(state.setupStep || 0, 3);
   if (has(input, "started")) { if (typeof input.started !== "boolean") fail("invalid_started", "started must be true or false."); if (input.started && !state.startedAt) state.startedAt = now.toISOString(); }
 }
 function bankRelationship(input, now) {
