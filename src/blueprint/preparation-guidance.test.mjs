@@ -33,6 +33,8 @@ test("formation distinguishes an existing record from an unformed plan", () => {
   assert.equal(formed.find(g => g.key === "ein").applicability, "ready");
   assert.equal(formationDestination({ homeState: "AZ" }).url, "https://azcc.gov/corporations");
   assert.match(formationDestination({ homeState: "VT" }).label, /VT/);
+  assert.equal(formationDestination({ homeState: "New York" }).url, "https://dos.ny.gov/forming-limited-liability-company-new-york");
+  assert.equal(formationDestination({ business: { formationState: "CA" }, homeState: "AZ" }).url, "https://www.sos.ca.gov/business-programs/business-entities/forms/");
 });
 
 test("the website prompt reuses real business context and keeps missing facts as gaps", () => {
