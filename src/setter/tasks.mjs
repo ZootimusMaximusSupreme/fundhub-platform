@@ -4,6 +4,9 @@
 import { on } from "../events/registry.mjs";
 import { createTask } from "../lib/create-task.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
+import { hasBooked } from "../workflows/s-nobook-chase.mjs";
+import { queueSurveyCompletedAlerts } from "../staff/lead-alerts.mjs";
+import { messageCohortId } from "../workflows/messaging.mjs";
 
 export function setterTasksEnabled(env = process.env) {
   return !["0", "false", "off"].includes(String(env.SETTER_TASKS_ENABLED ?? "1").toLowerCase());
@@ -74,6 +77,18 @@ export async function createSetterTaskForEvent(event, db, env = process.env) {
       "SELECT id FROM clients WHERE org_id = $1 AND id = $2 FOR UPDATE",
       [event.orgId, clientId]
     );
+    if (booked) {
+      await writer.query(
+        `UPDATE tasks SET done = true,
+           title = 'Setter: survey follow-up resolved by booking',
+           detail = 'They booked a call. Confirm it in the booked-call task.',
+           updated_at = now()
+         WHERE org_id = $1 AND client_id = $2 AND done = false
+           AND source_workflow IN ('setter-entry', 'setter-survey-done')
+           AND body LIKE 'survey-completed:%'`,
+        [event.orgId, clientId]
+      );
+    }
     const priorTask = await existingTask(event, writer, clientId, booked, slot);
     if (priorTask && !priorTask.done) {
       return { created: false, id: priorTask.id, reason: "duplicate_open_task" };
@@ -103,7 +118,68 @@ export async function createSetterTaskForEvent(event, db, env = process.env) {
   });
 }
 
+export const SURVEY_DONE_TASK_TITLE = "Setter: call now — survey done, no booking";
+export const SURVEY_DONE_TASK_DETAIL = "They finished the survey without booking. Call now and help them pick a time.";
+
+// A finished survey raises the existing opt-in task instead of stacking a second
+// call task on the same lead. The client lock also serializes a booking task that
+// arrives at the same moment. Replays can retry the staff alert independently.
+export async function escalateCompletedSurvey(event, db, env = process.env,
+  alertImpl = queueSurveyCompletedAlerts) {
+  if (!setterTasksEnabled(env)) return { created: false, reason: "disabled" };
+  if (!event?.id || !event?.orgId || event.name !== "survey.completed") {
+    return { created: false, reason: "unsupported_event" };
+  }
+  const clientId = await existingClientId(event, db);
+  if (!clientId) return { created: false, reason: "client_not_found" };
+  const cohortId = await messageCohortId(db, {
+    eventId: event.id, orgId: event.orgId, clientId, name: "survey.completed"
+  });
+  const dedupeKey = `survey-completed:${cohortId}`;
+
+  const task = await withTransaction(db, async (writer) => {
+    await writer.query("SELECT id FROM clients WHERE org_id = $1 AND id = $2 FOR UPDATE",
+      [event.orgId, clientId]);
+    if (await hasBooked(writer, clientId)) return { created: false, reason: "already_booked" };
+
+    const handled = (await writer.query(
+      `SELECT id FROM tasks WHERE org_id = $1 AND client_id = $2
+         AND source_workflow IN ('setter-entry', 'setter-survey-done') AND body = $3
+       LIMIT 1`, [event.orgId, clientId, dedupeKey]
+    )).rows[0];
+    if (handled) return { created: false, id: handled.id, reason: "completion_cycle_handled" };
+
+    const open = (await writer.query(
+      `SELECT id, source_workflow FROM tasks
+        WHERE org_id = $1 AND client_id = $2 AND done = false
+          AND source_workflow IN ('setter-entry', 'setter-survey-done')
+        ORDER BY CASE WHEN source_workflow = 'setter-entry' THEN 0 ELSE 1 END,
+                 updated_at DESC LIMIT 1`,
+      [event.orgId, clientId]
+    )).rows[0];
+    if (open) {
+      await writer.query(
+        `UPDATE tasks SET title = $2, detail = $3, body = $4,
+            due_at = now(), updated_at = now()
+          WHERE id = $1 AND org_id = $5 AND done = false`,
+        [open.id, SURVEY_DONE_TASK_TITLE, SURVEY_DONE_TASK_DETAIL, dedupeKey, event.orgId]
+      );
+      return { created: false, id: open.id, reason: "promoted_open_task" };
+    }
+    return createTask(writer, {
+      orgId: event.orgId, clientId, title: SURVEY_DONE_TASK_TITLE,
+      sourceWorkflow: "setter-survey-done", assigneeRole: "setter",
+      body: dedupeKey, dueAt: new Date().toISOString(), detail: SURVEY_DONE_TASK_DETAIL
+    });
+  });
+  if (task.reason === "already_booked") return task;
+  if (await hasBooked(db, clientId)) return { ...task, alerts: { queued: 0, reason: "already_booked" } };
+  const alerts = await alertImpl(db, { orgId: event.orgId, clientId, cohortId });
+  return { ...task, alerts };
+}
+
 export function register() {
   on("entry.captured", createSetterTaskForEvent);
   on("booking.created", createSetterTaskForEvent);
+  on("survey.completed", escalateCompletedSurvey);
 }

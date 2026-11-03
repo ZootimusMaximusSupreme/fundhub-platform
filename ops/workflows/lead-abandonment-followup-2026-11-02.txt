@@ -1,0 +1,19 @@
+Owner: this chat. Lane: front-house. Base: origin/main.
+Goal: tighten lead-to-booked follow-up for the current /apply funnel.
+
+Builder plan gate:
+Role: lead for survey resume; setter for immediate no-book action.
+One job: recover the current lead before the survey or booking is abandoned.
+First question: lead asks where they left off; setter asks whom to call now.
+Reuse: S00, S02, S-NOBOOK, AISET03, setter-entry task, staff SMS/native push.
+Data: existing clients, events, tasks, messages, staff, survey answers; reopen the existing public resume route for v2 email tokens.
+Files: survey resume endpoint/link and tests; S00/S02/S-NOBOOK and tests; setter tasks/alerts and tests; stop-on-setter helper; survey email rendering and pulse, existing journey/changelog as ownership allows.
+Risk: duplicate texts, stale booking prompts, or revealing saved answers to an unverified phone. Proof: focused flow and endpoint tests, scratch DB tests, preflight, lint, TypeScript if installed, and live route/user-path checks.
+
+Parallel lanes:
+Resume agent: email-only verified v2 resume, template seed and endpoint proof.
+Setter agent: survey.completed task promotion and immediate owner/setter alert.
+Root: hand queued S02/S-NOBOOK SMS to the setter no-answer cadence while email continues; remove 15m duplicate task; integrate and release.
+Sequential: integrate all lanes, resolve PR ownership, preflight, tests, ship-change, then live proof.
+
+Preflight 2026-11-02: booking-notifications-flow.md belongs to PR #385; reverted local doc change and left shared Tether note for owner. db/expected-migrations.mjs belongs to Plaid; removed seed 308 and render the already approved email template at queue time, avoiding that shared file. src/push/payload.mjs belongs to an older Meta branch; reverted specific push copy and kept immediate generic native push plus urgent staff SMS. Fresh preflight reports no shared-file overlaps. origin/main advanced by one ship marker; ship-change will rebase after commit. PR #385 is open and owns next main release.

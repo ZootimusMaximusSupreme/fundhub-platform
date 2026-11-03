@@ -13,6 +13,7 @@
 //   clients { id, org_id, phone }
 
 import { HAS_REPLIED_SQL } from "./stop-on-reply.mjs";
+import { HAS_NO_ANSWER_SQL } from "./stop-on-setter.mjs";
 
 const digits = (s) => String(s ?? "").replace(/\D/g, "");
 const at = (value) => new Date(value).getTime();
@@ -37,6 +38,25 @@ export function withReplyRead(inner) {
         && digits(p.from).slice(-10) === mine.slice(-10);
     });
     return { rows: hit ? [{ replied: 1 }] : [] };
+  };
+  return wrapped;
+}
+
+export function withSetterNoAnswerRead(inner) {
+  const wrapped = Object.create(inner);
+  wrapped.query = async (sql, params = []) => {
+    if (String(sql) !== HAS_NO_ANSWER_SQL) return inner.query(sql, params);
+    const [clientId, eventId, lookbackHours = 0] = params;
+    const started = inner.events.find((event) => event.id === eventId);
+    if (!started) return { rows: [] };
+    const hit = inner.events.some((event) =>
+      event.org_id === started.org_id
+      && event.client_id === clientId
+      && at(event.created_at) >= at(started.created_at) - lookbackHours * 3_600_000
+      && (event.name === "setter.no_answer"
+        || (event.name === "call.completed"
+          && ["no_answer", "no-answer", "voicemail"].includes(event.payload?.disposition))));
+    return { rows: hit ? [{ no_answer: 1 }] : [] };
   };
   return wrapped;
 }

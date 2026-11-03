@@ -2,8 +2,8 @@
 //
 // Systemic hole: an event is saved (a lead signs up, a lead leaves a number, a
 // call is booked, a call ends) and the workflow that should answer it never
-// writes a message. Those workflows run only on Inngest, leave no row of their
-// own, and their slice rows say "not checked". So this lane reads the EFFECT:
+// writes a message or task. Messages run on Inngest; the setter call task is
+// created by the local event handler. So this lane reads the EFFECT:
 // the message (or task) that should exist, minus the people it should skip.
 //
 // Five tripwires, one per place a customer would feel it:
@@ -60,12 +60,14 @@ export const NOBOOK_DUE_MIN = 120;
 export const NOBOOK_GRACE_MIN = 150;
 /** A booking or a reply this soon after the due time still stopped message 1 (the run checks, then sends). */
 export const STOP_SLACK_MIN = 10;
-/** S-NOBOOK files the setter's call task 15 minutes after the survey is finished (a task, not a drip). */
-export const SETTER_TASK_DUE_MIN = 15;
-/** 25 minutes is the grace for that task. */
+/** The local survey.completed handler raises the setter task immediately. */
+export const SETTER_TASK_DUE_MIN = 0;
+/** Keep the old 15-minute task inside the seven-day lookback before tightening this grace. */
 export const SETTER_TASK_GRACE_MIN = 25;
-/** The task S-NOBOOK files (src/workflows/s-nobook-chase.mjs). */
+/** A new fallback task or the old 15-minute S-NOBOOK task. */
 export const SETTER_TASK_SOURCE = "setter-survey-done";
+/** The opt-in task is promoted in place when it is still open. */
+export const SETTER_TASK_PROMOTED_SOURCE = "setter-entry";
 
 /* The follow-up hours (owner-set 2026-10-31, src/messaging/send-window.mjs): a drip that
    comes due outside 9 a.m. to 5 p.m. Arizona goes out at the next 9 a.m., and the
@@ -370,21 +372,42 @@ ${tail()}
    AND NOT ${messageAfter(keyList([TEMPLATES.nobook, TEMPLATES.nobookSms]))}`.trim();
 
 /** $1 org, $2 ['survey.completed'], $3 window start, $4 cutoff (now minus the grace).
-    Finished, not booked and not replied 15 minutes later, and no setter got a call task. */
+    Match the exact six-hour completion cohort used by the local task handler.
+    Old S-NOBOOK tasks used the event ID and arrived 15 minutes after completion. */
 export const SETTER_TASK_SQL = `
 /* gap:handoff-setter-task */
-WITH ${leadCte()}
-${tail()}
+WITH ${leadCte()},
+task_lead AS (
+  SELECT l.*,
+         (SELECT e.id FROM events e
+           WHERE e.org_id = l.org_id AND e.name = 'survey.completed'
+             AND e.created_at <= l.created_at
+             AND e.created_at > l.created_at - interval '6 hours'
+             AND (e.client_id = l.cid OR (e.client_id IS NULL
+               AND lower(COALESCE(e.payload->>'email', '')) = lower(COALESCE(l.payload->>'email', ''))
+               AND COALESCE(l.payload->>'email', '') <> ''))
+             AND (COALESCE(e.payload->>'funnel', '') = COALESCE(l.payload->>'funnel', '')
+               OR COALESCE(e.payload->>'funnel', '') = ''
+               OR COALESCE(l.payload->>'funnel', '') = '')
+           ORDER BY e.created_at, e.id LIMIT 1) AS cohort_id
+    FROM lead l
+)
+${tail("task_lead l")}
  WHERE NOT ${IS_SUPPRESSED_REPEAT}
-   AND NOT ${BOOKED_BY(`l.created_at + interval '${SETTER_TASK_DUE_MIN} minutes'`)}
-   AND NOT ${REPLIED_BY(`l.created_at + interval '${SETTER_TASK_DUE_MIN} minutes'`)}
+   AND NOT ${BOOKED_BY("l.created_at")}
    AND l.cid IS NOT NULL
    AND NOT EXISTS (
        SELECT 1 FROM tasks t
         WHERE t.org_id = l.org_id
           AND t.client_id = l.cid
-          AND t.source_workflow = '${SETTER_TASK_SOURCE}'
-          AND t.created_at >= l.created_at
+          AND (
+            (t.source_workflow IN ('${SETTER_TASK_PROMOTED_SOURCE}', '${SETTER_TASK_SOURCE}')
+              AND t.body = 'survey-completed:' || l.cohort_id::text
+              AND t.updated_at >= l.created_at)
+            OR (t.source_workflow = '${SETTER_TASK_SOURCE}'
+              AND t.body = l.id::text
+              AND t.created_at BETWEEN l.created_at AND l.created_at + interval '${SETTER_TASK_GRACE_MIN} minutes')
+          )
      )`.trim();
 
 /* ------------------------------------------------------------------ check 2: /roadmap contact */
@@ -882,13 +905,13 @@ function checkFirstTouches(env) {
         sql: SETTER_TASK_SQL,
         params: [env.orgId, survey, start, cutoff(now, SETTER_TASK_GRACE_MIN * MIN)],
         noun: "lead",
-        said: `finished the survey, did not book in ${SETTER_TASK_DUE_MIN} minutes, and no setter got a call task (${SETTER_TASK_SOURCE})`
+        said: `finished the survey with no booking on file and had no setter call task within ${SETTER_TASK_GRACE_MIN} minutes`
       }
     ],
     passDetail:
       "every new lead from the last 7 days got the welcome email, and the first come-back message, the never-booked chase and the setter call task went to everyone who needed them",
     fixLead:
-      "A new lead got nothing after signing up. Read the lead's entry.captured or survey.completed event, then the s-00-welcome, s-02-incomplete-survey-nudge or s-nobook-chase run in Inngest. A saved event with no run means the hand-off to Inngest broke (INNGEST_EVENT_KEY, or Inngest itself)."
+      "A lead missed a first touch or setter call task. Read the lead's entry.captured or survey.completed event, then the s-00-welcome, s-02-incomplete-survey-nudge or s-nobook-chase run in Inngest. For a missing setter task, check the local src/setter/tasks.mjs handler. A saved message event with no run may mean the hand-off to Inngest broke (INNGEST_EVENT_KEY, or Inngest itself)."
   });
 }
 

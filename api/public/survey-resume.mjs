@@ -1,19 +1,14 @@
 // GET/OPTIONS /api/public/survey-resume?r=<token> — where a lead stopped on /apply.
 //
-// CONTAINMENT (2026-10-31): CLOSED. Every token is the same 404 `{ ok: false }` and
-// nothing is read. The signed token proves only that a link was minted for a client,
-// not that the person holding it is that client: /apply accepts an existing lead's
-// email with a new phone, writes the phone onto the record, and S-00/S-02 then texted
-// the token to that phone, which opened the lead's saved contact and answers here.
-// The senders now carry the plain /apply link (no token), and this door refuses the
-// tokens already sent. It stays closed until a link can prove ownership of the record.
-// The 400 for a missing token is kept so the pulse ping still counts the door as up.
-// The /apply page treats the 404 as "start at the top" (marketing/landing-pages/apply-survey.html).
+// Only a v3 code bound to the saved email opens this door. The old v1 codes were
+// sent in texts, and /apply can put a stranger's phone on an existing email's
+// record. Those old codes cannot verify under the new signing scheme. Texts
+// still carry only the plain /apply link.
+// The 400 for a missing token keeps the pulse ping working. /apply treats a 404
+// as "start at the top" (marketing/landing-pages/apply-survey.html).
 //
-// What the door used to do, kept for the redesign:
-//
-// The text and the email that go to a lead who opted in and did not finish carry
-// https://apply.fundhub.ai/apply?r=<token>. The page hands the token here and
+// The email link carries https://apply.fundhub.ai/apply?r=<token>. The page
+// hands the token here and
 // gets back who they are, what they already answered, and the question to show:
 //
 //   200 { ok: true,
@@ -27,9 +22,8 @@
 // pulse pings every routed door with a plain GET and counts 400 as up and 404 as
 // down (src/pulse/registry.mjs isUp), so the bare ping must not look like an outage.
 //
-// NO AUTH, BY DESIGN. Same class as the unsubscribe and soft-pull links: the
-// person is not signed in, so the signed token IS the credential
-// (src/survey/resume-link.mjs). It is verified before anything is read.
+// The person is not signed in. The v3 token delivered to their saved email is
+// the credential (src/survey/resume-link.mjs). It is checked before a row read.
 //
 // ONE ANSWER FOR EVERY KIND OF BAD LINK — forged, tampered, expired, truncated,
 // or a client that no longer exists. The body is `{ ok: false }` and nothing else,
@@ -49,18 +43,41 @@
 
 import { db as defaultDb } from "../../src/db.mjs";
 import { safeError } from "../../src/http/health.mjs";
+import { readSurveyResumeToken, surveyResumeTokenMatchesEmail } from "../../src/survey/resume-link.mjs";
+import { nextSurveyKey, savedSurveyAnswers } from "../../src/survey/resume-state.mjs";
 import { answerPreflight, applySloCors } from "../../src/slo/cors.mjs";
 
 const METHODS = "GET, OPTIONS";
 
 /**
- * readSurveyResume — CONTAINED (2026-10-31): null for every token, valid or not,
- * and the database is never asked. A token proves a link was minted, not that the
- * holder owns the record, so no saved contact or answer leaves through it. The
- * pulse check survey:resume-link-opens goes red if this ever answers again.
+ * readSurveyResume — a v3 email link opens the saved survey. Bad or old v1
+ * codes return null without a database read. This is read only.
  */
-export async function readSurveyResume(_db, _token, _opts = {}) {
-  return null;
+export async function readSurveyResume(db, token, { now, secret, env } = {}) {
+  const ids = readSurveyResumeToken(token, { now, secret, env });
+  if (!ids) return null;
+  const { rows } = await db.query(
+    `SELECT first_name, last_name, email, phone, custom_fields
+       FROM clients
+      WHERE id = $1
+      LIMIT 1`,
+    [ids.clientId]
+  );
+  const row = rows[0];
+  if (!row) return null;
+  if (!surveyResumeTokenMatchesEmail(token, row.email, { now, secret, env })) return null;
+  const answers = savedSurveyAnswers(row.custom_fields);
+  return {
+    ok: true,
+    contact: {
+      first_name: row.first_name || "",
+      last_name: row.last_name || "",
+      email: row.email || "",
+      phone: row.phone || ""
+    },
+    answers,
+    next_key: nextSurveyKey(answers)
+  };
 }
 
 export default async function handler(req, res, deps = {}) {

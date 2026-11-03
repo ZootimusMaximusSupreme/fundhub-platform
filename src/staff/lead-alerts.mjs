@@ -4,6 +4,7 @@ import { CF_SURVEY_QUESTIONS } from "../survey/cf-question-map.mjs";
 import { formatAppointmentStart } from "../workflows/messaging.mjs";
 import { drainMessageNow } from "../messaging/outbox.mjs";
 import { sendNativeToStaff } from "../push/native-send.mjs";
+import { hasBooked } from "../workflows/s-nobook-chase.mjs";
 
 const E164 = /^\+[1-9]\d{7,14}$/;
 const ALERT_ROLES = { lead: ["owner", "setter"], set: ["owner", "closer"], upcoming: ["owner", "closer"] };
@@ -53,6 +54,11 @@ function dashboardLine(desk, clientId) {
 export function buildStaffLeadText({ client = {}, clientId = client.client_id || client.id, startTime = null } = {}) {
   return [`New lead: ${firstName(client)}`, ...contactLines(client), bookingLine(startTime),
     ...surveyLines(client.custom_fields || {}), ...dashboardLine("setter", clientId)].join("\n");
+}
+
+export function buildStaffSurveyDoneText({ client = {}, clientId = client.client_id || client.id } = {}) {
+  return [`Survey finished: ${firstName(client)}`, "Check booking; call now if no time is booked.",
+    ...contactLines(client), ...dashboardLine("setter", clientId)].join("\n");
 }
 
 export function buildCloserSetText({ client = {}, clientId = client.client_id || client.id, handoff = {}, startTime = null } = {}) {
@@ -144,6 +150,35 @@ export async function queueNewLeadAlerts(db, { orgId, clientId, drainNowImpl, pu
   }));
   const closerPush = await pushAssignedCloserLead(db, { orgId, clientId, key: clientId, pushImpl });
   return { queued: results.reduce((n, item) => n + item.queued, 0), results, closerPush };
+}
+
+export async function queueSurveyCompletedAlerts(db, {
+  orgId, clientId, cohortId, drainNowImpl, pushImpl, bookedImpl = hasBooked
+} = {}) {
+  if (!orgId || !clientId || !cohortId) return { queued: 0, reason: "missing_context" };
+  if (await bookedImpl(db, clientId)) return { queued: 0, reason: "already_booked" };
+  const client = (await db.query(
+    `SELECT first_name, last_name, phone, email FROM clients
+      WHERE org_id = $1 AND id = $2 LIMIT 1`, [orgId, clientId]
+  )).rows[0];
+  if (!client) return { queued: 0, reason: "client_not_found" };
+  const staff = (await db.query(
+    `SELECT id FROM staff WHERE org_id = $1 AND status = 'active'
+      AND lower(role) = ANY($2::text[])`, [orgId, ALERT_ROLES.lead]
+  )).rows;
+  const body = buildStaffSurveyDoneText({ client, clientId });
+  const results = [];
+  for (const person of staff) {
+    if (await bookedImpl(db, clientId)) {
+      return { queued: results.reduce((n, item) => n + item.queued, 0),
+        reason: "already_booked", results };
+    }
+    results.push(await queueStaffAlert(db, {
+      orgId, clientId, staffId: person.id, kind: "lead", key: `survey-finished:${cohortId}`,
+      body, drainNowImpl, pushImpl
+    }));
+  }
+  return { queued: results.reduce((n, item) => n + item.queued, 0), results };
 }
 
 export async function pushAssignedCloserLead(db, {

@@ -53,8 +53,8 @@ const SHADOWS = {
     rec: "client_id uuid, channel text, opted_in_at timestamptz"
   },
   tasks: {
-    cols: "org_id, client_id, created_at",
-    rec: "org_id uuid, client_id uuid, created_at timestamptz"
+    cols: "org_id, client_id, created_at, updated_at, source_workflow, body",
+    rec: "org_id uuid, client_id uuid, created_at timestamptz, updated_at timestamptz, source_workflow text, body text"
   },
   payment_links: {
     cols: "org_id, client_id, purpose, status, paid_at, updated_at, is_demo, description, product_id",
@@ -262,6 +262,43 @@ test("handoff SQL: never-booked chase", { skip: !HAS_DB }, async (t) => {
     atClock("survey.completed", "2026-10-31T16:29:00.000Z", 150), { clients: [x], events: [earlySurvey] }, 0);
   await expectN(t, "RED: 6 a.m. survey still has no chase after 9 a.m. Arizona plus grace", B,
     atClock("survey.completed", "2026-10-31T16:30:00.000Z", 150), { clients: [x], events: [earlySurvey] }, 1);
+});
+
+test("handoff SQL: immediate survey setter task and recent legacy task", { skip: !HAS_DB }, async (t) => {
+  const x = client();
+  const s = ev("survey.completed", 120, x);
+  const T = M.SETTER_TASK_SQL;
+  const params = survey(M.SETTER_TASK_GRACE_MIN);
+  const task = (over = {}) => ({ org_id: ORG, client_id: x.id,
+    created_at: ago(121), updated_at: ago(119), source_workflow: "setter-entry",
+    body: `survey-completed:${s.id}`, ...over });
+  await expectN(t, "RED: completed survey got no setter task", T, params,
+    { clients: [x], events: [s] }, 1);
+  await expectN(t, "GREEN: original entry task promoted after completion", T, params,
+    { clients: [x], events: [s], tasks: [task()] }, 0);
+  await expectN(t, "RED: unpromoted entry task is not a survey call task", T, params,
+    { clients: [x], events: [s], tasks: [task({ body: "setter-entry:old" })] }, 1);
+  await expectN(t, "RED: a later survey task cannot cover this completion", T, params,
+    { clients: [x], events: [s], tasks: [task({ body: `survey-completed:${uuid()}` })] }, 1);
+  await expectN(t, "GREEN: new survey fallback task", T, params,
+    { clients: [x], events: [s], tasks: [task({ source_workflow: "setter-survey-done", created_at: ago(119) })] }, 0);
+  await expectN(t, "GREEN: legacy 15-minute task in seven-day window", T, params,
+    { clients: [x], events: [s], tasks: [task({ source_workflow: "setter-survey-done",
+      body: s.id, created_at: ago(105), updated_at: ago(105) })] }, 0);
+  await expectN(t, "RED: a legacy task for another event cannot cover this completion", T, params,
+    { clients: [x], events: [s], tasks: [task({ source_workflow: "setter-survey-done",
+      body: uuid(), created_at: ago(105), updated_at: ago(105) })] }, 1);
+  await expectN(t, "RED: task for another lead is not this lead's task", T, params,
+    { clients: [x], events: [s], tasks: [task({ client_id: uuid() })] }, 1);
+  await expectN(t, "GREEN: booking already present at survey completion", T, params,
+    { clients: [x], events: [s, ev("booking.created", 121, x)] }, 0);
+  await expectN(t, "RED: booking ten minutes later does not hide the missed immediate task", T, params,
+    { clients: [x], events: [s, ev("booking.created", 110, x)] }, 1);
+  await expectN(t, "RED: a reply does not cancel the immediate setter task", T, params,
+    { clients: [x], events: [s, ev("message.inbound", 110, x)] }, 1);
+  const earlier = ev("survey.completed", 160, x, { email: "former@gmail.com" });
+  await expectN(t, "GREEN: task uses earliest six-hour cohort for same client", T, params,
+    { clients: [x], events: [earlier, s], tasks: [task({ body: `survey-completed:${earlier.id}` })] }, 0);
 });
 
 /* ------------------------------------------------------------------ check 2: /roadmap contact */

@@ -97,8 +97,8 @@ before(async () => {
       `INSERT INTO message_templates (org_id, template_key, channel, subject, body, compliance_passed)
        VALUES ($1,$2,$3,$4,$5,true)`,
       [orgId, key, key.startsWith("SMS") ? "sms" : "email", key.startsWith("EMAIL") ? `Subject ${key}` : null,
-        // The approved containment templates use the plain URL in both channels;
-        // the sender deliberately removes the old bearer-link tag from SMS.
+        // Seed 302 stored a literal plain URL in both channels. Email is
+        // upgraded at queue time; SMS stays on that plain URL.
         `${key}: Start your questions here: https://apply.fundhub.ai/apply`]
     );
   }
@@ -275,7 +275,7 @@ const ALL_EIGHT = {
 };
 const KEYS6 = ["EMAIL-S02-RESUME-1", "EMAIL-S02-RESUME-2", "EMAIL-S02-RESUME-3", "SMS-S02-RESUME-1", "SMS-S02-RESUME-2", "SMS-S02-RESUME-3"];
 
-test("a lead who never finishes: six queued messages on real rows, each with the plain /apply link and no resume code",
+test("a lead who never finishes: SMS is plain and email carries a saved-progress link",
   { skip: !HAS_DB }, async () => {
     const email = `quits${++seq}@${DOMAIN}`;
     const clientId = await makeClient(orgId, { email, phone: "(555) 010-2001", answers: ANSWERED_THREE });
@@ -293,13 +293,30 @@ test("a lead who never finishes: six queued messages on real rows, each with the
       const touch = Number(r.template_key.slice(-1));
       assert.equal(r.provider_ref, `workflow:${r.template_key}:${touchSendKey(clientId, resumePlan(start)[touch - 1])}`,
         "one send key per touch, per channel, per person and Arizona day");
-      assert.ok(r.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), r.rendered_body);
-      assert.ok(!r.rendered_body.includes("?r="), "containment 2026-10-31: no resume code in a follow-up");
+      if (r.channel === "sms") {
+        assert.ok(r.rendered_body.endsWith("here: https://apply.fundhub.ai/apply"), r.rendered_body);
+        assert.ok(!r.rendered_body.includes("?r="), "SMS carries no resume code");
+      } else {
+        assert.ok(r.rendered_body.includes("here: https://apply.fundhub.ai/apply?r="), r.rendered_body);
+      }
       assert.ok(!r.rendered_body.includes("Pat"), "neutral copy carries no saved name");
       assert.ok(!r.rendered_body.includes("credit score question"), "neutral copy carries no saved progress");
     }
     assert.ok(rows.filter((r) => r.channel === "sms").every((r) => /^\+1555/.test(r.to_address)), "texts are addressed in E.164");
     assert.deepEqual(sim.sleeps.map((s) => s.until), resumePlan(start).map((d) => d.toISOString()));
+  });
+
+test("a setter no-answer one minute before a fresh opt-in suppresses only S-02 SMS in Postgres",
+  { skip: !HAS_DB }, async () => {
+    const email = `prior-call${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email });
+    const start = Date.parse("2026-10-28T17:11:00Z");
+    await addEvent(orgId, clientId, "setter.no_answer", { disposition: "no_answer" }, iso(start - MIN));
+    const sim = inngestSim(iso(start));
+    const [result] = await sim.runAll([spec(sim, await optIn(clientId, start, email))]);
+    assert.equal(result.done, true);
+    assert.deepEqual((await messagesOf(clientId)).map((row) => row.template_key).sort(),
+      ["EMAIL-S02-RESUME-1", "EMAIL-S02-RESUME-2", "EMAIL-S02-RESUME-3"]);
   });
 
 test("finished mid-way: touch 1 goes, touch 2 and 3 do not, the person is tagged",
