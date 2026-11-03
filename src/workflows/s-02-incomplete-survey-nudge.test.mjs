@@ -615,3 +615,17 @@ test("a logged no-answer call hands SMS to the setter cadence while emails conti
   assert.equal(result.done, true);
   assert.deepEqual(w.db.messages.map((message) => message.channel), ["email", "email", "email"]);
 });
+
+test("a fresh opt-in one minute after setter no-answer keeps survey SMS with the setter cadence", async () => {
+  const w = world({ start: "2026-10-28T17:11:00Z" });
+  w.db.events.push({
+    id: "evt-prior-no-answer", org_id: ORG, client_id: CLIENT,
+    name: "setter.no_answer", payload: { disposition: "no_answer" },
+    created_at: "2026-10-28T17:10:00Z"
+  });
+  const result = await run(w, optIn(w, { id: "evt-new-opt-in" }));
+  assert.equal(result.done, true);
+  assert.deepEqual(w.db.messages.map((message) => message.channel), ["email", "email", "email"]);
+  assert.deepEqual(w.db.messages.map((message) => message.template_key),
+    ["EMAIL-S02-RESUME-1", "EMAIL-S02-RESUME-2", "EMAIL-S02-RESUME-3"]);
+});

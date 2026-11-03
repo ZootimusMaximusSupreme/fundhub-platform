@@ -225,7 +225,11 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
       // Every question is answered: there is nothing to come back to, so nothing goes.
       if (progress.left === 0) return { skipped: "all_answered" };
       const sendKey = touchSendKey(clientId, plan.goesOutAt[touch.n - 1]);
-      const setterCalled = await hasSetterNoAnswer(db, { clientId, eventId: event.id });
+      // A fresh opt-in must not restart survey SMS while AI-SET-03 is still
+      // handling a no-answer call from this lead in the previous day.
+      const setterCalled = await hasSetterNoAnswer(db, {
+        clientId, eventId: event.id, lookbackHours: 24
+      });
       return {
         sms: setterCalled ? { skipped: "setter_no_answer" } : await sendTemplated(db, {
           orgId, clientId, channel: "sms", templateKey: touch.sms, eventId: sendKey,

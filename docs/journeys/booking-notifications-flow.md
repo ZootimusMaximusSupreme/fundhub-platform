@@ -289,7 +289,8 @@ literal link at send time with a signed, email-bound `?r=` link that opens saved
 answers and the next question. The resume endpoint checks that the token's email
 still matches the client's current email; old SMS bearer codes are invalid. If a
 valid signed link cannot be made, the email keeps its plain link and truthful
-start-over copy. A logged setter no-answer suppresses S-02 texts but not emails.
+start-over copy. A logged setter no-answer from the same client in the 24 hours
+before opt-in, or afterward, suppresses S-02 texts but not emails.
 Live email delivery and resume opening still require production proof.
 
 "Finished" means `survey.completed`. A reply means a `message.inbound` event for

@@ -306,6 +306,19 @@ test("a lead who never finishes: SMS is plain and email carries a saved-progress
     assert.deepEqual(sim.sleeps.map((s) => s.until), resumePlan(start).map((d) => d.toISOString()));
   });
 
+test("a setter no-answer one minute before a fresh opt-in suppresses only S-02 SMS in Postgres",
+  { skip: !HAS_DB }, async () => {
+    const email = `prior-call${++seq}@${DOMAIN}`;
+    const clientId = await makeClient(orgId, { email });
+    const start = Date.parse("2026-10-28T17:11:00Z");
+    await addEvent(orgId, clientId, "setter.no_answer", { disposition: "no_answer" }, iso(start - MIN));
+    const sim = inngestSim(iso(start));
+    const [result] = await sim.runAll([spec(sim, await optIn(clientId, start, email))]);
+    assert.equal(result.done, true);
+    assert.deepEqual((await messagesOf(clientId)).map((row) => row.template_key).sort(),
+      ["EMAIL-S02-RESUME-1", "EMAIL-S02-RESUME-2", "EMAIL-S02-RESUME-3"]);
+  });
+
 test("finished mid-way: touch 1 goes, touch 2 and 3 do not, the person is tagged",
   { skip: !HAS_DB }, async () => {
     const email = `finishes${++seq}@${DOMAIN}`;
