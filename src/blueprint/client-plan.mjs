@@ -1,5 +1,6 @@
 // Read-only aggregation for the paid Blueprint buyer's actual saved plan.
 import { planMonthlyDebtPayments } from "./payoff-plan.mjs";
+import { readBlueprintLetterReadiness } from "./letter-mailing.mjs";
 import { readClientProgress as readProgress } from "../progress/read.mjs";
 import { bankStrategy as readBankStrategy } from "../finance/bank-strategy.mjs";
 import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
@@ -156,6 +157,19 @@ export async function buildBlueprintClientPlan(db, { orgId, clientId, now = new 
         businessId: kind === "existing" ? business.id : business.businessId ?? null, prompt });
     }
   }
+  let letterReadiness = null;
+  if (progress.waypoints?.some(step => step.key === "blueprint_dispute_mail_letters" &&
+      ["not_started", "in_progress", "blocked"].includes(step.state))) {
+    try {
+      letterReadiness = await (deps.readBlueprintLetterReadiness || readBlueprintLetterReadiness)(db, scope);
+      assertIdentity(letterReadiness, scope, { required: true });
+      if (!["ready", "requested", "not_ready"].includes(letterReadiness.state)) throw new Error("invalid_letter_readiness");
+    } catch (error) {
+      if (error?.code === "blueprint_plan_scope_mismatch") throw error;
+      letterReadiness = { state: "unavailable", usableLetterCount: null, mailingOrderCount: null };
+      warn("letter_readiness_unavailable", "saved_letter_files");
+    }
+  }
   let letterResponses;
   try {
     const rows = (await db.query(`SELECT id, current_version_id, title, generated_at, metadata
@@ -184,5 +198,5 @@ export async function buildBlueprintClientPlan(db, { orgId, clientId, now = new 
   const payoffCalculation = businessPlans.payoffPlan ? planMonthlyDebtPayments(businessPlans.payoffPlan) : null;
   const name = [text(client.first_name), text(client.last_name)].filter(Boolean).join(" ") || null;
   return { ok: true, client: { name }, businessPlans, progress, lessons,
-    localBanks, bankPlan, creditContext, businessLessons, websitePrompts, cashPlan, payoffCalculation, letterResponses, warnings: warnings.sort((a, b) => a.code.localeCompare(b.code)) };
+    localBanks, bankPlan, creditContext, businessLessons, websitePrompts, cashPlan, payoffCalculation, letterResponses, letterReadiness, warnings: warnings.sort((a, b) => a.code.localeCompare(b.code)) };
 }

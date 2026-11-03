@@ -238,8 +238,8 @@ test("actual preparation integrity SQL distinguishes absent work, missing proof 
     }
     await setState(base());
     assert.equal(await count(), 1, "a linked missing document is a real integrity failure");
-    await db.query(`INSERT INTO documents (id,org_id,client_id,document_key,kind,subtype,title)
-      VALUES ($1,$2,$3,$4,'client_upload','articles_of_organization','Formation proof')`, [documentId, org, otherClient, `formation|${documentId}`]);
+    await db.query(`INSERT INTO documents (id,org_id,client_id,document_key,kind,subtype,title,storage_key,mime_type)
+      VALUES ($1,$2,$3,$4,'client_upload','articles_of_organization','Formation proof','memory://blueprint-formation-fixture','application/pdf')`, [documentId, org, otherClient, `formation|${documentId}`]);
     assert.equal(await count(), 1, "a different client's document cannot satisfy the link");
     await db.query(`UPDATE documents SET client_id=$2,org_id=$3 WHERE id=$1`, [documentId, client, foreignOrg]);
     assert.equal(await count(), 1, "a different company's document cannot satisfy the link");

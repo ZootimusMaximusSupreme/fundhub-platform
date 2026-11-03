@@ -26,7 +26,7 @@ test('PG migration546: exact scoped quotes, replacement, payment CAS, irreversib
       CREATE TEMP TABLE document_versions(id uuid PRIMARY KEY,org_id uuid,document_id uuid,storage_key text,checksum text,mime_type text,byte_size bigint);
       CREATE TEMP TABLE transactions(org_id uuid,client_id uuid,provider text,status text,amount_paid numeric,is_demo boolean);
       CREATE TEMP TABLE paid_service_requests (LIKE public.paid_service_requests INCLUDING ALL);`);
-    const sql=readFileSync(new URL('../../../db/migrations/546_blueprint_letter_mailing.sql',import.meta.url),'utf8').replaceAll('public.','pg_temp.');
+    const sql=readFileSync(new URL('../../db/migrations/546_blueprint_letter_mailing.sql',import.meta.url),'utf8').replaceAll('public.','pg_temp.');
     await db.query(sql);
     const org=randomUUID(),client=randomUUID(),account=randomUUID(),foreign=randomUUID();
     const scope={orgId:org,clientId:client,accountId:account,now:new Date()};
@@ -53,7 +53,7 @@ test('PG migration546: exact scoped quotes, replacement, payment CAS, irreversib
     await rejected(()=>db.query("UPDATE paid_service_requests SET status='awaiting_payment' WHERE id=$1",[replacement.id]),'paid_service_requests_awaiting_needs_expiry_ck');
     const first=await confirm(replacement);assert.equal(first.status,'awaiting_payment');await confirm(replacement);assert.equal(counts.hosted,1);assert.ok((await db.query('SELECT checkout_expires_at FROM paid_service_requests WHERE id=$1',[replacement.id])).rows[0].checkout_expires_at);
     await reconcileLetterMailing(db,scope,replacement.id,deps);assert.equal(counts.mail,0);
-    const order=await createMailingRepository(db).get(scope,replacement.id);assert.equal(order.payment_state,'paid');assert.equal(order.price_total_cents,9700);
+    const order=await createMailingRepository(db).get(scope,replacement.id);assert.equal(order.payment_state,'paid');assert.equal(Number(order.price_total_cents),9700);
     await rejected(()=>db.query("UPDATE paid_service_requests SET status='fulfilled',resolved_at=now() WHERE id=$1",[order.id]),'paid_service_requests_fulfilled_ck');
     await rejected(()=>db.query("UPDATE blueprint_letter_mailing_orders SET snapshot='{}' WHERE id=$1",[order.id]));
     await rejected(()=>db.query('UPDATE blueprint_letter_mailing_orders SET client_id=$2 WHERE id=$1',[order.id,foreign]));
@@ -64,7 +64,7 @@ test('PG migration546: exact scoped quotes, replacement, payment CAS, irreversib
     assert.equal((await repo.get(scope,order.id)).state,'mailed');
     await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET state='ready',claim_token=NULL,claimed_at=NULL WHERE id=$1",[eid]));
     const ledger=(await db.query('SELECT status,price_total_cents,amount_paid_cents,payment_ref,produced_kind,produced_ref,produced FROM paid_service_requests WHERE id=$1',[order.id])).rows[0];
-    assert.equal(ledger.status,'fulfilled');assert.equal(ledger.produced_kind,'letter_mailing_batch');assert.equal(ledger.produced_ref,order.id);assert.equal(ledger.price_total_cents,9700);assert.equal(ledger.amount_paid_cents,9700);assert.equal(ledger.produced.mailed,true);
+    assert.equal(ledger.status,'fulfilled');assert.equal(ledger.produced_kind,'letter_mailing_batch');assert.equal(ledger.produced_ref,order.id);assert.equal(Number(ledger.price_total_cents),9700);assert.equal(Number(ledger.amount_paid_cents),9700);assert.equal(ledger.produced.mailed,true);
     assert.equal(await repo.get({...scope,clientId:foreign},order.id),null);
     assert.equal((await fulfilLetterMailing(db,scope,order.id,deps)).status,'mailed');assert.equal(counts.mail,0,'accepted receipt never resends on reload');
     const rls=(await db.query("SELECT count(*)::int AS n FROM pg_class WHERE relnamespace=pg_my_temp_schema() AND relname IN ('blueprint_letter_mailing_orders','blueprint_letter_mailing_envelopes') AND relrowsecurity AND relforcerowsecurity")).rows[0].n;

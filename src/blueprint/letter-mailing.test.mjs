@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID,createHash} from 'node:crypto';
-import {createMailingRepository,readLetterMailing,quoteLetterMailing,confirmLetterMailing,reconcileLetterMailing,fulfilLetterMailing,sweepLetterMailings,MAILING_AUTHORIZATION,LetterMailingError} from './letter-mailing.mjs';
+import {createMailingRepository,readBlueprintLetterReadiness,readLetterMailing,quoteLetterMailing,confirmLetterMailing,reconcileLetterMailing,fulfilLetterMailing,sweepLetterMailings,MAILING_AUTHORIZATION,LetterMailingError} from './letter-mailing.mjs';
 const ORG='11111111-1111-4111-8111-111111111111',CLIENT='22222222-2222-4222-8222-222222222222',ACCOUNT='33333333-3333-4333-8333-333333333333';
 const scope={orgId:ORG,clientId:CLIENT,accountId:ACCOUNT,now:new Date('2026-11-03T01:00:00Z')};
 const from={name:'Fixture Person',line1:'1 Fixture St',line2:null,city:'Phoenix',state:'AZ',postalCode:'85004'};
@@ -50,6 +50,20 @@ test('quote freezes actual selected files/address at $97, masks provider data an
   const f=fixture(),q=await f.quote();assert.equal(q.totalCents,9700);assert.equal(q.currency,'USD');assert.equal(q.items.length,2);assert.deepEqual(q.returnAddressSummary,from);
   assert.equal(q.status,'quoted');assert.equal(f.calls.charge+f.calls.hosted+f.calls.mail,0);assert.doesNotMatch(JSON.stringify(q),/saved_private_token|customerId|storageKey/);
   assert.equal((await f.quote()).id,q.id,'same selection returns one saved quote');
+});
+test('JSONB object-key reordering preserves the quote and unchanged return address',async()=>{
+  const f=fixture(),q=await f.quote();
+  const jsonb=v=>Array.isArray(v)?v.map(jsonb):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).reverse().map(([k,x])=>[k,jsonb(x)])):v;
+  const saved=f.orders.get(q.id);saved.snapshot=jsonb(JSON.parse(JSON.stringify(saved.snapshot)));
+  f.deps.loadFrom=async()=>jsonb(from);
+  assert.equal((await f.quote()).id,q.id,'object key order cannot replace the saved quote');
+  const result=await f.confirm(q,'hosted_checkout');
+  assert.equal(result.status,'awaiting_payment');assert.equal(f.calls.hosted,1);assert.equal(f.calls.charge+f.calls.mail,0);
+});
+test('a real return-address change still refuses authorization before money or mailing',async()=>{
+  const f=fixture(),q=await f.quote();f.deps.loadFrom=async()=>({...from,line1:'2 Actual Street'});
+  await assert.rejects(f.confirm(q,'hosted_checkout'),{code:'return_address_changed'});
+  assert.equal(f.calls.charge+f.calls.hosted+f.calls.mail,0);
 });
 test('owned downloads/orders remain readable with no payment or mailing provider',async()=>{
   const f=fixture();f.providers.capabilities=()=>({savedCardSupported:false,hostedCheckoutSupported:false,mailSupported:false,reason:'mail_provider_unavailable'});
@@ -178,4 +192,40 @@ test('a held order keeps recovery red on later ticks without blocking other pend
 test('duplicate identical content for one bureau is refused before checkout, even with different document IDs',async()=>{
   const f=fixture();f.letters[1].version_checksum=f.letters[0].version_checksum;f.letters[1].version_byte_size=f.letters[0].version_byte_size;
   await assert.rejects(f.quote(),{code:'duplicate_letter_content'});assert.equal(f.calls.charge+f.calls.hosted,0);assert.equal(f.orders.size,0);
+});
+
+
+test('buyer first-action readiness uses current usable files without a provider or card lookup',async()=>{
+  const f=fixture();
+  const forbidden=new Proxy({}, {get(){throw new Error('No provider access is allowed for plan readiness');}});
+  const ready=await readBlueprintLetterReadiness({},scope,{repo:f.repo,providers:forbidden});
+  assert.deepEqual(ready,{orgId:ORG,clientId:CLIENT,state:'ready',usableLetterCount:6,mailingOrderCount:0});
+  assert.equal(f.calls.lookup+f.calls.charge+f.calls.hosted+f.calls.mail,0);
+  for(const change of [r=>{r.version_id=null;},r=>{r.version_checksum='bad';},r=>{r.version_storage_key=null;},r=>{r.version_mime_type='text/plain';},r=>{r.version_byte_size=0;},r=>{r.expires_at=scope.now;},r=>{r.subtype='metro2_round1_pack';},r=>{r.metadata.bureau='unknown';}]){
+    const g=fixture();g.letters.splice(1);change(g.letters[0]);
+    assert.equal((await readBlueprintLetterReadiness({},scope,{repo:g.repo})).state,'not_ready');
+  }
+  f.letters.splice(0);assert.equal((await readBlueprintLetterReadiness({},scope,{repo:f.repo})).state,'not_ready');
+});
+test('an actual mailing request routes to status even if no usable letter remains, while a quote alone does not',async()=>{
+  const f=fixture(),q=await f.quote();f.letters.splice(0);
+  assert.equal((await readBlueprintLetterReadiness({},scope,{repo:f.repo})).state,'not_ready');
+  const order=f.orders.get(q.id);order.state='awaiting_payment';
+  assert.deepEqual(await readBlueprintLetterReadiness({},scope,{repo:f.repo}),{orgId:ORG,clientId:CLIENT,state:'requested',usableLetterCount:0,mailingOrderCount:1});
+  order.state='cancelled';assert.equal((await readBlueprintLetterReadiness({},scope,{repo:f.repo})).state,'not_ready');
+  assert.equal(f.calls.charge+f.calls.hosted+f.calls.mail,0);
+});
+test('plan readiness repository is scoped and joins the exact current PDF version with its checksum',async()=>{
+  const queries=[];const db={query:async(sql,params)=>{queries.push({sql,params});return{rows:[]};}};
+  await readBlueprintLetterReadiness(db,scope);
+  assert.equal(queries.length,2);
+  const letters=queries.find(q=>/FROM documents d/.test(q.sql));
+  assert.deepEqual(letters.params.slice(0,2),[ORG,CLIENT]);
+  assert.match(letters.sql,/v.id=d.current_version_id AND v.document_id=d.id AND v.org_id=d.org_id/);
+  assert.match(letters.sql,/d.checksum=v.checksum/);
+  assert.match(letters.sql,/d.org_id=\$1 AND d.client_id=\$2/);
+  const orders=queries.find(q=>/FROM blueprint_letter_mailing_orders/.test(q.sql));
+  assert.deepEqual(orders.params,[ORG,CLIENT]);
+  assert.doesNotMatch(queries.map(q=>q.sql).join(' '),/INSERT|UPDATE|DELETE/);
+  await assert.rejects(readBlueprintLetterReadiness(db,{orgId:'wrong',clientId:CLIENT}),{code:'forbidden'});
 });

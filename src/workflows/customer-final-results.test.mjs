@@ -80,18 +80,34 @@ test("repair-bureau-response-reader records and advances a clear bureau answer",
   const itemId = "33333333-3333-4333-8333-333333333333";
   const caseId = "44444444-4444-4444-8444-444444444444";
   const documentId = "55555555-5555-4555-8555-555555555555";
+  const versionId = "66666666-6666-4666-8666-666666666666";
+  const document = {
+    id: documentId, org_id: ORG, client_id: CLIENT, kind: "bureau_response",
+    current_version_id: versionId, expires_at: null, metadata: {}
+  };
+  const storageReads = [];
   const items = [{
     id: itemId,
     case_id: caseId,
     creditor: "Midland",
     account_last4: "4521",
     round: "R1",
-    status: "sent"
+    status: "sent",
+    bureau: "EX"
   }];
   const db = {
     async query(sql, params = []) {
       if (/FROM documents d/i.test(sql)) {
-        assert.deepEqual(params.slice(0, 4), [documentId, ORG, CLIENT, "bureau_response"]);
+        assert.deepEqual(params, [documentId, ORG, CLIENT, "bureau_response", versionId]);
+        return { rows: [structuredClone(document)] };
+      }
+      if (/FROM clients WHERE/i.test(sql)) {
+        assert.deepEqual(params, [CLIENT, ORG]);
+        return { rows: [{ first_name: "Alex", last_name: "Buyer" }] };
+      }
+      if (/^UPDATE documents SET metadata/i.test(sql)) {
+        assert.deepEqual(params.slice(0, 4), [documentId, ORG, CLIENT, versionId]);
+        document.metadata.bureau_response_validation = JSON.parse(params[4]);
         return { rows: [{ id: documentId }] };
       }
       if (/INSERT INTO dispute_responses/i.test(sql)) {
@@ -127,21 +143,33 @@ test("repair-bureau-response-reader records and advances a clear bureau answer",
       payload: {
         kind: "bureau_response",
         document_id: documentId,
-        mime_type: "image/jpeg"
+        version_id: versionId
       }
     },
-    bytes: Buffer.from("stand-in bureau response"),
+    loadBytesImpl: async (_db, scope) => {
+      assert.deepEqual(scope, { orgId: ORG, clientId: CLIENT, documentId, versionId });
+      storageReads.push(scope);
+      return { buffer: Buffer.from("synthetic stored bureau response"), mimeType: "image/jpeg" };
+    },
     items,
-    callModelImpl: async () => ({
-      mode: "fake",
-      error: null,
-      text: JSON.stringify({
-        quality: "pass",
-        text: "Experian response for account ending 4521: the item has been deleted from your file. Account 4521 deleted.",
-        bureau_guess: "EX",
-        message_to_client: ""
-      })
-    }),
+    callModelImpl: async (args) => {
+      assert.doesNotMatch(args.user, /Alex Buyer/, "saved identity is matched locally");
+      assert.equal(args.media[0].mediaType, "image/jpeg");
+      assert.equal(Buffer.from(args.media[0].dataBase64, "base64").toString(), "synthetic stored bureau response");
+      return {
+        mode: "fake",
+        error: null,
+        text: JSON.stringify({
+          quality: "pass",
+          document_type: "bureau_response",
+          recipient_name: "Alex Buyer",
+          authenticity: "clear",
+          text: "Experian response for account ending 4521: the item has been deleted from your file. Account 4521 deleted.",
+          bureau_guess: "EX",
+          message_to_client: ""
+        })
+      };
+    },
     sendTemplatedImpl: async (_db, message) => {
       sent.push(message);
       return { sent: true, fake: true };
@@ -154,6 +182,11 @@ test("repair-bureau-response-reader records and advances a clear bureau answer",
 
   assert.equal(result.ok, true);
   assert.equal(result.status, "advanced");
+  assert.equal(storageReads.length, 1);
+  assert.equal(document.metadata.bureau_response_validation.status, "accepted");
+  assert.equal(document.metadata.bureau_response_validation.client_match, "match");
+  assert.equal(document.metadata.bureau_response_validation.document_id, documentId);
+  assert.equal(document.metadata.bureau_response_validation.version_id, versionId);
   assert.equal(result.parse.outcomes[0].outcome, "deleted");
   assert.equal(responses.length, 1);
   assert.equal(responses[0].confirmed, true);

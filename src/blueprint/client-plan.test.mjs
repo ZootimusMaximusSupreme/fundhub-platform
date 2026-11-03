@@ -258,3 +258,33 @@ test("bureau response acceptance is shown only for exact current saved validatio
   let out=await buildBlueprintClientPlan(f.db,scope,f.deps);assert.equal(out.letterResponses[0].validationStatus,'pending');
   doc.metadata.bureau_response_validation.version_id='v2';out=await buildBlueprintClientPlan(f.db,scope,f.deps);assert.equal(out.letterResponses[0].validationStatus,'accepted');
 });
+
+
+test("native mail action gets scoped letter readiness without modifying the canonical checklist", async () => {
+  const f = fixture();
+  f.progress.waypoints = [{ id: "mail", key: "blueprint_dispute_mail_letters", title: "Stored mail title", state: "not_started", owner: "client" }];
+  f.progress.nextStep = { waypointId: "mail", owner: "client" };
+  const saved = structuredClone(f.progress);
+  const seen = [];
+  f.deps.readBlueprintLetterReadiness = async (db, gotScope) => { seen.push({ db, gotScope }); return { orgId: ORG, clientId: CLIENT, state: "not_ready", usableLetterCount: 0, mailingOrderCount: 0 }; };
+  const out = await buildBlueprintClientPlan(f.db, scope, f.deps);
+  assert.equal(out.letterReadiness.state, "not_ready");
+  assert.equal(out.creditContext.reportId, null);
+  assert.deepEqual(out.progress, saved);
+  assert.equal(seen[0].db, f.db);assert.deepEqual(seen[0].gotScope, scope);
+  f.deps.readBlueprintLetterReadiness = async () => ({ orgId: ORG, clientId: "someone-else", state: "ready" });
+  await assert.rejects(buildBlueprintClientPlan(f.db, scope, f.deps), { code: "blueprint_plan_scope_mismatch" });
+});
+test("letter readiness outages fail closed and never invent a generating job or ready files", async () => {
+  const f = fixture();f.progress.waypoints = [{ key: "blueprint_dispute_mail_letters", state: "not_started" }];
+  f.deps.readBlueprintLetterReadiness = async () => { throw new Error("read unavailable"); };
+  const out = await buildBlueprintClientPlan(f.db, scope, f.deps);
+  assert.deepEqual(out.letterReadiness, { state: "unavailable", usableLetterCount: null, mailingOrderCount: null });
+  assert.ok(out.warnings.some(w => w.code === "letter_readiness_unavailable"));
+});
+test("non-mail native actions do not add a letter reader or provider prerequisite", async () => {
+  const f = fixture();f.deps.readBlueprintLetterReadiness = async () => { throw new Error("must not run"); };
+  const out = await buildBlueprintClientPlan(f.db, scope, f.deps);
+  assert.equal(out.letterReadiness, null);
+  assert.ok(!out.warnings.some(w => w.code === "letter_readiness_unavailable"));
+});
