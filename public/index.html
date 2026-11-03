@@ -131,10 +131,7 @@
   .sec-head p{margin-top:12px;color:var(--gray);font-size:16px}
   #security .sec-head{margin-bottom:28px}
   .provider-rail{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:24px 0 30px;margin-bottom:36px}
-  .provider-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:19px}
-  .provider-rail .label{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray)}
-  .provider-toggle{font:11px var(--mono);color:var(--gray);background:none;border:1px solid var(--line);border-radius:20px;padding:5px 11px;cursor:pointer}
-  .provider-toggle:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+  .provider-rail .label{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray);margin-bottom:19px}
   .provider-viewport{overflow:hidden;mask-image:linear-gradient(to right,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
   .provider-logos{display:flex;width:max-content;animation:marq 32s linear infinite;will-change:transform}
   .provider-set{display:flex;gap:12px;padding-right:12px;flex-shrink:0}
@@ -142,9 +139,8 @@
   .provider-logo img{display:block;width:100%;max-width:150px;max-height:44px;object-fit:contain}
   .provider-logo img[alt="Plaid"]{max-height:52px}
   .provider-logo img[alt="Experian Business"]{max-height:55px}
-  .provider-rail[data-paused="true"] .provider-logos{animation-play-state:paused}
   @media(max-width:520px){.provider-logo{flex-basis:168px;width:168px;height:84px;padding:16px 12px}.provider-viewport{mask-image:linear-gradient(to right,transparent,#000 12px,#000 calc(100% - 12px),transparent)}}
-  @media(prefers-reduced-motion:reduce){.provider-viewport{mask-image:none}.provider-logos{width:auto;animation:none;will-change:auto}.provider-set{width:100%;padding:0;flex-wrap:wrap;justify-content:center}.provider-logo{flex:1 1 160px;max-width:212px}.provider-set[aria-hidden="true"],.provider-toggle{display:none}}
+  @media(prefers-reduced-motion:reduce){.provider-viewport{mask-image:none}.provider-logos{width:auto;animation:none;will-change:auto}.provider-set{width:100%;padding:0;flex-wrap:wrap;justify-content:center}.provider-logo{flex:1 1 160px;max-width:212px}.provider-set[aria-hidden="true"]{display:none}}
 
   /* steps */
   .steps{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper)}
@@ -572,7 +568,7 @@ src="https://www.facebook.com/tr?id=2403674420141513&ev=PageView&noscript=1"/></
       <p>Bank connections with Plaid. Business intelligence informed by LexisNexis, Experian Business, TransUnion, and Equifax reports. One private Fundhub workspace.</p>
     </div>
     <div class="provider-rail rv" aria-label="Partnered with">
-      <div class="provider-head"><div class="label">Partnered with</div><button class="provider-toggle" type="button" aria-label="Pause partner logo animation" aria-pressed="false">Pause</button></div>
+      <div class="label">Partnered with</div>
       <div class="provider-viewport">
         <div class="provider-logos">
         <div class="provider-set">
@@ -758,19 +754,6 @@ src="https://www.facebook.com/tr?id=2403674420141513&ev=PageView&noscript=1"/></
   }
   runTerm();
   document.getElementById('rerun').addEventListener('click', runTerm);
-
-  // Keep the logo loop controllable without resetting its position.
-  (function(){
-    var rail=document.querySelector('.provider-rail'), toggle=document.querySelector('.provider-toggle');
-    if(!rail||!toggle) return;
-    toggle.addEventListener('click',function(){
-      var paused=rail.getAttribute('data-paused')!=='true';
-      rail.setAttribute('data-paused',String(paused));
-      toggle.setAttribute('aria-pressed',String(paused));
-      toggle.setAttribute('aria-label',paused?'Play partner logo animation':'Pause partner logo animation');
-      toggle.textContent=paused?'Play':'Pause';
-    });
-  })();
 
   // spectrum scroll progress
   (function(){
