@@ -1,0 +1,696 @@
+FUNDHUB REAL ESTATE LENDING COPY MASTER
+Built: November 2, 2026
+
+POSITIONING
+
+Umbrella:
+Fundhub Property Capital Network
+
+Homeowner offer:
+Renovation Funding Map
+
+Qualified participant offer:
+Deal-Ready Profile
+
+Contractor offer:
+Project Finance Desk
+
+Core idea:
+Start with the project or financial profile. Then choose the financing path.
+
+HOMEOWNER MESSAGE
+
+Primary headline:
+See how to fund a major renovation without automatically replacing your first mortgage.
+
+Primary subhead:
+Build a Renovation Funding Map for a $50,000 to $250,000+ project. Compare the payment, documents, funding method, and best next route before you start applying.
+
+Primary CTA:
+Build My Funding Map
+
+Support line:
+The short intake starts at $0 and gives Fundhub the project and financial facts needed to map the next step.
+
+Alternate headlines:
+
+1. Your renovation needs a funding plan built for the full project.
+
+2. Keep your first mortgage decision separate from your renovation decision.
+
+3. A $150,000 renovation is not a normal personal-loan search.
+
+4. Know the payment, the documents, and who receives the money before you apply.
+
+5. Find the financing route that fits the project you already priced.
+
+6. Compare major home-improvement financing without filling out ten different lead forms.
+
+7. Build the addition, kitchen, pool, or whole-home project around a payment your household can support.
+
+8. Some renovation loans pay you. Others pay the contractor. Know your route first.
+
+9. Get enough financing to finish the project, not only enough to start it.
+
+10. Your contractor gave you the estimate. Fundhub helps map the financing.
+
+HOMEOWNER LANDING PAGE
+
+ABOVE THE FOLD
+
+Headline:
+See how to fund a major renovation without automatically replacing your first mortgage.
+
+Subhead:
+Fundhub maps substantial home-improvement financing around your project, household payment, documents, and preferred way to pay the contractor.
+
+CTA button:
+Build My Funding Map
+
+Microcopy:
+Short intake. Starts at $0. A real route summary instead of a dead thank-you page.
+
+Three support points:
+
+- Compare direct-to-homeowner and contractor-funded routes.
+- See planning payments before choosing an application.
+- Get the exact document checklist for your income type and project.
+
+SECTION: THE REAL QUESTION
+
+Headline:
+The biggest loan is not always the best project plan.
+
+Body:
+Your contractor gave you a number. Now you need to know how that amount turns into a monthly payment, whether the money goes to you or the contractor, what records the provider may request, and what happens if the first route returns less than the full project budget.
+
+Fundhub puts those questions in one place before you choose the next application.
+
+SECTION: THE THREE ROUTES
+
+Headline:
+Three different financing experiences can look the same on a search page.
+
+Card 1:
+Direct to you
+
+You receive the loan proceeds and control the contractor payment schedule. This can fit homeowners who already chose a contractor or want flexibility across project stages.
+
+Card 2:
+Paid through the contractor
+
+The contractor requests funds as the project moves, and the homeowner may approve each stage. This can fit projects already attached to an approved contractor program.
+
+Card 3:
+Separate property-backed options
+
+HELOCs, home-equity loans, renovation mortgages, and refinances belong in their own comparison. Fundhub keeps them separate so you can decide whether using the property fits your plan.
+
+CTA:
+Show Me My Route
+
+SECTION: HOW IT WORKS
+
+Headline:
+Build the map before you apply.
+
+Step 1:
+Tell us about the project.
+
+Enter the project type, amount, state, contractor status, and timing.
+
+Step 2:
+Show the payment picture.
+
+Add household income range, housing payment, current monthly debt, employment type, and a self-reported credit range.
+
+Step 3:
+Get the route.
+
+Fundhub returns the product lane, document checklist, and next best step.
+
+Step 4:
+Prepare and move.
+
+Organize the file, choose the handoff, and track the application through the decision and funding.
+
+SECTION: WHAT YOU RECEIVE
+
+Headline:
+Your Renovation Funding Map includes:
+
+- project and amount summary;
+- planning payment range;
+- homeowner-funded versus contractor-funded comparison;
+- lender and marketplace route shortlist;
+- W-2, self-employed, commission, retirement, or joint-applicant checklist;
+- property and project document checklist;
+- missing-item plan;
+- application handoff;
+- second-route review when the first path changes.
+
+SECTION: PROJECTS
+
+Headline:
+Built for projects that outgrow an ordinary personal-loan search.
+
+- additions and expanded living space;
+- large kitchen and first-floor remodels;
+- pools and complete outdoor-living projects;
+- ADUs and multigenerational space;
+- roofing, windows, HVAC, and energy packages;
+- accessibility and aging-in-place renovations;
+- whole-home modernization;
+- other major owner-occupied projects.
+
+SECTION: CURRENT PRODUCT RANGE
+
+Headline:
+The high-limit market is real, but every ceiling comes with its own route.
+
+Body:
+Current public programs include an HFS platform maximum of $450,000, a BHG unsecured home-improvement maximum of $250,000, Lyon contractor financing repeatedly documented to $200,000, and several $150,000 to $250,000 bank and marketplace routes.
+
+The amount available to one household depends on the selected provider, income, credit history, current obligations, state, ownership, project, contractor, and complete application.
+
+Fundhub starts with those facts so the advertised maximum does not become the entire plan.
+
+SECTION: WHO THIS IS FOR
+
+Headline:
+This is built for a real project and a household ready to discuss the payment.
+
+Best fit:
+
+- you own the project property;
+- the project is roughly $50,000 or more;
+- you have a contractor, estimate, or serious timeline;
+- your household income can be documented;
+- you can estimate your housing payment and current monthly debt;
+- you want to compare the route before choosing an application.
+
+Early-stage route:
+
+If you do not have an estimate yet, Fundhub can place you in project planning first. If the file needs work, the Ready Track gives you the missing steps and a new review date.
+
+SECTION: FAQ
+
+Question:
+Does the Funding Map replace my mortgage?
+
+Answer:
+The Funding Map begins with unsecured and contractor financing routes. Property-backed choices appear as a separate route only when you want to compare them.
+
+Question:
+Will the money go to me?
+
+Answer:
+That depends on the selected program. Some products fund the homeowner directly. Other programs pay an approved contractor, sometimes in project stages. The map shows that difference before the handoff.
+
+Question:
+Can two household incomes be used?
+
+Answer:
+Several researched providers support a co-applicant, co-borrower, cosigner, or joint applicant. The exact relationship and ownership rules depend on the selected provider.
+
+Question:
+What if I am self-employed?
+
+Answer:
+The intake has a self-employed path. Expect to organize personal and business tax returns, bank statements, ownership records, and a current profit-and-loss statement when requested.
+
+Question:
+What if the first offer is below the project amount?
+
+Answer:
+Fundhub keeps a second route ready. That may be another suitable provider category, a contractor program, a phased project plan, or a readiness path.
+
+Question:
+How much does the Funding Map cost?
+
+Answer:
+The initial Funding Map starts at $0.
+
+Question:
+How fast do I receive the route?
+
+Answer:
+After the required intake is complete, Fundhub delivers the route summary, document checklist, and next-step recommendation within two business days.
+
+FINAL CTA
+
+Headline:
+Your project already has a price. Now give it a funding plan.
+
+Body:
+Complete the short intake and let Fundhub map the payment, documents, funding method, and best next route.
+
+Button:
+Build My Funding Map
+
+HOMEOWNER RESULT PAGE COPY
+
+READY FOR ROUTE REVIEW
+
+Headline:
+Your project is ready for a route review.
+
+Body:
+We have the project amount, ownership, timing, and payment picture needed to compare the strongest next paths. Finish the document checklist below, then choose a time for the route review.
+
+CTA:
+Finish My Checklist
+
+DOCUMENTS NEEDED
+
+Headline:
+Your project makes sense. The file needs a few more pieces.
+
+Body:
+Complete the missing items below. Fundhub will rebuild the route as soon as the project and income records are ready.
+
+CTA:
+Open My Missing-Item Plan
+
+PROJECT PLANNING FIRST
+
+Headline:
+Get the project amount clear before choosing the financing.
+
+Body:
+Your next step is a serious estimate, project scope, and timeline. We saved your answers and will update the map when those numbers are ready.
+
+CTA:
+Build My Project Budget
+
+READY TRACK
+
+Headline:
+The right next move is to strengthen the file before applying.
+
+Body:
+Your Ready Track shows the specific credit, debt, income, document, or timing milestones that will improve the next review.
+
+CTA:
+See My Ready Track
+
+HOMEOWNER EMAIL SEQUENCE
+
+EMAIL 1
+
+Subject:
+Your Renovation Funding Map
+
+Body:
+You gave us the project. Now we are mapping the amount, payment, documents, and funding method around it.
+
+Open your result below. You will see the route we recommend, anything still missing, and the next step.
+
+CTA:
+Open My Funding Map
+
+EMAIL 2
+
+Subject:
+Who gets paid on your renovation loan?
+
+Body:
+Some home-improvement products send the proceeds to you. Others pay the contractor as the project moves.
+
+That changes how you select the contractor, manage change orders, and control the schedule.
+
+Your Funding Map shows which experience belongs to each route.
+
+CTA:
+Review My Route
+
+EMAIL 3
+
+Subject:
+The payment matters more than the maximum
+
+Body:
+A large advertised maximum gets attention. Your household still has to live with the payment.
+
+Fundhub compares the requested amount with the term, planning APR, housing expense, and current monthly debt before the handoff.
+
+CTA:
+See My Payment Range
+
+EMAIL 4
+
+Subject:
+Finish the file before the contractor slot moves
+
+Body:
+The fastest way to slow a renovation application is to start looking for income, ownership, and project documents after the provider asks.
+
+Your checklist shows what to organize now.
+
+CTA:
+Finish My Checklist
+
+EMAIL 5
+
+Subject:
+If the first route changes, you still have a plan
+
+Body:
+The first provider may return a different amount, term, or document request than expected.
+
+Fundhub keeps the next suitable route visible so one result does not send you back to the beginning.
+
+CTA:
+Book My Route Review
+
+QUALIFIED PARTICIPANT MESSAGE
+
+Primary headline:
+Turn the income and credit you already built into a clear path into real estate.
+
+Primary subhead:
+Build a Deal-Ready Profile, choose the role you want, and see which opportunity or financing lane fits your documents, state, timeline, and goals.
+
+Primary CTA:
+Build My Deal-Ready Profile
+
+Support line:
+The initial profile and lane recommendation start at $0.
+
+Alternate headlines:
+
+1. You have the profile. Fundhub helps you find the path.
+
+2. Strong income and credit should lead to more than another course.
+
+3. See the role, numbers, timeline, and exit before you enter a real estate opportunity.
+
+4. Start with what you can document. Then find where you fit.
+
+5. Build the financial profile that turns real estate interest into a real next step.
+
+6. Your first real estate move may start with your Deal-Ready Profile.
+
+7. Get a measurable preparation plan when the opportunity is still ahead of the file.
+
+8. One financial profile can open several real estate and financing paths.
+
+DEAL-READY LANDING PAGE
+
+ABOVE THE FOLD
+
+Headline:
+Turn the income and credit you already built into a clear path into real estate.
+
+Subhead:
+Fundhub organizes your financial profile, helps you choose the role you want, and matches you to a real product or opportunity lane with a defined process.
+
+CTA:
+Build My Deal-Ready Profile
+
+Microcopy:
+Short intake. Initial lane recommendation starts at $0.
+
+SECTION: THE MISSING PIECE
+
+Headline:
+Financial strength does not hand you the deal, the team, or the process.
+
+Body:
+You can have steady income, strong credit, and manageable debt while still lacking the property, contractor, financing route, operating partner, or clear role needed to enter real estate.
+
+Fundhub starts with what you can document. Then it shows where that strength fits.
+
+SECTION: THE DEAL-READY EXCHANGE
+
+Headline:
+Profile first. Role second. Opportunity third.
+
+Step 1:
+Build the profile.
+
+Organize income, credit range, monthly obligations, documents, state, timing, and goals.
+
+Step 2:
+Choose the role.
+
+Tell Fundhub whether you want direct ownership, a financing role, a project role, a capital role, a smaller first step, or a preparation track.
+
+Step 3:
+See the complete view.
+
+Review the property or project, parties, use of funds, responsibilities, economics, timeline, decision points, and planned exit in one format.
+
+Step 4:
+Coordinate the path.
+
+Complete the documents, provider steps, communication, and status tracking for the selected lane.
+
+SECTION: WHAT YOU RECEIVE
+
+- Financial Readiness Profile;
+- Role Fit Map;
+- income and identity document vault;
+- debt and payment-capacity snapshot;
+- state and timeline match;
+- Standard Opportunity View;
+- document and milestone tracker;
+- 90-Day Ready Plan when more preparation is needed;
+- future product route as your goals change.
+
+SECTION: FOUR LANES
+
+Match Ready:
+Your documents, capacity, role, and timing are ready for a current matching conversation.
+
+Income Strong, Credit Not Ready:
+Your income is useful. The Ready Track shows the exact credit and debt milestones needed before the next profile review.
+
+Credit Strong, Documents Complex:
+Your profile needs an income-evidence plan that fits W-2, business, commission, retirement, or mixed income.
+
+Opportunity Curious:
+You need a clear goal, role, document baseline, and smaller first step before matching.
+
+SECTION: WHO THIS IS FOR
+
+Best fit:
+
+- strong documented income, good credit, or both;
+- manageable current obligations;
+- serious desire to enter real estate;
+- willingness to organize documents;
+- clear or selectable role;
+- willingness to review the full opportunity before deciding.
+
+Start in Ready Track:
+
+- credit needs optimization;
+- income records are incomplete;
+- current debt leaves too little room;
+- liquidity or timing needs work;
+- the desired role is still unclear.
+
+SECTION: FAQ
+
+Question:
+Do I need to own property already?
+
+Answer:
+No. The profile starts with your current strengths and desired role. Some product lanes require ownership, while other future routes may fit buyers, investors, project participants, or preparation clients.
+
+Question:
+What happens after I build the profile?
+
+Answer:
+You receive a lane recommendation: matching, direct financing, document preparation, or Ready Track. A match only moves forward when a real product or opportunity fits your profile and selected role.
+
+Question:
+What will my role be?
+
+Answer:
+You choose the role before the match. The selected opportunity then shows the responsibilities, financing path, economics, timeline, and planned exit attached to that role.
+
+Question:
+What if I am not ready now?
+
+Answer:
+You receive measurable milestones and a new profile date. The work stays tied to the real estate outcome you selected.
+
+Question:
+How much does the initial profile cost?
+
+Answer:
+The initial Deal-Ready Profile and lane recommendation start at $0.
+
+Question:
+Can Fundhub help with preparation?
+
+Answer:
+Yes. Fundhub has an existing $200 two-round trial and a $1,000 done-for-you service that can be used when the customer and scope fit. Your lane recommendation shows whether that work is relevant.
+
+FINAL CTA
+
+Headline:
+Put the financial strength you built to work.
+
+Body:
+Build your Deal-Ready Profile and see whether your next step is matching, direct financing, document preparation, or the Ready Track.
+
+Button:
+Build My Deal-Ready Profile
+
+PARTICIPANT EMAIL SEQUENCE
+
+EMAIL 1
+
+Subject:
+Your Deal-Ready Profile
+
+Body:
+You gave Fundhub the starting facts. Now we are organizing the income, credit range, current obligations, documents, role, state, and timing into one profile.
+
+Open your result below to see the lane that fits today.
+
+CTA:
+Open My Profile
+
+EMAIL 2
+
+Subject:
+Choose your role before you choose the deal
+
+Body:
+Real estate can put you in several different positions.
+
+Your Deal-Ready Profile starts by defining the role you want, the responsibility you can accept, and the goals you want to protect.
+
+CTA:
+Choose My Role
+
+EMAIL 3
+
+Subject:
+What a complete opportunity should show you
+
+Body:
+Before you decide, you should be able to see the property or project, the people involved, where the money goes, what you are responsible for, how the timeline works, and how the planned exit happens.
+
+Fundhub uses one standard view so you can compare opportunities clearly.
+
+CTA:
+See the Deal Review Format
+
+EMAIL 4
+
+Subject:
+If the file is early, give it a finish line
+
+Body:
+A vague “come back later” does not help.
+
+The Ready Track turns missing documents, credit work, current debt, income seasoning, liquidity, and timing into specific milestones and a new profile date.
+
+CTA:
+Open My Ready Track
+
+EMAIL 5
+
+Subject:
+One profile, several future paths
+
+Body:
+Your first route may be a homeowner project, direct financing product, investment-property path, contractor opportunity, document-readiness service, or a smaller first step.
+
+The profile stays useful as your goals and financial position change.
+
+CTA:
+Book My Profile Review
+
+CONTRACTOR MESSAGE
+
+Primary headline:
+Stop losing six-figure projects because one finance program caps out.
+
+Subhead:
+Fundhub gives your team one project finance desk for homeowner intake, route selection, documents, application status, and second-route follow-up.
+
+CTA:
+Get My Coverage Review
+
+Support bullets:
+
+- Add direct-to-homeowner and contractor-funded paths.
+- Route by project amount, borrower profile, and disbursement method.
+- See where every application stands.
+- Keep a second route ready when the first result changes.
+
+CONTRACTOR OUTREACH EMAIL
+
+Subject:
+Where your financing coverage stops
+
+Body:
+You already have homeowners and real projects.
+
+The question is what happens when the project exceeds your current lender limit, the homeowner needs a different applicant structure, or the first offer comes back short.
+
+Fundhub is building one Project Finance Desk that combines homeowner intake, file preparation, direct-to-homeowner options, contractor-funded options, and application tracking.
+
+I want to map the jobs your current program misses and show you where additional coverage fits.
+
+CTA:
+Book a Project Finance Coverage Review
+
+SHORT FORM COPY BANK
+
+Homeowner social caption:
+The contractor gave you a six-figure estimate. Before you sign, map the payment, documents, funding method, and next application. Build your Renovation Funding Map.
+
+Participant social caption:
+You built strong income and credit. Now build the profile that shows where you fit in real estate. Start your Deal-Ready Profile.
+
+Contractor social caption:
+One lender should not decide which projects your company can close. Get a Project Finance Coverage Review.
+
+Homeowner button variants:
+- Build My Funding Map
+- Map My Project
+- Compare My Routes
+- See My Payment Range
+- Start My Project Review
+
+Participant button variants:
+- Build My Deal-Ready Profile
+- See Where I Fit
+- Choose My Role
+- Start My Profile
+- Open My Ready Track
+
+Contractor button variants:
+- Review My Coverage
+- Add Financing Routes
+- Map My Lost Projects
+- Build My Finance Desk
+
+ONE-SENTENCE OFFER SUMMARIES
+
+Homeowner:
+Fundhub maps the best realistic financing route for a major home project before the homeowner starts applying.
+
+Participant:
+Fundhub turns documented income and credit into a clear real estate role, readiness plan, and opportunity or product path.
+
+Contractor:
+Fundhub gives contractors one finance desk for homeowner preparation, multi-route matching, and funded-project tracking.
+
+CORE BELIEF SHIFTS
+
+Homeowner:
+From “I need the biggest loan I can find” to “I need the right payment and funding method for the entire project.”
+
+Participant:
+From “I need to find a property and build the entire machine myself” to “I can start with the financial strength I already have and choose a defined role.”
+
+Contractor:
+From “My finance program is a checkout option” to “My finance coverage is part of how I close and complete larger projects.”
