@@ -1,0 +1,318 @@
+FUNDHUB REAL ESTATE LENDING MARKET RESEARCH
+Verified 2026-11-02
+
+PURPOSE
+
+This research gives offer construction a real product map for one ecosystem with two connected markets:
+
+1. Homeowners who need substantial money for a real home project.
+2. People with strong, verifiable income or credit who want a path into real estate opportunities, including people who need preparation before they can qualify.
+
+The public lender facts below show what can be marketed now as product discovery and preparation, what requires a contractor relationship, and what needs a direct commercial conversation before it becomes a Fundhub partner offer.
+
+EXECUTIVE FINDINGS
+
+1. HFS is the only researched provider with a current public claim of unsecured home-improvement financing to $450,000. HFS is a platform, not the originating lender. Its public pages do not name the lender that supplies the $450,000 option. It offers national coverage, a soft initial inquiry, direct-to-homeowner funding, fixed terms from 1 to 30 years, and a free contractor referral link.
+
+2. BHG is the strongest clearly documented direct-to-consumer high-limit product. It advertises unsecured home-improvement loans from $20,000 to $250,000, fixed APRs from 6.49% to 28.89%, terms from 2 to 10 years, a soft initial rate check, and lump-sum consumer funding in as few as five days. The loans are funded by Pinnacle Bank or County Bank. The public minimums are 640 FICO and $100,000 verifiable annual income; BHG's current large-loan guidance says the maximum amounts usually call for 740+ credit and $150,000+ income.
+
+3. Lyon is a financing consultant that pairs applicants with lenders. Its detailed contractor material and primary product bullets support unsecured financing to $200,000, while a separate hero statement says $250,000. It serves the 48 contiguous states, supports co-applicants, requires at least one applicant to be on the deed, and usually pays the contractor in stages after the customer confirms progress.
+
+4. The next useful tier is $150,000–$250,000. Hearth advertises a multi-lender marketplace to $250,000. Next-Financing and Enhancify advertise marketplace access to $200,000. Navy Federal, FNBO Slice, Amerant Bank, UNFCU and Nelnet Bank reach $150,000 with very different membership, income, state, co-applicant and contractor conditions.
+
+5. The product is not one universal loan. There are three operating lanes:
+   - direct-to-homeowner funds: HFS, BHG and many marketplace personal-loan offers;
+   - contractor-controlled or contractor-paid funds: FNBO Slice, Nelnet/Buildertrend, GreenSky and most Lyon projects;
+   - mixed marketplaces: Hearth, Next-Financing, Enhancify, Acorn and Viking, where the actual lender and disbursement depend on the chosen offer.
+
+6. Standard multi-person application structures are publicly documented. Navy Federal requires a qualified co-applicant for amounts above $50,000. BHG allows a cosigner or co-borrower. Lyon's application accepts a co-applicant and says at least one applicant must be on the deed. Nelnet's contractor terms recognize co-borrowers and cosigners. The public sources do not describe a paid unrelated borrower, paid guarantor, or temporary title partner program. That structure is therefore a separate partnership design question for each lender rather than a feature that can be inferred from an ordinary co-applicant form.
+
+7. The best first commercial path is hybrid:
+   - acquire and prepare homeowners;
+   - route the cleanest high-limit profiles first to HFS and BHG;
+   - recruit licensed contractors for FNBO, Nelnet, Lyon, GreenSky and other point-of-sale programs;
+   - build a preparation track for strong-income applicants whose credit or files are not ready;
+   - add secured home-equity, investor and non-QM products as clearly separate branches.
+
+RANKED PROVIDER DATABASE
+
+Rank | Provider | Real role and originator | Current public maximum | Funds / channel | Commercial use | Confidence and sources
+
+1 | HFS Financial | HFS is a home-improvement loan platform, not a lender; it connects consumers, contractors and a network of third-party lenders. | $450,000; advertised as unsecured personal financing with no home equity, appraisal or collateral. | Direct to homeowner; national; 1–30-year fixed terms; soft initial inquiry; large loans may take 3–7 days. Free dealer program and custom link. | First outreach target for the high-limit consumer offer and contractor distribution. Ask which lender supplies each band above $200,000 and whether Fundhub can hold a marketplace/referral account. | High for the platform facts; medium for maximum-lender availability because the originator is not public. https://www.hfsfinancial.net/about-hfs-financial/faqs/ ; https://www.hfsfinancial.net/loan-duration/flexible-term-home-improvement-loans/ ; https://www.hfsfinancial.net/blog/how-to-offer-financing-through-your-home-improvement-business/
+
+2 | BHG Financial | Bankers Healthcare Group, LLC markets and processes the product; consumer loans are funded by Pinnacle Bank or County Bank. | $250,000 unsecured; product input starts at $20,000. | Lump sum to consumer; fixed APR 6.49%–28.89%; 2–10 years; soft rate check, full credit history at acceptance/funding; funding in as few as five days. | Strongest documented high-income direct consumer product. Partnership/referral route is not public on the consumer page and needs business-development confirmation. | High. https://bhgfinancial.com/personal-loans/home-improvement ; https://bhgfinancial.com/support/loans ; https://bhgfinancial.com/personal-loans/bhg-financial-large-loan-credit-score ; https://bhgfinancial.com/support/application-process
+
+3 | Lyon Financial | Financing consultant/facilitator using exclusive lenders; not the originating lender. | $200,000 is repeated in current product bullets and contractor material; one page section says $250,000. | Usually staged payments to contractor; some selected lenders may fund the customer directly. 48 contiguous states. Builder setup is free and generally 1–2 business days. | Strong pool, backyard and outdoor-project channel. Confirm the top amount, lender identities, eligible project classes and marketplace referral option. | High for $200,000, deed and disbursement; medium for $250,000. https://www.lyonfinancial.net/home-improvement-financing/ ; https://www.lyonfinancial.net/about/faq/ ; https://www.lyonfinancial.net/wp-content/uploads/2025/05/Lyon-Contractor-Overview-Updated-4.30.25.pdf ; https://www.lyonfinancial.net/apply/?lid=11-22583
+
+4 | Hearth | Hearth Finance, Inc. is a contractor financing technology/broker platform using 18+ lending partners. | Marketplace range $1,000–$250,000 across personal loans, HELOCs and card offers; the maximum is not one lender commitment. | Financing is generally disbursed to the homeowner; contractor uses a link, quotes, contracts and status portal. Flat annual contractor subscription; no per-loan dealer fee. | Strong contractor SaaS and multi-product coverage. Useful comparison point and possible distribution partner; partner lender deduplication must happen before counting it as unique funding. | High for platform facts; medium for unsecured availability at the ceiling. https://gethearth.com/product-features-financing/ ; https://gethearth.com/construction-financing-for-customers/
+
+5 | Next-Financing | Online marketplace/platform with 17 competing lenders. | $1,000–$200,000 requested amount. The site says most consumer loans are unsecured, so offer type must be checked. | Consumer proceeds advertised in 1–2 days; soft prequalification; contractor financing in all 50 states and Canada. | Useful multi-lender fallback and contractor route. Also supplies adjacent fix-and-flip financing to $10 million in 47 states. | High for platform limit and process; medium for any single unsecured offer at $200,000. https://next-financing.com/homeimprovementfinancing/ ; https://next-financing.com/fixandfliploans/
+
+6 | Enhancify | Advertising and matching/referral platform, not lender or loan broker; 30+ lender network. | $500–$200,000; platform says not every provider offers the maximum. | Contractor link; personal loans generally paid to consumer; 0% promotional/card and HELOC alternatives also appear in network. Site advertises contractor revenue share, but no rate is public. | Strong contractor distribution and commercial-model research target because it openly describes referral compensation. | High for role and platform limit; medium for unsecured ceiling by lender. https://www.enhancify.com/ ; https://www.enhancify.com/blog/key-aspects-of-enhancify-financing ; https://www.enhancify.com/disclaimer
+
+7 | Navy Federal Credit Union | Direct credit-union lender. | $150,000 home-improvement loan; more than $50,000 requires a qualified co-applicant. | Direct lump sum; fixed rate; no collateral, fees or prepayment penalty; terms up to 180 months; home-improvement applications by branch or phone. Membership required. | One of the clearest public co-applicant structures. Useful for eligible military-connected members, but membership and branch/phone flow limit broad marketplace use. | High. https://www.navyfederal.org/loans-cards/personal-loans.html ; https://www.navyfederal.org/loans-cards/personal-loans/frequently-asked-questions.html ; https://www.navyfederal.org/loans-cards/equity/home-improvement.html
+
+8 | FNBO Slice | Loans are originated and managed by First National Bank of Omaha. | Up to $150,000; up to 20 years. | Customer can only apply through an approved contractor's link or QR code. FNBO pays contractor by ACH, with staged funding for eligible partners. APR range displayed as 8.49%–18.99%. | Direct bank contractor partnership target. No open direct-to-homeowner application. Partner form asks business category, state and annual revenue. | High. https://www.fnbo.com/pos-lending/slice/how-slice-works ; https://www.fnbo.com/pos-lending/slice/contact
+
+9 | Nelnet Bank / Buildertrend | Nelnet Bank is the direct originator; Buildertrend is the application and project-management partner. | $3,000–$150,000. | Soft rate check, hard pull if applicant proceeds. Funds go directly to the contractor at project milestones after homeowner text approval. Public fixed-rate plan example range is 8.99%–14.49%, 60–180 months. | Strong builder/GC partnership lane. The contractor program terms expressly recognize co-borrowers; contractor cannot be borrower or cosigner. Contact: homeimprovement@nelnetbank.com. | High. https://www.nelnetbank.com/home-improvement-loans ; https://www.nelnetbank.com/ratesandtermsdisclosureagra ; https://www.nelnetbank.com/ratesandtermsdisclosureagrc ; https://www.nelnetbank.com/home-improvement-loan-contractor-terms-and-conditions
+
+10 | Amerant Bank | Direct bank lender. | Unsecured installment loan and unsecured line up to $150,000. Installment maximum is the lesser of $150,000 or 10% of gross annual income. | Florida residents only; installment loan 12–60 months; existing Amerant deposit account required before closing; hard inquiry; funds in 1–3 business days. | Narrow but useful high-income Florida product. A $150,000 installment request implies at least $1.5 million gross annual income under the public 10% rule. The unsecured line has no stated 10% rule on its page and needs separate underwriting confirmation. | High. https://www.amerantbank.com/products/personal/personal-loans/unsecured-loans/unsecured-loans/ ; https://www.amerantbank.com/products/personal/personal-loans/lines-of-credit/unsecured-lines-of-credit/
+
+11 | United Nations Federal Credit Union | Direct credit-union lender. | Unsecured personal loan up to $150,000, fixed rate, up to 15 years. | Member-only; first $50,000 may be deposited to a UNFCU account; public eligibility is heavily tied to UN employment, payroll deposits, UN retirees, or specific membership/mortgage history. | Real high-limit product but very narrow acquisition audience. More useful as a matched-member option than a scalable public campaign. | High. https://www.unfcu.org/loans/personal/ ; https://www.unfcu.org/loans/eligibility/
+
+12 | GreenSky | GreenSky and GreenSky Servicing administer and service a bank-funded program; current bank partners are Pinnacle Bank dba Synovus Bank and Comenity Capital Bank. | Up to $100,000. | Merchant/contractor point of sale; staged/early funding options; fixed installment and promotional plans; joint applicants are welcomed in public training material. | Major contractor network lane, but it only reaches the bottom of Fundhub's high-limit target. Deduplicate against the underlying program banks. | High. https://www.greensky.com/home-improvement/ ; https://www.greensky.com/bank-partners ; https://www.greensky.com/docs/core/training/gscp_solar_merchant_training.pdf
+
+13 | Upgrade Home Improvement | Platform; home-improvement loans are made by Cross River Bank. | $5,000–$100,000. | Contractor-funded consumer loans; soft application; contractor enrollment; payment requests and possible future contractor-lead referrals. | Downsell and contractor point-of-sale option. Not a $150,000+ source. | High. https://www.upgrade.com/home-improvement/ ; https://www.upgrade.com/home-improvement/apply/
+
+14 | Acorn Finance | Marketplace, not lender; 20+ lenders. Public examples include Best Egg and Upgrade. | Up to $100,000; unsecured/no-collateral home-improvement offers. | Contractor custom link; homeowner compares offers; contractor is paid by customer from proceeds. Soft prequalification; co-borrowers allowed. Lenders pay Acorn when loans originate. | Strong free contractor fallback and clearly documented marketplace monetization model. Not a high-limit anchor. | High. https://www.acornfinance.com/contractors/ ; https://www.acornfinance.com/apply/ ; https://www.acornfinance.com/remodel/home-remodel-financing/
+
+15 | SoFi Bank | Direct bank originator. | $5,000–$100,000 unsecured personal loan; home improvements are eligible. | Direct-to-consumer; fixed terms 2–10 years; public personal-loan affiliate page. | Clean national downsell and affiliate-outreach candidate at the $100,000 floor. | High. https://support.sofi.com/hc/en-us/articles/the-basics-of-a-sofi-personal-loan ; https://www.sofi.com/personal-loan-affiliate/
+
+16 | Viking Capital | Financing consultant/facilitator working with contractors and third-party lenders; not lender. | No current official public maximum was found. The site gives a $70,000 payment illustration but does not support the reported $400,000 figure. | Soft inquiry and consultation; contractor-branded pages; funding method varies by loan option. | Good pool/contractor relationship target, but do not build the offer around $400,000 without a current program sheet and named lender. | High for role; low for reported maximum. https://vcloan.com/ ; https://vcloan.com/imprint/
+
+ORIGINATOR DEDUPLICATION MAP
+
+- HFS: third-party lender network not named publicly. Count HFS as one distribution platform until lender roster is obtained.
+- BHG: Pinnacle Bank or County Bank funds consumer loans. Count those two banks as the funding layer, BHG as distribution/underwriting experience.
+- Lyon: exclusive lenders not named publicly. Count Lyon as one consultant channel until roster is obtained.
+- Hearth: 18+ lenders plus HELOC/card offers. Do not count the advertised 18 as unique until the roster is supplied.
+- Next-Financing: 17 lenders, not named on the product page.
+- Enhancify: 30+ lenders/network providers, not a single originator.
+- GreenSky: Pinnacle Bank dba Synovus Bank and Comenity Capital Bank are the current listed program lenders.
+- Upgrade: Cross River Bank originates the home-improvement loans.
+- Acorn: 20+ lenders; visible examples include Best Egg and Upgrade. Upgrade/Cross River must not be counted again as a separate source when reached through Acorn.
+- FNBO, Nelnet Bank, Navy Federal, Amerant, UNFCU and SoFi are direct lender/credit-union programs in this map.
+
+MULTI-PERSON APPLICATION STRUCTURES ACTUALLY SHOWN IN PUBLIC SOURCES
+
+Provider | Public structure | Key detail
+
+Navy Federal | Qualified co-applicant | Required for $50,001–$150,000. The application collects income, employment and full identity information for both applicants.
+
+BHG | Cosigner or co-borrower | Can be added at the beginning or during the process. Each person supplies identity and income documents. BHG accepts W-2, self-employment, business ownership, freelance, seasonal, Social Security, pension and disability income sources.
+
+Lyon | Co-applicant | Application contains a full co-applicant section. At least one applicant must be the owner of record on the deed for the project property.
+
+Nelnet / Buildertrend | Co-borrower or cosigner | Contractor terms recognize both. The borrower cannot also be the contractor. The public terms define a cosigner as responsible for the obligation without compensation.
+
+Acorn | Co-borrower | Co-borrowers can be added after the initial applicant submits information; the final lender controls approval.
+
+GreenSky | Joint applicants | Public merchant training says joint applicants are welcome on all applications.
+
+HFS, Hearth, Next-Financing, Enhancify, FNBO Slice, Amerant and UNFCU | No broad joint-applicant rule confirmed in the reviewed public product pages | Ask the provider which products accept spouse, household member, non-occupant, non-owner, cosigner or co-borrower applications and whose income, credit and debts are counted.
+
+The offer-construction implication is simple: Fundhub can build matching, readiness and application-preparation experiences around the applicant structures each provider actually accepts. The exact partner role must be a field in the lender matrix rather than one universal rule.
+
+DISBURSEMENT AND CONTRACTOR MAP
+
+Direct to homeowner
+
+- HFS: proceeds paid to homeowner; homeowner controls contractor payment schedule.
+- BHG: one lump sum to consumer.
+- Hearth: public page says financing is disbursed directly to customer.
+- Next-Financing: consumer receives proceeds and uses them for the project.
+- Most ordinary personal-loan offers through Enhancify, Acorn and SoFi: consumer receives loan proceeds; final lender terms control.
+
+Paid or controlled through contractor channel
+
+- FNBO Slice: FNBO pays approved contractor by ACH; staged funding may apply.
+- Nelnet / Buildertrend: contractor requests milestone funds; borrower approves each request; Nelnet pays contractor.
+- GreenSky: merchant/contractor program with early and staged funding options.
+- Lyon: most projects use staged contractor payments; some selected lenders may provide funds directly to consumer.
+- Upgrade Home Improvement: project funding is sent to contractor.
+
+This split should be visible in Fundhub routing because the two experiences attract different buyers. Direct-funding customers value control and contractor flexibility. Contractor-paid customers value coordinated draws, fewer payment handoffs and a program already attached to the job.
+
+UNDERWRITING PATTERN FOR OFFER CONSTRUCTION
+
+Published minimums are entry points, not maximum-funding profiles.
+
+- BHG public entry: 640+ credit, $100,000+ verifiable income, two years of steady employment. BHG's current maximum-loan article says 740+ credit and $150,000+ income are usually needed for its largest amounts and longest terms. It evaluates DTI, credit history and multiple income streams.
+- Lyon public entry: options may exist from 640; overall credit, payment history, income, debt, recent bankruptcies and tax liens are reviewed. At least one applicant must own the project property.
+- Navy Federal: credit history and income are reviewed; more than $50,000 requires a qualified co-applicant.
+- Amerant installment product: maximum equals 10% of gross annual income, so the amount itself creates a steep income screen.
+- HFS, Hearth, Next-Financing, Enhancify, Acorn and Viking: the platform pages do not publish one universal maximum-funding score, income or DTI because the lender controls the offer.
+
+Illustrative 10-year monthly payments, before fees, using ordinary amortization. These are capacity examples for internal offer design, not lender quotations:
+
+Principal | 8% APR | 12% APR | 18% APR | 25% APR
+$50,000 | $607 | $717 | $901 | $1,137
+$100,000 | $1,213 | $1,435 | $1,802 | $2,275
+$150,000 | $1,820 | $2,152 | $2,703 | $3,412
+$200,000 | $2,427 | $2,869 | $3,604 | $4,550
+$250,000 | $3,033 | $3,587 | $4,505 | $5,687
+
+That payment scale explains why the best high-limit audience is not merely a homeowner with a project. It is a homeowner or applicant team with strong documented monthly cash flow, low existing debt, stable income and a project large enough to justify the application effort.
+
+DOCUMENT PREPARATION FACTS
+
+BHG's current application guide provides the most complete public checklist in this set.
+
+W-2 applicants
+- government photo ID and Social Security number;
+- two recent pay stubs and/or most recent W-2;
+- employer contact;
+- proof of address;
+- bank routing/account details for ACH.
+
+Self-employed / 1099 applicants
+- government photo ID and Social Security number;
+- two years of federal returns including Schedule C or K-1;
+- three to six months of personal bank statements;
+- year-to-date profit and loss if requested;
+- proof of address.
+
+Business owners
+- self-employed package;
+- two years of business returns;
+- three to six months of business bank statements;
+- ownership documents;
+- support for additional income streams.
+
+Co-borrowers
+- separate identity, credit, debt and income package for each applicant.
+
+Project and property layer
+- Lyon requires at least one applicant on the deed and a home-improvement contract before final loan documents/funding.
+- FNBO, Nelnet and GreenSky are contractor programs, so contractor enrollment, a real invoice/contract and approved project funding path are central.
+- HFS says the applicant can estimate the project cost at inquiry and refine it later.
+- Direct personal-loan products may not require a contractor agreement upfront, but the provider can request purpose, identity, income and bank verification.
+
+THE TWO-SIDED PRODUCT ECOSYSTEM
+
+Homeowner demand side
+
+Entry promise: compare substantial financing paths for a real project while keeping the current mortgage untouched when an unsecured option fits.
+
+Primary segments:
+- high-income owner planning a $100,000–$250,000 addition, pool, ADU, full remodel or outdoor project;
+- dual-income household able to support a joint application;
+- self-employed homeowner with strong documented cash flow but more complex files;
+- homeowner who wants one direct lump sum and contractor control;
+- homeowner already working with a contractor and better suited to staged point-of-sale financing;
+- near-qualified homeowner who needs file preparation and time before applying.
+
+Products to route:
+- $100,000–$450,000 high-limit unsecured marketplace path: HFS;
+- $20,000–$250,000 high-income unsecured path: BHG;
+- pool/outdoor projects with deed ownership and staged payments: Lyon;
+- co-applicant member path: Navy Federal;
+- approved-contractor paths: FNBO Slice, Nelnet, GreenSky, Upgrade;
+- broad multi-lender fallbacks: Hearth, Next-Financing, Enhancify, Acorn;
+- $100,000 direct bank fallback: SoFi;
+- secured home-equity branch: Figure and other HELOC/home-equity products;
+- renovation mortgage/cash-out branch for projects where secured funding is preferred.
+
+Qualified borrower and capital-partner side
+
+Entry promise: organize the person's credit, income, debt capacity, real-estate goal and documentation, then match that profile to the provider structures and real-estate products that fit.
+
+Product tracks:
+- standard joint/co-borrower application where a provider accepts the relationship;
+- property-owner/co-owner project preparation where the provider requires deed ownership;
+- self-employed income-file preparation;
+- credit and debt-capacity readiness queue;
+- investor financing education and matching for DSCR rental, fix-and-flip, bridge and non-QM products;
+- contractor, builder and project-partner recruitment;
+- longer-term property acquisition, renovation and refinance products.
+
+The person with strong credit or income is a separate avatar from the homeowner. Their reason to enter is access to structured real-estate opportunities, financing readiness, deal flow, education and a repeatable path to future products. The homeowner's reason is completing a project on workable monthly terms. The marketplace can connect the journeys only through the applicant and ownership structures a selected provider supports.
+
+READINESS PRODUCT
+
+The preparation lane is commercially important because it retains people who are valuable but not ready for the primary application today.
+
+Core deliverables:
+- verified income-source inventory;
+- debt and monthly-payment inventory;
+- credit-file readiness plan;
+- W-2, self-employed or joint-applicant document vault;
+- property/project file;
+- contractor estimate and contract readiness;
+- lender-fit profile;
+- application timing plan;
+- status-based rematch when the file changes.
+
+Natural follow-on products:
+- smaller unsecured loans and personal lines;
+- contractor point-of-sale loans;
+- credit-card funding for appropriate smaller projects;
+- Figure or another HELOC for equity users;
+- bank-statement/P&L/1099 mortgage options for self-employed borrowers;
+- DSCR, bridge and fix-and-flip financing for investor properties;
+- business credit and working-capital products for contractors;
+- contractor sales, quoting, payment and financing enablement.
+
+ADJACENT PARTNER EVIDENCE
+
+- Figure has a public affiliate/API path for a HELOC, including a non-licensed prequalification API. Figure says the product is secured and ranges from $15,000 to $750,000. https://www.figure.com/partner-heloc/affiliates-and-apis/ ; https://docs.figure.com/heloc-pre-qualification/api
+- Angel Oak Mortgage Solutions has a wholesale broker path for bank-statement, P&L-only, 1099 and other non-QM mortgage programs. https://angeloakms.com/ ; https://angeloakms.com/non-qm-resource-center/
+- Kiavi has fix-and-flip and DSCR rental products plus a public refer-a-friend program; the public program pays $500+ for a first closed referral, but it is designed for an existing Kiavi account holder rather than a full marketplace agreement. https://www.kiavi.com/refer ; https://www.kiavi.com/flipsystem
+- Next-Financing advertises fix-and-flip loans from $75,000 to $10 million and includes purchase plus repairs. https://next-financing.com/fixandfliploans/
+- SoFi has a public personal-loan affiliate landing path and adjacent mortgage/home-equity products. https://www.sofi.com/personal-loan-affiliate/
+
+COMMERCIAL HYPOTHESES FOR THE OFFER TEAM
+
+1. Lead with a project-financing comparison and preparation offer, not one lender name. The product landscape changes at $100,000, $150,000, $200,000 and $250,000, and the funding route changes by provider.
+
+2. The highest-value lead is a documented household, not a raw consumer. The intake should capture owner status, state, project, requested amount, contractor status, income sources, monthly debt, housing payment, credit band, co-applicant availability and preferred funding route.
+
+3. Two funnels can feed one operating system:
+   - homeowner project funnel;
+   - qualified borrower/capital-partner funnel.
+   Each gets its own avatar, promise and VSL. Both feed the same readiness, documentation, lender-match and follow-up engine.
+
+4. Contractor acquisition is a third revenue and distribution lane. A contractor can bring the project and homeowner; Fundhub can bring preparation, matching, status tracking and additional lender coverage.
+
+5. HFS and BHG should be contacted first because they define the large-loan promise. Lyon, Hearth, Next-Financing and Enhancify determine contractor and marketplace coverage. FNBO and Nelnet determine the direct bank contractor path.
+
+6. The strongest guarantee is a service guarantee around completion of Fundhub's preparation and matching work. Loan amount, rate, approval and funding remain provider decisions and should not be used as the service guarantee.
+
+PARTNER OUTREACH ORDER AND QUESTIONS
+
+1. HFS
+- Which named lenders currently support $200,000, $250,000, $300,000 and $450,000?
+- Are all those bands unsecured personal loans with no property lien?
+- Which states, project types, ownership structures, co-applicants and income types are supported?
+- Can Fundhub receive a marketplace, dealer, affiliate or API relationship instead of a single-contractor link?
+- What application and funded-status data is available to the referring partner?
+
+2. BHG
+- Does the home-improvement product accept a marketing-referral or marketplace partner?
+- Can Fundhub use a tracked link, embedded flow or API?
+- Which co-borrower relationships and income sources are accepted at the $150,000–$250,000 level?
+- What status and funded-volume reporting can be returned?
+
+3. Lyon
+- Is the current maximum $200,000 or $250,000, and which lender provides it?
+- Which projects can be direct-funded to consumer versus staged to contractor?
+- Can one applicant be added to title before application, and what ownership evidence is reviewed?
+- Can Fundhub refer homeowners without being the contractor?
+
+4. Hearth / Enhancify / Next-Financing
+- Provide the full lender roster and maximum unsecured amount by lender.
+- Which lenders overlap with HFS, BHG, Acorn, Upgrade and SoFi?
+- Is Fundhub eligible as a marketplace, marketing source, contractor network or software partner?
+- What referral compensation, attribution, status events and clawbacks apply?
+
+5. FNBO Slice / Nelnet
+- Can Fundhub enroll a network of contractors or only operate as one approved contractor?
+- What contractor licenses, revenue, time-in-business and project documents are required?
+- Which co-applicant/cosigner structures are supported?
+- What staged-funding and completion-confirmation events are available through portal or API?
+
+6. Navy Federal / Amerant / UNFCU
+- Is any independent marketing or referral relationship available?
+- Can an eligible borrower use a non-spouse co-applicant, and how are income/debt combined?
+- What branch, membership and deposit-account steps prevent a fully digital referral path?
+
+CURRENT EDGE OF THE RESEARCH
+
+- No official HFS page reviewed names the lender that supplies its $450,000 ceiling.
+- Lyon's $200,000 and $250,000 statements conflict on the same current page.
+- Viking's current official site does not support the reported $400,000 maximum.
+- Hearth, Next-Financing and Enhancify publish platform ceilings but not the lender-by-lender unsecured maximum behind them.
+- Public pages do not disclose universal approval rates, Fundhub referral commissions or maximum DTI limits.
+- No public page reviewed describes a compensated unrelated borrower or temporary title partner product. Publicly documented options are standard co-applicant, co-borrower, cosigner, deed-owner and contractor-program structures.
+
+END
