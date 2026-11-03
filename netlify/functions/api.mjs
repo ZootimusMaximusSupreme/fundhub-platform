@@ -33,6 +33,7 @@ import "@pdf-lib/fontkit";
 import "pg";
 import authLogin from "../../api/auth/login.mjs";
 import authMfa from "../../api/auth/mfa.mjs";
+import authPlaidMfa from "../../api/auth/plaid-mfa.mjs";
 import authLogout from "../../api/auth/logout.mjs";
 import authSession from "../../api/auth/session.mjs";
 import authReset from "../../api/auth/reset.mjs";
@@ -389,6 +390,7 @@ export const config = { path: "/api/*" };
 export const ROUTES = {
   "auth/login": authLogin,
   "auth/mfa": authMfa,
+  "auth/plaid-mfa": authPlaidMfa,
   "auth/logout": authLogout,
   "auth/session": authSession,
   "auth/reset": authReset,

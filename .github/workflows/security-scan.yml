@@ -1,0 +1,70 @@
+name: Fundhub dependency scan
+
+on:
+  schedule:
+    - cron: '17 10 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  dependency-scan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Run production dependency audit
+        id: audit
+        shell: bash
+        run: |
+          set +e
+          npm audit --omit=dev --json > "$RUNNER_TEMP/security-audit-raw.json"
+          status=$?
+          set -e
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+      - name: Build finding receipt
+        env:
+          AUDIT_STATUS: ${{ steps.audit.outputs.status }}
+        run: |
+          node scripts/security-scan-report.mjs "$RUNNER_TEMP/security-audit-raw.json" "$RUNNER_TEMP/security-scan.json" "$RUNNER_TEMP/security-scan.md" "$AUDIT_STATUS"
+          cat "$RUNNER_TEMP/security-scan.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Track open findings
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          title='[Security scan] Fundhub dependency findings'
+          existing=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "[Security scan] Fundhub dependency findings") | .number' | head -1)
+          needed=$(node -e 'const r=require(process.argv[1]); process.stdout.write(String(r.issueNeeded))' "$RUNNER_TEMP/security-scan.json")
+          if [ "$needed" = true ]; then
+            if [ -n "$existing" ]; then
+              # Keep the issue body, including a human-set owner and due date.
+              # A dated run comment records changed findings without erasing triage.
+              gh issue comment "$existing" --body-file "$RUNNER_TEMP/security-scan.md"
+            else
+              gh issue create --title "$title" --body-file "$RUNNER_TEMP/security-scan.md"
+            fi
+          elif [ -n "$existing" ]; then
+            gh issue close "$existing" --comment "The latest scheduled dependency scan found no vulnerable production packages. See the workflow run artifact for the receipt."
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fundhub-dependency-scan
+          path: |
+            ${{ runner.temp }}/security-audit-raw.json
+            ${{ runner.temp }}/security-scan.json
+            ${{ runner.temp }}/security-scan.md
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Keep high or critical findings and incomplete scans red
+        shell: bash
+        run: |
+          node -e 'const r=require(process.argv[1]); if (r.failed) process.exit(1)' "$RUNNER_TEMP/security-scan.json"

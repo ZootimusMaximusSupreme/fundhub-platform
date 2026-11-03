@@ -19,14 +19,24 @@ async function markedShot(page,name,selector,caption){
 for(const width of [1440,390,320])test(`Money task summary and complete details at ${width}`,async({page})=>{
   fs.mkdirSync(evidence,{recursive:true});
   await page.setViewportSize({width,height:1000});
-  let state='full',role='client';const writes=[],errors=[];
+  let state='full',role='client';const writes=[],errors=[],mfaRequests=[],linkBodies=[];
+  await page.addInitScript(()=>localStorage.setItem('fh_token','money-page-fixture-session'));
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/api/**',async route=>{
     const u=new URL(route.request().url()),p=u.pathname;
     const json=(d,status=200)=>route.fulfill({status,json:d});
     if(route.request().method()!=='GET'){
       writes.push(p);
-      if(p==='/api/banking/link-token')return json({ok:false,error:'not_configured'},503);
+      if(p==='/api/auth/plaid-mfa'){
+        const body=route.request().postDataJSON();mfaRequests.push(body);
+        if(body.action==='setup')return json({ok:true,enrolled:true,consent_text:'I authorize Fundhub to connect my bank account.',privacy_url:'/privacy/'});
+        if(body.action==='authorize')return json({ok:true,grant_token:'money-page-mfa-grant'});
+        return json({ok:false,error:'unexpected_mfa_action'},400);
+      }
+      if(p==='/api/banking/link-token'){
+        linkBodies.push(route.request().postDataJSON());
+        return json({ok:false,error:'not_configured'},503);
+      }
       return json({ok:false,error:'offline_sample_read_only'},409);
     }
     if(p==='/api/auth/session')return json({ok:true,principal:role,portal_sample_available:true,portal_sample:true,staff:{role}});
@@ -87,8 +97,20 @@ for(const width of [1440,390,320])test(`Money task summary and complete details 
   await page.goBack();
   await expect(page.locator('#money-root .tiles')).toBeVisible();
   await page.getByRole('button',{name:'Connect a bank'}).click();
+  const mfaDialog=page.getByRole('dialog');
+  await expect(mfaDialog.getByRole('heading',{name:'Verify before connecting your bank'})).toBeVisible();
+  expect(writes).toEqual(['/api/auth/plaid-mfa']);
+  await mfaDialog.getByLabel('Authenticator code').fill('123456');
+  await mfaDialog.locator('[name=consent]').check();
+  await mfaDialog.getByRole('button',{name:'Verify and connect',exact:true}).click();
+  await expect(mfaDialog).toHaveCount(0);
   await expect(page.locator('#money-root .act-msg')).toContainText('not set up yet');
-  expect(writes).toEqual(['/api/banking/link-token']);
+  expect(mfaRequests).toEqual([
+    {action:'setup',target_kind:'client_bank'},
+    {action:'authorize',target_kind:'client_bank',code:'123456',consent:true}
+  ]);
+  expect(linkBodies).toEqual([{client_id:sample.client.id,plaid_grant_token:'money-page-mfa-grant'}]);
+  expect(writes).toEqual(['/api/auth/plaid-mfa','/api/auth/plaid-mfa','/api/banking/link-token']);
   for(const next of ['empty','error','loading']){
     state=next;await page.goto(`/app/money.html?proof=${next}`);
     if(next==='empty'){

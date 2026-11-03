@@ -240,6 +240,16 @@ describe("erasure: what is removed", () => {
       "hand-entered accounts are not reached by the plaid_items cascade");
   });
 
+  test("client erasure revokes open Plaid grants but preserves consent receipts", async () => {
+    const db = stubDb();
+    await eraseClient(db, { orgId: ORG, clientId: CLIENT, requestedBy: REQUESTED_BY, reason: REASON });
+    const revoke = db.log.find((c) => /UPDATE account_plaid_link_grants/i.test(c.sql));
+    assert.ok(revoke, "an open bank connection grant could survive client erasure");
+    assert.deepEqual(revoke.params, [ORG, CLIENT]);
+    assert.match(revoke.sql, /target_kind = 'client_bank'/);
+    assert.equal(all(db.log, /DELETE FROM account_plaid_link_grants/i).length, 0);
+  });
+
   test("*** the client row is DE-IDENTIFIED, never deleted ***", async () => {
     // A hard delete would be refused by Postgres anyway (pii_access_log.client_id
     // references clients(id) with no cascade) AND it would strand the ledger —

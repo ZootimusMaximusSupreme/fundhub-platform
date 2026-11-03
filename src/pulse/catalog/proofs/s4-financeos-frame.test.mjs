@@ -25,11 +25,14 @@ test("the frame lists every tab, names the client and shows the sandbox note", {
     assert.equal(await page.locator("#fos-sandbox").isVisible(), true, "the sandbox note shows for test data");
     const missing = await page.evaluate((keys) => keys.filter((k) => !(window.FinanceOS.sections[k] && typeof window.FinanceOS.sections[k].mount === "function")), TABS);
     assert.deepEqual(missing, [], "every tab has its section script loaded");
-    // 17 section scripts (the sixteen tabs and the trends script), then the frame's own
+    // 17 section scripts (the sixteen tabs and the trends script), the Plaid
+    // step-up script, then the frame's own script.
     const scripts = await page.evaluate(() => [...document.scripts].map((el) => el.getAttribute("src")).filter(Boolean));
     assert.equal(scripts[0], "/app/fundhub-font.js", "the shared presentation adapter loads first");
     assert.ok(scripts.includes("/app/client-ios.js"), "client-only navigation is loaded");
-    assert.equal(scripts.filter(src => !["/app/fundhub-font.js", "/app/client-ios.js"].includes(src)).length, 18);
+    assert.ok(scripts.includes("plaid-stepup.js"), "bank connections load the verification gate");
+    assert.ok(scripts.indexOf("plaid-stepup.js") < scripts.indexOf("money.js"), "verification loads before bank connections");
+    assert.equal(scripts.filter(src => !["/app/fundhub-font.js", "/app/client-ios.js"].includes(src)).length, 19);
     assert.equal(scripts.at(-1), "financeos.js", "the frame script loads after every section");
     assert.deepEqual(refusedScripts, [], "every script answered");
     assert.equal(await page.evaluate(() => typeof window.FinanceOS.trends?.mount + "/" + typeof window.FinanceOS.extras?.connections?.mount), "function/function");

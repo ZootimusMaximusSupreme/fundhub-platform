@@ -170,10 +170,16 @@ const portal = (over = {}) => ({
 });
 
 test.describe("Affiliate payout bank (affiliate.html)", () => {
-  test("no bank: says so and Link your bank asks the server for a Plaid link", async ({ page }) => {
+  test("no bank: Link your bank requires email proof before asking for Plaid", async ({ page }) => {
     const posts = [];
+    const mfaPosts = [];
     await openScreen(page, "/app/affiliate.html", client, {
       "/api/read/affiliate-portal": portal(),
+      "/api/auth/plaid-mfa": async (route) => {
+        mfaPosts.push(route.request().postDataJSON());
+        return json(route, { ok: true, enrolled: false, email_verification_required: true,
+          email_sent: true });
+      },
       "/api/affiliates/payout-account": async (route) => {
         posts.push(route.request().postDataJSON());
         return json(route, { ok: false, error: "not_configured", message: "Bank linking is not set up yet." }, 503);
@@ -188,9 +194,10 @@ test.describe("Affiliate payout bank (affiliate.html)", () => {
     await mark(page, "#payBody tr", "Held until the bank is linked; shows its due day", 2);
     await page.screenshot({ path: `${EVIDENCE}/affiliate-payout-bank-MARKED.png`, fullPage: true });
     await page.locator("#payBankLink").click();
-    await expect(page.locator("#payBankMsg")).toHaveText("Bank linking is not set up yet.");
-    await expect(page.locator("#payBankLink")).toBeEnabled();
-    expect(posts).toEqual([{ action: "link_token" }]);
+    await expect(page.locator(".fh-plaid-stepup")).toBeVisible();
+    await expect(page.locator(".fh-plaid-stepup")).toContainText("Check your email");
+    expect(mfaPosts).toEqual([{ action: "setup", target_kind: "affiliate_payout" }]);
+    expect(posts).toEqual([]);
   });
 
   test("linked on Plaid test data: says no real payout can go there", async ({ page }) => {
@@ -209,4 +216,137 @@ test.describe("Affiliate payout bank (affiliate.html)", () => {
     await expect(page.locator("#tab-terms")).toContainText("As soon as your client's payment clears");
     await expect(page.locator("#tab-terms")).not.toContainText("Fridays");
   });
+});
+
+// Isolate the real shared step-up script. All HTTP responses and identities
+// are synthetic; these controls never open Plaid or touch an account.
+async function stepUpSessionFixture(page, reply) {
+  const posts = [], errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.route("**/*", async route => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === "/app/stepup-session-fixture") {
+      return route.fulfill({ contentType: "text/html", body: "<html><body>Session fence fixture</body></html>" });
+    }
+    if (pathname === "/api/auth/plaid-mfa") {
+      const body = route.request().postDataJSON();
+      posts.push({ body, bearer: route.request().headers().authorization });
+      return reply(route, body, posts);
+    }
+    return route.fulfill({ status: 404, body: "fixture only" });
+  });
+  await page.goto("/app/stepup-session-fixture");
+  await page.evaluate(() => {
+    localStorage.setItem("fh_token", "fixture-account-A");
+    window.stepUpTimers = new Set();
+    const set = window.setInterval.bind(window), clear = window.clearInterval.bind(window);
+    window.setInterval = (...args) => { const id = set(...args); window.stepUpTimers.add(id); return id; };
+    window.clearInterval = id => { window.stepUpTimers.delete(id); clear(id); };
+    window.beginStepUp = kind => {
+      window.stepUpOutcome = { state: "pending" };
+      window.FHPlaidStepUp.authorize(kind).then(
+        value => { window.stepUpOutcome = { state: "resolved", value }; },
+        error => { window.stepUpOutcome = { state: "rejected", error: error.message }; });
+    };
+  });
+  await page.addScriptTag({ content: fs.readFileSync("public/app/plaid-stepup.js", "utf8") });
+  return { posts, errors };
+}
+const setupA = { ok: true, enrolled: false, secret: "SYNTHETIC-SETUP-KEY-A",
+  consent_text: "Synthetic consent", privacy_url: "/privacy/" };
+const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
+async function expectCancelledStepUp(page) {
+  await expect.poll(() => page.evaluate(() => window.stepUpOutcome)).toEqual({ state: "rejected", error: "cancelled" });
+  await expect(page.locator(".fh-plaid-stepup")).toHaveCount(0);
+  expect(await page.evaluate(() => window.stepUpTimers.size)).toBe(0);
+}
+
+test.describe("Plaid step-up stays with its original account", () => {
+  for (const token of ["fixture-account-B", ""]) {
+    test(`a delayed setup cannot expose the old secret after ${token ? "account switch" : "logout"}`, async ({ page }) => {
+      const held = deferred(), requested = deferred();
+      const { posts, errors } = await stepUpSessionFixture(page, async route => {
+        requested.resolve(); await held.promise; return json(route, setupA);
+      });
+      await page.evaluate(() => window.beginStepUp("client_bank"));
+      await requested.promise;
+      await page.evaluate(next => next ? localStorage.setItem("fh_token", next) : localStorage.removeItem("fh_token"), token);
+      const response = page.waitForResponse(r => r.url().endsWith("/api/auth/plaid-mfa"));
+      held.resolve(); await (await response).finished();
+      await expectCancelledStepUp(page);
+      expect(await page.locator("body").textContent()).not.toContain(setupA.secret);
+      expect(posts.map(item => item.bearer)).toEqual(["Bearer fixture-account-A"]);
+      expect(errors).toEqual([]);
+    });
+  }
+
+  for (const crossTab of [false, true]) {
+    test(`an open secret is scrubbed on ${crossTab ? "cross-tab account switch" : "same-tab logout"}`, async ({ page }) => {
+      const { posts, errors } = await stepUpSessionFixture(page, route => json(route, setupA));
+      await page.evaluate(() => window.beginStepUp("affiliate_payout"));
+      await expect(page.locator(".fh-plaid-stepup-secret")).toHaveText(setupA.secret);
+      await page.evaluate(() => { window.oldSecret = document.querySelector(".fh-plaid-stepup-secret"); });
+      if (crossTab) {
+        const other = await page.context().newPage();
+        await other.route("**/*", route => route.fulfill({ contentType: "text/html", body: "<html></html>" }));
+        await other.goto(page.url());
+        await other.evaluate(() => localStorage.setItem("fh_token", "fixture-account-B"));
+        await other.close();
+      } else await page.evaluate(() => localStorage.removeItem("fh_token"));
+      await expectCancelledStepUp(page);
+      expect(await page.evaluate(() => window.oldSecret.textContent)).toBe("");
+      expect(posts.map(item => item.body.action)).toEqual(["setup"]);
+      expect(errors).toEqual([]);
+    });
+  }
+
+  for (const pendingAction of ["verify_email", "authorize"]) {
+    test(`a pending ${pendingAction} cannot continue or return a grant after the account changes`, async ({ page }) => {
+      const held = deferred(), requested = deferred();
+      const { posts, errors } = await stepUpSessionFixture(page, async (route, body) => {
+        if (body.action === "setup") return json(route, pendingAction === "verify_email"
+          ? { ok: true, email_verification_required: true } : setupA);
+        requested.resolve(); await held.promise;
+        return json(route, pendingAction === "verify_email" ? { ok: true } : { ok: true, grant_token: "fixture-grant-A" });
+      });
+      await page.evaluate(() => window.beginStepUp("client_bank"));
+      if (pendingAction === "verify_email") await page.locator('[name="email_code"]').fill("123456");
+      else {
+        await page.locator('[name="code"]').fill("123456");
+        await page.locator('[name="consent"]').check();
+      }
+      await page.locator("[data-continue]").click(); await requested.promise;
+      await page.evaluate(() => localStorage.setItem("fh_token", "fixture-account-B"));
+      const response = page.waitForResponse(r => r.url().endsWith("/api/auth/plaid-mfa"));
+      held.resolve(); await (await response).finished();
+      await expectCancelledStepUp(page);
+      expect(posts.map(item => item.body.action)).toEqual(["setup", pendingAction]);
+      expect(posts.every(item => item.bearer === "Bearer fixture-account-A")).toBe(true);
+      expect(errors).toEqual([]);
+    });
+  }
+
+  for (const kind of ["client_bank", "affiliate_payout"]) {
+    test(`the unchanged account finishes email, TOTP and consent for ${kind}`, async ({ page }) => {
+      const { posts, errors } = await stepUpSessionFixture(page, (route, body, seen) => {
+        if (body.action === "verify_email") return json(route, { ok: true, email_verified: true });
+        if (body.action === "authorize") return json(route, { ok: true, grant_token: "fixture-grant-A" });
+        return json(route, seen.length === 1 ? { ok: true, email_verification_required: true } : setupA);
+      });
+      await page.evaluate(target => window.beginStepUp(target), kind);
+      await page.locator('[name="email_code"]').fill("123456");
+      await page.locator("[data-continue]").click();
+      await expect(page.locator(".fh-plaid-stepup-secret")).toHaveText(setupA.secret);
+      await page.locator('[name="code"]').fill("654321");
+      await page.locator('[name="consent"]').check();
+      await page.locator("[data-continue]").click();
+      await expect.poll(() => page.evaluate(() => window.stepUpOutcome)).toEqual({ state: "resolved", value: "fixture-grant-A" });
+      await expect(page.locator(".fh-plaid-stepup")).toHaveCount(0);
+      expect(await page.evaluate(() => window.stepUpTimers.size)).toBe(0);
+      expect(posts.map(item => item.body.action)).toEqual(["setup", "verify_email", "setup", "authorize"]);
+      expect(posts.every(item => item.bearer === "Bearer fixture-account-A" && item.body.target_kind === kind)).toBe(true);
+      expect(posts.at(-1).body.consent).toBe(true);
+      expect(errors).toEqual([]);
+    });
+  }
 });

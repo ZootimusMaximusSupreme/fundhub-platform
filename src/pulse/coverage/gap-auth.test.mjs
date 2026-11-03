@@ -14,6 +14,7 @@ import {
   SESSION_READ_SQL,
   SIGNIN_NO_SESSION_SQL,
   RESET_READ_SQL,
+  PLAID_GRANT_SQL,
   RESEND_ENV_KEYS
 } from "./gap-auth.mjs";
 
@@ -22,7 +23,8 @@ const IDS = [
   "gap:auth-magic-link-dead",
   "gap:auth-session-read",
   "gap:auth-signin-no-session",
-  "gap:auth-reset-mail"
+  "gap:auth-reset-mail",
+  "gap:auth-plaid-consent-integrity"
 ];
 
 const ORG = "00000000-0000-0000-0000-0000000000aa";
@@ -71,7 +73,8 @@ function healthyMap(over = {}) {
     ["gap:auth-signin-no-session", [{
       staff_ok: 3, staff_no_session: 0, links_used: 1, links_no_session: 0, ...over.signin
     }]],
-    ["gap:auth-reset-mail", [{ asked: over.asked ?? 0, resend_ok_7d: over.resendOk ?? 5, ...over.reset }]]
+    ["gap:auth-reset-mail", [{ asked: over.asked ?? 0, resend_ok_7d: over.resendOk ?? 5, ...over.reset }]],
+    ["gap:auth-plaid-consent-integrity", [{ recent_grants: 0, broken_grants: 0, ...over.plaid }]]
   ]);
 }
 
@@ -90,7 +93,7 @@ function shape(row) {
 }
 
 test("gap auth sql is select only", () => {
-  assert.equal(READ_ONLY_SQL.length, 6);
+  assert.equal(READ_ONLY_SQL.length, 7);
   for (const sql of READ_ONLY_SQL) {
     const body = sql.replace(/\/\*[\s\S]*?\*\//g, "").trim();
     // WITH ... SELECT is still a read. The next line bans every write word anywhere in the text.
@@ -103,6 +106,7 @@ test("gap auth sql is select only", () => {
   assert.match(MAGIC_DEAD_SQL, /20 minutes/);
   assert.match(SESSION_READ_SQL, /account_sessions/);
   assert.match(RESET_READ_SQL, /password_resets/);
+  assert.match(PLAID_GRANT_SQL, /account_plaid_link_grants/);
   assert.match(SIGNIN_NO_SESSION_SQL, /account_sessions/);
   assert.equal(SESSION_PROBE_HASH.length, 64);
 });
@@ -128,6 +132,28 @@ test("a quiet healthy login lane passes", async () => {
   }
   const sessionCall = db.calls.find((c) => c.sql.includes("gap:auth-session-read"));
   assert.deepEqual(sessionCall.params, [SESSION_PROBE_HASH, JSON.stringify(SIGNIN_GRANTS)]);
+});
+
+test("a saved Plaid grant without valid MFA or consent evidence fails without exposing account data", async () => {
+  const db = healthyMap({ plaid: { recent_grants: 4, broken_grants: 1 } });
+  const row = byId(await gapChecks({ db, env: GOOD_ENV }))["gap:auth-plaid-consent-integrity"];
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /1 of 4 recent Plaid Link grants/);
+  assert.ok(!row.detail.includes("account_id"));
+  assert.match(PLAID_GRANT_SQL, /c\.confirmed_at IS NULL/);
+  assert.match(PLAID_GRANT_SQL, /g\.consent_scope <>/);
+  assert.match(PLAID_GRANT_SQL, /g\.consumed_at IS NOT NULL AND g\.link_opened_at IS NULL/);
+});
+
+test("Plaid grant read errors remain red", async () => {
+  const db = healthyMap();
+  const read = db.query.bind(db);
+  db.query = (sql, params) => String(sql).includes("gap:auth-plaid-consent-integrity")
+    ? Promise.reject(new Error("relation account_plaid_link_grants does not exist"))
+    : read(sql, params);
+  const row = byId(await gapChecks({ db, env: GOOD_ENV }))["gap:auth-plaid-consent-integrity"];
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /could not be read/);
 });
 
 test("nobody can sign in when no active staff password exists", async () => {

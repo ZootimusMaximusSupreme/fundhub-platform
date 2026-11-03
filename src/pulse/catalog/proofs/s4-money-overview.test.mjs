@@ -63,12 +63,14 @@ test("Connect a bank runs token, bank window and exchange, in the header and in 
   };
   // One connect run: the page loads in the named state, the button is pressed, and the exact flow is seen.
   const connect = async (target, kind) => {
-    const { page, link, reads } = await openOverview(open, target, { session: STAFF, clientId: CLIENT_ID, read: kind === "empty" ? empty : undefined });
+    const { page, link, reads } = await openOverview(open, target, { session: CLIENT, read: kind === "empty" ? empty : undefined });
     await page.waitForSelector('[data-act="connect"]');
     if (kind === "empty") assert.match(await page.locator("body").innerText(), /No bank accounts yet/);
     await page.locator('[data-act="connect"]').first().click();
+    await link.completeStepUp(page);
     await waitFor(() => link.posts.some((p) => p.path === "link-exchange"));
-    assert.deepEqual(link.posts, link.expected(CLIENT_ID));
+    assert.deepEqual(link.mfaPosts, link.expectedMfa());
+    assert.deepEqual(link.posts, link.expected(sampleAnswer("money-overview.sandbox.json").client.id));
     await waitFor(() => reads.length >= 2);
     await page.close();
   };

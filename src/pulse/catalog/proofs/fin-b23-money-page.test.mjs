@@ -31,10 +31,19 @@ const BANK_WINDOW = "window.Plaid={create:function(c){return{open:function(){set
 const EMPTY_OVERVIEW = { ...SANDBOX, accounts: [] };
 
 function plaidRoutes({ script = "serves", linkToken = { status: 200, body: { ok: true, link_token: "fake-link-token" } } } = {}) {
-  const log = { posts: [], scriptRequests: [], overviewReads: 0 };
+  const log = { posts: [], authPosts: [], scriptRequests: [], overviewReads: 0 };
   const handlers = {
     "/api/money/overview": async (route) => { log.overviewReads += 1; return json(route, EMPTY_OVERVIEW); },
     "/api/money/trends": async (route) => json(route, { ok: true, range: "90d", daily: {}, monthly: { months: [] } }),
+    "/api/auth/plaid-mfa": async (route) => {
+      const body = bodyOf(route);
+      log.authPosts.push(body);
+      return json(route, body.action === "setup"
+        ? { ok: true, enrolled: true,
+          consent_text: "I agree that Fundhub may collect, process, use, and store my bank account, balance, and transaction data obtained through Plaid for Finance OS. I can disconnect my bank later.",
+          privacy_url: "https://fundhub.ai/privacy/" }
+        : { ok: true, grant_token: "grant-token" });
+    },
     "/api/banking/link-token": async (route) => {
       log.posts.push({ path: "link-token", body: bodyOf(route) });
       return json(route, linkToken.body, linkToken.status);
@@ -54,6 +63,100 @@ function plaidRoutes({ script = "serves", linkToken = { status: 200, body: { ok:
   return { log, handlers, before };
 }
 
+async function authorizeLink(page) {
+  await page.locator('[data-act="connect"]').first().click();
+  await page.locator('.fh-plaid-stepup [name="code"]').fill("123456");
+  await page.locator('.fh-plaid-stepup [name="consent"]').check();
+  await page.locator('.fh-plaid-stepup [data-continue]').click();
+}
+
+test("MFA and consent dialog has review screenshots at desktop and phone widths", { timeout: 60_000 }, async (t) => {
+  const { open } = await startPages(t);
+  const { handlers, before } = plaidRoutes();
+  const { page } = await open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers, before });
+  const evidence = path.join(ROOT, "ops/workflows/build-evidence/plaid-security-link");
+  fs.mkdirSync(evidence, { recursive: true });
+  for (const size of [{ width: 1440, height: 900, name: "desktop-1440.png" },
+    { width: 390, height: 844, name: "phone-390.png" }]) {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    if (!(await page.locator(".fh-plaid-stepup").count())) {
+      await page.locator('[data-act="connect"]').first().click();
+    }
+    await page.locator(".fh-plaid-stepup").waitFor();
+    assert.equal(await page.locator('.fh-plaid-stepup-consent a').getAttribute("href"),
+      "https://fundhub.ai/privacy/");
+    await page.evaluate(() => {
+      document.getElementById("fh-plaid-review-markup")?.remove();
+      const dialog = document.querySelector(".fh-plaid-stepup");
+      const bounds = dialog.getBoundingClientRect();
+      const code = document.querySelector('.fh-plaid-stepup [name="code"]').getBoundingClientRect();
+      const consent = document.querySelector('.fh-plaid-stepup [name="consent"]').getBoundingClientRect();
+      const consentRow = document.querySelector(".fh-plaid-stepup-consent").getBoundingClientRect();
+      const ns = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(ns, "svg");
+      svg.setAttribute("id", "fh-plaid-review-markup");
+      svg.setAttribute("width", String(bounds.width)); svg.setAttribute("height", String(bounds.height));
+      svg.setAttribute("viewBox", `0 0 ${bounds.width} ${bounds.height}`);
+      Object.assign(svg.style, { position: "absolute", inset: "0", zIndex: "5", pointerEvents: "none" });
+      const textAt = (x, y, label) => {
+        const text = document.createElementNS(ns, "text");
+        text.setAttribute("x", String(x)); text.setAttribute("y", String(y));
+        text.setAttribute("fill", "#ffd324"); text.setAttribute("stroke", "#18202b");
+        text.setAttribute("stroke-width", "3"); text.setAttribute("paint-order", "stroke");
+        text.setAttribute("font-size", "14"); text.setAttribute("font-weight", "700");
+        text.textContent = label; svg.appendChild(text);
+      };
+      const arrow = (x1, y1, x2, y2) => {
+        const line = document.createElementNS(ns, "line");
+        line.setAttribute("x1", String(x1)); line.setAttribute("y1", String(y1));
+        line.setAttribute("x2", String(x2)); line.setAttribute("y2", String(y2));
+        line.setAttribute("stroke", "#ffd324"); line.setAttribute("stroke-width", "4");
+        svg.appendChild(line);
+        const head = document.createElementNS(ns, "polygon");
+        head.setAttribute("points", `${x2},${y2} ${x2 - 10},${y2 - 4} ${x2 - 3},${y2 - 10}`);
+        head.setAttribute("fill", "#ffd324"); svg.appendChild(head);
+      };
+      const codeX = code.left - bounds.left, codeY = code.top - bounds.top;
+      const codeMark = document.createElementNS(ns, "ellipse");
+      codeMark.setAttribute("cx", String(codeX + code.width / 2));
+      codeMark.setAttribute("cy", String(codeY + code.height / 2));
+      codeMark.setAttribute("rx", String(code.width / 2 + 6));
+      codeMark.setAttribute("ry", String(code.height / 2 + 6));
+      codeMark.setAttribute("fill", "none"); codeMark.setAttribute("stroke", "#e11d25");
+      codeMark.setAttribute("stroke-width", "4"); svg.appendChild(codeMark);
+      textAt(24, codeY - 18, "1. Authenticator code");
+      arrow(165, codeY - 23, codeX + code.width - 15, codeY - 8);
+      const consentX = consent.left - bounds.left + consent.width / 2;
+      const consentY = consent.top - bounds.top + consent.height / 2;
+      const consentMark = document.createElementNS(ns, "circle");
+      consentMark.setAttribute("cx", String(consentX)); consentMark.setAttribute("cy", String(consentY));
+      consentMark.setAttribute("r", "17"); consentMark.setAttribute("fill", "none");
+      consentMark.setAttribute("stroke", "#e11d25"); consentMark.setAttribute("stroke-width", "4");
+      svg.appendChild(consentMark);
+      const consentCaptionY = consentRow.bottom - bounds.top + 25;
+      textAt(85, consentCaptionY, "2. Consent checkbox");
+      arrow(112, consentCaptionY - 15, consentX + 12, consentY + 12);
+      dialog.appendChild(svg);
+    });
+    await page.screenshot({ path: path.join(evidence, size.name) });
+  }
+  await page.close();
+});
+
+test("Connect a bank waits for a checked consent box before asking for Plaid Link", { timeout: 60_000 }, async (t) => {
+  const { open } = await startPages(t);
+  const { log, handlers, before } = plaidRoutes();
+  const { page } = await open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers, before });
+  await page.locator('[data-act="connect"]').first().click();
+  await page.locator('.fh-plaid-stepup [name="code"]').fill("123456");
+  await page.locator('.fh-plaid-stepup [data-continue]').click();
+  assert.deepEqual(log.authPosts.map((p) => p.action), ["setup"]);
+  assert.deepEqual(log.posts, []);
+  assert.deepEqual(log.scriptRequests, []);
+  await page.locator('.fh-plaid-stepup [data-cancel]').click();
+  await page.close();
+});
+
 test("Connect a bank loads the bank script only when it is pressed, then runs token, window and exchange", { timeout: 90_000 }, async (t) => {
   const { open } = await startPages(t);
   const { log, handlers, before } = plaidRoutes();
@@ -64,13 +167,15 @@ test("Connect a bank loads the bank script only when it is pressed, then runs to
   assert.deepEqual(log.scriptRequests, [], "the bank script is not fetched before Connect is pressed");
   assert.deepEqual(log.posts, []);
 
-  await page.locator('[data-act="connect"]').first().click();
+  await authorizeLink(page);
   await waitFor(() => log.posts.some((p) => p.path === "link-exchange"), "the exchange");
   assert.deepEqual(log.scriptRequests, [PLAID_URL], "exactly the bank's own script, once");
   assert.deepEqual(log.posts, [
-    { path: "link-token", body: { client_id: CLIENT_ID } },
-    { path: "link-exchange", body: { public_token: "fake-public-token", institution: { institution_id: "ins_sample", name: "Sample Bank" }, client_id: CLIENT_ID } },
+    { path: "link-token", body: { client_id: CLIENT_ID, plaid_grant_token: "grant-token" } },
+    { path: "link-exchange", body: { public_token: "fake-public-token", institution: { institution_id: "ins_sample", name: "Sample Bank" }, plaid_grant_token: "grant-token", client_id: CLIENT_ID } },
   ]);
+  assert.deepEqual(log.authPosts.map((p) => p.action), ["setup", "authorize"]);
+  assert.equal(log.authPosts[1].consent, true);
   await waitFor(() => log.overviewReads >= 2, "the accounts are read again after the connect");
   assert.deepEqual(errors, []);
   await page.close();
@@ -81,7 +186,7 @@ test("when the bank script cannot load, nothing is exchanged and the page says s
   const { log, handlers, before } = plaidRoutes({ script: "blocked" });
   const { page } = await open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers, before });
   await page.waitForSelector('[data-act="connect"]');
-  await page.locator('[data-act="connect"]').first().click();
+  await authorizeLink(page);
   await page.waitForFunction(() => /The bank sign-in window did not load\./.test(document.body.innerText));
   assert.deepEqual(log.scriptRequests, [PLAID_URL]);
   assert.deepEqual(log.posts.map((p) => p.path), ["link-token"], "no exchange without the bank's window");
@@ -94,7 +199,7 @@ test("when no link token can be made, the bank script is never fetched", { timeo
   const { log, handlers, before } = plaidRoutes({ linkToken: { status: 503, body: { ok: false, error: "not_configured" } } });
   const { page } = await open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers, before });
   await page.waitForSelector('[data-act="connect"]');
-  await page.locator('[data-act="connect"]').first().click();
+  await authorizeLink(page);
   await page.waitForFunction(() => /Bank connections are not set up yet\./.test(document.body.innerText));
   assert.deepEqual(log.scriptRequests, []);
   assert.deepEqual(log.posts.map((p) => p.path), ["link-token"]);
