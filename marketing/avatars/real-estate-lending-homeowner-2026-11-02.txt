@@ -1,0 +1,662 @@
+FUNDHUB REAL ESTATE LENDING — HOMEOWNER AVATAR
+Verified: November 2, 2026
+Avatar name: Keep-the-Rate Kelly
+
+PURPOSE
+
+This is the homeowner side of Fundhub's real estate lending ecosystem. The core customer owns a residential property, has a real improvement project, can document enough income to support a substantial payment, and wants to compare financing without automatically replacing the first mortgage, draining reserves, or depending on accessible home equity.
+
+This is an offer-building profile. The income, credit and debt bands below are commercial screening hypotheses for finding strong prospects. They are not universal lender thresholds.
+
+SOURCE-GROUNDED MARKET SNAPSHOT
+
+- Home improvement and repair spending on owner-occupied homes was projected to reach a record $524 billion in early 2026. Source: Harvard Joint Center for Housing Studies, October 16, 2025. https://www.jchs.harvard.edu/press-releases/remodeling-expected-continue-slow-steady-growth-next-year
+- The 90th percentile of renovation spending reached $150,000 in 2025. Among projects above $50,000, homeowners used more varied funding sources than smaller-project households. Source: 2026 U.S. Houzz & Home Study. https://www.houzz.com/magazine/2026-u-s-houzz-and-home-study-renovation-trends-stsetivw-vs~185090855
+- More than nine in ten homeowners planning 2026 renovations expected to use professionals, with professional involvement even stronger on projects above $50,000. Source: 2026 U.S. Houzz Renovation Plans Report. https://www.houzz.com/magazine/2026-u-s-houzz-renovation-plans-report-stsetivw-vs~183966513
+- HFS publicly describes fixed-rate personal-loan options up to $450,000, direct-to-consumer funding, no equity requirement, no appraisal, an initial soft inquiry and terms up to 30 years. HFS is a platform connecting homeowners to third-party lenders. Sources: https://www.hfsfinancial.net/home-improvement-loans/ and https://www.hfsfinancial.net/about-hfs-financial/faqs/
+- BHG publicly markets unsecured home-improvement loans up to $250,000 with terms up to 10 years. Its page says applicants typically need at least a 640 score and $100,000 annual income, while the actual amount and terms depend on the full profile. Consumer loans are funded by Pinnacle Bank or County Bank. Source: https://bhgfinancial.com/personal-loans/home-improvement
+- Lyon's current contractor materials document unsecured loans from $5,000 to $200,000 and require a home-improvement contract before loan documents are issued. Source: https://www.lyonfinancial.net/wp-content/uploads/2025/05/Lyon-Contractor-Overview-Updated-4.30.25.pdf
+- FNBO Slice documents contractor-originated financing up to $150,000 and 20 years. The homeowner applies through an approved contractor link, and the contractor receives ACH funding, staged when eligible. Source: https://www.fnbo.com/pos-lending/slice/how-slice-works
+
+PART 1 — SERVICE BUSINESS FOUNDATION
+
+1. Primary service
+
+Fundhub helps qualified homeowners organize their project, financial profile and documents, compare suitable home-improvement financing routes, and move into the right homeowner-funded or contractor-funded application path.
+
+2. Service category
+
+Home-improvement financing comparison, borrower readiness, document preparation and application routing.
+
+3. Core problem
+
+The homeowner has a project large enough that cash, ordinary cards and common personal-loan limits do not solve it. The homeowner can afford a substantial payment but does not know which programs can handle the project size, whether the money goes to the homeowner or contractor, what documents will be requested, or how to compare the payment against the cost of disturbing a strong first mortgage.
+
+4. Ideal client
+
+The center of the market is a 38-to-58-year-old homeowner or dual-income household with a stable, documentable income, a good-to-excellent credit history, manageable current debt, a defined $75,000-to-$250,000 project and a strong reason to keep the current mortgage unchanged. The project is usually an addition, full kitchen and first-floor remodel, pool and outdoor-living build, ADU, large roof/energy package, aging-in-place renovation or whole-home modernization.
+
+The strongest version already has at least a preliminary contractor estimate. They are not casually browsing design photos. They are deciding whether the project can start and how the payment fits.
+
+5. Before state
+
+- The home no longer fits the household, but moving would mean giving up location, space, schools or a favorable mortgage.
+- The contractor's estimate is higher than expected, or the project has expanded past available cash.
+- The owner sees HELOCs, refinances, personal loans and contractor financing but cannot compare them on one page.
+- They are unsure whether a quote is an estimate, prequalification or final approval.
+- They fear creating several credit inquiries while searching for enough capacity.
+- They have income, but the records are scattered across payroll, tax, bank and business documents.
+- They do not know whether the lender pays them or controls contractor draws.
+- They worry that a financing delay will cost them the contractor slot or force another price increase.
+
+6. After state
+
+- The owner sees the real routes available for the project amount, state, property and contractor status.
+- They understand the estimated payment range before choosing where to apply.
+- Their ownership, income and project documents are organized before a lender asks.
+- They know whether the proceeds go to their bank account or to the contractor.
+- They can keep the project, payment and first mortgage decisions separate.
+- If the full amount is not a fit, they receive a smaller project route, readiness plan or clearly separate alternative instead of falling out of the system.
+
+7. Service methodology
+
+The Renovation Funding Map:
+
+1. Project Map — define property, project, amount, contractor, timing and payment schedule.
+2. Capacity Map — capture income type, housing expense, monthly debt, self-reported credit band and joint-applicant availability.
+3. Route Map — compare direct-to-homeowner, contractor point-of-sale and separate secured alternatives based on the actual project.
+4. Readiness Pack — organize identity, income, ownership and project documents before routing.
+5. Application Handoff — send the homeowner to the selected provider or qualified advisor with the same information already organized.
+6. Status Track — follow application, document, decision and funding milestones.
+
+8. Key deliverables
+
+- Project and borrower intake.
+- Initial payment-capacity screen.
+- Product-route comparison.
+- Homeowner versus contractor disbursement explanation.
+- Personalized document checklist.
+- Application handoff and status follow-up.
+- Alternative product map when the first route does not fit.
+- Readiness track when timing, credit or documentation needs work.
+
+9. Pricing model
+
+No customer price is set in the current offer. The offer should be designed so the homeowner can enter through a free or low-friction comparison and qualification experience, while commercial revenue can come from documented provider relationships, contractor relationships, advisory services or later products as each arrangement is established.
+
+10. Main alternatives in the customer's mind
+
+- Ask the current mortgage bank for a HELOC or home-equity loan.
+- Refinance and pull cash out.
+- Take the contractor's first financing option.
+- Apply to several consumer lenders one by one.
+- Put the project on credit cards.
+- Use cash and reduce the scope.
+- Delay until they save more or rates change.
+- Move instead of improving the current home.
+
+11. Differentiator
+
+Fundhub begins with the whole project and payment picture. It does not start with one lender's application. The homeowner sees how the requested amount, contractor choice, payment method, documentation and desired control over funds change the route.
+
+12. Main objections
+
+- “What will the monthly payment actually be?”
+- “Why would I use this instead of my bank or contractor?”
+- “Can I check options before a hard inquiry?”
+- “Is the rate fixed?”
+- “Will this touch my mortgage or home equity?”
+- “Who receives the money?”
+- “Can I use my own contractor?”
+- “What happens if the project price changes?”
+- “How much paperwork will this take?”
+- “Can my spouse's income be included?”
+- “What if I am self-employed?”
+- “What if I qualify for less than the project costs?”
+- “Is the maximum amount real for someone like me?”
+
+13. Available proof
+
+The offer can use current provider pages, published program mechanics, payment illustrations, real Fundhub process screenshots once built, actual lender identities, actual customer outcomes once tracked, and direct explanations of who funds whom. It should not lean on a maximum amount by itself. The homeowner needs to see the relationship among amount, term, APR and payment.
+
+14. Common questions
+
+- How much could a household with our income and debts reasonably support?
+- Can we include two incomes?
+- Does the first rate check affect credit?
+- Is the final application different from the first inquiry?
+- Do we need a signed contractor agreement before applying?
+- Can proceeds be deposited directly to us?
+- Can the financing cover an addition, pool, ADU, roof, kitchen or whole-home project?
+- What ownership proof will be requested?
+- How quickly can we move from rate check to funding?
+- Can we pay the loan off early?
+
+15. Language homeowners already use
+
+These are short excerpts from public homeowner discussions. They are evidence of the problem language, not Fundhub testimonials.
+
+- “We absolutely do NOT want to refinance or touch the first mortgage at all.” Source: https://www.reddit.com/r/HELOC/comments/1tci9cd/best_way_to_finance_major_home_renovation_without/
+- “What’s the best way to finance construction when a HELOC won’t offer enough?” Source: https://www.reddit.com/r/Homebuilding/comments/1w3050o/best_way_to_finance_home_addition/
+- “Besides our mortgage we don’t have any loans, so new to all of this.” Source: https://www.reddit.com/r/HomeImprovement/comments/1sojpai/home_improvement_loans/
+- “We will be financing about half our renovation.” Source: https://www.reddit.com/r/homeowners/comments/1rj6hvl/financing_for_home_renovations_explain_it_to_me/
+- “If the client is determined to start a renovation, how would you finance?” Source: https://www.reddit.com/r/CFP/comments/1wh74e1/home_renovation_financing/
+
+PART 2 — SERVICE OVERVIEW
+
+1. Core promise
+
+See the best realistic path for funding a major home project while keeping control of the first-mortgage decision.
+
+2. Client journey
+
+The homeowner arrives from an ad, contractor, referral or search. They enter the project type, requested amount, state, ownership, income range, employment type, housing payment, estimated monthly debt, self-reported credit band, timeline and contractor status. Fundhub turns those answers into an initial route map. The homeowner sees which paths fit the project structure, completes the matching document checklist and chooses a provider handoff. Fundhub then tracks the application and preserves other routes if the first application does not produce the requested amount.
+
+3. Transformation
+
+From: “We have a real project and enough income, but every financing page gives us a different answer.”
+
+To: “We know the payment range, the documents, the funding path and the next application that makes sense.”
+
+4. Assumed benefits
+
+- Keep a low-rate first mortgage separate from the renovation decision.
+- Compare a direct-to-homeowner route with contractor financing.
+- Avoid starting applications that cannot handle the project amount or structure.
+- Prepare documents once and reuse the organized package where providers permit.
+- Get a plan for the full amount, a smaller first phase or a readiness period.
+- Keep cash reserves available for overruns and household needs.
+- Make a project decision with the spouse, contractor and advisor using the same numbers.
+
+5. Assumed desires
+
+- “I want this house to work for the next chapter of our life.”
+- “I need to know the payment before I commit to the contractor.”
+- “I want options that do not force me to start over on my mortgage.”
+- “I want to know who actually lends the money.”
+- “I want the project funded without turning the financing process into a second job.”
+- “I want enough room in the budget for the project to be done correctly.”
+
+6. Unique mechanism
+
+The Renovation Funding Map is a project-first matching process that connects the requested build, payment capacity, documentation and disbursement method before the homeowner chooses an application.
+
+7. Hidden mechanisms
+
+- Project-first intake prevents a small consumer loan from being mistaken for a full project solution.
+- Payment-capacity intake forces the amount conversation to include term and monthly obligation.
+- Disbursement mapping distinguishes money deposited to the homeowner from money controlled through the contractor channel.
+- Document preparation reduces pauses caused by scattered ownership, income and project records.
+- Status tracking makes decision, document and funding outcomes measurable instead of leaving them inside provider portals.
+- A product ladder keeps a valuable homeowner relationship even when the initial amount or structure changes.
+
+PART 3 — DESIRE AND BUYING RESEARCH
+
+Functional wants
+
+- Fund the entire project or identify the exact gap.
+- See a predictable monthly payment.
+- Keep the first mortgage unchanged.
+- Avoid an appraisal or long closing process when an unsecured route fits.
+- Compare providers without repeating the same explanation.
+- Use two household incomes where a provider allows joint applications.
+- Choose between receiving funds directly and using contractor-controlled financing.
+- Know how project changes affect financing.
+- Finish before an urgent repair worsens or a contractor slot disappears.
+
+Emotional needs
+
+- Control: they want to choose the project and contractor rather than have financing dictate every decision.
+- Certainty: they want numbers their household can plan around.
+- Competence: affluent homeowners do not want to feel confused by a major financial decision.
+- Preservation: they want to protect a favorable mortgage, cash reserves and future choices.
+- Progress: they are tired of living with the layout, damage or missing space.
+- Pride: the finished home represents stability, taste and a successful life.
+- Relief: they want the financing question settled so they can focus on the build.
+
+Recurring pains
+
+- The contractor estimate arrives before the financing plan.
+- The house has value, but the owner does not want the renovation tied to a new mortgage decision.
+- Common personal-loan maximums are below the project budget.
+- Different provider pages use the same words for different funding mechanics.
+- A maximum amount looks attractive, but there is no clear payment illustration for that amount.
+- Self-employed income can be strong while documentation is uneven.
+- Couples do not know whether both applicants need to be on the title or loan.
+- A project can exceed budget after work begins. Houzz reports that 37% of renovating owners exceeded their initial budget in 2025, often after choosing higher-end materials or expanding scope.
+- The homeowner worries about being approved for part of the project and having no plan for the remainder.
+
+Current solutions and complaints
+
+1. Cash
+   Good: no monthly payment or application.
+   Complaint: drains liquidity and can leave too little room for overruns.
+
+2. HELOC
+   Good: draw as the project progresses.
+   Complaint: tied to the home, often variable, and dependent on equity and property process.
+
+3. Home-equity installment loan
+   Good: fixed payment and can preserve the first mortgage.
+   Complaint: still secured by the home and can involve appraisal and closing friction.
+
+4. Cash-out refinance
+   Good: one combined payment and potentially large capacity.
+   Complaint: replaces the first mortgage and can reset the rate on the full balance.
+
+5. Contractor financing
+   Good: offered while the project is being sold and may support staged contractor payments.
+   Complaint: the homeowner may see only one program and may be locked to that contractor for the financing.
+
+6. Ordinary personal loan
+   Good: fixed installment payment and direct funding.
+   Complaint: many advertised maximums are too small for a six-figure renovation.
+
+7. Credit cards
+   Good: speed, flexibility and possible introductory offers.
+   Complaint: limits, expiration of promotional periods and multiple revolving payments make large projects harder to manage.
+
+8. Delay or reduce scope
+   Good: less debt.
+   Complaint: the household continues living with the problem, while contractor and material costs may change.
+
+New desire opportunities
+
+- A “keep the mortgage” comparison experience built around project amount and monthly payment.
+- A direct answer on who receives the funds before the homeowner applies.
+- A single readiness file covering ownership, income, project and contractor documents.
+- A project-phase option when the full amount is not the best first move.
+- A joint-household route that shows when a second applicant changes the available provider set.
+- A self-employed route that prepares tax, bank and business-income documentation early.
+- Post-funding project and cash-flow follow-up, not a handoff that disappears after the click.
+
+PART 4 — CORE AVATAR PROFILE
+
+Profile summary
+
+Keep-the-Rate Kelly is 46, owns a primary residence with a spouse, has lived there long enough to know exactly what no longer works, and is planning a $165,000 addition and first-floor remodel. The household earns about $285,000 through two stable jobs. Their credit is strong, they pay obligations on time, and their existing mortgage rate is far below the rates they see in today's market. They have savings but do not want to empty the account before construction begins. Their contractor can start in the next several months, but the final contract depends on funding.
+
+Kelly is not hunting for the lowest teaser rate. Kelly is trying to answer a bigger question: “Can we do the project we actually want, keep our mortgage intact, hold enough cash for surprises and live comfortably with the payment?”
+
+Kelly will spend time comparing options, but not because the household cannot decide. The decision is large enough that the terms, lender identity, funding recipient and document process must all make sense.
+
+The Core 5 Avatar Framework
+
+1. DESIRES
+
+Core desire
+
+Complete the right renovation now, with a payment the household can carry confidently, without automatically changing the first mortgage or exhausting cash reserves.
+
+Surface desires in the customer's language
+
+- “Show me what the project costs per month.”
+- “Let me keep the mortgage we already have.”
+- “Tell me whether the money comes to us or the contractor.”
+- “Give me a real comparison, not ten lead forms.”
+- “Help us get the paperwork right the first time.”
+- “I want enough financing to finish, not enough to start and get stuck.”
+- “If the full project does not fit, show me the smartest first phase.”
+- “I want to know what changes if my spouse applies with me.”
+
+2. EXPERIENCES
+
+Situational experience
+
+- The household bought or refinanced when mortgage rates were lower.
+- The home is in the right location, but the layout, systems or outdoor space no longer fit.
+- A life event has made the project urgent: another child, a parent moving in, working from home, aging in place, storm damage, a failed roof/HVAC system or a long-planned pool/addition.
+- The contractor's real estimate is materially larger than the number imagined during early planning.
+- The household has already spent time on design, estimates or permits, so walking away feels like losing more than money.
+
+Financing experience
+
+- Kelly has a mortgage and cards but may never have used a six-figure unsecured installment loan.
+- The bank immediately brings up home equity.
+- The contractor offers financing but cannot compare the full market.
+- Search results mix direct lenders, marketplaces and lead-generation pages.
+- Rate calculators show attractive examples without explaining whether Kelly's profile can access the largest amounts.
+- Kelly understands that strong income helps, but does not know how housing payments and existing debt change the answer.
+
+3. EMOTIONS
+
+Primary emotions
+
+- Protective of the mortgage, savings and household flexibility.
+- Excited about the finished home.
+- Frustrated that financing is harder to compare than the project itself.
+- Cautious about a large new payment.
+- Impatient to secure the contractor and begin.
+
+Secondary emotions
+
+- Proud that the household can consider a substantial project.
+- Embarrassed to ask basic loan questions despite being financially successful.
+- Suspicious of a page that asks for contact information before explaining the product.
+- Afraid of underfunding the project.
+- Relieved when the process becomes a short sequence with clear next steps.
+
+4. BEHAVIORS AND HABITS
+
+- Starts with Google, YouTube, Reddit and contractor conversations.
+- Opens payment calculators and tests several amounts and terms.
+- Sends links to a spouse and discusses the payment after work.
+- Uses a spreadsheet or notes app to compare project cost, cash contribution and monthly payment.
+- Checks reviews and verifies the company behind an offer.
+- Wants the contractor estimate before selecting a financing amount.
+- Responds better to a clear range and process than to a “get approved now” headline.
+- Will complete a short qualification form when it produces an immediate useful result.
+- Will abandon a form that feels like a data grab or asks detailed documents before showing the route.
+- Wants a human available once the project becomes specific.
+
+5. DEMOGRAPHICS
+
+- Typical age: 38–58.
+- Household: married or partnered is common because two incomes and a shared property decision support larger projects; strong single-income owners also fit.
+- Household income screening hypothesis: $150,000–$350,000+, with the highest project amounts concentrated toward the upper end or in low-debt households.
+- Credit screening hypothesis: good to excellent, with a stronger profile expected as requested amount rises.
+- Property: owner-occupied single-family home is the cleanest starting segment; condos, second homes and other property types need provider-specific matching.
+- Geography: states served by the selected provider and contractor.
+- Employment: stable W-2, dual W-2, documented self-employment, commission, retirement or a combination that can be verified.
+- Project: $75,000–$250,000+, with $100,000–$200,000 the core initial campaign band.
+
+COMMERCIAL SEGMENTS AROUND THE CORE AVATAR
+
+Tier A — Maximum-funding homeowner
+
+- Starting screening hypothesis: $250,000–$350,000+ household income, 740–800+ self-reported credit, low monthly debt, stable documentation and a $100,000–$250,000+ project.
+- Common projects: addition, ADU, whole-home remodel, premium pool/outdoor-living build or several combined systems.
+- Main desire: preserve mortgage and liquidity while completing the full project.
+- Main barrier: the payment at the requested amount and uncertainty over whether the public maximum is attainable for the full profile.
+- Best experience: full comparison, payment modeling, document-ready application and an advisor handoff.
+
+Tier B — Qualified mass-affluent homeowner
+
+- Starting screening hypothesis: $150,000–$250,000 household income, good or excellent self-reported credit, manageable obligations and a $50,000–$150,000 project.
+- Common projects: kitchen, primary suite, roof/windows/HVAC package, pool or phased addition.
+- Main desire: finish the project without draining cash or opening several products.
+- Main barrier: balancing project scope against a comfortable payment.
+- Best experience: direct-to-homeowner and contractor-finance comparison, plus a phased-project option.
+
+Tier C — Readiness and alternative-product homeowner
+
+- Has meaningful income or a real project but lacks the current profile, documentation, amount fit or contractor readiness for the first-choice route.
+- Main desire: know what needs to change and keep moving instead of receiving a dead-end decline.
+- Best experience: credit and documentation readiness plan, smaller unsecured product, project phasing, contractor financing, or a separately presented secured option when that better matches the homeowner's choice.
+- Future value: a prepared homeowner can return when the credit file, debt load, income record, contractor contract or requested amount is stronger.
+
+TRIGGER EVENTS
+
+1. A contractor estimate turns a design idea into a real six-figure decision.
+2. A low-rate mortgage makes moving or refinancing unattractive.
+3. A growing family needs another bedroom, bathroom or working area.
+4. A parent or adult child needs an ADU or accessible living space.
+5. The roof, HVAC, plumbing, electrical or envelope requires several upgrades at once.
+6. The homeowner buys a house that needs immediate personalization but has little accessible equity.
+7. A pool or outdoor-living plan moves from “someday” to a signed design.
+8. The homeowner receives a contractor opening and must decide quickly.
+9. A large cash reserve exists, but using all of it would leave the household uncomfortable.
+10. The first financing source offers less than the project requires.
+
+PROJECT AND CONTRACTOR CONTEXT
+
+Direct-to-homeowner funding fits owners who want to manage contractor payments, use several trades, change contractors or control project stages themselves. HFS publicly describes this model.
+
+Contractor-paid financing fits a project sold and managed through an approved contractor. FNBO Slice documents a secure contractor link, contractor ACH funding and staged funding for eligible partners. Lyon's materials document a contractor agreement before final loan documents.
+
+The intake should therefore ask early:
+
+- Is there a contractor?
+- Is the contract signed or still estimated?
+- Is one contractor responsible for the whole project?
+- Does the contractor offer financing?
+- Does the homeowner need funds directly or prefer contractor-controlled stages?
+- Are permits, plans and change-order allowances already included?
+- Is the budget a single fixed contract or several trade estimates?
+
+APPLICATION FRICTION
+
+- Contact details requested before useful product information.
+- Confusion between rate check, prequalification, final application and funding.
+- Fear of repeated hard inquiries.
+- Missing or inconsistent income records.
+- Ownership names that do not match the applicants.
+- A project estimate that excludes permits, design or contingency.
+- Joint applicants unsure how to combine obligations.
+- Self-employed owners with strong cash flow but incomplete tax, P&L or bank records.
+- Contractor documentation arriving after the lender asks.
+- Funding mechanics that do not match the contractor's deposit schedule.
+
+READINESS PACK BY INCOME TYPE
+
+W-2 homeowner
+
+Ready first: government ID, recent pay stubs, W-2s, current housing payment, monthly debt estimate, proof of ownership, project estimate and contractor details.
+
+May be requested as the provider evaluates the file: tax returns, bank statements, employment verification, mortgage statement, deed/title evidence, signed project contract and funding-account verification.
+
+Self-employed homeowner
+
+Ready first: government ID, personal and business tax returns, relevant schedules/K-1s, year-to-date P&L, business and personal bank statements, business ownership record, current housing payment, debt estimate, property ownership and project documents.
+
+The experience should show self-employed owners exactly which records are still missing before a lender handoff.
+
+Commission-based homeowner
+
+Ready first: government ID, pay statements showing base and commission, recent W-2s, employment history, tax returns if needed to show variable income, bank statements where requested, housing/debt information and project documents.
+
+Retired homeowner
+
+Ready first: government ID, Social Security/pension/annuity award records, distribution history, tax returns, asset statements where requested, housing/debt information, ownership proof and project documents.
+
+Joint applicants
+
+Ready first for both people: identity, income, employment, debt and credit-consent information, plus property-title and project records. The route map should identify programs that accept a joint application before both people invest time in the form.
+
+PROOF NEEDED TO CONVERT
+
+1. A plain explanation of direct-to-homeowner versus contractor-paid financing.
+2. The legal lender or bank behind each listed option.
+3. A current public amount and term range with the source date.
+4. A payment illustration that lets the homeowner test several amounts.
+5. The inquiry sequence: what happens first, what happens after acceptance and when documents enter.
+6. A visual document checklist by income type.
+7. Real, attributable customer stories once Fundhub has them.
+8. A view of the application status after the handoff.
+9. An explanation of what happens when the offered amount is below the project budget.
+10. A human contact for a complex project or income file.
+
+OBJECTION HANDLING DIRECTIONS
+
+“My bank will be cheaper.”
+Direction: compare the entire structure—payment, term, first-mortgage impact, appraisal/closing process, collateral preference and funding speed. The point is to see the routes side by side.
+
+“The rate is higher than a HELOC.”
+Direction: bring the conversation back to the customer's actual priority. Some owners prioritize a fixed payment, direct funding or keeping the property and mortgage separate from the renovation loan. Others will prefer the home-equity route. Show both structures clearly.
+
+“I do not want another credit inquiry.”
+Direction: identify providers that publicly support an initial soft inquiry, then explain the later application sequence using the provider's current language.
+
+“I can pay cash.”
+Direction: compare full cash use with a split between cash and financing, including the reserve the household wants to keep. The offer is a decision tool, not a push toward the largest loan.
+
+“I am self-employed, so this will be a mess.”
+Direction: show the self-employed readiness pack before the application. Replace uncertainty with a short missing-document list.
+
+“The contractor already has financing.”
+Direction: include it in the comparison. Determine amount, term, APR, fees, payment stages and whether the option stays with that contractor.
+
+“What if the project goes over budget?”
+Direction: establish the contract amount, contingency and change-order process before finalizing the requested amount. Keep a project-phase route available.
+
+“The website says up to $250,000 or $450,000. Does that mean we get it?”
+Direction: show the maximum as the edge of the program, then focus the household on its documented income, current obligations, requested amount and resulting payment.
+
+WHO SHOULD NOT BE POSITIONED AS THE CORE HIGH-LIMIT AVATAR
+
+- A person without a real residential project or ownership where the selected program requires ownership.
+- A household that cannot document the income used in the intake.
+- A customer whose desired payment is far below the payment created by the requested amount and current program terms.
+- A household already struggling with current monthly obligations.
+- A customer seeking cash for a purpose outside the provider's project rules.
+- A project in a state or property type the selected provider does not serve.
+- A customer who needs an amount better served by a smaller product.
+- A homeowner who strongly prefers a secured option after comparing the structures.
+- A prospect who expects Fundhub to promise a lender decision before the provider reviews the application.
+
+MARKETING AND MESSAGING BLUEPRINT
+
+Core message
+
+Your renovation should not force you to start over on a mortgage you worked hard to secure. Map the project, payment and financing route before you apply.
+
+Key belief shift
+
+From: “A project this large means using home equity, refinancing or taking whatever the contractor offers.”
+
+To: “A qualified homeowner may have several financing structures, and the right first step is matching the project and payment before choosing an application.”
+
+Message pillars
+
+1. Keep the first-mortgage decision separate.
+2. Fund the project you actually priced.
+3. Know who receives the money.
+4. See the monthly payment before committing.
+5. Prepare the file before the lender asks.
+6. Keep a second route when the first amount does not fit.
+
+Winning hook directions
+
+- “Your 3% mortgage should not decide whether you get the kitchen, addition or pool you want.”
+- “The contractor gave you a six-figure estimate. Here is the financing question to answer before you sign.”
+- “Before you touch your home equity, compare what the same renovation looks like as a fixed-payment personal loan.”
+- “Some home-improvement financing pays you. Some pays the contractor. Know which one you are applying for.”
+- “A $150,000 project is not a normal personal-loan search.”
+- “If your income is strong but your project is bigger than your bank's personal-loan limit, start here.”
+- “Do not let a rate-check form become your renovation plan.”
+- “The loan amount is only half the decision. The payment and funding method are the other half.”
+- “Your contractor estimate, income file and ownership documents should tell the same story before you apply.”
+- “There is a difference between enough money to start and enough money to finish.”
+
+Pain points to bring forward
+
+- Replacing a favorable mortgage for a renovation.
+- Losing liquidity before construction begins.
+- Applying to programs that cannot support the project amount.
+- Discovering too late that funds are locked to one contractor.
+- Getting a partial amount with no plan for the rest.
+- Starting the document chase after the application is already waiting.
+- Comparing rates without comparing terms and payment.
+
+CTA direction
+
+“Build your Renovation Funding Map.”
+
+The first form should ask for the project and high-signal financial facts, then return a useful route summary. It should not look like a generic “get matched with lenders” form.
+
+LANDING-PAGE CONCEPT
+
+Above the fold
+
+Headline: See how to fund a major renovation without automatically replacing your first mortgage.
+
+Subhead: Map the project, estimated payment, documents and financing route for home improvements from $50,000 to $250,000+.
+
+CTA: Build My Funding Map
+
+Immediate support points:
+
+- Compare homeowner-funded and contractor-funded routes.
+- Start with project and payment fit.
+- Prepare the right documents before the handoff.
+
+Page flow
+
+1. Project amount and type.
+2. Why homeowners preserve the first-mortgage decision.
+3. Direct-to-homeowner versus contractor-paid diagram.
+4. How the Renovation Funding Map works.
+5. Published provider examples and current source dates.
+6. Payment examples and project-cost contingency.
+7. Income-type document paths.
+8. Who the experience is built for.
+9. FAQs.
+10. CTA to complete the short intake.
+
+INTAKE DESIGN FOR THIS AVATAR
+
+Keep the first screen short:
+
+- Project type.
+- Requested amount.
+- State.
+- Own the property: yes/no.
+- Contractor selected: yes/no.
+- Project timeline.
+
+Then collect matching information:
+
+- Household income range.
+- Employment type.
+- Monthly housing expense.
+- Existing monthly debt range.
+- Self-reported credit band.
+- Joint applicant available: yes/no/not needed.
+- Desired funding route: homeowner, contractor, unsure.
+- Permission to contact.
+
+The result page should give a route, missing-document list and next step instead of a thank-you screen with no information.
+
+ADJACENT FUTURE PRODUCTS FOR THE HOMEOWNER SIDE
+
+1. $25,000–$100,000 unsecured personal-loan comparison.
+2. Contractor point-of-sale financing for pools, roofing, windows, HVAC, solar and outdoor living.
+3. Project-phasing and change-order capital planning.
+4. Homeowner credit and document readiness.
+5. Joint-applicant readiness.
+6. Self-employed income-document preparation.
+7. Secured home-equity comparison as a separate product family.
+8. Renovation mortgage and cash-out refinance referrals as separate routes.
+9. ADU and owner-occupied income-project planning.
+10. Investment-property and DSCR referral when the property and purpose are investment-related.
+11. Post-project insurance, warranty, energy and contractor-service relationships.
+12. Future financing for the next major household project.
+
+BUYING-STAGE MAP
+
+Stage 1 — Inspiration
+The homeowner sees a renovation outcome but has no estimate. Best product: project-budget planner and contractor connection.
+
+Stage 2 — Estimate gathering
+The homeowner has a range and is comparing contractors. Best product: early Funding Map and payment scenarios.
+
+Stage 3 — Financing decision
+The homeowner has a contractor or firm budget. Best product: full intake, document readiness and provider comparison.
+
+Stage 4 — Application
+The homeowner has chosen a route. Best product: handoff, document status and application tracking.
+
+Stage 5 — Project funded
+The homeowner needs contractor-payment coordination, project-change support and a clean record of funding.
+
+Stage 6 — Project complete
+The homeowner becomes a source for referrals, testimonials, future financing and adjacent property products.
+
+BEST INITIAL CUSTOMER TO ACQUIRE
+
+Start with Tier B at the upper end and Tier A at the lower end: households earning roughly $200,000–$350,000+, self-reporting good-to-excellent credit, carrying manageable monthly debt and planning a $75,000–$175,000 project with a contractor or serious estimate.
+
+This segment is large enough to acquire, close enough to the six-figure primary promise, and more likely to have a project/payment match across several provider types. The campaign can still capture $175,000–$250,000+ requests, but the offer should win on the quality of the Funding Map rather than making the public maximum the entire message.
+
+FINAL AVATAR TEST
+
+This avatar is specific enough to drive an offer:
+
+- The homeowner has a real project and timing event.
+- The first mortgage and cash reserve matter.
+- The contractor and disbursement method change the route.
+- The household can discuss a substantial monthly payment.
+- The documents and joint-income structure can be prepared.
+- The customer has valuable future products even if the first requested amount changes.
+
+The strongest positioning is not “get a big loan.” It is “map the right way to fund the project you already want, while keeping control of your mortgage, cash and contractor decision.”

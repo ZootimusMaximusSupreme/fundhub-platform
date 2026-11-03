@@ -1,0 +1,516 @@
+FUNDHUB REAL ESTATE LENDING AD STRATEGY
+Built: November 2, 2026
+
+THE DECISION
+
+Run two separate consumer campaigns and one partner campaign:
+
+1. Homeowner Renovation Funding Map.
+2. Deal-Ready Profile for qualified real estate participants.
+3. Project Finance Desk for contractors.
+
+Do not mix the homeowner and participant promises in one ad. They share an operating system after the intake, but the front-end desire, problem, language, and CTA are different.
+
+THE JEREMY HAYNES APPLICATION
+
+Start with the people who are already in market.
+
+For homeowners, that means people who already have a major project, estimate, contractor conversation, or serious timeline. The ad does not need to convince them to renovate. It needs to show why the Renovation Funding Map is the best next step.
+
+For participants, that means people who already want a real estate path and already have useful income, credit, or both. The ad does not need to sell real estate as a category. It needs to show how the Deal-Ready Profile turns their financial strength into a defined lane.
+
+For contractors, that means companies already offering financing or losing jobs because the current program caps out. The ad sells better coverage and status ownership.
+
+Every cold ad follows:
+
+Hook → one reason → mechanism → CTA.
+
+Every landing page mirrors the exact ad promise.
+
+Every booked lead enters a post-booking content sequence built around the reason they clicked.
+
+CURRENT META OPERATING MODEL
+
+Financial products and services must use Meta's Financial Products and Services Special Ad Category for US advertisers and US audiences.
+
+Current operating assumptions:
+
+- standard Lookalike Audiences are unavailable;
+- age and gender controls are restricted;
+- ZIP-level and narrow-radius targeting are restricted;
+- some detailed targeting and exclusions are unavailable;
+- eligible Custom Audiences remain useful when the source, permission, and audience certification are in place;
+- website and engagement audiences remain useful for warm follow-up where available;
+- broad acquisition plus strong creative and high-quality conversion events is the main scaling path.
+
+Primary Meta source:
+https://www.facebook.com/business/help/2220749868045706
+
+Special category setup:
+https://www.facebook.com/business/help/298000447747885
+
+Meta Ad Library category reference:
+https://www.facebook.com/ads/library/api
+
+Verified: November 2, 2026.
+
+THE AUDIENCE STRATEGY
+
+COLD ACQUISITION
+
+Use broad state or national coverage based on the active provider matrix. Let the creative perform the first level of intent filtering.
+
+Homeowner creative filters:
+
+- six-figure project;
+- contractor estimate;
+- preserve the first-mortgage decision;
+- compare direct versus contractor funding;
+- household can discuss a substantial payment;
+- application is coming soon.
+
+Participant creative filters:
+
+- strong verifiable income or credit;
+- wants a real estate role;
+- wants a real opportunity instead of more general education;
+- willing to organize documents;
+- willing to review responsibilities, numbers, timeline, and exit.
+
+Contractor creative filters:
+
+- established home-improvement company;
+- high-ticket projects;
+- current finance program;
+- lost or delayed projects caused by lender limits or application follow-up.
+
+FIRST-PARTY CUSTOM AUDIENCES
+
+Use customer-list Custom Audiences only from properly permissioned first-party records that belong in the named campaign.
+
+Useful audiences:
+
+- completed Renovation Funding Maps;
+- completed Deal-Ready Profiles;
+- application starters;
+- qualified applications;
+- funded customers;
+- contractor partners;
+- prior customers who gave permission for the applicable use.
+
+Do not treat a customer list as a cold-prospect lookalike substitute. Use it to re-engage, suppress where the platform permits, or sequence messages to known people.
+
+Customer-list source:
+https://www.facebook.com/business/help/170456843145568
+
+WARM AUDIENCES
+
+- VSL viewers by engagement depth;
+- landing-page visitors;
+- intake starters;
+- intake abandoners;
+- result-page viewers;
+- booked-call no-shows;
+- qualified applicants who have not completed the provider step;
+- contractor page visitors;
+- organic video engagers.
+
+Use a 7-day hot window, a 30-day warm window, and a 90-day education window. Keep the message tied to the person's last known step.
+
+THE BUREAU ACCESS / DATA STRATEGY
+
+Do not buy 5,000 credit profiles simply to build a Lookalike Audience. That tool is unavailable for this category.
+
+The useful data asset is a permissioned first-party set with real outcome quality:
+
+- homeowner submitted a real project;
+- requested amount;
+- contractor status;
+- state;
+- permission to contact;
+- income and employment information supplied by the consumer;
+- application completed;
+- provider decision;
+- funded amount.
+
+Use credit-organized research upstream only when the source, permitted use, and activation path are documented. The downstream advertising file should contain only the fields approved for that activation.
+
+$3,000 PLANNING SCENARIOS
+
+These are arithmetic scenarios, not a vendor quote. Assumptions:
+
+- 80% of purchased or developed records are usable;
+- 50% of usable records match to the selected advertising or contact channel;
+- 20% of matched records complete the initial Fundhub qualification standard.
+
+Records | Cost per record | Usable records | Cost per usable | Matched records | Cost per match | Qualified prospects | Cost per qualified
+1,000 | $3.00 | 800 | $3.75 | 400 | $7.50 | 80 | $37.50
+3,000 | $1.00 | 2,400 | $1.25 | 1,200 | $2.50 | 240 | $12.50
+5,000 | $0.60 | 4,000 | $0.75 | 2,000 | $1.50 | 400 | $7.50
+10,000 | $0.30 | 8,000 | $0.38 | 4,000 | $0.75 | 800 | $3.75
+
+Recommendation:
+
+Build 3,000 to 5,000 legitimate, permissioned records with clear project or product intent. Quality and verified outcomes matter more than the nominal record count. Use 500 to 1,000 qualified applications or funded outcomes as the medium-term signal-development goal. These are Fundhub performance targets, not Meta platform minimums.
+
+THE CAMPAIGN STRUCTURE
+
+CAMPAIGN 1: HOMEOWNER ACQUISITION
+
+Objective:
+Completed Renovation Funding Map.
+
+Ad set:
+Broad coverage in active states.
+
+Initial creative:
+
+1. Keep the first mortgage.
+2. $150,000 is a different loan search.
+3. Direct-to-homeowner versus contractor-paid.
+4. Enough to finish the project.
+
+Landing experience:
+Direct VSL page with Build My Funding Map CTA.
+
+Optimization event:
+Start with FundingMapCompleted once event quality and volume are stable. If volume is too low, begin with FundingMapStarted while tracking completed and qualified outcomes separately.
+
+CAMPAIGN 2: DEAL-READY ACQUISITION
+
+Objective:
+Completed Deal-Ready Profile.
+
+Ad set:
+Broad coverage in states with real product or opportunity lanes.
+
+Initial creative:
+
+1. You have the profile, but not the deal.
+2. Choose the role before the opportunity.
+3. One profile, several real estate paths.
+4. Get a measurable Ready Track.
+
+Landing experience:
+Direct VSL page with Build My Deal-Ready Profile CTA.
+
+Optimization event:
+DealReadyProfileCompleted.
+
+CAMPAIGN 3: CONTRACTOR PARTNER ACQUISITION
+
+Objective:
+Booked Project Finance Coverage Review.
+
+Ad set:
+Broad business-owner audience plus first-party contractor lists and site retargeting where available.
+
+Initial creative:
+
+1. One lender cap loses six-figure projects.
+2. Every application needs one owner.
+3. Direct and staged funding under one desk.
+4. Second route for partial offers.
+
+Landing experience:
+Short page, project-volume form, and calendar.
+
+CAMPAIGN 4: POST-INTAKE HAMMER THEM
+
+Audience:
+Completed intake, booked calls, no-shows, and qualified profiles.
+
+Content sequence:
+
+1. Who receives the renovation funds?
+2. What a $150,000 payment means.
+3. W-2 versus self-employed documents.
+4. How joint applications change the route.
+5. What happens when the first amount is short.
+6. Direct lender versus marketplace.
+7. What a complete Deal-Ready opportunity shows.
+8. What Ready Track milestones look like.
+9. Contractor program walkthrough.
+10. Provider identity and current program facts.
+
+This sequence builds familiarity and removes questions before the call. It does not need to ask for the same conversion in every video.
+
+THE FIRST TEST
+
+Budget:
+$150 per day for 14 days.
+
+Allocation:
+
+- $100 per day homeowner acquisition;
+- $35 per day Deal-Ready acquisition;
+- $15 per day retargeting after audience volume exists.
+
+Hold the contractor campaign for outbound and partner referrals first. Add paid contractor acquisition after the homeowner funnel and provider routes are working.
+
+Creative:
+
+- four homeowner videos;
+- two homeowner copy blocks;
+- three homeowner headlines;
+- two participant videos;
+- two participant copy blocks;
+- three participant headlines;
+- both Jeremy-format VSLs on their matching pages.
+
+Decision window:
+Do not judge the offer from clicks. Read the funnel from completed map to qualified application to funded customer.
+
+THE EVENT MAP
+
+BROWSER AND SERVER EVENTS
+
+PageView
+- landing page loaded.
+
+ViewContent
+- VSL or offer page meaningfully viewed.
+
+Lead
+- contact details submitted.
+
+FundingMapStarted
+- homeowner reaches the financial section.
+
+FundingMapCompleted
+- required homeowner intake completed.
+
+DealReadyProfileStarted
+- participant begins the financial profile.
+
+DealReadyProfileCompleted
+- participant completes required profile.
+
+QualifiedApplication
+- internal screening marks the profile ready for provider or matching review.
+
+ApplicationSubmitted
+- selected provider application confirmed.
+
+ApprovalReceived
+- provider approval recorded.
+
+FundedLoan
+- funding confirmed with amount and provider.
+
+ProjectCompleted
+- homeowner or contractor confirms completion.
+
+Use browser Pixel and Conversions API with the same event ID for deduplication. Send the event time, source URL, action source, and the strongest permitted matching fields. Keep provider decisions and funding outcomes in the CRM as the source of truth.
+
+Conversions API source:
+https://www.facebook.com/business/help/2041148702652965
+
+OPTIMIZATION LADDER
+
+Stage 1:
+Optimize for completed intake.
+
+Stage 2:
+Optimize for qualified application when enough events arrive consistently.
+
+Stage 3:
+Optimize for provider-submitted application.
+
+Stage 4:
+Optimize toward funded outcomes when the event is accurate and frequent enough to learn from.
+
+Operating targets:
+
+- 50 completed-intake events per week per active campaign is the preferred early learning target;
+- 30 to 50 qualified applications per week is the point to test qualification optimization;
+- funded-loan optimization requires enough recurring, accurately attributed events to compare against the qualified-application campaign.
+
+These are recommended performance targets. They are not stated Meta minimum requirements.
+
+THE KPI TREE
+
+Creative:
+
+- three-second hold;
+- 25%, 50%, 75%, and 95% video watch;
+- outbound click-through rate;
+- cost per landing-page view.
+
+Funnel:
+
+- VSL play rate;
+- 25%, 50%, and 75% VSL engagement;
+- intake start rate;
+- intake completion rate;
+- result-page to call rate;
+- booked-call show rate.
+
+Quality:
+
+- real project rate;
+- ownership verified;
+- contractor or estimate present;
+- income documentation ready;
+- requested amount;
+- route-ready rate;
+- qualified-application rate.
+
+Outcome:
+
+- provider application completion;
+- approval rate;
+- amount offered;
+- funded rate;
+- average funded amount;
+- days to funding;
+- cost per funded customer;
+- gross contribution.
+
+Do not scale from cost per lead alone.
+
+UNIT ECONOMICS
+
+No lender commission is assumed. The table calculates the minimum revenue per funded customer needed to recover media spend.
+
+Scenario assumptions:
+
+Conservative
+- CPL: $100
+- qualified: 25%
+- application completed: 70%
+- approval: 30%
+- funded after approval: 70%
+
+Base
+- CPL: $75
+- qualified: 35%
+- application completed: 75%
+- approval: 40%
+- funded after approval: 75%
+
+Aggressive
+- CPL: $50
+- qualified: 45%
+- application completed: 80%
+- approval: 50%
+- funded after approval: 80%
+
+Monthly spend | Conservative funded | Base funded | Aggressive funded
+$5,000 | 1.84 | 5.25 | 14.40
+$10,000 | 3.68 | 10.50 | 28.80
+$25,000 | 9.19 | 26.25 | 72.00
+$50,000 | 18.38 | 52.50 | 144.00
+$100,000 | 36.75 | 105.00 | 288.00
+
+Media-only break-even revenue per funded customer:
+
+- Conservative: about $2,721.
+- Base: about $952.
+- Aggressive: about $347.
+
+Add sales payroll, software, support, refunds, and attribution loss before setting the actual revenue target. Confirm the provider economics before increasing spend.
+
+THE CREATIVE ROADMAP
+
+WAVE 1: MAJORITY REASONS
+
+Homeowner:
+
+1. Preserve the first-mortgage decision.
+2. Six-figure project, six-figure route.
+3. Direct funds versus contractor funds.
+4. Full project versus partial amount.
+
+Participant:
+
+5. Strong profile, missing deal.
+6. Defined role before the match.
+7. Documents before the opportunity.
+8. Readiness with a finish line.
+
+Contractor:
+
+9. One lender cap.
+10. Application ownership.
+11. Financing coverage.
+12. Second route.
+
+WAVE 2: SECONDARY REASONS
+
+13. Joint-applicant route.
+14. Self-employed document preparation.
+15. Pool and outdoor-living financing.
+16. ADU and multigenerational renovation.
+17. Contractor-selected versus contractor-flexible funding.
+18. Payment planning before the contract.
+19. Real estate role selector.
+20. One profile across future products.
+
+WAVE 3: PROOF AND OBJECTIONS
+
+21. Current provider map.
+22. Sample Funding Map.
+23. Sample Deal-Ready Profile.
+24. Sample document checklist.
+25. Sample opportunity view.
+26. Application status tracker.
+27. Funded project story when real.
+28. Completed participant match when real.
+
+CREATIVE FORMATS
+
+- direct talking head;
+- talking head with project B-roll;
+- whiteboard payment comparison;
+- screen walkthrough of the Funding Map;
+- contractor estimate green-screen;
+- question-and-answer;
+- objection-first;
+- real process case study as outcomes arrive.
+
+FILMING ENVIRONMENTS
+
+Homeowner:
+- finished kitchen;
+- active remodel;
+- pool or backyard project;
+- desk with contractor estimate;
+- exterior of a substantial residential property.
+
+Participant:
+- clean office;
+- property walkthrough;
+- desk with Deal-Ready Profile;
+- screen demo of the Standard Opportunity View.
+
+Contractor:
+- job site;
+- showroom;
+- estimating desk;
+- sales meeting;
+- project-management screen.
+
+THE HANDOFF MESSAGE
+
+Homeowner:
+“You completed the Funding Map because you already have a real project. On the call, we are going to review the payment, funding method, documents, and the next route that fits the project.”
+
+Participant:
+“You completed the Deal-Ready Profile because you want a clear real estate path. On the call, we are going to review your role, document strength, current lane, and the exact next step.”
+
+Contractor:
+“You booked the Coverage Review because your current financing does not cover every project. On the call, we are going to map the amount bands, borrower types, and jobs your current program misses.”
+
+THE SCALE RULE
+
+Scale when:
+
+- the ad produces the intended avatar;
+- the intake completion rate holds;
+- qualified-application cost holds;
+- provider submissions are being completed;
+- funded outcomes and revenue are attributed;
+- sales and operations can handle more volume.
+
+Refresh the creative every two to four weeks or when the funded-customer cost weakens. Keep the winning reason as the control and test a new hook, environment, or format against it.
