@@ -5,6 +5,11 @@ const evidence='ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18'
 const sample=bundle.reads['/api/money/overview'];
 const empty={...sample,accounts:[],containers:[],cash:{personal:{cents:null},business:{cents:null},unknown:{cents:null}},debt:{total_cents:null,cards:[],loans:[],by_kind:{},by_container:[]},upcoming:[],bills:[],cashflow:{has_transactions:false,months:[]}};
 async function noOverflow(page){expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);}
+async function reviewPayments(page,onClick){
+  const ready=page.waitForURL(/\/app\/financeos\.html#payments$/,{waitUntil:'domcontentloaded'});
+  const clicked=page.getByRole('link',{name:'Review payments'}).click().then(()=>{if(onClick)onClick();});
+  await Promise.all([ready,clicked]);
+}
 async function markedShot(page,name,selector,caption){
   await page.evaluate(({selector,caption})=>{
     const r=document.querySelector(selector).getBoundingClientRect(),box=document.createElement('div');box.id='money-proof-mark';
@@ -91,7 +96,7 @@ for(const width of [1440,390,320])test(`Money task summary and complete details 
     await noOverflow(page);
     await d.locator(':scope>summary').click();
   }
-  await page.getByRole('link',{name:'Review payments'}).click();
+  await reviewPayments(page);
   await expect(page).toHaveURL(/\/app\/financeos\.html#payments$/);
   await expect(page.locator('#fos-payments')).toBeVisible();
   await page.goBack();
@@ -133,6 +138,54 @@ for(const width of [1440,390,320])test(`Money task summary and complete details 
   await expect(page.locator('#money-back')).toHaveAttribute('href','finance-os.html?client_id=safe-ui-fixture');
   await expect(page.getByRole('link',{name:'Review payments'})).toHaveAttribute('href','/app/financeos.html?client_id=safe-ui-fixture#payments');
   await expect(page.locator('.mnav a').first()).toHaveAttribute('href','/app/financeos.html?client_id=safe-ui-fixture#overview');
+  expect(errors).toEqual([]);
+});
+
+test('Review payments waits for the real FinanceOS boot after a delayed script at 390',async({page})=>{
+  await page.setViewportSize({width:390,height:900});
+  await page.addInitScript(()=>localStorage.setItem('fh_token','money-page-fixture-session'));
+  const writes=[],errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.route('**/api/**',route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(route.request().method()!=='GET'){
+      writes.push(path);
+      return route.fulfill({status:409,json:{ok:false,error:'offline_read_only'}});
+    }
+    return route.fulfill({json:path==='/api/auth/session'
+      ?{ok:true,principal:'client',portal_sample_available:true,portal_sample:true,staff:{role:'client'}}
+      :path==='/api/read/affiliate-portal'?{ok:true,enrolled:false}:bundle.reads[path]||{ok:true,items:[]}});
+  });
+  let markHeld;
+  const held=new Promise(resolve=>{markHeld=resolve;});
+  let releaseAsset;
+  const assetGate=new Promise(resolve=>{releaseAsset=resolve;});
+  await page.route('**/app/financeos.js',async route=>{
+    markHeld();
+    await assetGate;
+    await route.continue();
+  });
+  await page.goto('/app/money.html');
+  await expect(page.getByRole('link',{name:'Review payments'})).toBeVisible();
+  let clickReturned=false,reviewReturned=false;
+  const review=reviewPayments(page,()=>{clickReturned=true;}).then(()=>{reviewReturned=true;});
+  try{
+    await held;
+    await expect.poll(()=>clickReturned).toBe(true);
+    await new Promise(resolve=>setTimeout(resolve,5200));
+    await expect(page).toHaveURL(/\/app\/financeos\.html#payments$/);
+    const before=await page.evaluate(()=>({readyState:document.readyState,
+      hidden:document.getElementById('fos-payments').hidden,
+      selected:document.getElementById('tab-payments').getAttribute('aria-selected')}));
+    expect(before).toEqual({readyState:'interactive',hidden:true,selected:'false'});
+    expect(reviewReturned).toBe(false);
+  }finally{releaseAsset();}
+  await review;
+  await expect(page).toHaveURL(/\/app\/financeos\.html#payments$/);
+  await expect(page.locator('#fos-payments')).toBeVisible();
+  await expect(page.locator('#fos-payments')).toContainText('Business Amex');
+  await expect(page.locator('#tab-payments')).toHaveAttribute('aria-selected','true');
+  expect(writes).toEqual([]);
   expect(errors).toEqual([]);
 });
 
