@@ -18,7 +18,7 @@ flowchart TD
     WHO -->|Yes| CAN[Can reach]
     CAN --> A_affiliates[affiliates — 2 routes]
     CAN --> A_auth[Signing in and out — 8 routes]
-    CAN --> A_blueprint[blueprint — 1 route]
+    CAN --> A_blueprint[blueprint — 4 routes]
     CAN --> A_chat[chat — 1 route]
     CAN --> A_climate[climate — 2 routes]
     CAN --> A_consent[consent — 1 route]
@@ -74,7 +74,7 @@ flowchart TD
 
 ## What they can reach
 
-**84 of 347 routes.**
+**87 of 350 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -88,7 +88,10 @@ flowchart TD
 | `/api/auth/plaid-mfa` | POST | client, affiliate |
 | `/api/auth/reset` | POST | anyone |
 | `/api/auth/session` | — | anyone |
+| `/api/blueprint/business-plans` | GET, POST | client |
 | `/api/blueprint/declines` | GET, POST | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
+| `/api/blueprint/letter-mailing` | — | client |
+| `/api/blueprint/plan` | — | client |
 | `/api/bookings` | GET, POST | staff, client |
 | `/api/chat/portal-message` | GET, POST | client |
 | `/api/climate` | OPTIONS | anyone |
@@ -170,7 +173,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**263 of 347 routes.**
+**263 of 350 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

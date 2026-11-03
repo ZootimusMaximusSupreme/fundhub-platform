@@ -395,3 +395,20 @@ Pre-publication reviewed source snapshot
  update; it can safely select currentmain mergebase before orderedparentrebase.
 - Three API handlers/545/worker integration is still pending; initialPRmuststay
  draftuntilthesearewiredontheordered387parent andfinalchecksarecomplete.
+
+
+Final integration lane — root owns shared registration; independent agents review only.
+- Ordered ship-change rebase completed on PR387 a0c676f5 parent; expected-base preflight passed before edits.
+- Inherited parent already owns 545_account_plaid_mfa_consent; mailing migration renamed546, original SQL preserved. Historical545 reservation above is superseded.
+- Added exact plan/business-plans/letter-mailing routes; read-only GET registry; Netlify-only scheduled job and five-minute heartbeat; preserved old tripwires and added the preparation/mailing/current-response deep checks.
+- Updated existing actual journey, heartbeat journey and changelog. Source registration does not mean deployed.
+- Root performs integration checks/publication; independent review can run alongside. Release waits for protected parent queue; new Blueprint PR must remain draft until complete.
+
+Final independent integration receipts
+- Integration54PASS +1PGSKIP; migration-manifest6PASS. Independent integration93PASS/1FAIL identified missing named workflow registration; repaired exact expected ID, then independent64PASS0SKIP.
+- Generated authentication documentation initially could not trace shared paid-client gate. Equivalent production authenticate alias plus source-traced wrapper/regression now preserves exact client/org/year boundary;9existingjourneys and11existingdiagrams regenerated (only2diagramfiles changed). No new Markdown file.
+- Browser29initialPASS/1stale-labelFAIL; only two exact label expectations changed, affected scenario1PASS0retry. First failed log retained. Label now Submitted for mailing, never physical-delivery proof.
+- Lint4661parseclean; installedTypeScriptPASS. Finalfullsuite initially sandbox-refused localservers; retained redlog, rerun with temporarylocalhostpermission (no configured DATABASE_URL) underway.
+- Netlify CLI localbuild refused sandbox config refresh; direct samezip-it-and-ship-it bundler avoids credential writes. APIbundle built; cronworker pending at this snapshot.
+- Owner does not know an existing paid testlogin. Separate scratch environment setup delegated; no realclient modifications or fabricated production purchases.
+- Protected parent queue retained; candidate publication is DRAFT, not completion or production proof.

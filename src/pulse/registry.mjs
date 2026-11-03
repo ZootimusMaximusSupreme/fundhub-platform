@@ -358,6 +358,10 @@ const API_KEYS = [
   /* Decline defense. A plain GET answers 401 to an unsigned ping; the POST
      actions are never pinged. */
   "blueprint/declines",
+  // Read-only GET pings; payment and mailing authorization remain POST-only.
+  "blueprint/plan",
+  "blueprint/business-plans",
+  "blueprint/letter-mailing",
   "read/call-outcomes",
   /* The only read behind the client progress page. An outage here is a client
      who paid up to $10,000 seeing no scores, no checklist and no next step. */

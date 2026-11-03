@@ -33,6 +33,7 @@ export const CLOCK_JOBS = Object.freeze([
   ["blake-lead-watch", "*/5 * * * *"],
   ["blueprint-closer-ready-sweeper", "0 * * * *"],
   ["blueprint-finance-os-alerts", "30 7 * * *"],
+  ["blueprint-letter-mailing", "*/5 * * * *"],
   ["blueprint-next-funding-sequence-sweeper", "30 6 * * *"],
   ["clickfunnels-analytics-sweeper", "15 7 * * *"],
   ["cortana-booking-feed", "*/5 * * * *"],

@@ -1,4 +1,4 @@
-// PostgreSQL proof of migration545 and the real repository. Rollback-only local
+// PostgreSQL proof of migration546 and the real repository. Rollback-only local
 // fixture tables; fake provider transports. Never production or a test charge.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,7 +12,7 @@ function safe(raw){try{const u=new URL(raw);return ['postgres:','postgresql:'].i
 test('mailing PG guard rejects production, foreign hosts and URL overrides',()=>{assert.equal(safe('postgres://127.0.0.1/fundhub_ci'),true);
   for(const s of ['postgres://localhost/production','postgres://db.example.com/fundhub_test','postgres://localhost/fundhub_test?host=production','postgres://localhost/production#_test'])assert.equal(safe(s),false);
 });
-test('PG migration545: exact scoped quotes, replacement, payment CAS, irreversible envelopes and $97 receipt survive fresh reads',{
+test('PG migration546: exact scoped quotes, replacement, payment CAS, irreversible envelopes and $97 receipt survive fresh reads',{
   skip:!url?'No local scratch database: PostgreSQL mailing proof NOT RUN':false
 },async()=>{
   assert.equal(safe(url),true,'Refused connection: only a named loopback test/scratch/CI URL without overrides is allowed');
@@ -26,7 +26,7 @@ test('PG migration545: exact scoped quotes, replacement, payment CAS, irreversib
       CREATE TEMP TABLE document_versions(id uuid PRIMARY KEY,org_id uuid,document_id uuid,storage_key text,checksum text,mime_type text,byte_size bigint);
       CREATE TEMP TABLE transactions(org_id uuid,client_id uuid,provider text,status text,amount_paid numeric,is_demo boolean);
       CREATE TEMP TABLE paid_service_requests (LIKE public.paid_service_requests INCLUDING ALL);`);
-    const sql=readFileSync(new URL('../../../db/migrations/545_blueprint_letter_mailing.sql',import.meta.url),'utf8').replaceAll('public.','pg_temp.');
+    const sql=readFileSync(new URL('../../../db/migrations/546_blueprint_letter_mailing.sql',import.meta.url),'utf8').replaceAll('public.','pg_temp.');
     await db.query(sql);
     const org=randomUUID(),client=randomUUID(),account=randomUUID(),foreign=randomUUID();
     const scope={orgId:org,clientId:client,accountId:account,now:new Date()};
