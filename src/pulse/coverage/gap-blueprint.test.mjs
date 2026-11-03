@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import { CHECK_IDS, REAL_ADVISOR_SQL, MONTHLY_DELIVERY_SQL, COACH_CALL_DELIVERY_SQL, gapChecks } from "./gap-blueprint.mjs";
+import { CHECK_IDS, REAL_ADVISOR_SQL, MONTHLY_DELIVERY_SQL, COACH_CALL_DELIVERY_SQL, PREPARATION_EVIDENCE_SQL, gapChecks } from "./gap-blueprint.mjs";
 import { CSM_ASSIGNMENT_EXCEPTION_SOURCE } from "../../blueprint/assign-csm.mjs";
 import { MONTHLY_DELIVERY_EXCEPTION_SOURCE } from "../../finance/finance-os-pull-fulfil.mjs";
 import { OFFERS } from "../../config/offers.mjs";
@@ -11,7 +11,7 @@ import { PAID_TRANSACTION_STATUS } from "../../entitlements/entitlements.mjs";
 
 const ORG = "00000000-0000-4000-8000-000000000001";
 const NOW = new Date("2026-10-20T12:00:00Z");
-function dbFor(counts = [0, 0, 0]) {
+function dbFor(counts = [0, 0, 0, 0]) {
   const calls = [];
   return { calls, async query(sql, params) {
     calls.push({ sql, params });
@@ -23,10 +23,10 @@ function dbFor(counts = [0, 0, 0]) {
 }
 
 test("Blueprint checks report both broken staff links and failed saved-result delivery red", async () => {
-  const db = dbFor([2, 1, 0]);
+  const db = dbFor([2, 1, 0, 0]);
   const out = await gapChecks({ db, orgId: ORG, now: NOW });
   assert.deepEqual(out.map((r) => r.id), CHECK_IDS);
-  assert.deepEqual(out.map((r) => r.status), ["FAIL", "FAIL", "PASS"]);
+  assert.deepEqual(out.map((r) => r.status), ["FAIL", "FAIL", "PASS", "PASS"]);
   assert.match(out[0].detail, /^2 active paid Blueprint clients linked to a demo, disabled or other-company staff person$/);
   assert.match(out[0].suggestedFix, new RegExp(CSM_ASSIGNMENT_EXCEPTION_SOURCE));
   assert.match(out[1].suggestedFix, /saved credit result/);
@@ -39,32 +39,32 @@ test("Blueprint checks report both broken staff links and failed saved-result de
 });
 
 test("healthy or empty counts pass, but a missing scoped reader skips without queries", async () => {
-  assert.deepEqual((await gapChecks({ db: dbFor(), orgId: ORG, now: NOW })).map((r) => r.status), ["PASS", "PASS", "PASS"]);
+  assert.deepEqual((await gapChecks({ db: dbFor(), orgId: ORG, now: NOW })).map((r) => r.status), ["PASS", "PASS", "PASS", "PASS"]);
   const db = dbFor();
-  assert.deepEqual((await gapChecks({ db, now: NOW })).map((r) => r.status), ["skip", "skip", "skip"]);
+  assert.deepEqual((await gapChecks({ db, now: NOW })).map((r) => r.status), ["skip", "skip", "skip", "skip"]);
   assert.equal(db.calls.length, 0);
-  assert.deepEqual((await gapChecks({ orgId: ORG })).map((r) => r.status), ["skip", "skip", "skip"]);
+  assert.deepEqual((await gapChecks({ orgId: ORG })).map((r) => r.status), ["skip", "skip", "skip", "skip"]);
 });
 
 test("the existing staff read scope wins over the unscoped pool", async () => {
-  const db = dbFor([1, 0, 0]);
+  const db = dbFor([1, 0, 0, 0]);
   let scopeCalls = 0;
   const out = await gapChecks({ orgId: ORG, now: NOW,
     db: { query() { throw new Error("unscoped pool must not be used"); } },
     scope: async (fn) => { scopeCalls += 1; return fn(db); }
   });
-  assert.deepEqual(out.map((r) => r.status), ["FAIL", "PASS", "PASS"]);
-  assert.equal(scopeCalls, 3);
+  assert.deepEqual(out.map((r) => r.status), ["FAIL", "PASS", "PASS", "PASS"]);
+  assert.equal(scopeCalls, 4);
 });
 
 test("failed or malformed reads stay red independently and never expose database error values", async () => {
   for (const invalid of [undefined, null, "", false, true, [], {}, -1, 0.5, "not a number", new Error("secret@example.com customer data")]) {
-    const out = await gapChecks({ db: dbFor([invalid, 0, 0]), orgId: ORG, now: NOW });
-    assert.deepEqual(out.map((r) => r.status), ["FAIL", "PASS", "PASS"]);
+    const out = await gapChecks({ db: dbFor([invalid, 0, 0, 0]), orgId: ORG, now: NOW });
+    assert.deepEqual(out.map((r) => r.status), ["FAIL", "PASS", "PASS", "PASS"]);
     assert.doesNotMatch(JSON.stringify(out), /secret@example.com|customer data/);
   }
   const out = await gapChecks({ db: dbFor(), orgId: ORG, now: "invalid" });
-  assert.deepEqual(out.map((r) => r.status), ["FAIL", "FAIL", "FAIL"]);
+  assert.deepEqual(out.map((r) => r.status), ["FAIL", "FAIL", "FAIL", "FAIL"]);
 });
 
 test("SQL uses actual same-org staff eligibility and paid-period bounds, never task existence as assignment proof", () => {
@@ -87,9 +87,9 @@ test("SQL uses actual same-org staff eligibility and paid-period bounds, never t
 });
 
 test("stuck or unattributed coach calls stay red without exposing clients or ordering another call", async () => {
-  const db = dbFor([0, 0, 2]);
+  const db = dbFor([0, 0, 2, 0]);
   const out = await gapChecks({ db, orgId: ORG, now: NOW });
-  assert.deepEqual(out.map((r) => r.status), ["PASS", "PASS", "FAIL"]);
+  assert.deepEqual(out.map((r) => r.status), ["PASS", "PASS", "FAIL", "PASS"]);
   assert.match(out[2].detail, /^2 Blueprint coach-call/);
   assert.match(out[2].suggestedFix, /Do not redial/);
   assert.deepEqual(db.calls[2].params.slice(0, 2), [ORG, NOW.toISOString()]);
@@ -101,7 +101,7 @@ test("stuck or unattributed coach calls stay red without exposing clients or ord
     assert.ok(COACH_CALL_DELIVERY_SQL.includes(predicate), predicate);
   }
   for (const invalid of [undefined, -1, new Error("private@customer.com")]) {
-    const failed = await gapChecks({ db: dbFor([0, 0, invalid]), orgId: ORG, now: NOW });
+    const failed = await gapChecks({ db: dbFor([0, 0, invalid, 0]), orgId: ORG, now: NOW });
     assert.equal(failed[2].status, "FAIL");
     assert.doesNotMatch(JSON.stringify(failed), /private@customer/);
   }
@@ -176,5 +176,78 @@ test("actual SQL catches demo/disabled/cross-org staff links and unresolved deli
     assert.equal((await gapChecks({ db, orgId: randomUUID(), now: NOW }))[2].status, "PASS");
     await db.query("UPDATE tasks SET done=true WHERE client_id=$1", [client]);
     assert.equal((await run())[2].status, "PASS");
+  } finally { await db.query("ROLLBACK"); db.release(); }
+});
+
+
+test("preparation evidence failures have a scoped daily twin and keep database/customer details private", async () => {
+  for (const n of [1, 2, undefined, null, new Error("private@customer.com document-id")]) {
+    const db = dbFor([0, 0, 0, n]);
+    const out = await gapChecks({ db, orgId: ORG, now: NOW });
+    assert.deepEqual(out.map((r) => r.status), ["PASS", "PASS", "PASS", "FAIL"]);
+    assert.equal(out[3].id, "blueprint:preparation-evidence");
+    assert.doesNotMatch(JSON.stringify(out), /private@customer|document-id/);
+    assert.deepEqual(db.calls[3].params, [ORG, NOW.toISOString(), db.calls[0].params[2], OFFERS.UWIQ_DELIVERABLES.productCode, PAID_TRANSACTION_STATUS]);
+    assert.match(out[3].suggestedFix, /reported work separate from reviewed proof/);
+  }
+});
+
+test("actual preparation integrity SQL distinguishes absent work, missing proof and same-client proof", {
+  skip: safe ? false : "no local test/scratch database; live databases refused"
+}, async () => {
+  const db = await pool.connect();
+  await db.query("BEGIN");
+  try {
+    for (const table of ["clients", "transactions", "products", "product_aliases", "entitlements", "documents", "document_vault_reviews"]) {
+      await db.query(`CREATE TEMP TABLE ${table} (LIKE public.${table} INCLUDING ALL) ON COMMIT DROP`);
+    }
+    const org = randomUUID(), foreignOrg = randomUUID(), planId = randomUUID(), documentId = randomUUID();
+    const client = (await db.query(`INSERT INTO clients (org_id, first_name, email) VALUES ($1,'Blueprint','buyer@realcompany.com') RETURNING id`, [org])).rows[0].id;
+    const otherClient = (await db.query(`INSERT INTO clients (org_id, first_name, email) VALUES ($1,'Other','other@realcompany.com') RETURNING id`, [org])).rows[0].id;
+    await db.query(`INSERT INTO products (org_id, code, name) VALUES ($1,$2,'Capital Blueprint')`, [org, OFFERS.UWIQ_DELIVERABLES.productCode]);
+    const paid = (await db.query(`INSERT INTO transactions (org_id,client_id,product_name,status,created_at)
+      VALUES ($1,$2,'Capital Blueprint',$3,$4) RETURNING id`, [org, client, PAID_TRANSACTION_STATUS, new Date(NOW.getTime() - 86400000)])).rows[0].id;
+    await db.query(`INSERT INTO entitlements (org_id,client_id,entitlement_code,source_transaction_id)
+      VALUES ($1,$2,'credit-optimization-roadmap',$3)`, [org, client, paid]);
+    const base = () => ({ version: 1, targetBusinessCount: 4, businesses: [{ id: planId, formationStatus: "planned",
+      entityId: null, evidence: { formation: { documentId }, ein: { documentId: null } } }], stepProgress: [] });
+    const setState = async (state) => db.query(`UPDATE clients SET custom_fields = $2::jsonb WHERE id=$1`, [client, JSON.stringify({ blueprint_business_plans: state })]);
+    const count = async (scopeOrg = org) => (await db.query(PREPARATION_EVIDENCE_SQL,
+      [scopeOrg, NOW.toISOString(), "\\.test$", OFFERS.UWIQ_DELIVERABLES.productCode, PAID_TRANSACTION_STATUS])).rows[0].n;
+    assert.equal(await count(), 0, "no saved plan is not a delivery failure");
+    for (const empty of [null, {}, [], { businesses: [] }, { businesses: [], stepProgress: [] }, { version: 1, targetBusinessCount: 4, businesses: [], stepProgress: [] }]) {
+      await setState(empty);
+      assert.equal(await count(), 0, "legacy empty setup and no client work stay healthy");
+    }
+    await setState(base());
+    assert.equal(await count(), 1, "a linked missing document is a real integrity failure");
+    await db.query(`INSERT INTO documents (id,org_id,client_id,document_key,kind,subtype,title)
+      VALUES ($1,$2,$3,$4,'client_upload','articles_of_organization','Formation proof')`, [documentId, org, otherClient, `formation|${documentId}`]);
+    assert.equal(await count(), 1, "a different client's document cannot satisfy the link");
+    await db.query(`UPDATE documents SET client_id=$2,org_id=$3 WHERE id=$1`, [documentId, client, foreignOrg]);
+    assert.equal(await count(), 1, "a different company's document cannot satisfy the link");
+    await db.query(`UPDATE documents SET org_id=$2,subtype='ein_letter' WHERE id=$1`, [documentId, org]);
+    assert.equal(await count(), 1, "the wrong document type cannot satisfy formation proof");
+    await db.query(`UPDATE documents SET subtype='articles_of_organization' WHERE id=$1`, [documentId]);
+    assert.equal(await count(), 0, "a genuine same-client linked upload is intact, not a claim of review or completion");
+    await db.query(`UPDATE documents SET metadata='{"entity_id":""}'::jsonb WHERE id=$1`, [documentId]);
+    assert.equal(await count(), 0, "empty legacy entity metadata agrees with the actual evidence reader");
+    const duplicated = base();
+    duplicated.businesses.push({ ...duplicated.businesses[0], id: randomUUID() });
+    await setState(duplicated);
+    assert.equal(await count(), 1, "one proof cannot silently satisfy two separate business plans");
+    const orphan = base();
+    orphan.stepProgress.push({ stepKey: "formation", businessPlanId: randomUUID(), status: "reported_complete", verification: "client_reported" });
+    await setState(orphan);
+    assert.equal(await count(), 1, "progress linked to a nonexistent plan is broken");
+    const fakeReview = base();
+    fakeReview.stepProgress.push({ stepKey: "formation", businessPlanId: planId, status: "reported_complete", verification: "reviewed" });
+    await setState(fakeReview);
+    assert.equal(await count(), 1, "a client report cannot claim independent proof review");
+    await setState({ version: 1, targetBusinessCount: 4, businesses: {}, stepProgress: [] });
+    assert.equal(await count(), 1, "malformed saved state is red without unsafe JSON expansion");
+    assert.equal(await count(foreignOrg), 0, "another organization's state is excluded");
+    await db.query(`UPDATE entitlements SET revoked_at=$2 WHERE client_id=$1`, [client, NOW]);
+    assert.equal(await count(), 0, "revoked paid-year scope is not treated as an active buyer");
   } finally { await db.query("ROLLBACK"); db.release(); }
 });
