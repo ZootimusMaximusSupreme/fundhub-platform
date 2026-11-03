@@ -55,12 +55,15 @@ BEGIN
   IF NEW.account_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM accounts WHERE id=NEW.account_id AND org_id=NEW.org_id) THEN
     RAISE EXCEPTION 'account Plaid MFA must stay in account org' USING ERRCODE='23514';
   END IF;
-  IF TG_TABLE_NAME IN ('account_plaid_link_grants', 'account_plaid_mfa_email_challenges')
-     AND NEW.account_id IS NOT NULL AND NEW.account_session_id IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM account_sessions
-     WHERE id=NEW.account_session_id AND account_id=NEW.account_id AND org_id=NEW.org_id
-  ) THEN
-    RAISE EXCEPTION 'Plaid Link consent must stay in its account session' USING ERRCODE='23514';
+  -- Credentials have no account_session_id. Dispatch before PostgreSQL
+  -- prepares the session predicate; an AND term is not a record-shape guard.
+  IF TG_TABLE_NAME IN ('account_plaid_link_grants', 'account_plaid_mfa_email_challenges') THEN
+    IF NEW.account_id IS NOT NULL AND NEW.account_session_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM account_sessions
+       WHERE id=NEW.account_session_id AND account_id=NEW.account_id AND org_id=NEW.org_id
+    ) THEN
+      RAISE EXCEPTION 'Plaid Link consent must stay in its account session' USING ERRCODE='23514';
+    END IF;
   END IF;
   RETURN NEW;
 END $$;
