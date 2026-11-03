@@ -132,12 +132,15 @@
   .sec-head h2{font-size:clamp(26px,3.4vw,34px);font-weight:700;letter-spacing:-.03em;margin-top:14px}
   .sec-head p{margin-top:12px;color:var(--gray);font-size:16px}
   #security .sec-head{margin-bottom:28px}
-  .provider-rail{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:20px 0 22px;margin-bottom:36px}
-  .provider-rail .label{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray);margin-bottom:15px}
-  .provider-names{display:grid;grid-template-columns:repeat(5,max-content);justify-content:space-between;align-items:center;gap:16px 22px}
-  .provider-names span{font-size:clamp(14px,1.5vw,17px);font-weight:650;letter-spacing:-.035em;line-height:1.2;white-space:nowrap}
-  @media(max-width:800px){.provider-names{grid-template-columns:repeat(3,max-content);justify-content:start;gap:16px 28px}}
-  @media(max-width:520px){.provider-names{grid-template-columns:repeat(2,minmax(0,1fr));gap:17px 14px}.provider-names span{font-size:15px;white-space:normal}}
+  .provider-rail{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:24px 0 30px;margin-bottom:36px}
+  .provider-rail .label{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray);margin-bottom:19px}
+  .provider-logos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+  .provider-logo{min-width:0;min-height:96px;display:flex;align-items:center;justify-content:center;padding:20px 16px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  .provider-logo img{display:block;width:100%;max-width:150px;max-height:44px;object-fit:contain}
+  .provider-logo img[alt="Plaid"]{max-height:52px}
+  .provider-logo img[alt="Experian Business"]{max-height:55px}
+  @media(max-width:800px){.provider-logos{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:520px){.provider-logos{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.provider-logo{min-height:84px;padding:16px 12px}.provider-logo:last-child{grid-column:1/-1}}
 
   /* steps */
   .steps{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper)}
@@ -321,7 +324,9 @@
   .foot-brand p{margin-top:12px;font-size:14px;color:var(--gray2);max-width:34ch}
   .app-store{margin-top:24px}
   .app-store .label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray2);margin-bottom:9px}
-  .app-store .btn-inv{font-size:13px;padding:10px 16px}
+  .app-store a{display:inline-block;line-height:0;border-radius:7px}
+  .app-store a:focus-visible{outline:2px solid #fff;outline-offset:5px}
+  .app-store img{display:block;width:180px;height:auto}
   .foot-cols{display:flex;gap:64px;flex-wrap:wrap}
   .foot-col h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);margin-bottom:14px}
   .foot-col a{display:block;font-size:14px;color:var(--gray2);margin-bottom:10px;transition:color .15s}
@@ -547,9 +552,15 @@
       <h2>Security and compliance, by design.</h2>
       <p>Bank connections with Plaid. Business intelligence informed by LexisNexis, Experian Business, TransUnion, and Equifax reports. One private Fundhub workspace.</p>
     </div>
-    <div class="provider-rail rv" aria-label="Fundhub technology and data ecosystem">
-      <div class="label">Technology &amp; data ecosystem</div>
-      <div class="provider-names"><span>Plaid</span><span>LexisNexis</span><span>Experian Business</span><span>TransUnion</span><span>Equifax</span></div>
+    <div class="provider-rail rv" aria-label="Partnered with">
+      <div class="label">Partnered with</div>
+      <div class="provider-logos">
+        <div class="provider-logo"><img src="/assets/vendor-credibility/plaid.svg" alt="Plaid" loading="lazy"></div>
+        <div class="provider-logo"><img src="/assets/vendor-credibility/lexisnexis.svg" alt="LexisNexis" loading="lazy"></div>
+        <div class="provider-logo"><img src="/assets/vendor-credibility/experian.svg" alt="Experian Business" loading="lazy"></div>
+        <div class="provider-logo"><img src="/assets/vendor-credibility/transunion.svg" alt="TransUnion" loading="lazy"></div>
+        <div class="provider-logo"><img src="/assets/vendor-credibility/equifax.svg" alt="Equifax" loading="lazy"></div>
+      </div>
     </div>
     <div class="opts rv">
       <div class="opt"><div class="ix">S-01</div><div class="t">AES-256 encryption</div><div class="d">Data encrypted in transit and at rest across the platform and its infrastructure.</div><div class="chip on"><span class="cd"></span>Active</div></div>
@@ -640,7 +651,7 @@
       <div class="foot-brand">
         <a href="/" class="brand"><span class="logo inv" role="img" aria-label="fundhub" style="width:118px;height:24px"></span></a>
         <p>Fundhub helps business owners find and apply for financing through a network of funding partners. We are not a direct lender.</p>
-        <div class="app-store"><span class="label">Fundhub Portal · iOS</span><a class="btn-inv" href="https://apps.apple.com/us/app/fundhub-portal/id6823985032" target="_blank" rel="noopener noreferrer">Download on the App Store ↗</a></div>
+        <div class="app-store"><span class="label">Fundhub Portal · iOS</span><a href="https://apps.apple.com/us/app/fundhub-portal/id6823985032" target="_blank" rel="noopener noreferrer" aria-label="Download Fundhub Portal on the App Store"><img src="/assets/vendor-credibility/app-store.svg" alt="Download on the App Store" loading="lazy"></a></div>
       </div>
       <div class="foot-cols">
         <div class="foot-col">
