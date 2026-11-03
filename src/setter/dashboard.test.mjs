@@ -1,9 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sanitizeHandoffPatch, missingForCompletion, updateSetterHandoff, listSetterQueue, setterNumbers, targetDialBy, surveySummary, latestUndoableDial } from "./dashboard.mjs";
+import { randomUUID } from "node:crypto";
+import pg from "pg";
+import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
+import { sanitizeHandoffPatch, sanitizeSetterResidentialAddress, missingForCompletion, updateSetterHandoff, listSetterQueue, setterNumbers, targetDialBy, surveySummary, latestUndoableDial } from "./dashboard.mjs";
 
 const STAFF = { id: "staff-1", org_id: "org-1", role: "owner", name: "Chris" };
 const CLIENT_ID = "11111111-1111-1111-1111-111111111111";
+const ADDRESS_TEST_DB = process.env.APP_DATABASE_URL || process.env.DATABASE_URL;
 
 test("survey summary shows nested ClickFunnels choices as readable answers", () => {
   const answers = surveySummary({
@@ -55,6 +59,16 @@ function fakeDb(booked = true) {
         client.custom_fields.setter_survey_edits = JSON.parse(params[2]);
         return { rows: [{ survey_edits: client.custom_fields.setter_survey_edits }] };
       }
+      if (sql.includes("'{setter_residential_address}'")) {
+        if (client.custom_fields.setter_residential_address) {
+          client.custom_fields.setter_residential_address_history = [
+            ...(client.custom_fields.setter_residential_address_history || []),
+            client.custom_fields.setter_residential_address
+          ];
+        }
+        client.custom_fields.setter_residential_address = JSON.parse(params[2]);
+        return { rows: [{ address: client.custom_fields.setter_residential_address }] };
+      }
       if (params[3] != null && Number(client.custom_fields.setter_handoff?.call_attempts || 0) !== params[3]) {
         return { rows: [] };
       }
@@ -77,6 +91,124 @@ test("handoff input refuses unsupported claims and keeps only checklist fields",
   assert.match(sanitizeHandoffPatch({ goal: "Pre-approved for $100,000" }).error, /unsupported/);
   assert.match(sanitizeHandoffPatch({ problem: "SSN 123-45-6789" }).error, /unsupported/);
   assert.deepEqual(sanitizeHandoffPatch({ goal: "Growth", disposition_at: "2099-01-01T00:00:00Z" }).patch, { goal: "Growth" });
+});
+
+test("setter home address needs a complete residence confirmed by the lead", () => {
+  const full = { line1: "123 Main St", line2: "Unit 2", city: "Phoenix", state: "az", zip: "85001", confirmed: true };
+  assert.deepEqual(sanitizeSetterResidentialAddress(full).address, {
+    line1: "123 Main St", line2: "Unit 2", city: "Phoenix", state: "AZ", zip: "85001"
+  });
+  for (const invalid of [
+    { ...full, confirmed: false }, { ...full, line1: "PO Box 22" },
+    { ...full, city: "" }, { ...full, state: "Arizona" }, { ...full, zip: "8500" }
+  ]) assert.ok(sanitizeSetterResidentialAddress(invalid).error);
+});
+
+test("setter address save preserves the survey, the prior address, and an unchanged retry", async () => {
+  const { db, client } = fakeDb();
+  client.custom_fields.cf_svy_planned_use_label = "Open a shop";
+  const input = { client_id: CLIENT_ID, action: "save_address",
+    address: { line1: "123 Main St", line2: "", city: "Phoenix", state: "AZ", zip: "85001", confirmed: true } };
+  const first = await updateSetterHandoff(db, STAFF, input, { now: () => new Date("2026-11-02T20:00:00Z") });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.address.source, "setter_confirmed");
+  assert.equal(first.body.address.confirmed_by_staff_id, STAFF.id);
+  assert.equal(client.custom_fields.cf_svy_planned_use_label, "Open a shop");
+  assert.equal(client.custom_fields.setter_residential_address_history, undefined);
+  const repeat = await updateSetterHandoff(db, STAFF, input, { now: () => new Date("2026-11-02T21:00:00Z") });
+  assert.equal(repeat.body.address.confirmed_at, first.body.address.confirmed_at);
+  input.address.line1 = "456 Oak Ave";
+  const changed = await updateSetterHandoff(db, STAFF, input, { now: () => new Date("2026-11-02T22:00:00Z") });
+  assert.equal(changed.body.address.line1, "456 Oak Ave");
+  assert.equal(client.custom_fields.setter_residential_address_history[0].line1, "123 Main St");
+  assert.equal(client.custom_fields.setter_residential_address_history.length, 1);
+});
+
+test("setter address save claims the locked newest task and rejects changed or saved ownership", async () => {
+  const setter = { ...STAFF, role: "setter" };
+  const input = { client_id: CLIENT_ID, action: "save_address",
+    address: { line1: "123 Main St", line2: "", city: "Phoenix", state: "AZ", zip: "85001", confirmed: true } };
+  for (const mode of ["unclaimed", "reassigned", "handoff"]) {
+    const { db, client, queries } = fakeDb();
+    if (mode === "handoff") client.custom_fields.setter_handoff = { setter_staff_id: "another-setter" };
+    const original = db.query;
+    let claimed = null;
+    db.query = async (sql, params) => {
+      if (sql.trim().startsWith("SELECT assignee_staff_id FROM tasks")) return { rows: [{ assignee_staff_id: null }] };
+      if (sql.trim().startsWith("SELECT id, assignee_staff_id FROM tasks")) {
+        assert.match(sql, /ORDER BY created_at DESC LIMIT 1 FOR UPDATE/);
+        return { rows: [{ id: "latest-task", assignee_staff_id: mode === "reassigned" ? "another-setter" : null }] };
+      }
+      if (sql.includes("UPDATE tasks SET assignee_staff_id")) {
+        claimed = params;
+        return { rows: [{ id: params[0] }] };
+      }
+      return original(sql, params);
+    };
+    const result = await updateSetterHandoff(db, setter, input);
+    if (mode === "unclaimed") {
+      assert.equal(result.status, 200);
+      assert.deepEqual(claimed, ["latest-task", STAFF.org_id, CLIENT_ID, STAFF.id]);
+      assert.equal(client.custom_fields.setter_residential_address.confirmed_by_staff_id, STAFF.id);
+    } else {
+      assert.equal(result.status, 403, mode);
+      assert.equal(claimed, null);
+      assert.equal(queries.some(sql => sql.includes("UPDATE clients")), false);
+    }
+  }
+});
+
+test("setter address JSONB, task claim and reload persist in scratch Postgres and roll back", {
+  skip: !isLocalScratchDatabaseUrl(ADDRESS_TEST_DB)
+}, async () => {
+  const testPool = new pg.Pool({ connectionString: ADDRESS_TEST_DB });
+  const writer = await testPool.connect();
+  const slug = `setter-address-${randomUUID()}`;
+  try {
+    const role = (await writer.query("SELECT current_user AS name,rolsuper,rolbypassrls FROM pg_roles WHERE rolname=current_user")).rows[0];
+    assert.equal(role.name, "fundhub_app");
+    assert.equal(role.rolsuper || role.rolbypassrls, false);
+    await writer.query("BEGIN");
+    const org = (await writer.query("INSERT INTO orgs(slug,name) VALUES($1,'Synthetic setter address') RETURNING id", [slug])).rows[0].id;
+    const foreign = (await writer.query("INSERT INTO orgs(slug,name) VALUES($1,'Synthetic foreign address') RETURNING id", [slug + "-foreign"])).rows[0].id;
+    const staffId = (await writer.query("INSERT INTO staff(org_id,name,role,status) VALUES($1,'Synthetic setter','setter','active') RETURNING id", [org])).rows[0].id;
+    const otherStaffId = (await writer.query("INSERT INTO staff(org_id,name,role,status) VALUES($1,'Other synthetic setter','setter','active') RETURNING id", [org])).rows[0].id;
+    const clientId = (await writer.query(
+      "INSERT INTO clients(org_id,first_name,email,is_demo,custom_fields) VALUES($1,'Synthetic',$2,true,$3::jsonb) RETURNING id",
+      [org, `e2e+address-${randomUUID()}@example.test`, JSON.stringify({ cf_svy_planned_use_label: "Original survey", unrelated: { keep: true } })]
+    )).rows[0].id;
+    const taskId = (await writer.query("INSERT INTO tasks(org_id,client_id,title,assignee_role) VALUES($1,$2,'Synthetic address','setter') RETURNING id", [org, clientId])).rows[0].id;
+    const staff = { id: staffId, org_id: org, role: "setter" };
+    const address = { line1: "100 Synthetic Way", line2: "Unit 2", city: "Phoenix", state: "AZ", zip: "85001", confirmed: true };
+    const input = { client_id: clientId, action: "save_address", address };
+    const now = () => new Date("2026-11-02T20:00:00Z");
+    const first = await updateSetterHandoff(writer, staff, input, { now });
+    assert.equal(first.status, 200);
+    assert.equal((await writer.query("SELECT assignee_staff_id FROM tasks WHERE id=$1", [taskId])).rows[0].assignee_staff_id, staffId);
+    assert.equal(first.body.address.confirmed_by_staff_id, staffId);
+    const repeat = await updateSetterHandoff(writer, staff, input, { now: () => new Date("2026-11-02T21:00:00Z") });
+    assert.deepEqual(repeat.body.address, first.body.address);
+    const changed = await updateSetterHandoff(writer, staff, { ...input, address: { ...address, line1: "200 Synthetic Way" } }, { now });
+    assert.equal(changed.status, 200);
+    const fields = (await writer.query("SELECT custom_fields FROM clients WHERE id=$1", [clientId])).rows[0].custom_fields;
+    assert.deepEqual(fields.setter_residential_address_history, [first.body.address]);
+    assert.equal(fields.setter_residential_address.line1, "200 Synthetic Way");
+    assert.equal(fields.cf_svy_planned_use_label, "Original survey");
+    assert.deepEqual(fields.unrelated, { keep: true });
+    const reloaded = await listSetterQueue(writer, staff, { client_id: clientId });
+    assert.equal(reloaded.items[0].residential_address.line1, "200 Synthetic Way");
+    assert.equal((await updateSetterHandoff(writer, { ...staff, org_id: foreign }, input)).status, 404);
+    await writer.query("UPDATE clients SET custom_fields=jsonb_set(custom_fields,'{setter_handoff}',$2::jsonb) WHERE id=$1", [clientId, JSON.stringify({ setter_staff_id: otherStaffId })]);
+    assert.equal((await updateSetterHandoff(writer, staff, input)).status, 403);
+  } finally {
+    try {
+      await writer.query("ROLLBACK");
+      assert.equal(Number((await writer.query("SELECT count(*) AS n FROM orgs WHERE slug=$1 OR slug=$2", [slug, slug + "-foreign"])).rows[0].n), 0);
+    } finally {
+      writer.release();
+      await testPool.end();
+    }
+  }
 });
 
 test("saving a disposition records when it happened; unrelated saves keep that time", async () => {
@@ -803,6 +935,12 @@ test("setter can save only an assigned or unclaimed task and claims it", async (
     handoff: { call_attempts: 2 } });
   assert.equal(other.status, 403);
   assert.equal(client.custom_fields.setter_handoff.call_attempts, 1);
+  const address = await updateSetterHandoff(db, { ...setter, id: "staff-3" }, {
+    client_id: CLIENT_ID, action: "save_address",
+    address: { line1: "123 Main St", line2: "", city: "Phoenix", state: "AZ", zip: "85001", confirmed: true }
+  });
+  assert.equal(address.status, 403);
+  assert.equal(client.custom_fields.setter_residential_address, undefined);
 });
 
 
