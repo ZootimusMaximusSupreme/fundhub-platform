@@ -7,6 +7,8 @@ export const covers = [
   "route:money/setup",
   "route:read/staff-payout-account",
   "route:staff/payout-account",
+  "route:owner/company-bank",
+  "route:owner/company-cash",
   "route:money/payments",
   "route:money/transfers",
   "route:finance/subscriptions",
@@ -17,6 +19,7 @@ export const covers = [
   "desk:money-payments.html",
   "desk:money-transfers.html",
   "desk:campaign-manager.html",
+  "desk:company-cash.html",
   "job:finance-os-money-transfers",
   // The sweeper's whole job is the past-due plan. subscriptions:past-due (step subscriptions-past-due,
   // the same SQL and verdict as the daily lane) goes red when a past-due plan is left unworked.
@@ -34,7 +37,7 @@ export async function run(ctx) {
 }
 
 export const fixGuide = [
-  "A setup fee, unmatched payment, subscription, transfer, Meta campaign, or load job is wrong.",
+  "A setup fee, unmatched payment, subscription, transfer, Meta campaign, company cash row, or load job is wrong.",
   "",
   "Likely causes:",
   "- A setting is empty, a retry stopped, a transfer stalled, or Meta and Fundhub disagree.",
@@ -45,7 +48,8 @@ export const fixGuide = [
   "- Compare the saved row with its source. Meta is read with GET only; the beat never syncs an ad or moves money.",
   "- Repair the one writer or setting named by the result and add a failing test for that exact condition.",
   "- staff-payout-destination-integrity checks saved self/org ownership and bank fields only; inspect the writer, never auto-change a destination or send a payment.",
-  "Files: src/pulse/coverage/gap-finance-os-setup.mjs, src/pulse/coverage/gap-money-moves.mjs, src/pulse/coverage/gap-ads-meta.mjs, src/pulse/coverage/gap-staff-payout-account.mjs, src/staff/payout-account.mjs"
+  "- company-cash-integrity checks the selected business bank and exact posted payment matches; an unlinked bank is not a cash balance or payout clearance.",
+  "Files: src/pulse/coverage/gap-finance-os-setup.mjs, src/pulse/coverage/gap-money-moves.mjs, src/pulse/coverage/gap-ads-meta.mjs, src/pulse/coverage/gap-staff-payout-account.mjs, src/pulse/coverage/gap-company-cash.mjs, src/staff/payout-account.mjs"
 ].join("\n");
 
 export const selfTest = {

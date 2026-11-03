@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fundhub — Company cash</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/app/fundhub-font.css">
+  <link rel="stylesheet" href="/app/fundhub-brand.css">
+  <link rel="stylesheet" href="/app/crm-sidebar.css">
+  <link rel="stylesheet" href="/app/company-cash.css">
+  <link rel="stylesheet" href="/app/fundhub-astra.css">
+  <link rel="stylesheet" href="/app/fundhub-astra-staff.css">
+  <script defer src="/app/fundhub-font.js"></script>
+  <script defer src="/app/shell.js"></script>
+  <script defer src="/app/company-cash.js"></script>
+</head>
+<body class="fh-astra fh-astra-staff fh-astra--company-cash">
+  <div class="app">
+    <aside class="side" id="side" aria-label="Workspace navigation"></aside>
+    <div class="main">
+      <header class="topbar"><h1>Company cash</h1><span class="spacer"></span><span class="crumb">Owner workspace</span></header>
+      <main class="fh-astra-page cc-page" id="companyCash">
+        <div class="fh-astra-heading cc-heading"><div><p class="cc-eyebrow">Fundhub LLC</p><h2>Company cash</h2><p class="fh-astra-subtitle">Business bank balances, bills, and reserves in one place.</p></div><button class="fh-astra-action fh-astra-primary" id="ccPrimary" type="button" hidden>Finish setup</button></div>
+        <section id="ccLoading" aria-label="Loading company cash" aria-live="polite">
+          <div class="cc-skeleton cc-skeleton-hero"></div><div class="cc-skeleton-grid"><div class="cc-skeleton"></div><div class="cc-skeleton"></div><div class="cc-skeleton"></div></div>
+        </section>
+        <section id="ccError" class="fh-astra-state" hidden><h2>Company cash did not load</h2><p id="ccErrorText">Check the connection and try again.</p><button class="fh-astra-action" id="ccRetry" type="button">Try again</button></section>
+        <section id="ccEmpty" class="fh-astra-state" hidden><h2>Start with your business bank</h2><p id="ccEmptyText">Connect a Fundhub LLC business bank account to see posted cash. Client Finance OS stays separate.</p><button class="fh-astra-action" id="ccEmptyAction" type="button">Review bank setup</button></section>
+        <div id="ccFull" hidden>
+          <section class="cc-hero fh-astra-workspace" aria-labelledby="ccAvailableTitle"><div><p class="cc-eyebrow" id="ccAvailableTitle">Cash after tracked reserves</p><strong class="cc-hero-value" id="ccAvailable">Finish setup</strong><p class="cc-subtle" id="ccAvailableNote">This view needs a recent business bank balance and reviewed costs.</p></div><div class="cc-hero-side"><span id="ccMonth">Current month</span><span id="ccBankAsOf">Bank balance not yet selected</span><span id="ccProcessor">Processor receipts: Not reconciled</span></div></section>
+          <div class="fh-astra-summary cc-summary" aria-label="Company cash breakdown">
+            <div class="fh-astra-stat"><span class="fh-astra-caption">Bank current balance</span><strong class="fh-astra-value" id="ccBankCash">—</strong><small class="cc-subtle" id="ccBankEstimate">Plaid available balance estimate: —</small></div>
+            <div class="fh-astra-stat"><span class="fh-astra-caption">CRS reserve</span><strong class="fh-astra-value" id="ccCrs">—</strong><small class="cc-subtle" id="ccCrsPulls"></small></div>
+            <div class="fh-astra-stat"><span class="fh-astra-caption">Approved ad funding</span><strong class="fh-astra-value" id="ccAd">—</strong><small class="cc-subtle" id="ccMetaSpend"></small></div>
+            <div class="fh-astra-stat"><span class="fh-astra-caption">Due tech bills</span><strong class="fh-astra-value" id="ccTech">—</strong></div>
+          </div>
+          <section class="cc-setup fh-astra-workspace" id="ccSetup" aria-labelledby="ccSetupTitle"><div><h3 id="ccSetupTitle">Finish the tracked cash view</h3><p id="ccMissingText" class="cc-subtle"></p></div><button class="fh-astra-action" id="ccSetupAction" type="button">Review missing item</button></section>
+          <p class="cc-message" id="ccMessage" role="status" aria-live="polite" hidden></p>
+          <div class="cc-work-grid">
+            <section class="fh-astra-workspace cc-panel" id="ccBankPanel" aria-labelledby="ccBankTitle"><div class="cc-panel-head"><div><h3 id="ccBankTitle">Business bank</h3><p class="cc-subtle" id="ccBankStatus">No business account selected.</p></div><div class="cc-row-actions"><button class="fh-astra-action" id="ccSync" type="button" hidden>Sync transactions</button><button class="fh-astra-action" id="ccRefreshBalance" type="button" hidden>Refresh balance</button></div></div>
+              <div id="ccBankNotConfigured" class="cc-notice" hidden>Bank connections are not enabled yet.</div>
+              <div id="ccBalanceNotReady" class="cc-notice" hidden>Live bank balance refresh is unavailable. The cash view needs a recent verified balance.</div>
+              <div id="ccBankConnect" hidden><p>Connect only a Fundhub LLC business depository account. This connection reads balances and transactions. It cannot move money.</p><label class="cc-check"><input id="ccBusinessConfirm" type="checkbox"> <span>I confirm this is a Fundhub LLC business bank account.</span></label><label class="cc-check"><input id="ccReadConsent" type="checkbox"> <span>I authorize read-only access to balances and transactions for company cash tracking.</span></label><button class="fh-astra-action" id="ccConnect" type="button" disabled>Connect business bank</button></div>
+              <div id="ccBankAccounts" class="cc-list"></div><p class="cc-subtle" id="ccBankHelp">Transaction sync and live balance refresh are separate. A recent live balance is needed for an exact cash figure.</p>
+            </section>
+            <section class="fh-astra-workspace cc-panel" id="ccObligationPanel" aria-labelledby="ccObligationTitle"><div class="cc-panel-head"><div><h3 id="ccObligationTitle">Bills and reserves</h3><p class="cc-subtle">CRS, ad funding, and tech costs you have reviewed.</p></div><button class="fh-astra-action" id="ccAddObligation" type="button">Add bill or reserve</button></div><div id="ccObligations" class="cc-list"></div><div class="cc-pager" id="ccObligationPager" hidden><button class="fh-astra-action" id="ccObligationPrev" type="button">Previous</button><span id="ccObligationPage"></span><button class="fh-astra-action" id="ccObligationNext" type="button">Next</button></div></section>
+          </div>
+          <div class="cc-work-grid cc-lower">
+            <section class="fh-astra-workspace cc-panel" id="ccRecurringPanel" aria-labelledby="ccRecurringTitle"><div class="cc-panel-head"><div><h3 id="ccRecurringTitle">Possible recurring tech charges</h3><p class="cc-subtle">Bank patterns are suggestions. Nothing is booked until you confirm the amount and due date.</p></div></div><div id="ccRecurring" class="cc-list"></div><div class="cc-pager" id="ccRecurringPager" hidden><button class="fh-astra-action" id="ccRecurringPrev" type="button">Previous</button><span id="ccRecurringPage"></span><button class="fh-astra-action" id="ccRecurringNext" type="button">Next</button></div></section>
+            <section class="fh-astra-workspace cc-panel" id="ccTransactionsPanel" aria-labelledby="ccTransactionsTitle"><div class="cc-panel-head"><div><h3 id="ccTransactionsTitle">Posted bank activity</h3><p class="cc-subtle">Tag actual transactions. Processor receipts are tracked separately until reconciled.</p></div></div><div id="ccTransactions" class="cc-list"></div><div class="cc-pager" id="ccTransactionPager" hidden><button class="fh-astra-action" id="ccTransactionPrev" type="button">Previous</button><span id="ccTransactionPage"></span><button class="fh-astra-action" id="ccTransactionNext" type="button">Next</button></div></section>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <dialog class="cc-dialog" id="ccObligationDialog" aria-labelledby="ccFormTitle"><form id="ccObligationForm"><div class="cc-dialog-head"><h2 id="ccFormTitle">Add bill or reserve</h2><button class="fh-astra-action" id="ccCloseObligation" type="button" aria-label="Close form">Close</button></div><p class="cc-subtle" id="ccCandidateNote" hidden></p><div class="cc-form-grid"><label>Type<select name="kind" id="ccKind" required><option value="crs">CRS invoice</option><option value="ad">Ad funding</option><option value="tech">Tech bill</option></select></label><label>Status<select name="status" id="ccStatus"><option value="planned">Planned</option><option value="approved">Approved</option></select></label><label class="cc-span">Name<input name="label" id="ccLabel" maxlength="160" required autocomplete="off"></label><label>Amount in dollars<input name="amount" id="ccAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Leave blank if unknown"></label><label>Billing month<input name="billing_month" id="ccBillingMonth" type="month" required></label><label>Due date<input name="due_on" id="ccDue" type="date"></label><label>Source or invoice reference<input name="source_ref" id="ccSourceRef" placeholder="Actual invoice number"></label><label id="ccInvoiceCoverageRow" hidden>Invoice covers pulls through<input name="invoice_covers_through_on" id="ccInvoiceCoverage" type="date"></label><label class="cc-check cc-span" id="ccInvoiceVerifiedRow" hidden><input name="invoice_verified" id="ccInvoiceVerified" type="checkbox"><span>I verified this CRS invoice, exact total, and covered pull dates.</span></label></div><p class="cc-form-error" id="ccFormError" role="alert" hidden></p><div class="cc-dialog-actions"><button class="fh-astra-action" id="ccCancelObligation" type="button">Cancel</button><button class="fh-astra-action fh-astra-primary" id="ccSaveObligation" type="submit">Save bill or reserve</button></div></form></dialog>
+  <dialog class="cc-dialog" id="ccAccountDialog" aria-labelledby="ccAccountDialogTitle"><div class="cc-dialog-head"><h2 id="ccAccountDialogTitle">Choose a business account</h2><button class="fh-astra-action" id="ccCloseAccount" type="button" aria-label="Close account picker">Close</button></div><p>Choose the actual Fundhub LLC depository account for company cash. Personal accounts cannot be selected.</p><div id="ccAccountOptions" class="cc-list"></div><label class="cc-check"><input id="ccAccountConfirm" type="checkbox"><span>I confirm the selected account belongs to Fundhub LLC.</span></label><p class="cc-form-error" id="ccAccountError" role="alert" hidden></p><div class="cc-dialog-actions"><button class="fh-astra-action" id="ccCancelAccount" type="button">Cancel</button><button class="fh-astra-action fh-astra-primary" id="ccSaveAccount" type="button" disabled>Use this business account</button></div></dialog>
+  <dialog class="cc-dialog" id="ccMatchDialog" aria-labelledby="ccMatchTitle"><div class="cc-dialog-head"><h2 id="ccMatchTitle">Match posted payment</h2><button class="fh-astra-action" id="ccCloseMatch" type="button" aria-label="Close payment matcher">Close</button></div><p>Choose the exact posted debit from the selected business account. This marks the bill paid; it does not send money.</p><div id="ccMatchOptions" class="cc-list"></div><p class="cc-form-error" id="ccMatchError" role="alert" hidden></p><div class="cc-dialog-actions"><button class="fh-astra-action" id="ccCancelMatch" type="button">Cancel</button><button class="fh-astra-action fh-astra-primary" id="ccSaveMatch" type="button">Match this payment</button></div></dialog>
+</body>
+</html>

@@ -149,3 +149,13 @@ test("staff payout bank setup has deep money integrity coverage and never probes
   assert.equal(write.statusCode, 405, "a GET cannot start Plaid Link or exchange a token");
   assert.equal(write.headers.allow, "POST");
 });
+
+test("owner company cash routes and desk use one deep read-only money tripwire", () => {
+  for (const surface of ["route:owner/company-bank", "route:owner/company-cash", "desk:company-cash.html"]) {
+    assert.deepEqual(TRIPWIRES[surface], { impact: "money", checks: ["company-cash:integrity"] });
+    assert.equal(NOT_CUSTOMER_FACING[surface], undefined);
+  }
+  assert.ok(PULSE_REGISTRY.some(row => row.kind === "api" && row.path === "/api/owner/company-bank"));
+  assert.ok(PULSE_REGISTRY.some(row => row.kind === "api" && row.path === "/api/owner/company-cash"));
+  assert.ok(PULSE_REGISTRY.some(row => row.kind === "desk" && row.path === "/app/company-cash.html"));
+});
