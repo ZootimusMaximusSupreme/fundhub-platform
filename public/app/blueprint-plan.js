@@ -21,8 +21,18 @@
   // token while old requests, file IDs or payment controls are still in memory.
   function authToken(){try{return localStorage.getItem('fh_token');}catch{return null;}}
   const originalToken=authToken(),sessionAbort=new AbortController();
+  const hasCapturedBearer=typeof originalToken==='string'&&Boolean(originalToken.trim())&&originalToken.trim().toLowerCase()!=='demo';
   let originalPrincipal=null,authInvalid=false;
   const pendingWindows=new Set(),downloadUrls=new Set();
+  function showFreshSignIn(){
+    if(document.getElementById('blueprint-signin-door'))return;
+    const wrap=document.createElement('section');wrap.id='blueprint-signin-door';wrap.className='card';
+    wrap.style.order=getComputedStyle(host).order;wrap.setAttribute('role','status');
+    const title=document.createElement('h2');title.textContent='Sign in to open your Blueprint';
+    const detail=document.createElement('p');detail.textContent='Use a fresh sign-in link before opening your saved plan.';
+    const link=document.createElement('a');link.className='btn-book';link.href='/portal-login.html';link.textContent='Sign in to your portal';
+    wrap.append(title,detail,link);host.insertAdjacentElement('afterend',wrap);
+  }
   function invalidateAuth(){
     if(authInvalid)return;
     authInvalid=true;sessionAbort.abort();loadId++;
@@ -36,9 +46,9 @@
     // Keep legacy private actions suppressed until the new sign-in reloads.
     document.body.dataset.blueprintPlan='error';delete document.body.dataset.blueprintReportReady;
     document.dispatchEvent(new Event('fh:blueprint-plan-access'));
-    clearInterval(authWatch);
+    clearInterval(authWatch);showFreshSignIn();
   }
-  function authCurrent(){if(!authInvalid&&authToken()!==originalToken)invalidateAuth();return !authInvalid;}
+  function authCurrent(){if(!authInvalid&&(!hasCapturedBearer||authToken()!==originalToken))invalidateAuth();return !authInvalid;}
   function requireCurrent(){if(!authCurrent()){const error=new Error('Your sign-in changed. Reload to open the current account.');error.code='blueprint_auth_changed';throw error;}}
   function guardInteraction(event){if(!authCurrent()){event.preventDefault();event.stopImmediatePropagation();}}
   for(const type of ['click','auxclick','submit','change','input','keydown','copy','contextmenu','dragstart'])host.addEventListener(type,guardInteraction,true);
@@ -184,6 +194,9 @@
     if(kind==='help'){const text=String(f.get('message')||'').trim();if(!text)return;busy=true;try{helpKey ||= crypto.randomUUID();await request('/api/chat/portal-message',{method:'POST',body:JSON.stringify({body:text,channel:'sms',idempotency_key:helpKey})});if(!authCurrent())return;helpKey=null;form.reset();message('Your message is saved in your Fundhub conversation.');}catch(err){failed(form,err.message);}finally{busy=false;}return;}
   });
   document.addEventListener('fh:blueprint-report-status',()=>{if(!authCurrent()||document.body.dataset.blueprintPlan!=='active'||!data)return;lessonKey='credit_review';businessId=null;navigate('lesson');});
+  // The normal portal sign-in saves a bearer. A mutable HttpOnly cookie is
+  // not an immutable workspace identity, so never initialize from it alone.
+  if(!authCurrent())return;
   request('/api/auth/session').then(session=>{
     if(!authCurrent())return;
     if(session.principal==='client'||session.staff?.role==='client'){
