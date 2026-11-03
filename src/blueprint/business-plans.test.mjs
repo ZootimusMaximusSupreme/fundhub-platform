@@ -120,3 +120,52 @@ test("wrong tenant/client is refused before any save", async () => {
   await assert.rejects(writeBusinessPlans(db, { orgId: ORG, clientId: OTHER }, "save_settings", { started: true }, options), { code: "client_not_found" });
   assert.equal(state.calls.some(c => /^UPDATE clients/.test(c.sql)), false);
 });
+
+const relationship = (id = DOC, extra = {}) => ({ id, bankName: "Sample local credit union", accountType: "business_checking", status: "planned", plannedOpenOn: "2026-12-01", depositPlanCents: 100000, ...extra });
+test("bank milestones persist per business and partial edits retain the relationship list", async () => {
+  const { state, write, read } = fixture();
+  await write("save_business", business(PLAN, { bankPreparation: { documentsReady: true, relationships: [relationship()] } }));
+  await write("save_business", business(PLAN2, { bankPreparation: { accountOpeningIssue: true, relationships: [relationship(EIN, { bankName: "Other local bank", accountType: "personal_checking", depositPlanCents: 0 })] } }));
+  await write("save_business", { id: PLAN, bankPreparation: { accountOpeningIssue: true } });
+  let view = await read();
+  const first = view.businesses.find(b => b.id === PLAN).bankPreparation, second = view.businesses.find(b => b.id === PLAN2).bankPreparation;
+  assert.equal(first.documentsReady, true); assert.equal(first.accountOpeningIssue, true); assert.equal(first.relationships[0].depositPlanCents, 100000);
+  assert.equal(second.documentsReady, false); assert.equal(second.relationships[0].bankName, "Other local bank"); assert.equal(second.relationships[0].depositPlanCents, 0);
+  view = await write("save_business", { id: PLAN, bankPreparation: { relationships: [] } });
+  assert.deepEqual(view.businesses.find(b => b.id === PLAN).bankPreparation.relationships, []); assert.equal(view.businesses.find(b => b.id === PLAN2).bankPreparation.relationships.length, 1);
+  assert.equal(state.calls.some(c => /INSERT INTO bank_accounts|UPDATE bank_accounts|INSERT INTO businesses|UPDATE businesses/.test(c.sql)), false);
+});
+test("reported opening/deposit dates and amounts stay reports without invented commitments", async () => {
+  const { write, read } = fixture();
+  await write("save_business", business(PLAN, { bankPreparation: { relationships: [relationship(DOC, { status: "reported_funded", openedOn: "2026-11-01", depositReportedCents: 90000, depositedOn: "2026-11-02", seasoningDays: 90, nextReviewOn: "2027-01-31" })] } }));
+  const milestone = (await read()).businesses[0].bankPreparation.relationships[0];
+  assert.equal(milestone.status, "reported_funded"); assert.equal(milestone.depositPlanCents, 100000); assert.equal(milestone.depositReportedCents, 90000); assert.equal(milestone.openedOn, "2026-11-01"); assert.equal(milestone.depositedOn, "2026-11-02"); assert.equal(milestone.seasoningDays, 90);
+  assert.equal(milestone.verified, undefined); assert.equal(milestone.projectedReviewOn, undefined); assert.equal(milestone.committedCents, undefined);
+  assert.equal((await read()).businesses[0].evidence.formation.status, "not_added");
+});
+test("bank milestone list validates scope, counts, money, states and dates", async () => {
+  const { write, state } = fixture(); await write("save_business", business());
+  const invalid = [
+    { relationships: [relationship(), relationship()] },
+    { relationships: [relationship(DOC), relationship(EIN), relationship(BIZ), relationship(ENTITY)] },
+    { relationships: "not-an-array" },
+    { relationships: [relationship(DOC, { bankName: "x".repeat(121) })] },
+    { relationships: [relationship(DOC, { id: "not-an-id" })] },
+    { relationships: [relationship(DOC, { accountType: "credit_card" })] },
+    { relationships: [relationship(DOC, { status: "verified" })] },
+    { relationships: [relationship(DOC, { account_number: "123456789" })] },
+    { relationships: [relationship(DOC, { depositPlanCents: -1 })] },
+    { relationships: [relationship(DOC, { depositPlanCents: 1.25 })] },
+    { relationships: [relationship(DOC, { seasoningDays: 731 })] },
+    { relationships: [relationship(DOC, { seasoningDays: 1.5 })] },
+    { relationships: [relationship(DOC, { plannedOpenOn: "2026-02-31" })] },
+    { relationships: [relationship(DOC, { openedOn: "2026-11-01" })] },
+    { relationships: [relationship(DOC, { status: "reported_open" })] },
+    { relationships: [relationship(DOC, { status: "reported_open", openedOn: "2026-11-03" })] },
+    { relationships: [relationship(DOC, { status: "reported_open", openedOn: "2026-11-01", depositReportedCents: 100 })] },
+    { relationships: [relationship(DOC, { status: "reported_funded", openedOn: "2026-11-01", depositedOn: "2026-11-02" })] },
+    { relationships: [relationship(DOC, { status: "reported_funded", openedOn: "2026-11-01", depositReportedCents: 100, depositedOn: "2026-10-31" })] }
+  ];
+  for (const bankPreparation of invalid) await assert.rejects(write("save_business", { id: PLAN, bankPreparation }));
+  const stored = state.fields[BLUEPRINT_PLANS_FIELD].businesses[0]; assert.deepEqual(stored.bankPreparation.relationships, []);
+});
