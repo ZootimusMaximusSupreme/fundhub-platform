@@ -7,7 +7,8 @@ import { TEST_CLIENT_EMAIL_RE } from "./gap-consent.mjs";
 export const CHECK_IDS = Object.freeze([
   "blueprint:real-advisor",
   "blueprint:monthly-delivery",
-  "blueprint:coach-call-delivery"
+  "blueprint:coach-call-delivery",
+  "blueprint:preparation-evidence"
 ]);
 
 // Same real-client exclusions as the existing consent and portal checks.
@@ -101,10 +102,96 @@ export const COACH_CALL_DELIVERY_SQL = `
   ) failures
 `;
 
+// Saved data integrity only; incomplete client work is not a delivery failure.
+export const PREPARATION_EVIDENCE_SQL = `
+  /* gap:blueprint-preparation-evidence */
+  WITH scoped_clients AS (
+    SELECT c.id, c.org_id, c.custom_fields->'blueprint_business_plans' AS state
+      FROM clients c
+     WHERE c.org_id = $1::uuid
+       AND ${REAL_CLIENT}
+       AND EXISTS (
+         SELECT 1 FROM entitlements e
+         JOIN transactions t ON t.id = e.source_transaction_id
+           AND t.org_id = e.org_id AND t.client_id = e.client_id
+         JOIN products p ON p.id = resolve_product_id(t.org_id, t.product_name)
+           AND p.org_id = t.org_id
+         WHERE e.org_id = c.org_id AND e.client_id = c.id
+           AND e.entitlement_code = 'credit-optimization-roadmap' AND e.revoked_at IS NULL
+           AND (e.expires_at IS NULL OR e.expires_at > $2::timestamptz)
+           AND lower(btrim(p.code)) = lower($4::text)
+           AND lower(btrim(COALESCE(t.status, ''))) = $5::text
+           AND COALESCE(t.is_demo, false) = false
+           AND t.created_at <= $2::timestamptz
+           AND t.created_at + interval '12 months' > $2::timestamptz
+       )
+  ), saved AS (
+    SELECT * FROM scoped_clients
+     WHERE state IS NOT NULL AND state NOT IN ('null'::jsonb, '{}'::jsonb, '[]'::jsonb)
+       AND NOT (jsonb_typeof(state) = 'object' AND NOT (state ? 'version')
+         AND state - 'businesses' - 'stepProgress' = '{}'::jsonb
+         AND COALESCE(state->'businesses', '[]'::jsonb) = '[]'::jsonb
+         AND COALESCE(state->'stepProgress', '[]'::jsonb) = '[]'::jsonb)
+  ), plans AS (
+    SELECT s.id AS client_id, s.org_id, p.plan
+      FROM saved s CROSS JOIN LATERAL jsonb_array_elements(
+        CASE WHEN jsonb_typeof(s.state->'businesses') = 'array' THEN s.state->'businesses' ELSE '[]'::jsonb END
+      ) AS p(plan)
+  ), evidence AS (
+    SELECT p.client_id, p.org_id, p.plan->>'id' AS plan_id, p.plan->>'entityId' AS entity_id,
+      e.key AS evidence_kind, e.value->>'documentId' AS document_id
+      FROM plans p CROSS JOIN LATERAL jsonb_each(
+        CASE WHEN jsonb_typeof(p.plan->'evidence') = 'object' THEN p.plan->'evidence' ELSE '{}'::jsonb END
+      ) e
+     WHERE e.key IN ('formation', 'ein') AND e.value->>'documentId' IS NOT NULL
+  )
+  SELECT count(*)::int AS n FROM saved s
+   WHERE jsonb_typeof(s.state) IS DISTINCT FROM 'object'
+      OR s.state->>'version' IS DISTINCT FROM '1'
+      OR COALESCE(s.state->>'targetBusinessCount', '') NOT IN ('3', '4')
+      OR CASE WHEN jsonb_typeof(s.state->'businesses') = 'array'
+           THEN jsonb_array_length(s.state->'businesses') > 4 ELSE true END
+      OR jsonb_typeof(s.state->'stepProgress') IS DISTINCT FROM 'array'
+      OR EXISTS (
+        SELECT 1 FROM plans p WHERE p.client_id = s.id AND p.org_id = s.org_id
+          AND (jsonb_typeof(p.plan) IS DISTINCT FROM 'object'
+            OR COALESCE(p.plan->>'id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+            OR COALESCE(p.plan->>'formationStatus', '') NOT IN ('planned', 'reported_formed'))
+      )
+      OR EXISTS (
+        SELECT 1 FROM evidence e WHERE e.client_id = s.id AND e.org_id = s.org_id
+          AND (NOT EXISTS (
+            SELECT 1 FROM documents d LEFT JOIN document_vault_reviews r
+              ON r.document_id = d.id AND r.org_id = d.org_id AND r.client_id = d.client_id
+             WHERE d.org_id = e.org_id AND d.client_id = e.client_id AND d.id::text = e.document_id
+               AND d.kind = 'client_upload'
+               AND d.subtype = CASE e.evidence_kind WHEN 'formation' THEN 'articles_of_organization' ELSE 'ein_letter' END
+               AND (COALESCE(NULLIF(d.metadata->>'entity_id', ''), r.entity_id::text) IS NULL
+                 OR COALESCE(NULLIF(d.metadata->>'entity_id', ''), r.entity_id::text) = e.entity_id)
+          ) OR EXISTS (
+            SELECT 1 FROM evidence other WHERE other.org_id = e.org_id AND other.client_id = e.client_id
+              AND other.document_id = e.document_id AND other.plan_id IS DISTINCT FROM e.plan_id
+          ))
+      )
+      OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(
+          CASE WHEN jsonb_typeof(s.state->'stepProgress') = 'array' THEN s.state->'stepProgress' ELSE '[]'::jsonb END
+        ) AS progress(step)
+        WHERE jsonb_typeof(step) IS DISTINCT FROM 'object'
+          OR COALESCE(step->>'status', '') NOT IN ('not_started', 'in_progress', 'reported_complete', 'blocked')
+          OR COALESCE(step->>'verification', 'client_reported') <> 'client_reported'
+          OR (step->>'businessPlanId' IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM plans p WHERE p.org_id = s.org_id AND p.client_id = s.id
+              AND p.plan->>'id' = step->>'businessPlanId'
+          ))
+      )
+`;
+
 const TRIP = "Recon (AG-07) is the one tripwire. Do not auto-fix from this pulse. Do not send to clients.";
 const ADVISOR_FIX = `Open the existing blueprint-csm-assignment owner work and clear or fix the broken staff link through the staff flow. No staff person is needed; the AI coaches and team CSM queue cover the client. ${TRIP}`;
 const DELIVERY_FIX = `Open the blueprint-monthly-delivery owner task and finish the plan and letters from its saved credit result. Do not request another paid credit pull. ${TRIP}`;
 const COACH_CALL_FIX = `Open blueprint-coach-call advisor work and reconcile the saved call receipt with Bland and outbound_calls. Do not redial an uncertain provider result. ${TRIP}`;
+const PREPARATION_FIX = `Review the saved Blueprint plan through its authenticated workflow. Repair malformed state or the missing/wrong-client evidence link; keep reported work separate from reviewed proof. ${TRIP}`;
 
 function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
@@ -125,7 +212,11 @@ export async function gapChecks(ctx = {}) {
       "open Blueprint monthly-delivery exceptions", DELIVERY_FIX],
     [CHECK_IDS[2], COACH_CALL_DELIVERY_SQL,
       [orgId, Number.isFinite(now.getTime()) ? now.toISOString() : null, TEST_CLIENT_EMAIL_RE],
-      "Blueprint coach-call delivery exceptions or unresolved receipts", COACH_CALL_FIX]
+      "Blueprint coach-call delivery exceptions or unresolved receipts", COACH_CALL_FIX],
+    [CHECK_IDS[3], PREPARATION_EVIDENCE_SQL,
+      [orgId, Number.isFinite(now.getTime()) ? now.toISOString() : null, TEST_CLIENT_EMAIL_RE,
+        OFFERS.UWIQ_DELIVERABLES.productCode, PAID_TRANSACTION_STATUS],
+      "active Blueprint clients with malformed preparation state or invalid linked evidence", PREPARATION_FIX]
   ];
   const out = [];
   for (const [id, sql, params, description, fix] of definitions) {
