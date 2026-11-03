@@ -57,6 +57,22 @@ test("pending source programs remain honest review tasks and preserved requested
   assert.match(guides.find(g => g.key === "calendar").steps.join(" "), /Google Calendar/);
 });
 
+test("fleet-provider discovery stays optional and cannot become an approval or reporting instruction", () => {
+  // Even an established, formed business has not been approved for a fuel card.
+  const guide = preparationGuidance({ business: { name: "Cedar LLC", activity: "Landscape maintenance", formationStatus: "reported_formed" } })
+    .find(g => g.key === "business_credit");
+  assert.equal(guide.optional, true);
+  assert.equal(guide.applicability, "review_needed");
+  assert.deepEqual(guide.links.map(({ url }) => new URL(url).hostname), ["www.wexinc.com", "www.exxonmobilfleetcards.com"]);
+  const instructions = guide.steps.join(" ");
+  assert.match(instructions, /If this business has real fuel expenses/);
+  assert.match(instructions, /credit checks, personal guarantees/);
+  assert.match(instructions, /whether the issuer reports this exact account/);
+  assert.match(instructions, /Do not apply just to create activity/);
+  assert.match(instructions, /David.*still needed/);
+  assert.match(guide.proof, /not approval or proof of reporting/);
+});
+
 test("client reporting and elapsed time cannot become verified funding or formation", () => {
   const guides = preparationGuidance({ business: { formationDate: "2025-01-01" } });
   assert.match(guides.find(g => g.key === "formation").proof, /does not establish operating history or funding approval/);
