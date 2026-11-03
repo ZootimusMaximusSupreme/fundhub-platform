@@ -19,7 +19,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 /* A database with nothing queued anywhere. The sweeper's job is to find the
    companies with mail waiting and delegate; what happens to a claimed message is
    dispatch.test.mjs's subject. */
-const emptyDb = () => ({ query: async () => ({ rows: [] }) });
+const emptyDb = () => ({ query: async (sql) => ({ rows: /count\(\*\).*failed_events/s.test(sql) ? [{n:0}] : [] }) });
 
 /* One company, sending switched on, with something waiting. Enough for the
    sweep to walk its whole path: find orgs → read the switch → check the cap →
@@ -36,6 +36,20 @@ const oneOrgDb = (onClaim) => ({
 });
 
 describe("the sweeper", () => {
+  test("a booking handoff failure cannot prevent the existing message drain", async () => {
+    let claims=0;
+    const res=await sweep(oneOrgDb(()=>claims++),{bookingHandoffImpl:async()=>{throw Error("handoff unavailable");}});
+    assert.equal(claims,1);assert.equal(res.orgs,1);assert.equal(res.ok,false);
+    assert.equal(res.bookingHandoffs.errors,1);
+  });
+
+  test("an exhausted booking stays red while normal mail continues", async () => {
+    let claims=0;
+    const res=await sweep(oneOrgDb(()=>claims++),{bookingHandoffImpl:async()=>
+      ({scanned:0,accepted:0,pending:0,exhausted:1,ignored:0,errors:0})});
+    assert.equal(claims,1);assert.equal(res.ok,false);assert.equal(res.bookingHandoffs.accepted,0);
+    assert.equal(res.bookingHandoffs.exhausted,1);
+  });
   test("an empty queue is a clean, quiet pass", async () => {
     const res = await sweep(emptyDb());
     assert.strictEqual(res.ok, true);

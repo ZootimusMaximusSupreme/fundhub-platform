@@ -9,6 +9,7 @@ import { isCanonical } from "./canonical.mjs";
 import { getHandlers } from "./registry.mjs";
 import { inngest } from "../workflows/client.mjs";
 import { record as recordFailure, handlerName } from "./dead-letter.mjs";
+import { ticketEligible, INSERT_SQL as BOOKING_INSERT_SQL, startBookingHandoff } from "./booking-handoff.mjs";
 
 const DEFAULT_ORG = process.env.DEFAULT_ORG_SLUG || "fundhub";
 
@@ -25,8 +26,9 @@ export async function emit(db, name, payload = {}, opts = {}) {
 
   // Idempotent insert: ON CONFLICT (org_id, idempotency_key) DO NOTHING.
   const demoEvent = opts.isDemo === true;
+  const ticketedBooking = ticketEligible(name,payload,opts);
   const insert = await db.query(
-    `INSERT INTO events (org_id, name, version, idempotency_key, client_id, payload${demoEvent ? ", is_demo" : ""})
+    ticketedBooking ? BOOKING_INSERT_SQL : `INSERT INTO events (org_id, name, version, idempotency_key, client_id, payload${demoEvent ? ", is_demo" : ""})
      VALUES ($1,$2,$3,$4,$5,$6${demoEvent ? ",$7" : ""})
      ON CONFLICT (org_id, idempotency_key) WHERE idempotency_key IS NOT NULL
      DO NOTHING
@@ -44,10 +46,12 @@ export async function emit(db, name, payload = {}, opts = {}) {
     { id, name, version, orgId, clientId: opts.clientId || null, payload },
     { throwOnHandlerError: opts.throwOnHandlerError === true }
   );
-  // Do not await Inngest — it added multi-second latency to website survey
-  // submit and webhook responses. Event row + local handlers already ran;
-  // Inngest fan-out is best-effort and must not block the HTTP response.
-  if (process.env.INNGEST_EVENT_KEY && opts.skipInngest !== true) {
+  // Keep the HTTP response independent of the provider. New future bookings
+  // already have an atomic durable ticket; other events retain their existing
+  // best-effort fan-out behavior.
+  if (ticketedBooking) {
+    startBookingHandoff(db,{orgId,eventId:id});
+  } else if (process.env.INNGEST_EVENT_KEY && opts.skipInngest !== true) {
     void inngest
       .send({ name, data: { id, payload, orgId, clientId: opts.clientId || null } })
       .catch(() => {});
