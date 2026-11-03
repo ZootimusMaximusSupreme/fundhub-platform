@@ -8,12 +8,16 @@ const SECOND_PLAN='60000000-0000-4000-8000-000000000006';
 const DOCUMENT='50000000-0000-4000-8000-000000000005';
 const EXISTING_BUSINESS='70000000-0000-4000-8000-000000000007';
 const ENTITY='80000000-0000-4000-8000-000000000008';
+const ORDER='d0000000-0000-4000-8000-00000000000d';
+const RESPONSE_VERSION='e0000000-0000-4000-8000-00000000000e';
 const json=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
 function initial(started=false){return{orgId:ORG,clientId:CLIENT,targetBusinessCount:3,setupStep:0,startedAt:started?'2026-11-02T12:00:00Z':null,hasExistingBusiness:null,homeState:started?'AZ':null,postalCode:started?'85004':null,availableCashCents:null,monthlyIncomeCents:null,cashBufferCents:null,oneTimePayoffCents:null,payoffPlan:null,availableEvidence:[],businesses:[],existingBusinesses:[],stepProgress:[],businessPreparation:{}};}
 function record(){return{id:PLAN,name:'Cedar Grove LLC',activity:'Web design for local shops',formationState:'AZ',formationStatus:'planned',formationDate:null,ownershipSince:null,operatingSince:null,evidence:{formation:{status:'not_added'},ein:{status:'not_added'}},bankPreparation:{documentsReady:false,accountOpeningIssue:false,relationships:[]}};}
-async function open(page,{started=false,business=false,denied=false,failSave=false,failSaveOnce=false,failUpload=false,failAttachOnce=false,seed={},nativeProgress=null,bankPlan=null}={}){
+async function open(page,{started=false,business=false,denied=false,failSave=false,failSaveOnce=false,failUpload=false,failAttachOnce=false,seed={},nativeProgress=null,bankPlan=null,mailing=null,responseRows=[]}={}){
   const state={...initial(started),...structuredClone(seed)};if(business&&!state.businesses.length)state.businesses=[record()];
-  const requests=[],downloads=[],uploadFields=[];let uploads=0,saveFailed=false,attachFailed=false;
+  const requests=[],downloads=[],uploadFields=[],mailRequests=[],bureauUploads=[];const downloadState={missing:false};
+  const responseDocuments=structuredClone(responseRows),mailingData=structuredClone(mailing||{letters:[],orders:[],capabilities:{mailSupported:false,reason:'offline_provider_unavailable'}});
+  let uploads=0,saveFailed=false,attachFailed=false,mailQuoteVersion=0;
   const savedProgress=nativeProgress||{waypoints:[{id:'w1',title:'Review the balances on your file',detail:'Compare each reported balance with your own records.',state:'not_started',owner:'client'}],nextStep:{waypointId:'w1',owner:'client'}};
   // Offline sources feed the actual aggregator, including cash reservations and
   // the real monthly payment calculator. No duplicate financial arithmetic here.
@@ -21,6 +25,7 @@ async function open(page,{started=false,business=false,denied=false,failSave=fal
     const db={query:async sql=>{
       if(/FROM clients/.test(sql))return{rows:[{id:CLIENT,org_id:ORG,first_name:'Pat',last_name:'Buyer',custom_fields:{}}]};
       if(/FROM crs_results/.test(sql))return{rows:[]};
+      if(/FROM documents/.test(sql))return{rows:structuredClone(responseDocuments)};
       throw new Error('Unexpected browser-fixture query');
     }};
     return buildBlueprintClientPlan(db,{orgId:ORG,clientId:CLIENT,now:new Date('2026-11-02T20:00:00Z')},{
@@ -34,6 +39,21 @@ async function open(page,{started=false,business=false,denied=false,failSave=fal
     const url=new URL(route.request().url()),path=url.pathname,method=route.request().method();
     if(path==='/api/auth/session')return json(route,{ok:true,principal:'client',staff:{id:CLIENT,client_id:CLIENT,role:'client',name:'Pat Buyer',status:'active'}});
     if(path==='/api/blueprint/plan')return denied?json(route,{ok:false,error:'blueprint_access_inactive'},403):json(route,await payload());
+    if(path==='/api/blueprint/letter-mailing'){
+      if(method==='GET')return json(route,{ok:true,...structuredClone(mailingData)});
+      const body=route.request().postDataJSON();mailRequests.push(body);
+      if(body.action==='quote')return json(route,{ok:true,orderId:ORDER,quoteVersion:++mailQuoteVersion,totalCents:9700,currency:'USD',
+        items:mailingData.letters.filter(l=>body.documentIds.includes(l.documentId)),
+        paymentOptions:[{id:'offline-card',label:'Saved card fixture',kind:'saved_card'},{id:'offline-checkout',label:'Secure checkout fixture',kind:'hosted_checkout'}],
+        returnAddressSummary:{name:'Pat Buyer',line1:'1 Offline Fixture Way',city:'Phoenix',state:'AZ',postalCode:'85004'}});
+      if(body.action==='confirm'){
+        expect(body.authorization).toBe(true);expect(body.idempotencyKey).toBe(ORDER);
+        const order={id:ORDER,status:'payment_pending',totalCents:9700,checkoutUrl:'https://offline-checkout.example/order/'+ORDER,envelopes:[]};
+        mailingData.orders=[order];return json(route,{ok:true,order:structuredClone(order)});
+      }
+      if(body.action==='status')return json(route,{ok:true,order:structuredClone(mailingData.orders.find(o=>o.id===body.orderId))});
+      throw new Error('Unexpected offline mailing action');
+    }
     if(path==='/api/blueprint/business-plans'&&method==='POST'){
       const body=route.request().postDataJSON();requests.push(body);
       if(failSave||(failSaveOnce&&!saveFailed)){saveFailed=true;return json(route,{ok:false,message:'The saved plan is temporarily unavailable.'},500);}
@@ -61,21 +81,27 @@ async function open(page,{started=false,business=false,denied=false,failSave=fal
       expect(route.request().headers()['content-type']).toContain('multipart/form-data; boundary=');uploads++;
       const form=await new Request('http://offline-fixture.invalid',{method:'POST',headers:route.request().headers(),body:route.request().postDataBuffer()}).formData();
       uploadFields.push({kind:form.get('kind'),subtype:form.get('subtype'),entityId:form.get('entity_id'),filename:form.get('files')?.name});
-      if(!failUpload)state.availableEvidence.push({documentId:DOCUMENT,kind:form.get('subtype')==='ein_letter'?'ein':'formation',filename:form.get('files').name,receivedAt:'2026-11-02T20:00:00Z',entityId:form.get('entity_id')});
+      if(!failUpload&&form.get('kind')==='bureau_response'){
+        bureauUploads.push({kind:form.get('kind'),subtype:form.get('subtype'),filenames:form.getAll('files').map(f=>f.name)});
+        responseDocuments.push({id:DOCUMENT,current_version_id:RESPONSE_VERSION,title:form.get('files').name,generated_at:'2026-11-02T20:00:00Z',metadata:{}});
+      }else if(!failUpload)state.availableEvidence.push({documentId:DOCUMENT,kind:form.get('subtype')==='ein_letter'?'ein':'formation',filename:form.get('files').name,receivedAt:'2026-11-02T20:00:00Z',entityId:form.get('entity_id')});
       return failUpload?json(route,{ok:false,message:'The file could not be stored.'},500):json(route,{ok:true,documents:[{id:DOCUMENT}]});
     }
     if(path==='/api/documents-download'){
       downloads.push({id:url.searchParams.get('id'),authorization:route.request().headers().authorization});
-      return json(route,{ok:true,document:{id:DOCUMENT,download:'/api/documents/'+DOCUMENT+'?exp=2000000000&sig=offline-fixture-signature'}});
+      return json(route,{ok:true,document:{id:url.searchParams.get('id'),download:downloadState.missing?null:'/api/documents/'+url.searchParams.get('id')+'?exp=2000000000&sig=offline-fixture-signature'}});
     }
     if(path==='/api/chat/portal-message'&&method==='POST'){requests.push({chat:route.request().postDataJSON()});return json(route,{ok:true,message:{id:'message-browser-contract'}});}
     if(path.includes('portal-summary'))return json(route,{ok:true,documents:[],scores:{},soft_pull_complete:false,dispute_consent:{allowed:false},stage:{key:'paid'},upcoming_call:null});
     if(path.includes('read/entitlements'))return json(route,{ok:true,items:[]});
     return json(route,{ok:true,items:[],rows:[],documents:[],payments:[]});
   });
+  // The portal welcome chat can open while a long form is in use. Close that
+  // separate surface through its actual control; never force covered clicks.
+  await page.addLocatorHandler(page.locator('#fh-chat-panel.open'),async()=>{await page.locator('#fh-chat-close').click();});
   await page.goto('/app/client-portal.html');
   const app=page.locator('#blueprint-plan');if(!denied)await expect(app).toBeVisible();
-  return{app,state,requests,downloads,uploadFields,wasUploaded:()=>uploads>0,uploadCount:()=>uploads};
+  return{app,state,requests,downloads,downloadState,uploadFields,mailRequests,mailingData,responseDocuments,bureauUploads,wasUploaded:()=>uploads>0,uploadCount:()=>uploads};
 }
 
 test('paid buyer starts one question at a time and server state survives reload',async({page})=>{
@@ -102,7 +128,7 @@ test('all seventeen requested lessons are usable, with business-specific website
 test('saved step date creates a usable Google calendar event link',async({page})=>{
   const{app,state}=await open(page,{started:true});await app.getByRole('button',{name:'Step-by-step help',exact:true}).click();await app.locator('[data-key=credit_review]').click();await app.locator('input[name=targetDate]').fill('2027-02-01');await app.locator('select[name=status]').selectOption('in_progress');await app.getByRole('button',{name:'Save this step',exact:true}).click();expect(state.stepProgress).toHaveLength(1);await app.getByRole('button',{name:'Timeline',exact:true}).click();const link=app.getByRole('link',{name:/Add to Google Calendar/});await expect(link).toHaveAttribute('href',/calendar\.google\.com\/calendar\/render/);expect(new URL(await link.getAttribute('href')).searchParams.get('dates')).toBe('20270201/20270202');
 });
-for(const width of[1440,390])test(`real buyer controls fit at ${width}px`,async({page})=>{await page.setViewportSize({width,height:1000});const{app}=await open(page,{started:true,business:true});for(const name of['Businesses','Step-by-step help','Timeline','Get help','Today']){await app.getByRole('button',{name,exact:true}).click();expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);}await expect(app).toContainText('FinanceOS is not live yet.');});
+for(const width of[1440,390])test(`real buyer controls fit at ${width}px`,async({page})=>{await page.setViewportSize({width,height:1000});const{app}=await open(page,{started:true,business:true});for(const name of['Businesses','Step-by-step help','Letters and responses','Timeline','Get help','Today']){await app.getByRole('button',{name,exact:true}).click();expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);}await expect(app).toContainText('FinanceOS is not live yet.');});
 
 async function openBusiness(app){
   await app.getByRole('button',{name:'Businesses',exact:true}).click();
@@ -227,21 +253,21 @@ test('saved payoff approach and debts resume with distinct snowball and highest-
   const settings=app.locator('form[data-bp-form=payoff-settings]');
   await settings.locator('input[name=monthlyBudget]').fill('150');
   await settings.getByRole('button',{name:'Save payoff approach',exact:true}).click();
-  await expect(app).toContainText('Monthly payments planned: $0. Unused monthly budget: $150.');
+  await expect(app).toContainText('Monthly payments planned: $0.00. Unused monthly budget: $150.00.');
   await expect.poll(()=>state.payoffPlan?.monthlyBudgetCents).toBe(15000);
   await addDebt(app,{label:'Small balance',balance:'200',apr:'9',minimum:'20'});
   await addDebt(app,{label:'Higher interest',balance:'1200',apr:'27',minimum:'30'});
   expect(state.payoffPlan).toMatchObject({strategy:'snowball',monthlyBudgetCents:15000});
   expect(state.payoffPlan.debts).toHaveLength(2);expect(state.payoffPlan.debts[1].aprBps).toBe(2700);
   const small=app.locator('.bp-item').filter({hasText:'Priority 1 · Small balance'});
-  await expect(small).toContainText('Planned monthly payment: $120 ($100 above the minimum).');
+  await expect(small).toContainText('Planned monthly payment: $120.00 ($100.00 above the minimum).');
   await page.reload();await openLesson(app,'budget');
   await expect(settings.locator('input[name=monthlyBudget]')).toHaveValue('150');
   await expect(app.getByText('Priority 1 · Small balance',{exact:true})).toBeVisible();
   await settings.locator('select[name=strategy]').selectOption('avalanche');
   await settings.getByRole('button',{name:'Save payoff approach',exact:true}).click();
   const higher=app.locator('.bp-item').filter({hasText:'Priority 1 · Higher interest'});
-  await expect(higher).toContainText('Planned monthly payment: $130 ($100 above the minimum).');
+  await expect(higher).toContainText('Planned monthly payment: $130.00 ($100.00 above the minimum).');
   await expect(app.getByText('Priority 2 · Small balance',{exact:true})).toBeVisible();
   expect(requests.at(-1)).toMatchObject({action:'save_payoff_plan',strategy:'avalanche',monthlyBudgetCents:15000});
   await page.reload();await openLesson(app,'budget');await expect(settings.locator('select[name=strategy]')).toHaveValue('avalanche');
@@ -251,11 +277,11 @@ test('saved payoff approach and debts resume with distinct snowball and highest-
 test('monthly budget below known minimums shows its shortfall without speculative payment allocations',async({page})=>{
   const{app}=await open(page,{started:true,seed:{payoffPlan:{strategy:'snowball',monthlyBudgetCents:3000,debts:payoffDebts()}}});
   await openLesson(app,'budget');
-  await expect(app).toContainText('Your monthly budget is short of known minimums by $20.');
+  await expect(app).toContainText('Your monthly budget is short of known minimums by $20.00.');
   await expect(app.getByText(/Planned monthly payment:/)).toHaveCount(0);
   const settings=app.locator('form[data-bp-form=payoff-settings]');
   await settings.locator('input[name=monthlyBudget]').fill('50');await settings.getByRole('button',{name:'Save payoff approach',exact:true}).click();
-  await expect(app).toContainText('Monthly payments planned: $50. Unused monthly budget: $0.');
+  await expect(app).toContainText('Monthly payments planned: $50.00. Unused monthly budget: $0.00.');
   await expect(app.getByText(/Planned monthly payment:/)).toHaveCount(2);
 });
 
@@ -286,20 +312,20 @@ test('cash planning reserves bills and paydowns alongside deposits across busine
   await budget.locator('input[name=cash]').fill('1000');await budget.locator('input[name=income]').fill('4000');
   await budget.locator('input[name=buffer]').fill('250');await budget.locator('input[name=payoffReserve]').fill('200');
   await budget.getByRole('button',{name:'Save cash and income',exact:true}).click();
-  await expect(budget).toContainText('Saved bank deposit commitments: $650.');
-  await expect(budget).toContainText('These plans exceed your reported cash by $100. Adjust the commitments before moving money.');
+  await expect(budget).toContainText('Saved bank deposit commitments: $650.00.');
+  await expect(budget).toContainText('These plans exceed your reported cash by $100.00. Adjust the commitments before moving money.');
   expect(requests.at(-1)).toMatchObject({action:'save_settings',availableCashCents:100000,monthlyIncomeCents:400000,cashBufferCents:25000,oneTimePayoffCents:20000});
   expect(state.businesses.map(b=>b.bankPreparation.relationships[0].depositPlanCents)).toEqual([40000,25000]);
   await page.reload();await openLesson(app,'budget');await expect(budget.locator('input[name=buffer]')).toHaveValue('250');await expect(budget.locator('input[name=payoffReserve]')).toHaveValue('200');
   await budget.locator('input[name=cash]').fill('2000');await budget.getByRole('button',{name:'Save cash and income',exact:true}).click();
-  await expect(budget).toContainText('Cash left after these commitments: $900.');
+  await expect(budget).toContainText('Cash left after these commitments: $900.00.');
   await budget.locator('input[name=buffer]').fill('');await budget.getByRole('button',{name:'Save cash and income',exact:true}).click();
   await expect(budget).toContainText('Add the unknown cash, buffer, paydown and deposit amounts');expect(state.cashBufferCents).toBeNull();
   await expect(budget).not.toContainText('Cash left after these commitments:');
 });
 
 test('saved bank guidance prefills a separate reported plan without declaring an account opened or funded',async({page})=>{
-  const bankPlan={recommended_banks:[{name:'Fixture Guidance CU',products:['Business checking'],minimum_deposit_cents:150000,seasoning_days:90,relationship_steps:[{text:'Confirm current membership and terms.'}]}]};
+  const bankPlan={recommended_banks:[{name:'Fixture Guidance CU',products:['Business checking'],minimum_deposit_cents:80000,seasoning_days:90,relationship_steps:[{text:'Confirm current membership and terms.'}]}]};
   const{app,state,requests}=await open(page,{started:true,business:true,bankPlan,seed:{availableCashCents:100000,cashBufferCents:10000,oneTimePayoffCents:20000}});
   await openBusiness(app);await app.locator('[data-key=bank_deposit][data-business="'+PLAN+'"]').click();
   await app.getByText('Existing lender relationship guidance',{exact:true}).click();
@@ -307,12 +333,12 @@ test('saved bank guidance prefills a separate reported plan without declaring an
   await app.getByRole('button',{name:'Plan this relationship',exact:true}).click();
   const form=app.locator('form[data-bp-form=bank-relationship]');
   await expect(form.locator('input[name=bankName]')).toHaveValue('Fixture Guidance CU');
-  await expect(form.locator('input[name=depositPlan]')).toHaveValue('1500');await expect(form.locator('input[name=seasoningDays]')).toHaveValue('90');
+  await expect(form.locator('input[name=depositPlan]')).toHaveValue('800');await expect(form.locator('input[name=seasoningDays]')).toHaveValue('90');
   await expect(form.locator('select[name=status]')).toHaveValue('planned');await expect(form.locator('input[name=openedOn]')).toHaveValue('');await expect(form.locator('input[name=depositReported]')).toHaveValue('');
   await form.getByRole('button',{name:'Save bank relationship',exact:true}).click();
   await expect.poll(()=>state.businesses[0].bankPreparation.relationships.length).toBe(1);
-  expect(requests.at(-1).business).toMatchObject({id:PLAN,bankPreparation:{relationships:[{bankName:'Fixture Guidance CU',status:'planned',depositPlanCents:150000,seasoningDays:90,openedOn:null,depositReportedCents:null}]}});
-  await expect(app).toContainText('This exceeds the cash you reported. Review the commitments before moving money.');expect(state.stepProgress).toHaveLength(0);
+  expect(requests.at(-1).business).toMatchObject({id:PLAN,bankPreparation:{relationships:[{bankName:'Fixture Guidance CU',status:'planned',depositPlanCents:80000,seasoningDays:90,openedOn:null,depositReportedCents:null}]}});
+  await expect(app).toContainText('The saved deposits, buffer and one-time paydowns exceed your cash by $100.00. Adjust the commitments before moving money.');expect(state.stepProgress).toHaveLength(0);
 });
 
 test('business evidence multipart includes the actual linked entity ID without customer-supplied review status',async({page})=>{
@@ -343,4 +369,106 @@ test('stored upload is recoverable from server files after reload with no second
   await expect(app.getByText('Evidence received',{exact:true})).toBeVisible();expect(uploadCount()).toBe(1);
   expect(requests.filter(r=>r.action==='attach_evidence').map(r=>r.documentId)).toEqual([DOCUMENT,DOCUMENT]);
   expect(state.businesses[0].evidence.formation).toEqual({documentId:DOCUMENT,status:'evidence_received'});
+});
+
+function savedLetters(mailSupported=true){return{letters:[
+  {documentId:DOCUMENT,title:'Inquiry correction — EX',subtype:'funding_inquiry_removal',bureau:'EX',generatedAt:'2026-11-02T12:00:00Z',eligibleForMailing:true},
+  {documentId:SECOND_PLAN,title:'Personal information correction — TU',subtype:'funding_personal_info',bureau:'TU',generatedAt:'2026-11-02T12:00:00Z',eligibleForMailing:true},
+  {documentId:EXISTING_BUSINESS,title:'Earlier letter — EQ',subtype:'funding_personal_info',bureau:'EQ',generatedAt:'2026-10-01T12:00:00Z',eligibleForMailing:false,reason:'A current letter needs review.'}
+],orders:[],capabilities:{mailSupported,reason:mailSupported?null:'offline_provider_unavailable'}};}
+async function openLetters(app){
+  await app.getByRole('button',{name:'Letters and responses',exact:true}).click();
+  await expect(app.getByRole('heading',{name:'Your letters, mailing and responses',exact:true})).toBeVisible();
+  await expect(app.getByRole('button',{name:'Download letter',exact:true})).toHaveCount(3);
+}
+
+test('letters are directly downloadable through authenticated signed links and self-mailing instructions are usable',async({page,context})=>{
+  await page.addInitScript(()=>localStorage.setItem('fh_token','offline-letter-token'));
+  await context.route('**/api/documents/'+DOCUMENT+'?*',route=>route.fulfill({status:200,contentType:'application/pdf',body:Buffer.from('%PDF-1.4\noffline letter fixture')}));
+  const{app,downloads,mailRequests}=await open(page,{started:true,mailing:savedLetters()});await openLetters(app);
+  const popupPromise=page.waitForEvent('popup');await app.getByRole('button',{name:'Download letter',exact:true}).first().click();const popup=await popupPromise;
+  await expect(popup).toHaveURL(new RegExp('/api/documents/'+DOCUMENT+'\\?exp=2000000000&sig=offline-fixture-signature'));
+  expect(downloads).toEqual([{id:DOCUMENT,authorization:'Bearer offline-letter-token'}]);await popup.close();
+  await app.getByText('How to send the letters yourself',{exact:true}).click();
+  await expect(app).toContainText('Sign and date where required');await expect(app).toContainText('Keep a copy of your packet.');
+  await expect(app.getByRole('link',{name:'Upload mailing proof in View progress',exact:true})).toHaveAttribute('href','/progress.html');
+  await expect(app.getByRole('link',{name:'Review official dispute instructions',exact:true})).toHaveAttribute('href',/^https:\/\/www.consumerfinance.gov\//);
+  expect(mailRequests).toHaveLength(0);
+});
+
+test('a $97 quote does not confirm payment and explicit authorization submits its exact order once',async({page})=>{
+  const{app,mailRequests,mailingData,state}=await open(page,{started:true,mailing:savedLetters()});await openLetters(app);
+  await expect(app.locator('[data-mail-letter]')).toHaveCount(2);
+  await app.getByRole('button',{name:'Mail these letters for me · $97',exact:true}).click();
+  const form=app.locator('form[data-bp-form=mail-confirm]');await expect(form).toBeVisible();await expect(form).toContainText('Total $97.00 USD');
+  await expect(form).toContainText('Inquiry correction — EX');await expect(form).toContainText('Personal information correction — TU');
+  expect(mailRequests).toEqual([{action:'quote',documentIds:[DOCUMENT,SECOND_PLAN]}]);expect(mailingData.orders).toHaveLength(0);
+  const authorization=form.locator('input[name=authorization]');await expect(authorization).not.toBeChecked();await expect(authorization).toHaveJSProperty('required',true);
+  await form.getByRole('button',{name:'Confirm $97 and mail my letters',exact:true}).click();expect(mailRequests).toHaveLength(1);expect(mailingData.orders).toHaveLength(0);
+  await form.locator('select[name=paymentOptionId]').selectOption('offline-checkout');await authorization.check();
+  await form.getByRole('button',{name:'Confirm $97 and mail my letters',exact:true}).click();
+  await expect(app.getByRole('link',{name:'Continue secure payment',exact:true})).toHaveAttribute('href','https://offline-checkout.example/order/'+ORDER);
+  expect(mailRequests[1]).toEqual({action:'confirm',orderId:ORDER,quoteVersion:1,paymentOptionId:'offline-checkout',authorization:true,idempotencyKey:ORDER});
+  await expect(app).toContainText('$97.00 · payment pending');await expect(app).toContainText('Payment, mailing acceptance and delivery are separate statuses.');
+  mailingData.orders[0].status='mailed';mailingData.orders[0].envelopes=[{bureau:'EX',status:'accepted',trackingUrl:'https://offline-tracking.example/'+ORDER}];
+  await app.getByRole('button',{name:'Check request status',exact:true}).click();await expect(app).toContainText('$97.00 · mailed');
+  expect(mailRequests.at(-1)).toEqual({action:'status',orderId:ORDER});
+  await page.reload();await openLetters(app);await expect(app).toContainText('$97.00 · mailed');
+  expect(mailRequests.filter(r=>r.action==='confirm')).toHaveLength(1);expect(state.stepProgress).toHaveLength(0);
+});
+
+test('changing selected letters invalidates the displayed quote before any authorization can be sent',async({page})=>{
+  const{app,mailRequests}=await open(page,{started:true,mailing:savedLetters()});await openLetters(app);
+  await app.getByRole('button',{name:'Mail these letters for me · $97',exact:true}).click();await expect(app.locator('form[data-bp-form=mail-confirm]')).toBeVisible();
+  await app.locator('[data-mail-letter="'+SECOND_PLAN+'"]').uncheck();
+  await expect(app.locator('form[data-bp-form=mail-confirm]')).toHaveCount(0);expect(mailRequests.filter(r=>r.action==='confirm')).toHaveLength(0);
+  await app.getByRole('button',{name:'Mail these letters for me · $97',exact:true}).click();
+  const form=app.locator('form[data-bp-form=mail-confirm]');await expect(form).toBeVisible();await expect(form).toContainText('Inquiry correction — EX');await expect(form).not.toContainText('Personal information correction — TU');
+  expect(mailRequests).toEqual([{action:'quote',documentIds:[DOCUMENT,SECOND_PLAN]},{action:'quote',documentIds:[DOCUMENT]}]);
+  await form.locator('input[name=authorization]').check();await form.getByRole('button',{name:'Confirm $97 and mail my letters',exact:true}).click();
+  await expect(app).toContainText('$97.00 · payment pending');expect(mailRequests.at(-1)).toMatchObject({action:'confirm',quoteVersion:2,authorization:true});
+});
+
+test('unsupported mailing provider preserves downloads and the self-mailing path without presenting charge controls',async({page})=>{
+  const mailing=savedLetters(false);mailing.orders=[{id:ORDER,status:'quoted',totalCents:9700,envelopes:[{bureau:'EX',status:'pending'}]}];
+  const{app,mailRequests,downloadState}=await open(page,{started:true,mailing});await openLetters(app);
+  await expect(app).toContainText('Mailing service needs setup before payment can be taken.');
+  await expect(app.getByRole('button',{name:'Mail these letters for me · $97',exact:true})).toHaveCount(0);await expect(app.locator('form[data-bp-form=mail-confirm]')).toHaveCount(0);
+  await app.getByText('How to send the letters yourself',{exact:true}).click();await expect(app.getByRole('link',{name:'Upload mailing proof in View progress',exact:true})).toBeVisible();
+  await expect(app.getByRole('button',{name:'Download letter',exact:true})).toHaveCount(3);await expect(app.locator('form[data-bp-form=bureau-response]')).toBeVisible();expect(mailRequests).toHaveLength(0);
+  await expect(app.getByRole('link',{name:'Continue secure payment',exact:true})).toHaveCount(0);await expect(app.getByRole('link',{name:'Track mailing',exact:true})).toHaveCount(0);await expect(app.locator('a[href$="/undefined"]')).toHaveCount(0);
+  downloadState.missing=true;const popupPromise=page.waitForEvent('popup');await app.getByRole('button',{name:'Download letter',exact:true}).first().click();const popup=await popupPromise;
+  await expect(app).toContainText('The saved document does not have an available download link.');await expect.poll(()=>popup.isClosed()).toBe(true);
+});
+
+test('uploaded bureau reply resumes pending and trusts only its exact current-version validator result without closing credit progress',async({page})=>{
+  const{app,state,responseDocuments,bureauUploads,uploadCount}=await open(page,{started:true,mailing:savedLetters(false)});await openLetters(app);
+  const form=app.locator('form[data-bp-form=bureau-response]');
+  await form.locator('input[name=files]').setInputFiles([{name:'bureau-reply.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\noffline bureau reply fixture')},{name:'reply-page-two.png',mimeType:'image/png',buffer:Buffer.from('offline page fixture')}]);
+  await form.getByRole('button',{name:'Upload response for validation',exact:true}).click();
+  await expect(app.getByText('Received · validation pending',{exact:true})).toBeVisible();expect(uploadCount()).toBe(1);
+  expect(bureauUploads).toEqual([{kind:'bureau_response',subtype:'other',filenames:['bureau-reply.pdf','reply-page-two.png']}]);
+  await page.reload();await openLetters(app);await expect(app.getByText('Received · validation pending',{exact:true})).toBeVisible();
+  const doc=responseDocuments[0];const validation=(status,extra={})=>({schema:1,validator:'bureau-response-reader',document_id:doc.id,version_id:doc.current_version_id,status,reason:'Offline saved validation result',reviewed_at:'2026-11-02T20:10:00Z',...extra});
+  doc.metadata.bureau_response_validation=validation('request_more',{reason:'The response text needs a clearer page.'});
+  await app.getByRole('button',{name:'Refresh letters and reviews',exact:true}).click();await expect(app.getByText('A clearer or more complete file is needed',{exact:true})).toBeVisible();await expect(app).toContainText('The response text needs a clearer page.');
+  doc.metadata.bureau_response_validation=validation('accepted');
+  await app.getByRole('button',{name:'Refresh letters and reviews',exact:true}).click();await expect(app.getByText('Document accepted for review of the next step',{exact:true})).toBeVisible();
+  doc.current_version_id='f0000000-0000-4000-8000-00000000000f';
+  await app.getByRole('button',{name:'Refresh letters and reviews',exact:true}).click();await expect(app.getByText('Received · validation pending',{exact:true})).toBeVisible();await expect(app.getByText('Document accepted for review of the next step',{exact:true})).toHaveCount(0);await expect(app).not.toContainText('Offline saved validation result');
+  doc.metadata.bureau_response_validation=validation('accepted',{validator:'untrusted-browser-flag'});
+  await app.getByRole('button',{name:'Refresh letters and reviews',exact:true}).click();await expect(app.getByText('Received · validation pending',{exact:true})).toBeVisible();
+  doc.metadata.bureau_response_validation=validation('hold',{reason:'The response needs team review.'});
+  await app.getByRole('button',{name:'Refresh letters and reviews',exact:true}).click();await expect(app.getByText('Team review required',{exact:true})).toBeVisible();
+  expect(state.stepProgress).toHaveLength(0);expect(uploadCount()).toBe(1);await expect(app).toContainText('An accepted document is separate from a verified credit-report change.');
+  await app.getByRole('button',{name:'Today',exact:true}).click();await expect(app.getByText('Review the balances on your file',{exact:true})).toBeVisible();
+});
+
+test('failed new debt save retains the same debt identity for a retry without creating a duplicate',async({page})=>{
+  const{app,state,requests}=await open(page,{started:true,failSaveOnce:true,seed:{payoffPlan:{strategy:'snowball',monthlyBudgetCents:15000,debts:[]}}});await openLesson(app,'budget');
+  const form=app.locator('form[data-bp-form=payoff-debt]');await form.locator('input[name=label]').fill('Retry debt');await form.locator('input[name=balance]').fill('200');await form.locator('input[name=minimum]').fill('20');
+  await form.getByRole('button',{name:'Save debt details',exact:true}).click();await expect(app.getByText('The saved plan is temporarily unavailable.',{exact:true})).toBeVisible();
+  const firstId=requests.at(-1).debts[0].id;expect(state.payoffPlan.debts).toHaveLength(0);await expect(form.locator('input[name=label]')).toHaveValue('Retry debt');
+  await form.getByRole('button',{name:'Save debt details',exact:true}).click();await expect(app.getByText('Priority 1 · Retry debt',{exact:true})).toBeVisible();
+  expect(requests.filter(r=>r.action==='save_payoff_plan').map(r=>r.debts[0].id)).toEqual([firstId,firstId]);expect(state.payoffPlan.debts).toHaveLength(1);
 });

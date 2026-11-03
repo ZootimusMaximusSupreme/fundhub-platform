@@ -165,7 +165,7 @@ test("verified completion asks about the newly saved current step, not proof for
   const query = db.query;
   let completed = false;
   db.query = async (sql, params) => {
-    if (/SELECT kind, subtype FROM documents/.test(sql)) return { rows: [{ kind: "client_upload", subtype: "dispute_mail_receipt" }] };
+    if (/SELECT id, kind, subtype, current_version_id, metadata FROM documents/.test(sql)) return { rows: [{ kind: "client_upload", subtype: "dispute_mail_receipt" }] };
     if (/UPDATE client_waypoints\s+SET state = 'done'/.test(sql)) completed = true;
     if (completed && /SELECT \* FROM client_waypoints/.test(sql)) return { rows: [{ id: "next-step", key: "next_job", title: "Next actual client job", owner_kind: "client", state: "not_started", position: 2 }] };
     return query(sql, params);

@@ -35,7 +35,7 @@ describe("GET /api/repair/exceptions", () => {
     assertSqlHas(fake.find(/FROM dispute_responses/)[0].sql, {
       "this company, not yet confirmed": "WHERE org_id = $1 AND COALESCE(confirmed, false) = false",
       "says which are held for a person": "= 'true' AS held_for_escalation",
-      "unsure, or held for a person to cross into R4": "AND ( (confidence IS NOT NULL AND confidence < 0.85) OR COALESCE(parse_json->>'heldForEscalation', 'false') = 'true' )",
+      "unsure, escalation, source-document validation or a current-file manual review": "AND ( (confidence IS NOT NULL AND confidence < 0.85) OR COALESCE(parse_json->>'heldForEscalation', 'false') = 'true' OR COALESCE(parse_json->>'requiresDocumentValidation', 'false') = 'true' OR COALESCE(parse_json->>'requiresHumanReview', 'false') = 'true' )",
       "newest first, a page": "ORDER BY created_at DESC LIMIT 100"
     });
   });

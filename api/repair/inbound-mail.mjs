@@ -27,18 +27,19 @@ export default async function handler(req, res, deps = {}) {
   const meta = { version: "v1.1", imap: false };
   try {
     if (body.document_id || body.documentId) {
-      const result = await processBureauResponse(database, {
+      const result = await (deps.processBureauResponse || processBureauResponse)(database, {
         orgId, clientId,
         documentId: body.document_id || body.documentId,
         versionId: body.version_id || body.versionId || null,
-        mimeType: body.mime_type || body.mimeType || null,
-        bytes: body.bytes ? Buffer.from(body.bytes, "base64") : null
+        // Uploaded bytes, MIME and validation fields are read from the saved
+        // scoped document, never substituted from this request body.
+        ...(deps.loadBytesImpl ? { loadBytesImpl: deps.loadBytesImpl } : {})
       });
       return res.status(200).json({ ok: true, ...meta, result });
     }
     const text = typeof body.text === "string" ? body.text : null;
     if (!text || !text.trim()) return res.status(400).json({ ok: false, error: "text_or_document_required", ...meta });
-    const result = await runParseAdvanceLoop(database, { orgId, clientId, text });
+    const result = await runParseAdvanceLoop(database, { orgId, clientId, text, requireDocumentValidation: true });
     return res.status(200).json({ ok: true, ...meta, result });
   } catch (err) {
     if (dbDown(res, err)) return;

@@ -8,7 +8,7 @@ test("the full requested curriculum is available with actionable source-backed f
   assert.equal(new Set(guides.map(g => g.key)).size, 17);
   for (const guide of guides) {
     assert.ok(guide.title && guide.why && guide.proof && guide.nextReview, guide.key);
-    assert.equal(guide.steps.length, 3, guide.key);
+    assert.ok(guide.steps.length >= 3 && guide.steps.every(step => typeof step === "string" && step.trim()), guide.key);
     assert.ok(guide.sourceRefs.length, guide.key);
     for (const { url } of guide.links) assert.equal(new URL(url).protocol, "https:");
   }
@@ -64,13 +64,16 @@ test("fleet-provider discovery stays optional and cannot become an approval or r
     .find(g => g.key === "business_credit");
   assert.equal(guide.optional, true);
   assert.equal(guide.applicability, "review_needed");
-  assert.deepEqual(guide.links.map(({ url }) => new URL(url).hostname), ["www.wexinc.com", "www.exxonmobilfleetcards.com"]);
+  assert.deepEqual(guide.links.map(({ url }) => new URL(url).hostname), ["www.wexinc.com", "www.exxonmobilfleetcards.com", "atob.com", "www.conocofleet.com", "www.fuelman.com"]);
   const instructions = guide.steps.join(" ");
   assert.match(instructions, /If this business has real fuel expenses/);
   assert.match(instructions, /credit checks, personal guarantees/);
   assert.match(instructions, /whether the issuer reports this exact account/);
   assert.match(instructions, /Do not apply just to create activity/);
   assert.match(instructions, /current reviewed program when suitable/);
+  assert.match(instructions, /Choose only the accounts you need and can repay/);
+  assert.match(instructions, /payment due and payment dates/);
+  assert.doesNotMatch(instructions, /\$70|\$2K|\$2,000|all cards are non.?PG/i);
   assert.match(guide.proof, /not approval or proof of reporting/);
 });
 
@@ -87,4 +90,32 @@ test("client reporting and elapsed time cannot become verified funding or format
   assert.match(guides.find(g => g.key === "formation").proof, /does not establish operating history or funding approval/);
   assert.match(guides.find(g => g.key === "bank_deposit").proof, /elapsed time is not verification/);
   assert.match(guides.find(g => g.key === "employment").steps.join(" "), /actual setup|real employer|actual payroll/);
+});
+
+test("the payment lesson protects reserves and actual minimums without replacing the credit roadmap", () => {
+  const guide = preparationGuidance().find(item => item.key === "budget");
+  const steps = guide.steps.join(" ");
+  assert.match(steps, /essential bills.*buffer.*bank-deposit reserve/);
+  assert.match(steps, /Snowball.*smallest balance; avalanche.*highest APR/);
+  assert.match(steps, /minimum payments on all listed debts before directing extra/);
+  assert.match(steps, /UnderwriteIQ utilization.*may take priority/);
+  assert.match(steps, /shortfall/);
+  assert.match(guide.proof, /not a payment, payoff-date forecast or credit-score promise/);
+  assert.ok(guide.links.some(({ url }) => url === "https://www.consumerfinance.gov/documents/5782/cfpb_ymyg-toolkit_reducing-debt-worksheet.pdf"));
+});
+
+test("the approved course selection adds practical checks without exposing internal sources or removed tools", () => {
+  const guides = preparationGuidance({ business: { name: "Cedar LLC", activity: "Landscape maintenance" } });
+  const profile = guides.find(guide => guide.key === "business_profile");
+  const website = guides.find(guide => guide.key === "business_website");
+  const banks = guides.find(guide => guide.key === "local_banking");
+  const financials = guides.find(guide => guide.key === "employment");
+  assert.match(profile.steps.join(" "), /formation\/EIN documents, bank records, website/);
+  assert.match(profile.steps.join(" "), /separate document checklist.*three or four businesses/);
+  assert.match(website.steps.join(" "), /logo or extra paid tool is optional/);
+  assert.match(banks.steps.join(" "), /personal-credit checks\/bureaus, collateral or UCC/);
+  assert.match(banks.steps.join(" "), /several separate businesses/);
+  assert.match(financials.steps.join(" "), /profit-and-loss statement, balance sheet and merchant-processor statements when applicable/);
+  assert.ok(guides.some(guide => guide.sourceRefs.some(source => source.startsWith("fundhub-ip:tradeline-secrets/"))));
+  for (const guide of guides) for (const { url } of guide.links) assert.doesNotMatch(url, /drive\.google|docs\.google|bit\.ly/);
 });

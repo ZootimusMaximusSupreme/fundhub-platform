@@ -182,13 +182,13 @@ test("real verifier keeps a mailing promise open and closes only on stored recei
   for (const hasReceipt of [false, true]) {
     const db = fakeDb([
       [/SELECT \* FROM client_waypoints/, [{ key: "mail_letters", state: "in_progress", verify_kind: "dispute_mail_receipt" }]],
-      [/SELECT kind, subtype FROM documents/, hasReceipt ? [{ kind: "client_upload", subtype: "dispute_mail_receipt" }] : []],
+      [/SELECT id, kind, subtype, current_version_id, metadata FROM documents/, hasReceipt ? [{ kind: "client_upload", subtype: "dispute_mail_receipt" }] : []],
       [/UPDATE client_waypoints/, [{ id: "step-1" }]]
     ]);
     const out = await applyBlueprintCoachAction(db, { ...scope, inboundBody: "I promise I mailed it" }, { type: "verify_progress" }, deps());
     assert.equal(out.changed, hasReceipt);
     assert.equal(db.find(/UPDATE client_waypoints/).length, hasReceipt ? 1 : 0);
-    const proof = db.find(/SELECT kind, subtype FROM documents/)[0];
+    const proof = db.find(/SELECT id, kind, subtype, current_version_id, metadata FROM documents/)[0];
     assert.deepEqual(proof.params, [ORG, CLIENT]);
     if (hasReceipt) {
       const completion = db.find(/UPDATE client_waypoints/)[0];

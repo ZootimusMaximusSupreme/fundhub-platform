@@ -17,7 +17,7 @@ function fixture() {
     if (/SELECT id, name, age_months, entity_data FROM businesses/.test(sql)) return { rows: clone(state.businesses.filter(b => b.org_id === args[0] && b.client_id === args[1])) };
     if (/SELECT id, entity_data FROM businesses/.test(sql)) return { rows: clone(state.businesses.filter(b => b.id === args[0] && b.org_id === args[1] && b.client_id === args[2])) };
     if (/SELECT id FROM entities/.test(sql)) return { rows: clone(state.entities.filter(e => e.id === args[0] && e.org_id === args[1] && e.client_id === args[2] && e.kind === "business" && !e.archived_at)) };
-    if (/FROM documents d LEFT JOIN/.test(sql)) return { rows: clone(state.documents.filter(d => d.org_id === args[0] && d.client_id === args[1] && args[2].includes(d.id))) };
+    if (/FROM documents d LEFT JOIN/.test(sql)) return { rows: clone(state.documents.filter(d => d.org_id === args[0] && d.client_id === args[1] && (/ANY\(\$3::text/.test(sql) ? d.kind === 'client_upload' && args[2].includes(d.subtype) : args[2].includes(d.id)))) };
     throw new Error("Unexpected SQL: " + sql);
   } };
   const write = (action, input, opts = {}) => writeBusinessPlans(db, scope, action, input, { ...options, ...opts });
@@ -178,4 +178,30 @@ test("bank milestone list validates scope, counts, money, states and dates", asy
   ];
   for (const bankPreparation of invalid) await assert.rejects(write("save_business", { id: PLAN, bankPreparation }));
   const stored = state.fields[BLUEPRINT_PLANS_FIELD].businesses[0]; assert.deepEqual(stored.bankPreparation.relationships, []);
+});
+
+test("staff filing identity takes precedence over stale upload metadata", async () => {
+  const {state,write,read}=fixture();
+  state.entities.push({id:ENTITY,org_id:ORG,client_id:CLIENT,kind:'business'});
+  await write('save_business',business(PLAN,{entityId:ENTITY}));
+  state.documents.push(doc({metadata:{entity_id:ENTITY},reviewed_entity_id:BIZ,review_status:'accepted',reviewed_at:'2026-11-02T10:00:00Z'}));
+  await assert.rejects(write('attach_evidence',{businessId:PLAN,kind:'formation',documentId:DOC}),{code:'evidence_business_mismatch'});
+  state.documents[0].reviewed_entity_id=ENTITY;
+  await write('attach_evidence',{businessId:PLAN,kind:'formation',documentId:DOC});
+  state.documents[0].reviewed_entity_id=BIZ;
+  assert.notEqual((await read()).businesses[0].evidence.formation.status,'reviewed');
+});
+test("unattached saved files survive a new reader for explicit recovery and stay scoped",async()=>{
+  const {state,write,read}=fixture();await write('save_business',business());
+  state.documents.push(doc(),doc({id:EIN,client_id:OTHER}),doc({id:BIZ,subtype:'other'}));
+  let view=await read();assert.equal(view.availableEvidence.length,1);assert.equal(view.availableEvidence[0].documentId,DOC);
+  await write('attach_evidence',{businessId:PLAN,kind:'formation',documentId:view.availableEvidence[0].documentId});
+  view=await read();assert.equal(view.availableEvidence.length,0);assert.equal(view.businesses[0].evidence.formation.status,'evidence_received');
+});
+test("payoff plans preserve zero vs unknown and never change balances or source reports",async()=>{
+  const {state,write,read}=fixture();await write('save_settings',{availableCashCents:50000,cashBufferCents:10000,oneTimePayoffCents:15000});
+  await write('save_payoff_plan',{strategy:'snowball',monthlyBudgetCents:0,debts:[{id:DOC,label:'Actual statement balance',balanceCents:12000,aprBps:0,minimumPaymentCents:null}]});
+  const view=await read();assert.equal(view.cashBufferCents,10000);assert.equal(view.oneTimePayoffCents,15000);assert.equal(view.payoffPlan.monthlyBudgetCents,0);assert.equal(view.payoffPlan.debts[0].aprBps,0);assert.equal(view.payoffPlan.debts[0].minimumPaymentCents,null);
+  assert.equal(state.calls.some(c=>/UPDATE crs_results|INSERT INTO transactions|UPDATE bank_relationship/.test(c.sql)),false);
+  for(const input of[{strategy:'magic',debts:[]},{strategy:'snowball',debts:[{id:DOC,label:'Missing balance',balanceCents:null}]},{strategy:'avalanche',debts:[{id:DOC,label:'Bad APR',balanceCents:100,aprBps:-1}]}])await assert.rejects(write('save_payoff_plan',input));
 });
