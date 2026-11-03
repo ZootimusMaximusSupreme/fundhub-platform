@@ -213,7 +213,7 @@ test("handoff: each first-touch branch goes red alone and says which one", async
   const cases = [
     ["nudge", /1 lead stopped partway through the survey and got no come-back text or email \(EMAIL-S02-RESUME-1\) when it was due \(20 minutes after signing up, or 9 a\.m\. Arizona after a night sign-up\)/, /welcome|chase/],
     ["nobook", /1 lead finished the survey, never booked or replied, and got no chase message \(EMAIL-NOBOOK-01\) when it was due \(2 hours after the survey, or 9 a\.m\. Arizona after a night survey\)/, /welcome email|come-back/],
-    ["setter-task", /1 lead finished the survey, did not book, and had no setter call task within 25 minutes/, /welcome email|come-back|chase message/]
+    ["setter-task", /1 lead finished the survey with no booking on file and had no setter call task within 25 minutes/, /welcome email|come-back|chase message/]
   ];
   for (const [marker, want, notWant] of cases) {
     const r = byId(await gapChecks(ctxOf(fakeDb({ [marker]: { n: 1 } }))))["handoff:lead-first-touches-missing"];
@@ -529,6 +529,10 @@ test("handoff: message grace follows waits, and the immediate setter task has a 
   assert.match(setter, /source_workflow IN \('setter-entry', 'setter-survey-done'\)/);
   assert.match(setter, /due_at = now\(\)/);
   assert.ok(SETTER_TASK_GRACE_MIN > SETTER_TASK_DUE_MIN);
+  assert.match(ALL_SQL.SETTER_TASK_SQL, /t\.body = 'survey-completed:' \|\| l\.cohort_id::text/);
+  assert.match(ALL_SQL.SETTER_TASK_SQL, /t\.body = l\.id::text/);
+  assert.match(ALL_SQL.SETTER_TASK_SQL, /b\.created_at <= l\.created_at/);
+  assert.doesNotMatch(ALL_SQL.SETTER_TASK_SQL, /b\.created_at <= l\.created_at \+ interval/);
   assert.match(WF("slo-genuine-followup.mjs"), /WAIT_M1 = "15m"/);
   assert.ok(CONTACT_M1_GRACE_MIN > 15);
   assert.match(WF("slo-no-reply-197.mjs"), /WAIT_NO_REPLY = "24h"/);
