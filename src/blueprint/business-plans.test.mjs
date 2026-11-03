@@ -39,6 +39,16 @@ test("settings preserve zero vs unknown and immutable first startedAt", async ()
   assert.equal(view.startedAt, NOW.toISOString()); assert.equal(view.availableCashCents, null); assert.equal(state.fields.existingFlag, "keep");
   assert.ok(state.calls.some(c => c.sql.includes("FOR UPDATE"))); assert.ok(state.calls.some(c => c.sql.includes("jsonb_set")));
 });
+test("saved setup resumes after the answered question without accepting a forged stage", async () => {
+  const { write, read } = fixture();
+  await write("save_settings", { hasExistingBusiness: false });
+  assert.equal((await read()).setupStep, 1);
+  await write("save_settings", { targetBusinessCount: 3 });
+  assert.equal((await read()).setupStep, 2);
+  await write("save_settings", { homeState: "AZ", postalCode: "85004" });
+  assert.equal((await read()).setupStep, 3);
+  await assert.rejects(write("save_settings", { setupStep: 3 }), { code: "field_not_accepted" });
+});
 test("invalid settings and forged customer identity are rejected without saving", async () => {
   const { state, write } = fixture();
   for (const input of [{ targetBusinessCount: 5 }, { availableCashCents: -1 }, { availableCashCents: 1.5 }, { monthlyIncomeCents: "100" }, { homeState: "ZZ" }, { postalCode: "8500" }, { hasExistingBusiness: "yes" }, { orgId: OTHER }, { startedAt: "2020-01-01" }]) await assert.rejects(write("save_settings", input));

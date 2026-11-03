@@ -356,6 +356,7 @@ function waypointView(row) {
     id: row.id,
     order: row.position == null ? null : Number(row.position),
     title: row.title,
+    detail: row.detail ?? null,
     owner: row.owner_kind,
     state: row.state,
     dueAt: isoOrNull(row.due_at),

@@ -927,6 +927,7 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
              + (wp && wp.overdue ? ' <span class="badge b-alert">overdue</span>' : '')
              + '</div>'
              + '<div class="t">' + esc(title) + '</div>'
+             + (wp && wp.detail ? '<div class="d wp-detail">' + esc(wp.detail) + '</div>' : '')
              + '<div class="d">' + d.join(" ") + '</div>';
 
     if (wp && wp.paidAlternative && wp.paidAlternative.priceCents != null) {
@@ -1008,6 +1009,7 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
     return '<div class="wp' + (done ? " done" : "") + '" data-wp="' + esc(wp.id) + '">'
          + tick
          + '<div class="bd"><div class="ti">' + title + '</div>'
+         + (wp.detail ? '<div class="how wp-detail">' + esc(wp.detail) + '</div>' : '')
          + '<div class="mt">' + meta.join("") + '</div>' + note + proof + alt + '</div></div>';
   }
 

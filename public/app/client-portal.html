@@ -506,6 +506,8 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
 <script defer src="shell.js"></script>
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-client.css">
+<link rel="stylesheet" href="/app/blueprint-plan.css">
+<script defer src="/app/blueprint-plan.js"></script>
 </head>
 <body class="no-funding no-docs no-own no-funding-door no-inquiry-door no-bureau-door no-upload-doors no-dispute-consent fh-astra fh-astra-client fh-astra-portal" data-client-page="client-portal" data-portal-state="loading">
 <script>
@@ -569,6 +571,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
       <div class="welcome-sub precall-only" id="greeting-sub-pre">Loading your file…</div>
       <div class="welcome-sub funding-only" id="greeting-sub">Here's where things stand on your funding.</div>
       <div class="rep-files" id="rep-files" hidden></div>
+      <section id="blueprint-plan" aria-label="Your Capital Blueprint plan" hidden></section>
       <section class="cp-next-action" aria-labelledby="cp-next-title"><div class="card-title">Next action</div><h2 id="cp-next-title">Review your account.</h2><p id="cp-next-copy">Review your documents, agreements and payments.</p><a id="cp-next-link" href="#acct">Open your account →</a></section>
 
       <!-- ══ 1 · WELCOME VIDEO (hero) ════════════════════════════════════ -->
@@ -975,11 +978,11 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
             </div>
             <div class="tile-course" hidden>
               <div class="tc-label">How To Use This · mini course</div>
-              <details class="tc-mod"><summary>1 · Your Credit Analysis Report · Coming soon</summary><div class="tc-vid"><p class="tc-empty">Coming soon.</p></div></details>
-              <details class="tc-mod"><summary>2 · Your dispute letter pack · Coming soon</summary><div class="tc-vid"><p class="tc-empty">Coming soon.</p></div></details>
-              <details class="tc-mod"><summary>3 · Your Credit Optimization Roadmap · Coming soon</summary><div class="tc-vid"><p class="tc-empty">Coming soon.</p></div></details>
-              <details class="tc-mod"><summary>4 · Your Funding Snapshot · Coming soon</summary><div class="tc-vid"><p class="tc-empty">Coming soon.</p></div></details>
-              <details class="tc-mod"><summary>5 · Your Bank and Lender Match List · Coming soon</summary><div class="tc-vid"><p class="tc-empty">Coming soon.</p></div></details>
+              <details class="tc-mod"><summary>1 · Your Credit Analysis Report</summary><div class="tc-vid"><p>Open the report in What You Own. Check its date, account ownership, balances and limits against your records. Tell the Fundhub team about anything incorrect or unclear.</p></div></details>
+              <details class="tc-mod"><summary>2 · Your dispute letter pack</summary><div class="tc-vid"><p>Open the saved letter pack in What You Own and follow its mailing instructions. Keep your receipt. Use View progress to upload the mailing proof and any bureau response when the relevant step is open.</p></div></details>
+              <details class="tc-mod"><summary>3 · Your Credit Optimization Roadmap</summary><div class="tc-vid"><p>Read the account-specific actions in your roadmap, then open View progress for the current checklist and instructions. Paid Blueprint buyers can work on their saved business plans alongside those steps above.</p></div></details>
+              <details class="tc-mod"><summary>4 · Your Funding Snapshot</summary><div class="tc-vid"><p>Open the dated snapshot in What You Own. Its estimates describe the saved file; they are not a lender approval. Review changes in your accounts, income or business with the team before taking a new application step.</p></div></details>
+              <details class="tc-mod"><summary>5 · Your Bank and Lender Match List</summary><div class="tc-vid"><p>Open the saved list in What You Own. Check the state, membership, exact account, current fees and deposit requirements before applying. Record the opening, deposit and review dates separately for the right business in your Blueprint plan.</p></div></details>
             </div>
           </article>
 
