@@ -91,6 +91,14 @@ async function call(query, files, who = [staffSession({ role: "closer" })]) {
 const ownFile = (clientId = CLIENT) => accountSession({ kind: "client", clientId });
 
 describe("GET /api/read/client-progress", () => {
+  test("the client's saved task instructions survive the actual progress reader", async () => {
+    const detail = "Check your state filing office. Keep the accepted formation document.";
+    const { res } = await call({}, fileTables({ waypoints: [waypoint({ detail })] }), ownFile());
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.waypoints[0].detail, detail);
+    const missing = await call({}, fileTables({ waypoints: [waypoint()] }), ownFile());
+    assert.equal(missing.res.body.waypoints[0].detail, null);
+  });
   test("scores are the newest real number per bureau with its pull date, and movement runs from the first pull to the newest", async () => {
     const { res } = await call({ client_id: CLIENT }, fileTables());
     assert.equal(res.statusCode, 200);
