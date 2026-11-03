@@ -42,7 +42,10 @@ export { HOURLY_CHECK_IDS };
 export const RUNS_ELSEWHERE = Object.freeze({
   "payments:paid-no-entitlement": Object.freeze(["pay-links", "payments-paid-no-entitlement"]),
   "gap:auth-magic-link-dead": Object.freeze(["auth-links", "gap-auth-magic-link-dead"]),
-  "portal:progress-read-real-client": Object.freeze(["client-progress", "portal-progress-read-real-client"])
+  "portal:progress-read-real-client": Object.freeze(["client-progress", "portal-progress-read-real-client"]),
+  "blueprint:preparation-evidence": Object.freeze(["blueprint-delivery", "preparation-evidence"]),
+  "blueprint:letter-mailing": Object.freeze(["blueprint-delivery", "letter-mailing"]),
+  "blueprint:response-validation": Object.freeze(["blueprint-delivery", "response-validation"])
 });
 
 const ONE = (row) => Object.freeze([Object.freeze(row)]);

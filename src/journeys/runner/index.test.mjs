@@ -209,7 +209,8 @@ import { isSyntheticRow } from "./synthetic.mjs";
    still in the registry, run by the Netlify cron clock instead of Inngest. */
 // The confirmed booking feed is a Netlify clock job with no journey event.
 // AI COO manager review is also cron-only; its direct task proof is in src/ops/manager-kpi-review.test.mjs.
-const REGISTERED = 107;
+// Explicitly authorized Blueprint mailing recovery is cron-only; no journey event fires it.
+const REGISTERED = 108;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);
@@ -305,6 +306,7 @@ test("every workflow is either fired or named in neverFired — none silently mi
   for (const fn of functions) assert.ok(all.has(fn.id()), `${fn.id()} is unaccounted for`);
   assert.ok(never.some(workflow => workflow.id === "bank-outreach-checkins"), "scheduled bank reminders remain explicitly unreached, never falsely reported as fired");
   assert.ok(never.some(workflow => workflow.id === "bank-outreach-automation"), "the bank outreach clock remains explicitly unreached, never falsely reported as fired");
+  assert.ok(never.some(workflow => workflow.id === "blueprint-letter-mailing"), "mailing recovery is explicitly unreached by event journeys; it needs an authorized saved order and clock");
 });
 
 // ── a full walk ───────────────────────────────────────────────────────────

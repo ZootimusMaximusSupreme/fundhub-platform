@@ -32,6 +32,7 @@ async function openPortal(page, session, { summary = {}, readyToFund, affiliate,
   await page.route("**/api/**", async (route) => {
     const url = route.request().url();
     if (url.includes("/api/auth/session") || /\/api\/session\b/.test(url)) return json(route, session);
+    if (url.includes("/api/blueprint/plan")) return json(route, { ok: false, error: "blueprint_access_inactive" }, 403);
     if (url.includes("/api/money/ready-to-fund")) {
       calls.readyToFund.push(url);
       if (readyToFund === undefined) return json(route, { ok: false }, 403);
