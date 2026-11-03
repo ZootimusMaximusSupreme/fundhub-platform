@@ -69,7 +69,7 @@ test("the forms post the exact request and the section repaints from the answer"
     const state = { personal: false };
     const extra = [{ id: "bbbbbbbb-0000-0000-0000-000000000003", kind: "business", name: "Mountain Works LLC", archived_at: null,
       business: { ...FIELDS }, accounts: [], cards: [], loans: [], bills: [] }];
-    const { page, posts, reads, errors, link } = await openAccounts(open, target, {
+    const { page, posts, reads, errors } = await openAccounts(open, target, {
       read: () => view({ withPersonal: false }),
       // The answer is the whole new view; a personal container exists only once one is created.
       write: (body) => {
@@ -167,10 +167,15 @@ test("the forms post the exact request and the section repaints from the answer"
     }, target.surface);
 
     await proof.check(rows.connect, async () => {
-      // Connect a bank: link token, the bank's window, then the exchange
-      await page.locator('[data-act="connect"]').click();
-      await waitFor(() => link.posts.some((p) => p.path === "link-exchange"));
-      assert.deepEqual(link.posts, link.expected(CLIENT_ID));
+      // The client connects their own bank after email, authenticator and consent.
+      const own = await openAccounts(open, target, { session: CLIENT, clientId: "" });
+      await own.page.locator('[data-act="connect"]').click();
+      await own.link.completeStepUp(own.page);
+      await waitFor(() => own.link.posts.some((p) => p.path === "link-exchange"));
+      assert.deepEqual(own.link.mfaPosts, own.link.expectedMfa());
+      assert.deepEqual(own.link.posts, own.link.expected());
+      assert.deepEqual(own.errors, []);
+      await own.page.close();
     }, target.surface);
     assert.deepEqual(errors, []);
     await page.close();

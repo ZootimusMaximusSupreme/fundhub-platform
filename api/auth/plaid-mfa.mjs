@@ -2,7 +2,7 @@
 // one client bank or affiliate payout Link flow. No Link token is issued here.
 import { db } from "../../src/db.mjs";
 import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
-import { accountMfaSetup, authorizeAccountPlaidLink,
+import { accountMfaSetup, verifyAccountMfaEmail, authorizeAccountPlaidLink,
   CONSENT_TEXT, CONSENT_VERSION, PRIVACY_URL } from "../../src/auth/account-plaid-mfa.mjs";
 
 function readBody(raw) {
@@ -36,12 +36,21 @@ export default async function handler(req, res, deps = {}) {
     sessionId: principal.sessionId, targetKind: kind, targetId, env };
   if (body.action === "setup") {
     const result = await (deps.setup || accountMfaSetup)(database, {
-      accountId: identity.accountId, orgId: identity.orgId, email: principal.email, env
+      accountId: identity.accountId, orgId: identity.orgId,
+      sessionId: identity.sessionId, email: principal.email, env,
+      sendEmail: deps.sendEmail
     });
     return res.status(result.status || (result.ok ? 200 : 503)).json({
       ...result, consent_text: CONSENT_TEXT[kind], consent_version: CONSENT_VERSION,
       privacy_url: PRIVACY_URL
     });
+  }
+  if (body.action === "verify_email") {
+    const result = await (deps.verifyEmail || verifyAccountMfaEmail)(database, {
+      accountId: identity.accountId, orgId: identity.orgId,
+      sessionId: identity.sessionId, code: body.email_code, env
+    });
+    return res.status(result.status || (result.ok ? 200 : 400)).json(result);
   }
   if (body.action === "authorize") {
     const result = await (deps.authorize || authorizeAccountPlaidLink)(database, {

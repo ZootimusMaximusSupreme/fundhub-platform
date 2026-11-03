@@ -10,7 +10,8 @@
 //     DATABASE_URL="..." node scripts/retention-purge.mjs --staff <staff-uuid>
 //
 //   For real — this DELETES AND REWRITES DATA:
-//     DATABASE_URL="..." node scripts/retention-purge.mjs --staff <staff-uuid> --apply
+//     FUNDHUB_OPERATOR_SESSION=<recent-MFA-session> DATABASE_URL="..." \
+//       node scripts/retention-purge.mjs --apply
 //
 // ============================================================================
 // *** THIS TOOL IS NEVER SCHEDULED. ***
@@ -71,14 +72,14 @@ import { randomUUID } from "node:crypto";
 const ALLOWED_ROLES = ["admin"];
 
 export function parseArgs(argv) {
-  const out = { apply: false, staffId: null, sessionToken: null, help: false, unknown: [] };
+  const out = { apply: false, staffId: null, help: false, unknown: [] };
   const rest = [...argv];
   while (rest.length) {
     const arg = rest.shift();
     switch (arg) {
       case "--apply": out.apply = true; break;
       case "--staff": out.staffId = rest.shift() ?? null; break;
-      case "--session": out.sessionToken = rest.shift() ?? null; break;
+      case "--session": rest.shift(); out.unknown.push("--session"); break;
       case "-h":
       case "--help": out.help = true; break;
       default: out.unknown.push(arg);
@@ -94,11 +95,16 @@ retention-purge — report expired data, and only remove it when told to.
     DATABASE_URL="..." node scripts/retention-purge.mjs --staff <staff-uuid>
 
   For real (THIS DELETES AND REWRITES DATA):
-    DATABASE_URL="..." node scripts/retention-purge.mjs --staff <staff-uuid> --apply
+    FUNDHUB_OPERATOR_SESSION=<recent-MFA-session> DATABASE_URL="..." node scripts/retention-purge.mjs --apply
 
   --staff <uuid>     Who is running this. The org is read off this staff record.
-  --session <token>  Alternative to --staff: a live session token.
   --apply            Actually act. Without it nothing is written.
+
+A live session may be supplied with FUNDHUB_OPERATOR_SESSION for a dry run too.
+Never put a session token on the command line.
+
+An apply requires FUNDHUB_OPERATOR_SESSION in the environment, from a live
+owner/admin session with MFA verified within the last 10 minutes.
 
 There is no --org flag, on purpose: the org comes from your own record so that
 nobody can purge a tenant they do not belong to.
@@ -113,7 +119,8 @@ export async function resolveActor(dbh, { staffId, sessionToken, env = process.e
   if (sessionToken) {
     const result = await verifySession(dbh, sessionToken, { env });
     if (!result?.staff) return { error: "that session is not valid — log in again" };
-    return gateStaff(result.staff);
+    const gated = gateStaff(result.staff);
+    return gated.error ? gated : { ...gated, session: result.session };
   }
 
   if (staffId) {
@@ -139,6 +146,19 @@ function gateStaff(staff) {
     return { error: `role "${staff.role ?? "none"}" may not run a retention purge (needs owner or admin)` };
   }
   return { staff: { id: staff.id, orgId: staff.org_id, role: staff.role, name: staff.name } };
+}
+
+export function validateApplySession(args, actor, { env = process.env, now = Date.now() } = {}) {
+  if (!args.apply) return null;
+  if (args.staffId) {
+    return "--apply requires FUNDHUB_OPERATOR_SESSION, not --staff";
+  }
+  if (!env.FUNDHUB_OPERATOR_SESSION) return "--apply requires FUNDHUB_OPERATOR_SESSION";
+  const verifiedAt = Date.parse(actor?.session?.mfaVerifiedAt ?? "");
+  if (!Number.isFinite(verifiedAt) || verifiedAt > now || now - verifiedAt > 10 * 60_000) {
+    return "--apply requires MFA verified in this session within the last 10 minutes";
+  }
+  return null;
 }
 
 const money = (cents) =>
@@ -326,10 +346,24 @@ export async function main(argv = process.argv.slice(2), { dbh = db, out = conso
     return 2;
   }
 
-  const actor = await resolveActor(dbh, { staffId: args.staffId, sessionToken: args.sessionToken });
+  const applyInputError = validateApplySession(args, null);
+  if (applyInputError && (args.staffId || !process.env.FUNDHUB_OPERATOR_SESSION)) {
+    out.error(`refusing to run: ${applyInputError}`);
+    return 2;
+  }
+
+  const actor = await resolveActor(dbh, {
+    staffId: args.staffId,
+    sessionToken: args.staffId ? null : process.env.FUNDHUB_OPERATOR_SESSION
+  });
   if (actor.error) {
     // Fail closed, and say so rather than falling back to anything.
     out.error(`refusing to run: ${actor.error}`);
+    return 2;
+  }
+  const applyError = validateApplySession(args, actor);
+  if (applyError) {
+    out.error(`refusing to run: ${applyError}`);
     return 2;
   }
 

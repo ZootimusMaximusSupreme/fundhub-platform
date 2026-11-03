@@ -49,7 +49,6 @@ let staffA = null;
    first or the client delete fails. */
 async function wipe(orgId) {
   for (const sql of [
-    `DELETE FROM retention_run_receipts WHERE org_id = $1`,
     `DELETE FROM pii_access_log     WHERE org_id = $1`,
     `DELETE FROM events             WHERE org_id = $1`,
     `DELETE FROM bank_transactions  WHERE org_id = $1`,

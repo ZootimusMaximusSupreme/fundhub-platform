@@ -112,8 +112,34 @@ SELECT
   ) AS links_no_session
 `.trim();
 
+// A Plaid Link grant is durable evidence that an account completed MFA and
+// consented to the right data scope. Only counts leave this read.
+export const PLAID_GRANT_SQL = `
+/* gap:auth-plaid-consent-integrity */
+SELECT count(*)::int AS recent_grants,
+       count(*) FILTER (WHERE
+         c.confirmed_at IS NULL
+         OR a.id IS NULL
+         OR a.org_id <> g.org_id
+         OR (g.target_kind = 'client_bank' AND a.client_id IS DISTINCT FROM g.target_id)
+         OR (g.target_kind = 'affiliate_payout' AND a.affiliate_id IS DISTINCT FROM g.target_id)
+         OR g.consent_version <> 'plaid-link-2026-11-02'
+         OR btrim(g.consent_text) = ''
+         OR btrim(g.privacy_url) = ''
+         OR (g.target_kind = 'client_bank' AND g.consent_scope <> '["accounts","balances","transactions"]'::jsonb)
+         OR (g.target_kind = 'affiliate_payout' AND g.consent_scope <> '["payout_account"]'::jsonb)
+         OR (g.consumed_at IS NOT NULL AND g.link_opened_at IS NULL)
+       )::int AS broken_grants
+  FROM account_plaid_link_grants g
+  LEFT JOIN accounts a ON a.id = g.account_id
+  LEFT JOIN account_plaid_mfa_credentials c ON c.account_id = g.account_id AND c.org_id = g.org_id
+ WHERE g.created_at > now() - interval '30 days'
+   AND g.account_id IS NOT NULL
+`.trim();
+
 export const FIX_MAGIC = "A sign-in link or a portal link had no email queued. Read EMAIL-PORTAL-MAGIC-LINK. Do not send from this pulse.";
 export const FIX_SIGNIN = "A sign-in said yes and no session was made, so the person got an error. Read createSession and the account session insert. Do not write from this pulse.";
+export const FIX_PLAID = "Review recent account Plaid MFA and consent grants. A broken receipt must not be used to open or exchange a bank Link token.";
 
 export function check(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
@@ -202,4 +228,22 @@ export async function signinNoSession(db) {
     "PASS",
     `${staffOk} staff sign-ins and ${linksUsed} used magic links in 24 hours. Each one has a session.`
   );
+}
+
+export async function plaidGrantIntegrity(db) {
+  const id = "gap:auth-plaid-consent-integrity";
+  try {
+    const row = (await db.query(PLAID_GRANT_SQL)).rows?.[0];
+    const recent = num(row?.recent_grants);
+    const broken = num(row?.broken_grants);
+    if (recent == null || broken == null) {
+      return check(id, "FAIL", "Plaid MFA and consent grant counts did not come back.", FIX_PLAID);
+    }
+    if (broken > 0) {
+      return check(id, "FAIL", `${broken} of ${recent} recent Plaid Link grants lack valid MFA, target, consent, or exchange evidence.`, FIX_PLAID);
+    }
+    return check(id, "PASS", `${recent} recent Plaid Link grants have valid MFA, target, consent, and exchange evidence.`);
+  } catch (err) {
+    return check(id, "FAIL", `Plaid MFA and consent grants could not be read: ${clip(err)}`, FIX_PLAID);
+  }
 }

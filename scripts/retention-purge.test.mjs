@@ -15,7 +15,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
 
-import { parseArgs, plan, apply, resolveActor } from "./retention-purge.mjs";
+import { parseArgs, plan, apply, resolveActor, validateApplySession } from "./retention-purge.mjs";
 import { CLASSES, MOCK_EVENT_KEY_PATTERNS, MOCK_CLIENT_EMAILS } from "../src/retention/classes.mjs";
 import { DATA_CLASSES, loadPolicy, RetentionError } from "../src/retention/policy.mjs";
 
@@ -102,8 +102,20 @@ describe("dry run is the default, and it does not write", () => {
   test("parseArgs defaults apply to false — the flag has to be typed", () => {
     assert.equal(parseArgs([]).apply, false);
     assert.equal(parseArgs(["--staff", "abc"]).apply, false);
-    assert.equal(parseArgs(["--session", "tok"]).apply, false);
+    assert.deepEqual(parseArgs(["--session", "sensitive-token"]).unknown, ["--session"]);
     assert.equal(parseArgs(["--apply"]).apply, true);
+  });
+
+  test("apply needs a live operator session with recent MFA, never a typed staff id", () => {
+    const env = { FUNDHUB_OPERATOR_SESSION: "opaque-test-token" };
+    const now = Date.parse("2026-11-02T12:00:00Z");
+    const actor = { session: { mfaVerifiedAt: "2026-11-02T11:55:00Z" } };
+    assert.match(validateApplySession({ apply: true, staffId: "staff-1" }, actor, { env, now }), /not --staff/);
+    assert.match(validateApplySession({ apply: true }, actor, { env: {}, now }), /requires FUNDHUB_OPERATOR_SESSION/);
+    assert.match(validateApplySession({ apply: true }, { session: { mfaVerifiedAt: "2026-11-02T11:40:00Z" } }, { env, now }), /within the last 10 minutes/);
+    assert.match(validateApplySession({ apply: true }, { session: { mfaVerifiedAt: null } }, { env, now }), /within the last 10 minutes/);
+    assert.equal(validateApplySession({ apply: true }, actor, { env, now }), null);
+    assert.equal(validateApplySession({ apply: false, staffId: "staff-1" }, null, { env: {}, now }), null);
   });
 
   test("a typo does not become a dry run that looks like an apply, or vice versa", () => {

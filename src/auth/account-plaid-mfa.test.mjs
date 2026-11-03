@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { totpAt } from "./mfa.mjs";
 import { hashToken } from "./session.mjs";
-import { accountMfaSetup, authorizeAccountPlaidLink,
+import { accountMfaSetup, verifyAccountMfaEmail, authorizeAccountPlaidLink,
   advanceAccountPlaidLink } from "./account-plaid-mfa.mjs";
 import plaidMfaRoute from "../../api/auth/plaid-mfa.mjs";
 
@@ -13,8 +13,30 @@ const id = { accountId: "account-1", orgId: "org-1", sessionId: "session-1",
 const at = Date.parse("2026-11-02T20:00:00Z");
 
 function fakeDb() {
-  const state = { credential: null, grant: null };
+  const state = { credential: null, challenge: null, grant: null };
   const db = { state, async query(sql, params = []) {
+    if (sql.includes("SELECT account_session_id,code_hash,expires_at,attempts,verified_at,sent_at") ||
+        sql.includes("SELECT account_session_id,code_hash,expires_at,attempts,verified_at")) {
+      return { rows: state.challenge ? [state.challenge] : [] };
+    }
+    if (sql.includes("SELECT verified_at,expires_at FROM account_plaid_mfa_email_challenges")) {
+      return { rows: state.challenge && state.challenge.account_session_id === params[2]
+        ? [state.challenge] : [] };
+    }
+    if (sql.includes("INSERT INTO account_plaid_mfa_email_challenges")) {
+      state.challenge = { account_session_id: params[2], code_hash: params[3],
+        expires_at: params[4], attempts: 0, verified_at: null, sent_at: params[5] };
+      return { rows: [] };
+    }
+    if (sql.includes("UPDATE account_plaid_mfa_email_challenges")) {
+      if (sql.includes("attempts=attempts+1")) state.challenge.attempts++;
+      if (sql.includes("verified_at=now()")) state.challenge.verified_at = new Date(at).toISOString();
+      return { rows: [] };
+    }
+    if (sql.includes("DELETE FROM account_plaid_mfa_email_challenges")) {
+      state.challenge = null;
+      return { rows: [] };
+    }
     if (sql.includes("SELECT secret_ciphertext, confirmed_at FROM account_plaid_mfa_credentials")) {
       return { rows: state.credential ? [state.credential] : [] };
     }
@@ -27,7 +49,7 @@ function fakeDb() {
       return { rows: state.credential ? [state.credential] : [] };
     }
     if (sql.includes("SELECT secret_ciphertext,confirmed_at,last_counter,failed_attempts,failed_window_at")) {
-      return { rows: state.credential ? [state.credential] : [] };
+      return { rows: state.credential ? [{ ...state.credential }] : [] };
     }
     if (sql.includes("UPDATE account_plaid_mfa_credentials")) {
       if (sql.includes("SET confirmed_at")) {
@@ -70,11 +92,28 @@ function fakeDb() {
 
 test("one authenticator code and explicit consent authorize only one scoped Link flow", async () => {
   const db = fakeDb();
-  const setup = await accountMfaSetup(db, { accountId: id.accountId,
-    orgId: id.orgId, email: "person@example.test", env });
+  let emailCode;
+  const challenge = await accountMfaSetup(db, { ...id,
+    email: "person@example.test", env, at,
+    sendEmail: async ({ body }) => { emailCode = body.match(/:\s(\d{6})/)[1]; return { mailed: true }; } });
+  assert.equal(challenge.email_verification_required, true);
+  assert.equal(challenge.secret, undefined);
+  assert.equal(db.state.credential, null);
+  const repeat = await accountMfaSetup(db, { ...id, email: "person@example.test", env, at,
+    sendEmail: async () => { throw new Error("same challenge must not resend"); } });
+  assert.equal(repeat.email_verification_required, true);
+  assert.equal(repeat.email_sent, false);
+  assert.equal((await verifyAccountMfaEmail(db, { ...id, sessionId: "wrong", code: emailCode, env, at })).ok, false);
+  assert.equal((await verifyAccountMfaEmail(db, { ...id, code: "000000", env, at })).error, "invalid_email_code");
+  assert.equal((await verifyAccountMfaEmail(db, { ...id, code: emailCode, env, at })).ok, true);
+  const setup = await accountMfaSetup(db, { ...id,
+    email: "person@example.test", env, at });
   assert.equal(setup.ok, true);
   assert.match(setup.otpauth_uri, /^otpauth:\/\/totp\//);
   const code = totpAt(setup.secret, Math.floor(at / 30000));
+  const noEmailProof = await authorizeAccountPlaidLink(db, { ...id, sessionId: "wrong",
+    code, consent: true, env, at });
+  assert.equal(noEmailProof.error, "email_verification_required");
   const noConsent = await authorizeAccountPlaidLink(db, { ...id, code,
     consent: false, env, at });
   assert.equal(noConsent.error, "consent_required");
@@ -87,6 +126,7 @@ test("one authenticator code and explicit consent authorize only one scoped Link
   const approved = await authorizeAccountPlaidLink(db, { ...id, code,
     consent: true, env, at });
   assert.equal(approved.ok, true);
+  assert.equal(db.state.challenge, null);
   assert.equal(db.state.grant.token_hash, hashToken(approved.grant_token));
   assert.deepEqual(db.state.grant.consent_scope, ["accounts", "balances", "transactions"]);
   assert.match(db.state.grant.consent_text, /collect, process, use, and store/);
@@ -111,6 +151,22 @@ test("one authenticator code and explicit consent authorize only one scoped Link
     token: approved.grant_token, stage: "exchange" }), null);
 });
 
+test("email challenge expires and stops after five wrong codes", async () => {
+  const db = fakeDb();
+  let emailCode;
+  await accountMfaSetup(db, { ...id, email: "person@example.test", env, at,
+    sendEmail: async ({ body }) => { emailCode = body.match(/:\s(\d{6})/)[1]; return { mailed: true }; } });
+  const bad = emailCode === "000000" ? "111111" : "000000";
+  for (let i = 0; i < 5; i++) {
+    assert.equal((await verifyAccountMfaEmail(db, { ...id, code: bad, env, at })).error,
+      "invalid_email_code");
+  }
+  assert.equal((await verifyAccountMfaEmail(db, { ...id, code: emailCode, env, at })).error,
+    "email_code_expired");
+  assert.equal((await accountMfaSetup(db, { ...id, email: "person@example.test", env,
+    at: at + 600_001, sendEmail: async () => ({ mailed: true }) })).email_verification_required, true);
+});
+
 test("MFA route pins target to authenticated principal, not body", async () => {
   let seen;
   const res = { statusCode: 200, body: null, headers: {},
@@ -128,4 +184,23 @@ test("MFA route pins target to authenticated principal, not body", async () => {
   assert.equal(seen.targetId, id.targetId);
   assert.equal(seen.sessionId, id.sessionId);
   assert.equal(res.headers["Cache-Control"], "no-store");
+});
+
+test("email verification route binds the code to the authenticated account session", async () => {
+  let seen;
+  const res = { statusCode: 200, body: null,
+    setHeader() {}, status(n) { this.statusCode = n; return this; },
+    json(v) { this.body = v; return this; } };
+  await plaidMfaRoute({ method: "POST", body: { action: "verify_email",
+    target_kind: "client_bank", account_id: "other-account",
+    session_id: "other-session", email_code: "123456" } }, res, {
+    db: fakeDb(), env,
+    requirePrincipal: async () => ({ kind: "client", accountId: id.accountId,
+      sessionId: id.sessionId, orgId: id.orgId, clientId: id.targetId }),
+    verifyEmail: async (_db, args) => { seen = args; return { ok: true }; }
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(seen.accountId, id.accountId);
+  assert.equal(seen.sessionId, id.sessionId);
+  assert.equal(seen.code, "123456");
 });
