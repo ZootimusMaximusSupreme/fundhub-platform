@@ -66,8 +66,8 @@ export const LINES = {
   suggestionsNone: "Suggestions: none today.",
   todayWaiting: "Today: no source yet (MB4).",
   advisorWaiting: "Funding advisor files per person: no source yet. Nothing links a funding round to an advisor.",
-  systemsMissing: "Systems: the morning check did not run, so nothing was checked.",
-  systemsNotStoredToday: "Systems: no morning check is stored for today, so nothing has been checked since last night."
+  systemsMissing: "Company checks: the morning check did not run, so nothing was checked.",
+  systemsNotStoredToday: "Company checks: no morning check is stored for today, so nothing has been checked since last night."
 };
 
 export const GREETINGS = Object.freeze({
@@ -194,13 +194,32 @@ export function catalogCoverage(checks) {
    customer_sees, since, day_count and fix. The morning takes the one runDailyPulse just built (pulse.scorecard,
    the same object it saves to pulse_scorecards). Anything else reads the row
    stored for that Arizona day. Nothing here re-runs or re-maps a check. */
-export function summarizeSystems(scorecard, { prefix = "Systems:", missingLine = LINES.systemsMissing } = {}) {
+export function redEvidenceKind(check) {
+  const id = String(check?.id || "");
+  const proof = String(check?.proof || "");
+  if (id === "audit:not-checked" ||
+      (id.startsWith("wf:") && /no receipt shows this workflow started/i.test(proof)) ||
+      (id.startsWith("catalog-display:") && /no saved receipt or linked result exists/i.test(proof))) {
+    return "needs_proof";
+  }
+  if (id === "live-playwright:desks" && /\b(?:stale|old|ago)\b/i.test(proof)) return "stale_check";
+  return "failed_result";
+}
+
+export function summarizeSystems(scorecard, { prefix = "Company checks:", missingLine = LINES.systemsMissing } = {}) {
   if (!scorecard || !Array.isArray(scorecard.checks)) {
-    return { status: "missing", total: 0, green: 0, red: 0, broken: 0, not_proved: 0, na: 0, not_checked: 0, reds: [], line: missingLine };
+    return { status: "missing", total: 0, green: 0, red: 0, broken: 0, red_kinds: { failed_result: 0, needs_proof: 0, stale_check: 0 }, red_kinds_by_id: {}, not_proved: 0, na: 0, not_checked: 0, reds: [], line: missingLine };
   }
   const checks = scorecard.checks;
   const green = checks.filter((c) => c.status === "green").length;
   const reds = orderReds(checks.filter((c) => c.status === "red"));
+  const redKinds = { failed_result: 0, needs_proof: 0, stale_check: 0 };
+  const redKindsById = {};
+  for (const c of reds) {
+    const kind = redEvidenceKind(c);
+    redKinds[kind] += 1;
+    redKindsById[c.id] = kind;
+  }
   // "na" is its own count now (zero-unchecked build, 2026-10-09). It is nothing to judge
   // today, with a reason the computer re-checks, and it is not "not checked".
   const na = checks.filter((c) => c.status === "na").length;
@@ -210,7 +229,11 @@ export function summarizeSystems(scorecard, { prefix = "Systems:", missingLine =
   )).length;
   let line = `${prefix} ${green} of ${checks.length} checks green.`;
   if (reds.length) {
-    line += ` ${reds.length} broken: ` + reds.slice(0, 3).map((c) => {
+    const kinds = [];
+    if (redKinds.failed_result) kinds.push(`${redKinds.failed_result} reported ${redKinds.failed_result === 1 ? "failure" : "failures"}`);
+    if (redKinds.needs_proof) kinds.push(`${redKinds.needs_proof} ${redKinds.needs_proof === 1 ? "needs" : "need"} proof`);
+    if (redKinds.stale_check) kinds.push(`${redKinds.stale_check} ${redKinds.stale_check === 1 ? "stale check" : "stale checks"}`);
+    line += ` ${reds.length} red ${reds.length === 1 ? "check" : "checks"} (${kinds.join(", ")}). First: ` + reds.slice(0, 3).map((c) => {
       const day = c.day_count > 1 ? ` (day ${c.day_count})` : "";
       return `${c.id}${day}`;
     }).join(", ") + (reds.length > 3 ? `, and ${reds.length - 3} more in the report.` : ".");
@@ -228,6 +251,8 @@ export function summarizeSystems(scorecard, { prefix = "Systems:", missingLine =
     green,
     red: reds.length,
     broken: reds.length,
+    red_kinds: redKinds,
+    red_kinds_by_id: redKindsById,
     not_proved: notProved,
     na,
     not_checked: notChecked,
@@ -306,7 +331,7 @@ function phoenixClock(iso) {
 /** Evening systems line: today's stored morning check, or a plain "not stored". */
 export function summarizeStoredSystems(scorecard) {
   const at = scorecard?.ran_at ? phoenixClock(scorecard.ran_at) : null;
-  const prefix = at ? `Systems, from this morning's check at ${at}:` : "Systems, from this morning's check:";
+  const prefix = at ? `Company checks, from this morning's check at ${at}:` : "Company checks, from this morning's check:";
   const s = summarizeSystems(scorecard, { prefix, missingLine: LINES.systemsNotStoredToday });
   return { ...s, source: scorecard ? "stored_morning_check" : "none_stored_today" };
 }

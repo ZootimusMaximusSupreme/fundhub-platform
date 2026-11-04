@@ -4,6 +4,7 @@ import {
   MORNING_BRIEF_LIVE,
   EVENING_BRIEF_CRON,
   formatMorningText,
+  redEvidenceKind,
   summarizeSystems,
   summarizeStoredSystems,
   catalogCoverage,
@@ -45,7 +46,7 @@ test("the morning text names systems, money, marketing, team, one suggestion, an
     reportUrl: "https://fundhub.ai/app/morning-brief.html?date=2026-10-05"
   });
   assert.match(text, /^Good morning, Chris\./);
-  assert.match(text, /Systems: 1 of 2 checks green/);
+  assert.match(text, /Company checks: 1 of 2 checks green/);
   assert.match(text, /Money: \$1 in/);
   assert.match(text, /Ads and sales/);
   assert.match(text, /Team, yesterday/);
@@ -260,7 +261,7 @@ test("the systems line counts green, red and 'nothing to judge' apart, and the n
   ];
   const s = summarizeSystems({ checks });
   assert.equal(checks.length, 757);
-  assert.equal(s.line, "Systems: 690 of 757 checks green. 3 broken: job:one, job:two, job:three. 64 had nothing to judge today.");
+  assert.equal(s.line, "Company checks: 690 of 757 checks green. 3 red checks (3 reported failures). First: job:one, job:two, job:three. 64 had nothing to judge today.");
   assert.deepEqual([s.total, s.green, s.red, s.broken, s.not_proved, s.na, s.not_checked], [757, 690, 3, 3, 0, 64, 0]);
   assert.equal(s.green + s.red + s.not_proved + s.na + s.not_checked, s.total);
   assert.equal(s.reds.length, 3);
@@ -270,7 +271,7 @@ test("na is not 'not checked': 64 rows with nothing to judge leave not_checked a
   const s = summarizeSystems({ checks: [...manyRows(5, greenRow), ...manyRows(64, naRow)] });
   assert.equal(s.not_checked, 0);
   assert.equal(s.na, 64);
-  assert.equal(s.line, "Systems: 5 of 69 checks green. 64 had nothing to judge today. Nothing needs you.");
+  assert.equal(s.line, "Company checks: 5 of 69 checks green. 64 had nothing to judge today. Nothing needs you.");
 });
 
 test("'Nothing needs you' is never said while a row is red or not checked", () => {
@@ -283,7 +284,7 @@ test("'Nothing needs you' is never said while a row is red or not checked", () =
   assert.match(nc.line, /1 had nothing to judge today\./);
   assert.doesNotMatch(nc.line, /Nothing needs you/);
   const clean = summarizeSystems({ checks: [greenRow(1), greenRow(2)] });
-  assert.equal(clean.line, "Systems: 2 of 2 checks green. Nothing needs you.");
+  assert.equal(clean.line, "Company checks: 2 of 2 checks green. Nothing needs you.");
 });
 
 /* The catalog row as the real code writes it, stored the way the scorecard stores it. */
@@ -298,7 +299,7 @@ test("the systems line says the whole-company number, read from the real catalog
   const s = summarizeSystems({ checks });
   assert.equal(
     s.line,
-    "Systems: 5 of 6 checks green. 1 broken: catalog:proof-linked. Whole company: 3,919 of 3,942 items have a test or live check behind them. 23 do not yet."
+    "Company checks: 5 of 6 checks green. 1 red check (1 reported failure). First: catalog:proof-linked. Whole company: 3,919 of 3,942 items have a test or live check behind them. 23 do not yet."
   );
   assert.deepEqual([s.company.linked, s.company.total, s.company.open], [3919, 3942, 23]);
 });
@@ -306,7 +307,7 @@ test("the systems line says the whole-company number, read from the real catalog
 test("when every company item is linked the line says all of them, and still says nothing needs you", () => {
   const checks = [...manyRows(5, greenRow), storedCatalogRow({ unique: 3942, wired: 3942, red: 0 })];
   const s = summarizeSystems({ checks });
-  assert.equal(s.line, "Systems: 6 of 6 checks green. Whole company: all 3,942 items have a test or live check behind them. Nothing needs you.");
+  assert.equal(s.line, "Company checks: 6 of 6 checks green. Whole company: all 3,942 items have a test or live check behind them. Nothing needs you.");
   assert.equal(s.company.open, 0);
 });
 
@@ -323,7 +324,7 @@ test("the whole-company number is added only when the catalog row is there and i
 test("the evening line, read from the stored morning check, carries the whole-company number too", () => {
   const checks = [...manyRows(5, greenRow), storedCatalogRow({ unique: 3942, wired: 3919, red: 23 })];
   const s = summarizeStoredSystems({ ran_at: "2026-10-16T13:02:00.000Z", checks });
-  assert.match(s.line, /^Systems, from this morning's check at .*: 5 of 6 checks green\./);
+  assert.match(s.line, /^Company checks, from this morning's check at .*: 5 of 6 checks green\./);
   assert.match(s.line, /Whole company: 3,919 of 3,942 items have a test or live check behind them\. 23 do not yet\.$/);
   assert.equal(s.company.total, 3942);
 });
@@ -340,13 +341,13 @@ test("the systems line separates broken from not proved, and a marked real break
     { broken: s.broken, not_proved: s.not_proved, not_checked: s.not_checked },
     { broken: 1, not_proved: 2, not_checked: 1 }
   );
-  assert.equal(s.line, "Systems: 1 of 5 checks green. 1 broken: meta-sync. 2 not proved yet. 1 not checked.");
+  assert.equal(s.line, "Company checks: 1 of 5 checks green. 1 red check (1 reported failure). First: meta-sync. 2 not proved yet. 1 not checked.");
   assert.doesNotMatch(s.line, /Nothing needs you/);
 });
 
 test("not-proved rows never go quiet or say nothing needs you", () => {
   const s = summarizeSystems({ checks: [greenRow(1), notProvedRow(1), notProvedRow(2)] });
-  assert.equal(s.line, "Systems: 1 of 3 checks green. 2 not proved yet.");
+  assert.equal(s.line, "Company checks: 1 of 3 checks green. 2 not proved yet.");
   assert.equal(s.not_proved, 2);
   assert.doesNotMatch(s.line, /Nothing needs you/);
 });
@@ -386,7 +387,7 @@ test("reds are named in this order: new today, money tripwire, customer tripwire
     "job:plain-old",
     "job:plain-old-two"
   ]);
-  assert.match(s.line, /7 broken: job:plain-new, [^,]+, [^,]+, and 4 more in the report\./);
+  assert.match(s.line, /7 red checks \(6 reported failures, 1 needs proof\)\. First: job:plain-new, [^,]+, [^,]+, and 4 more in the report\./);
 });
 
 test("a new red that is a money tripwire comes before a new red that is plain", () => {
@@ -409,5 +410,23 @@ test("the sort never loses or changes a red, and the day suffix stays on reds pa
   const s = summarizeSystems({ checks });
   assert.equal(s.reds.length, 2);
   assert.equal(s.reds[1], checks[0], "the very same row objects");
-  assert.match(s.line, /2 broken: job:b, job:a \(day 4\)\./);
+  assert.match(s.line, /2 red checks \(2 reported failures\)\. First: job:b, job:a \(day 4\)\./);
+});
+
+test("red labels keep missing proof and stale checks red without calling them failed results", () => {
+  const rows = [
+    redRow("wf:s-04-call-booked", { proof: "1 event came and no receipt shows this workflow started." }),
+    redRow("catalog-display:desks-f.json:products-commissions.html:Page open", { proof: "no saved receipt or linked result exists" }),
+    redRow("audit:not-checked", { proof: "1 not checked" }),
+    redRow("live-playwright:desks", { proof: "Last sweep was 663.4h ago" }),
+    redRow("gap:sms-provider-failed", { proof: "76 customer texts failed at provider" }),
+  ];
+  const s = summarizeSystems({ checks: rows });
+  assert.deepEqual(s.red_kinds, { failed_result: 1, needs_proof: 3, stale_check: 1 });
+  assert.deepEqual(rows.map((c) => redEvidenceKind(c)), ["needs_proof", "needs_proof", "needs_proof", "stale_check", "failed_result"]);
+  assert.equal(s.red, 5);
+  assert.equal(s.broken, 5);
+  assert.ok(s.reds.includes(rows[0]), "the saved red rows are unchanged");
+  assert.match(s.line, /5 red checks \(1 reported failure, 3 need proof, 1 stale check\)/);
+  assert.doesNotMatch(s.line, /Nothing needs you/);
 });
