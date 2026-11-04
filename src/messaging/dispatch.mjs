@@ -218,7 +218,10 @@ export async function claimDue(db, { orgId = null, limit = DEFAULT_BATCH, now = 
      That is not a hypothetical and it is not this feature's decision to make.
      The scheduled sweeper releases held STAFF replies and retries only new
      credit-report emails. `sender_staff_id IS NOT NULL` identifies the former;
-     the exact `workflow:crs-full-report:` prefix identifies the latter.
+     the exact `workflow:crs-full-report:` prefix identifies the latter. A
+     recent `staff-alert:` row is also eligible, so a serverless interruption
+     before its send gate can be retried. Alerts older than one hour stay put;
+     sending an old lead or upcoming-call notice would mislead staff.
      Draining the legacy workflow backlog is a separate, deliberate act by a
      human and is deliberately NOT done here.
 
@@ -235,7 +238,8 @@ export async function claimDue(db, { orgId = null, limit = DEFAULT_BATCH, now = 
             AND ($1::uuid IS NULL OR org_id = $1)
             AND attempts < $4
             AND ($5::boolean IS NOT TRUE OR sender_staff_id IS NOT NULL
-                 OR provider_ref LIKE 'workflow:crs-full-report:%')
+                 OR provider_ref LIKE 'workflow:crs-full-report:%'
+                 OR (provider_ref LIKE 'staff-alert:%' AND created_at >= now() - interval '1 hour'))
           ORDER BY scheduled_at NULLS FIRST, created_at
           LIMIT $2
           FOR UPDATE SKIP LOCKED
@@ -247,6 +251,27 @@ export async function claimDue(db, { orgId = null, limit = DEFAULT_BATCH, now = 
     [orgId, limit, at, MAX_ATTEMPTS, senderStaffOnly === true]
   );
   return rows;
+}
+
+// A serverless timeout can leave a staff alert claimed before its send gate ran.
+// Only these pre-gate rows are safe to retry: once the gate passes, the provider
+// may have accepted the text even if the function died before saving its SID.
+export async function recoverPreGateStaffAlerts(db, { orgId = null } = {}) {
+  const { rows } = await db.query(
+    `UPDATE messages
+        SET status = 'queued', attempts = GREATEST(attempts - 1, 0)
+      WHERE direction = 'outbound' AND channel = 'sms'
+        AND status = 'sending' AND provider = 'internal'
+        AND provider_ref LIKE 'staff-alert:%'
+        AND compliance_check_passed IS NOT TRUE
+        AND provider_message_id IS NULL AND last_error IS NULL
+        AND last_attempt_at < now() - interval '10 minutes'
+        AND created_at >= now() - interval '1 hour'
+        AND ($1::uuid IS NULL OR org_id = $1)
+    RETURNING id`,
+    [orgId]
+  );
+  return rows.length;
 }
 
 /* routeFor — which provider carries this channel for this org.

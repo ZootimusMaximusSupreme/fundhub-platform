@@ -8,8 +8,9 @@
 //      dispatcher on a clock. The screen told the sender "it will go out on its
 //      own", which was untrue.
 //
-//   2. It does NOT release anything else. `messages` holds thousands of rows
-//      queued by workflows over months and never dispatched. A sweeper that
+//   2. It releases only held staff replies and recent pre-gate staff alerts.
+//      `messages` holds thousands of rows queued by workflows over months and
+//      never dispatched. A sweeper that
 //      drained the whole queue would put months of stale automated messages in
 //      front of real people the first time it ran. That is not this feature's
 //      decision to make, so the filter is asserted here rather than trusted to
@@ -120,7 +121,7 @@ test("sweeper: a text held overnight is sent once the window has opened",
 });
 
 /* *** THE ONE THAT MATTERS. *** */
-test("sweeper: it does NOT send messages no person wrote", { skip: !HAS_DB }, async () => {
+test("sweeper: it does NOT release the legacy workflow queue", { skip: !HAS_DB }, async () => {
   const mine = await held();
   const workflowQueued = await held({ senderStaffId: null, body: "an old automated message" });
 
@@ -136,6 +137,41 @@ test("sweeper: it does NOT send messages no person wrote", { skip: !HAS_DB }, as
     "and sending them is an owner decision, not a side effect of fixing overnight texts.");
   assert.equal(recorded().length, 1);
   assert.equal(recorded()[0].body, "good morning — following up");
+});
+
+test("sweeper retries only a recent staff alert interrupted before the send gate",
+  { skip: !HAS_DB }, async () => {
+  await db.query(`UPDATE staff SET phone = '+15550009999' WHERE id = $1`, [staffId]);
+  const makeAlert = async ({ minutesAgo, gatePassed = false }) => (await db.query(
+    `INSERT INTO messages (org_id, client_id, direction, channel, rendered_body,
+       provider, provider_ref, status, compliance_check_passed, to_address,
+       attempts, created_at, last_attempt_at)
+     VALUES ($1,$2,'outbound','sms','New lead needs review','internal',
+       'staff-alert:lead:' || gen_random_uuid()::text || ':' || $3::text,
+       'sending',$4,'+15550009999',1,
+       now() - ($5::int * interval '1 minute'),
+       now() - ($5::int * interval '1 minute'))
+     RETURNING id`, [orgId, clientId, staffId, gatePassed, minutesAgo]
+  )).rows[0].id;
+  const recent = await makeAlert({ minutesAgo: 20 });
+  const uncertain = await makeAlert({ minutesAgo: 20, gatePassed: true });
+  const stale = await makeAlert({ minutesAgo: 120 });
+
+  const result = await sweep();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.recovered, 1);
+  assert.equal(result.claimed, 1);
+  const rows = (await db.query(
+    `SELECT id, status, attempts FROM messages WHERE id = ANY($1)`,
+    [[recent, uncertain, stale]]
+  )).rows;
+  const byId = Object.fromEntries(rows.map((row) => [row.id, row]));
+  assert.equal(byId[recent].status, "sent");
+  assert.equal(byId[recent].attempts, 1, "the interrupted pre-gate claim was refunded");
+  assert.equal(byId[uncertain].status, "sending", "a possible provider send must not be replayed");
+  assert.equal(byId[stale].status, "sending", "an old lead alert must not arrive late");
+  assert.equal(recorded().length, 1);
 });
 
 test("sweeper: every message is re-checked on the way out, not trusted",
