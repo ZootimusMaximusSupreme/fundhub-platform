@@ -1,0 +1,14 @@
+Fundhub iOS release handoff — 2026-11-04
+Owner lane: native. Worktree: /private/tmp/fundhub-ios-release-handoff. Branch: codex/ios-release-handoff-20261104.
+
+Goal: a valid uploaded Fundhub iOS build must not sit unsubmitted because the App Store Connect handoff was missed.
+Workflow A (this branch): exact version/build/SHA status; explicit apply after current-main 14-job CI; attach exact VALID build, set release type, submit, read back receipt.
+Workflow B (separate future native release): archive, export, validate, upload, wait VALID, then run this handoff. It must wait for version/build metadata, signed export, and real-iPhone checks. The current repo has an Xcode project and ExportOptions.plist but no checked-in signed-device or upload runner. Do not claim this branch covers those stages.
+Future agent prompt: "On a separate native branch, build one pinned-SHA Fundhub iOS path that sets exact app/widget version and build, archives with the App Store Connect API key, exports with ExportOptions.plist, validates and uploads the IPA, waits for the exact build to become VALID, runs a signed real-iPhone check, then calls scripts/ios-release-handoff.mjs for exact-main submission. Keep secrets out of logs and preserve the read-only default."
+
+Use: node --env-file=.env scripts/ios-release-handoff.mjs --version 1.0.3 --build 9 --sha <exact-main-sha>
+Submit a future release only after the read-only result is checked: add --apply --release-type AFTER_APPROVAL (or MANUAL when that is the owner's chosen release intent). The script checks current GitHub main and all 14 named CI jobs before any Apple write. It never prints key material.
+
+Live read-only check on 2026-11-04: 1.0.3 build 9 was VALID and attached, WAITING_FOR_REVIEW, AFTER_APPROVAL, with review submission submitted 2026-11-04T20:59:28.106Z. This branch made no Apple write. App Review demo client login and session were separately checked by the release owner; those checks are not a signed iPhone test.
+
+Proof: 8 focused tests passed, lint parsed 4,678 files, TypeScript and rules:check passed. Required preflight found zero blocking file overlaps. It reported one newer main commit; ship-change must restack before PR. PR will be recorded after shipping. Deployment and a future submission receipt remain pending. No DB tests apply to this Apple-only CLI change; skip count 0.
