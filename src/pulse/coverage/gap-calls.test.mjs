@@ -195,14 +195,24 @@ test("booking webhook: a stored event with no bookings row fails; an interview b
 });
 
 test("booking webhook: a ClickFunnels capture with no event and no row fails; the two misses add up", async () => {
-  const cap = await run({ rows: { captures: [{ key: "w-1" }] } });
+  const cap = await run({ rows: { captures: [{ key: "w-1", handler_recorded: true, handler_succeeded: true }] } });
   assert.equal(cap.by["calls:booking-webhook"].status, "FAIL");
   assert.match(cap.by["calls:booking-webhook"].detail, /1 booking webhook accepted/);
 
   const both = await run({
-    rows: { captures: [{ key: "w-1" }, { key: "w-2" }], events: [{ key: "e-1", payload: { bookingUid: "x" } }] }
+    rows: { captures: [{ key: "w-1", handler_recorded: true, handler_succeeded: true }, { key: "w-2", handler_recorded: true, handler_succeeded: true }], events: [{ key: "e-1", payload: { bookingUid: "x" } }] }
   });
   assert.match(both.by["calls:booking-webhook"].detail, /3 booking webhooks accepted/);
+
+  const old = await run({ rows: { captures: [{ key: "w-old", handler_recorded: false, handler_succeeded: false }] } });
+  assert.equal(old.by["calls:booking-webhook"].status, "FAIL");
+  assert.match(old.by["calls:booking-webhook"].detail, /no post-handler outcome/);
+  assert.doesNotMatch(old.by["calls:booking-webhook"].detail, /accepted/);
+
+  const rejected = await run({ rows: { captures: [{ key: "w-rejected", handler_recorded: true, handler_succeeded: false }] } });
+  assert.equal(rejected.by["calls:booking-webhook"].status, "FAIL");
+  assert.match(rejected.by["calls:booking-webhook"].detail, /rejected handler outcome/);
+  assert.doesNotMatch(rejected.by["calls:booking-webhook"].detail, /no post-handler outcome|accepted/);
 });
 
 test("booking webhook SQL: wait before judging, created/moved only, call id read from data.id", async () => {
@@ -220,6 +230,7 @@ test("booking webhook SQL: wait before judging, created/moved only, call id read
   assert.match(caps.text, /"data"/);
   assert.match(caps.text, /scheduled_event\[\.\]\(created\|rescheduled\)/);
   assert.match(caps.text, /email_address/);
+  assert.match(caps.text, /parsed->'outcome'/);
   assert.match(caps.text, /FROM events e/);
   assert.match(caps.text, /FROM bookings b/);
 });
@@ -609,7 +620,7 @@ const COLS = {
   clients: [["id", "uuid"], ["org_id", "uuid"], ["is_demo", "boolean"], ["custom_fields", "jsonb"], ["phone", "text"], ["email", "text"]],
   call_outcomes: [["id", "uuid"], ["org_id", "uuid"], ["client_id", "uuid"], ["booking_ref", "text"], ["is_demo", "boolean"], ["logged_at", "timestamptz"]],
   events: [["id", "uuid"], ["org_id", "uuid"], ["client_id", "uuid"], ["name", "text"], ["is_demo", "boolean"], ["created_at", "timestamptz"], ["payload", "jsonb"]],
-  webhook_captures: [["id", "uuid"], ["org_id", "uuid"], ["provider", "text"], ["raw_body", "text"], ["created_at", "timestamptz"]],
+  webhook_captures: [["id", "uuid"], ["org_id", "uuid"], ["provider", "text"], ["raw_body", "text"], ["parsed", "jsonb"], ["created_at", "timestamptz"]],
   agents: [["org_id", "uuid"], ["code", "text"], ["status", "text"], ["runtime", "text"], ["prompt", "text"]],
   outbound_calls: [["org_id", "uuid"], ["client_id", "uuid"], ["kind", "text"], ["created_at", "timestamptz"]],
   failed_events: [["org_id", "uuid"], ["event_id", "uuid"], ["client_id", "uuid"], ["handler_name", "text"], ["first_seen_at", "timestamptz"]]
@@ -640,7 +651,8 @@ describe("gap-calls SQL on the Postgres engine, over fixture rows", { skip: HAVE
   const booking = (o = {}) => ({ id: BK, org_id: org, client_id: CL, provider_uid: "72964", starts_at: ago(3), ends_at: ago(2.5), status: "booked", raw: {}, attendee_email: "lead@example.com", ...o });
   const event = (o = {}) => ({ id: uid(), org_id: org, client_id: CL, name: "booking.created", is_demo: false, created_at: ago(2), payload: { bookingUid: "72964", email: "lead@example.com", startTime: ago(-24) }, ...o });
   const cfBody = (callId, email = true) => JSON.stringify({ id: 1054662981, type: "appointments/scheduled_event.created", data: { id: Number(callId), primary_contact: { first_name: "A", ...(email ? { email_address: "lead@example.com" } : {}) } } });
-  const capture = (body, o = {}) => ({ id: uid(), org_id: null, provider: "clickfunnels", raw_body: body, created_at: ago(2), ...o });
+  const capture = (body, o = {}) => ({ id: uid(), org_id: null, provider: "clickfunnels", raw_body: body,
+    parsed: { status: 200, outcome: { ok: true } }, created_at: ago(2), ...o });
   const josh = (o = {}) => ({ org_id: org, code: "AG-04", status: "live", runtime: "bland", prompt: "You are Chris", ...o });
 
   /* NOW is 2026-10-08, before join links were kept, so these cases count the join-link feed from the start of
@@ -700,6 +712,8 @@ describe("gap-calls SQL on the Postgres engine, over fixture rows", { skip: HAVE
     assert.equal(await status(id, { webhook_captures: [capture(cfBody(999001, false))] }), "PASS");
     assert.equal(await status(id, { webhook_captures: [capture(cfBody(72964), { created_at: ago(0.03) })] }), "PASS");
     assert.equal(await status(id, { webhook_captures: [capture(cfBody(72964), { provider: "twilio" })] }), "PASS");
+    assert.equal(await status(id, { webhook_captures: [capture(cfBody(72964), { parsed: { id: 1054662981 } })] }), "FAIL");
+    assert.equal(await status(id, { webhook_captures: [capture(cfBody(72964), { parsed: { status: 200, outcome: { ok: false } } })] }), "FAIL");
   });
 
   test("ai-dial: live setter, a late booking, a phone, no dial row and no failure row fails", async () => {
