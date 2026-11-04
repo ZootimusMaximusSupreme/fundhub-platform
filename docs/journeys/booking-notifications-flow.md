@@ -301,6 +301,13 @@ start-over copy. A logged setter no-answer from the same client in the 24 hours
 before opt-in, or afterward, suppresses S-02 texts but not emails.
 Live email delivery and resume opening still require production proof.
 
+**Calendar entry repair (2026-11-04 source).** The final `/apply` answer waits for
+the webhook's `survey.completed` response before the embedded calendar or Meta
+Lead event appears. A refused or missing save leaves the final answer on screen
+with a retry message. Earlier per-screen posts remain best-effort; the final post
+carries every answer. This requires a live browser and persisted-row check after
+the ClickFunnels page push.
+
 "Finished" means `survey.completed`. A reply means a `message.inbound` event for
 the client after the flow started.
 
@@ -651,26 +658,26 @@ booking to `/apply` and move to `/thank-you`. `/funding-book-call` runs event ty
 Each booking message names its page (`page.id`), which is how the two calendars are
 told apart.
 
-**Text and email links (2026-10-30).** Every text and email link to a call is
+**Text and email links (updated 2026-11-04).** Every text and email link to a call is
 `{{custom_values.booking_link}}`, filled by `clientContext` in
-`src/workflows/messaging.mjs`. It reads the lead's saved score answer
-(`cf_svy_self_reported_fico`, or its label): 700 and up (700-759, 760-850, or the
-older 700-749 and 750+) gets `/funding-book-call?fh_tier=q`; every other answer,
-"Not sure" too, gets
-`/funding-book-call--02424?fh_tier=u`; no readable answer keeps
-`/funding-book-call` with no mark. A link saved on the lead's file still wins.
-Opened straight from a text, either calendar page keeps the mark for that tab, so
-its booking sends Schedule plus QualifiedSchedule or UnqualifiedSchedule, browser
-and server under one id. The second calendar is on the tracker's and the server's
-page lists as step 3 of the watch funnel, and counts the same Cortana booking
-steps as the first.
+`src/workflows/messaging.mjs`. Funding links enter `/apply`, including older
+saved Fundhub calendar links and leads with a saved score. Once the final survey
+post is accepted, the embedded calendar uses the score answer: 700 and up opens
+`/funding-book-call`; every other answer, including "Not sure," opens
+`/funding-book-call--02424`. A separate saved calendar URL outside the two
+Fundhub funding calendar paths still wins. The second calendar is on the
+tracker’s and server’s steps as the first. Booking emails get an email-bound
+signed resume link that restores saved answers; texts keep the plain `/apply`
+address because a phone number can be shared.
 
 **Setter desk links (2026-10-31).** The setter desk uses the same rule. Each lead
 in `GET /api/read/setter-dashboard` carries its own `booking_url`
 (`listSetterQueue` in `src/setter/dashboard.mjs`, via `tierBookingLink`), and that
-lead's **Open booking calendar** and **Move call time** links open it. A lead with
-no readable answer keeps the plain `/funding-book-call` link. So a link a setter
-copies into a text sends the lead to their own calendar.
+lead's **Open booking calendar** and **Move call time** links open `/apply`.
+Both native calendar pages return every top-level visit to `/apply`, including
+visits with a public `fh_tier` marker. Frames inside `/apply` and the paid
+`/roadmap-book` keep their existing calendar. A real booking must still be
+reconciled with a saved survey under the same identity before it is called qualified.
 
 **After a direct booking on the second calendar, and setter corrections
 (2026-10-31).** ClickFunnels sends a booker on `/funding-book-call--02424` to the

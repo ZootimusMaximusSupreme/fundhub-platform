@@ -36,8 +36,7 @@ import { hasSetterNoAnswer } from "./stop-on-setter.mjs";
 
 const HAS_DB = isLocalScratchDatabaseUrl(process.env.DATABASE_URL);
 const SLUG = "followup-chases-test";
-const Q = "https://apply.fundhub.ai/funding-book-call?fh_tier=q";
-const U = "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u";
+const SURVEY = "https://apply.fundhub.ai/apply";
 
 let orgId = null;
 let seq = 0;
@@ -207,7 +206,7 @@ test("rebookedSince: a booking or a reschedule AFTER the run began counts; one f
 
 /* ── S-NOBOOK end to end ───────────────────────────────────────────────────── */
 
-test("S-NOBOOK, qualified: six messages are written, every link on the first calendar",
+test("S-NOBOOK, qualified: six messages are written, every link enters the survey",
   { skip: !HAS_DB }, async () => {
     const clientId = await makeClient({ customFields: { cf_svy_self_reported_fico_label: "760-850" } });
     const event = await trigger("survey.completed", clientId, FINISHED_4PM);
@@ -224,8 +223,8 @@ test("S-NOBOOK, qualified: six messages are written, every link on the first cal
     for (const m of rows) {
       assert.equal(m.status, "queued");
       assert.equal(m.direction, "outbound");
-      assert.ok(m.rendered_body.includes(Q), m.rendered_body);
-      assert.ok(!m.rendered_body.includes(U), m.rendered_body);
+      assert.ok(m.rendered_body.includes(SURVEY), m.rendered_body);
+      assert.ok(!m.rendered_body.includes("funding-book-call"), m.rendered_body);
     }
     assert.deepEqual(plannedTimes(step), {
       "wait-until-msg1": "2026-11-01T16:00:00.000Z",
@@ -234,7 +233,7 @@ test("S-NOBOOK, qualified: six messages are written, every link on the first cal
     });
   });
 
-test("S-NOBOOK, not qualified: every link is on the second calendar, and a saved older answer still reads right",
+test("S-NOBOOK, not qualified: every link enters the survey, including an older answer",
   { skip: !HAS_DB }, async () => {
     for (const label of ["620-699", "500-619", "Not sure", "650-699"]) {
       const clientId = await makeClient({ customFields: { cf_svy_self_reported_fico_label: label } });
@@ -242,11 +241,11 @@ test("S-NOBOOK, not qualified: every link is on the second calendar, and a saved
       await runChase({ event, db, step: recordingStep(), now: IN_15_MIN });
       const rows = await queued(clientId);
       assert.equal(rows.length, 6, label);
-      for (const m of rows) assert.ok(m.rendered_body.includes(U) && !m.rendered_body.includes(Q), `${label}: ${m.rendered_body}`);
+      for (const m of rows) assert.ok(m.rendered_body.includes(SURVEY) && !m.rendered_body.includes("funding-book-call"), `${label}: ${m.rendered_body}`);
     }
     const old = await makeClient({ customFields: { cf_svy_self_reported_fico_label: "750+" } });
     await runChase({ event: await trigger("survey.completed", old, FINISHED_4PM), db, step: recordingStep(), now: IN_15_MIN });
-    assert.ok((await queued(old)).every((m) => m.rendered_body.includes(Q)));
+    assert.ok((await queued(old)).every((m) => m.rendered_body.includes(SURVEY)));
   });
 
 test("S-NOBOOK: a text reply that has no person on its event stops text 2 (matched by the sender's number)",
@@ -317,7 +316,7 @@ test("AI-SET-03, a call ahead: the call-booked texts carry the time of that call
     });
   });
 
-test("AI-SET-03, no call ahead: the opt-in texts carry the person's own calendar link",
+test("AI-SET-03, no call ahead: the opt-in texts enter the survey",
   { skip: !HAS_DB }, async () => {
     const clientId = await makeClient({ customFields: { cf_svy_self_reported_fico_label: "620-699" } });
     const event = await trigger("setter.no_answer", clientId, AT_4_50_PM, PRESSED);
@@ -325,7 +324,7 @@ test("AI-SET-03, no call ahead: the opt-in texts carry the person's own calendar
     assert.equal(res.exitedAt, "completed");
     const rows = await queued(clientId);
     assert.deepEqual(rows.map((m) => m.template_key), [OPTIN1_KEY, OPTIN2_KEY, OPTIN3_KEY]);
-    for (const m of rows) assert.ok(m.rendered_body.includes(U), m.rendered_body);
+    for (const m of rows) assert.ok(m.rendered_body.includes(SURVEY), m.rendered_body);
   });
 
 test("AI-SET-03: moving the call while text 2 waited for 9 a.m. stops it; a booking from before the run does not",

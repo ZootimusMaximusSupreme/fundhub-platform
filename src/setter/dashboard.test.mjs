@@ -8,6 +8,15 @@ import { sanitizeHandoffPatch, sanitizeSetterResidentialAddress, missingForCompl
 const STAFF = { id: "staff-1", org_id: "org-1", role: "owner", name: "Chris" };
 const CLIENT_ID = "11111111-1111-1111-1111-111111111111";
 const ADDRESS_TEST_DB = process.env.APP_DATABASE_URL || process.env.DATABASE_URL;
+const COMPLETE_SURVEY = {
+  cf_svy_funding_target_amount: "$100k - $200k",
+  cf_svy_planned_use: "Equipment or buildout",
+  cf_svy_money_change_now: ["Stability (cover bills / buffer slow weeks)"],
+  cf_svy_has_business: "No, personal funding only",
+  cf_svy_annual_income_range: "$100k-$199k",
+  cf_svy_income_verifiable: "Yes, W-2 or tax returns",
+  cf_svy_available_capital: "$5k - $9,999"
+};
 
 test("survey summary shows nested ClickFunnels choices as readable answers", () => {
   const answers = surveySummary({
@@ -411,46 +420,47 @@ test("queue returns booked and opt-in leads with survey echo and saved handoff",
   assert.equal(result.numbers.dials, 0);
 });
 
-test("each queued lead carries its own calendar link from its saved score", async () => {
+test("each queued lead enters the survey regardless of saved score", async () => {
   const lead = (id, custom_fields) => ({ client_id: id, first_name: "Pat", created_at: "2026-10-26T16:00:00Z", custom_fields });
   const db = { async query(sql) {
     if (sql.includes("WITH bounds AS")) return { rows: [{ dials: 0, booked: 0, showed: 0, no_shows: 0 }] };
     return { rows: [
-      lead("a", { cf_svy_self_reported_fico_label: "700-749" }),
-      lead("b", { cf_svy_self_reported_fico_label: "650-699" }),
-      lead("c", { cf_svy_self_reported_fico_label: "Not sure" }),
+      lead("a", { ...COMPLETE_SURVEY, cf_svy_self_reported_fico_label: "700-749" }),
+      lead("b", { ...COMPLETE_SURVEY, cf_svy_self_reported_fico_label: "650-699" }),
+      lead("c", { ...COMPLETE_SURVEY, cf_svy_self_reported_fico_label: "Not sure" }),
       lead("d", {})
     ] };
   } };
   const result = await listSetterQueue(db, STAFF);
   assert.deepEqual(result.items.map(x => x.booking_url), [
-    "https://apply.fundhub.ai/funding-book-call?fh_tier=q",
-    "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u",
-    "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u",
-    null
+    "https://apply.fundhub.ai/apply",
+    "https://apply.fundhub.ai/apply",
+    "https://apply.fundhub.ai/apply",
+    "https://apply.fundhub.ai/apply"
   ]);
-  assert.equal(result.booking_url, "https://apply.fundhub.ai/funding-book-call");
+  assert.equal(result.booking_url, "https://apply.fundhub.ai/funding-book-call", "the existing generic fallback redirects into /apply at the live calendar");
   assert.ok(result.items.every(x => !/700|650|unqualified/i.test(String(x.booking_url))));
 });
 
-test("a saved checklist keeps the lead's own calendar link", async () => {
+test("a saved checklist keeps an unfinished lead on the survey", async () => {
   const { db, client } = fakeDb(false);
   client.custom_fields.cf_svy_self_reported_fico_label = "580-649";
   const saved = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save", expected_call_attempts: 0,
     handoff: { dialed_at: "2026-10-26T20:00:00Z", call_attempts: 1 } });
   assert.equal(saved.status, 200);
-  assert.equal(saved.body.item.booking_url, "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u");
+  assert.equal(saved.body.item.booking_url, "https://apply.fundhub.ai/apply");
 });
 
-test("correcting the score on the call returns the corrected calendar link", async () => {
+test("correcting the score on the call keeps the survey entry link", async () => {
   const { db, client } = fakeDb(false);
+  Object.assign(client.custom_fields, COMPLETE_SURVEY);
   client.custom_fields.cf_svy_self_reported_fico_label = "620-699";
   const up = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey",
     survey_edits: { cf_svy_self_reported_fico: "700-759" } });
   assert.equal(up.status, 200);
-  assert.equal(up.body.booking_url, "https://apply.fundhub.ai/funding-book-call?fh_tier=q");
+  assert.equal(up.body.booking_url, "https://apply.fundhub.ai/apply");
   const back = await updateSetterHandoff(db, STAFF, { client_id: CLIENT_ID, action: "save_survey", survey_edits: {} });
-  assert.equal(back.body.booking_url, "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u", "clearing the edit goes back to the typed answer");
+  assert.equal(back.body.booking_url, "https://apply.fundhub.ai/apply", "clearing the edit still starts at the survey");
 });
 
 /* credit_tier is the one word on the person ("qualified" or "unqualified") that
@@ -540,17 +550,15 @@ test("saving the checklist never touches credit_tier", async () => {
   assert.equal(queries.some(sql => sql.includes("'credit_tier'")), false);
 });
 
-test("the queue's calendar links read the new score answers and the older saved ones", async () => {
+test("the queue routes new and older score answers through the survey", async () => {
   const lead = (id, custom_fields) => ({ client_id: id, first_name: "Pat", created_at: "2026-10-26T16:00:00Z", custom_fields });
   const labels = ["700-759", "760-850", "620-699", "500-619", "Not sure", "750+", "500-579"];
   const db = { async query(sql) {
     if (sql.includes("WITH bounds AS")) return { rows: [{ dials: 0, booked: 0, showed: 0, no_shows: 0 }] };
-    return { rows: labels.map((label, i) => lead(`c${i}`, { cf_svy_self_reported_fico_label: label })) };
+    return { rows: labels.map((label, i) => lead(`c${i}`, { ...COMPLETE_SURVEY, cf_svy_self_reported_fico_label: label })) };
   } };
   const result = await listSetterQueue(db, STAFF);
-  const Q = "https://apply.fundhub.ai/funding-book-call?fh_tier=q";
-  const U = "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u";
-  assert.deepEqual(result.items.map(x => x.booking_url), [Q, Q, U, U, U, Q, U]);
+  assert.deepEqual(result.items.map(x => x.booking_url), labels.map(() => "https://apply.fundhub.ai/apply"));
 });
 
 /* ── "No answer" starts the no-answer text cadence (AI-SET-03) ──────────────── */

@@ -21,6 +21,7 @@ import {
   FH_ATTRIBUTION_SRC,
   FH_EVENTS_SRC,
   CLARITY_SRC,
+  upsertMarkedBlock,
 } from "../../marketing/landing-pages/tracking-manifest.mjs";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -28,6 +29,7 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 
 const CONFIRM = "marketing/landing-pages/04e-book-confirm.html";
 const CLOSE_TODAY = "marketing/landing-pages/04g-book-close-today.html";
+const SURVEY_ENTRY = "marketing/landing-pages/04h-book-survey-entry.html";
 const BOOKING = "marketing/landing-pages/slo/slo-02-booking.html";
 const KEY = "fh_booking_v1";
 const PARENT = "https://apply.fundhub.ai";
@@ -643,6 +645,51 @@ describe("the apply-book push carries the block in the same whole-footer write",
     assert.match(fn, /blocks: \(row\.footerBlocks \?\? \[\]\)\.map\(\(b\) => \(\{ block: readFragment\(b\.fragment\), marker: b\.marker \}\)\)/);
     assert.ok(fn.indexOf("row.footerBlocks") < fn.indexOf('method: "PUT"'), "planned before the write");
     assert.match(fn, /page\.footer_code = plan\.next/, "the block goes out in the same replace write");
+  });
+});
+
+describe("funding calendar survey entry", () => {
+  const block = read(SURVEY_ENTRY);
+  const script = scriptsOf(block)[0];
+  const rows = Object.fromEntries(PUSH_MANIFEST.map((r) => [r.key, r]));
+  function open({ path = "/funding-book-call", search = "", parentPath = null, parentOrigin = "https://apply.fundhub.ai" } = {}) {
+    const redirects = [];
+    const location = { pathname: path, search, replace(url) { redirects.push(url); } };
+    const win = { location, URLSearchParams };
+    win.window = win;
+    win.self = win;
+    win.top = parentPath ? {} : win;
+    win.parent = parentPath ? { location: { origin: parentOrigin, pathname: parentPath } } : win;
+    vm.runInNewContext(script, win);
+    return redirects;
+  }
+
+  test("both native calendars receive the same head block without replacing the scheduler", () => {
+    assert.equal(rows["apply-book-survey-entry"].pageId, "25062844");
+    assert.equal(rows["apply-book-survey-entry-unqualified"].pageId, "25820226");
+    for (const key of ["apply-book-survey-entry", "apply-book-survey-entry-unqualified"]) {
+      assert.equal(rows[key].strategy, "code_block_upsert");
+      assert.equal(rows[key].codeSlot, "head_code");
+      assert.equal(rows[key].fragment, SURVEY_ENTRY);
+    }
+    const planned = upsertMarkedBlock("<meta name=\"existing\">", block, "fh-book-survey-entry");
+    assert.equal(planned.mode, "append");
+    assert.match(planned.next, /<meta name="existing">/);
+  });
+
+  test("all direct calendar links return to the survey, including public tier marks", () => {
+    for (const path of ["/funding-book-call", "/funding-book-call--02424"]) {
+      assert.deepEqual(open({ path }), ["https://apply.fundhub.ai/apply"]);
+      assert.deepEqual(open({ path, search: "?fh_tier=q" }), ["https://apply.fundhub.ai/apply"]);
+      assert.deepEqual(open({ path, search: "?fh_tier=u" }), ["https://apply.fundhub.ai/apply"]);
+    }
+  });
+
+  test("the completed /apply frame and paid roadmap frame keep the native calendar", () => {
+    assert.deepEqual(open({ parentPath: "/apply" }), []);
+    assert.deepEqual(open({ parentPath: "/roadmap-book" }), []);
+    assert.deepEqual(open({ parentPath: "/outside" }), ["https://apply.fundhub.ai/apply"]);
+    assert.deepEqual(open({ parentPath: "/apply", parentOrigin: "https://other.example" }), ["https://apply.fundhub.ai/apply"]);
   });
 });
 

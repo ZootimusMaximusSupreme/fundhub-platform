@@ -328,7 +328,11 @@ function openApply(opts = {}) {
   const body = APPLY_HTML.slice(APPLY_HTML.indexOf("<body>") + 6, APPLY_HTML.indexOf("<script>"));
   const script = APPLY_HTML.slice(APPLY_HTML.indexOf("<script>") + 8, APPLY_HTML.lastIndexOf("</script>"));
   const doc = makeDocument(body);
-  const page = makePage(doc, { hostname: "apply.fundhub.ai", pathname: "/apply", ...opts }).run(script);
+  const save = async () => ({ ok: true, json: async () => ({ ok: true, emitted: [{ name: "survey.completed" }] }) });
+  const page = makePage(doc, { hostname: "apply.fundhub.ai", pathname: "/apply", fetchImpl: save, ...opts });
+  page.win.FH_APPLY_SURVEY_WEBHOOK_FORCE = true;
+  page.win.FH_APPLY_SURVEY_INGEST = "test-ingest-secret";
+  page.run(script);
   page.flush();
   const byId = (id) => doc.getElementById(id);
   const option = (label) => doc.getElementById("body").querySelectorAll(".opt").find((b) => b.textContent === label);
@@ -344,8 +348,14 @@ async function openApplyResume(reply, { search = "?r=tok123" } = {}) {
   const script = APPLY_HTML.slice(APPLY_HTML.indexOf("<script>") + 8, APPLY_HTML.lastIndexOf("</script>"));
   const doc = makeDocument(body);
   const asked = [];
-  const fetchImpl = async (url) => { asked.push(String(url)); return reply; };
-  const page = makePage(doc, { hostname: "apply.fundhub.ai", pathname: "/apply", search, fetchImpl }).run(script);
+  const fetchImpl = async (url, init) => {
+    if (init?.method === "POST") return { ok: true, json: async () => ({ ok: true, emitted: [{ name: "survey.completed" }] }) };
+    asked.push(String(url)); return reply;
+  };
+  const page = makePage(doc, { hostname: "apply.fundhub.ai", pathname: "/apply", search, fetchImpl });
+  page.win.FH_APPLY_SURVEY_WEBHOOK_FORCE = true;
+  page.win.FH_APPLY_SURVEY_INGEST = "test-ingest-secret";
+  page.run(script);
   for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r));
   page.flush();
   const byId = (id) => doc.getElementById(id);
@@ -391,6 +401,12 @@ function walkApply(rest) {
   return a;
 }
 
+async function settleApply(a) {
+  for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r));
+  a.page.flush();
+  return a;
+}
+
 const APPLY_CONTACT_EVENTS = [
   ev("field_focus", { form: "apply", field: "first_name" }),
   ev("field_complete", { form: "apply", field: "first_name" }),
@@ -411,23 +427,47 @@ const answersOf = (path, tier = "qualified") =>
   }));
 
 describe("/apply survey hooks (apply-survey.html)", () => {
-  test("business path: contact fields, then one survey_answer per screen in the order seen", () => {
-    const a = walkApply(APPLY_BIZ);
+  test("business path: contact fields, then one survey_answer per screen in the order seen", async () => {
+    const a = await settleApply(walkApply(APPLY_BIZ));
     const got = a.page.events();
     assert.deepEqual(got, [...APPLY_CONTACT_EVENTS, ...answersOf([...APPLY_COMMON, ...APPLY_BIZ])]);
     assert.ok(a.doc.body.textContent.includes("You're qualified. Pick a time below."), "the survey still finishes");
     assertShape(got);
   });
 
-  test("personal path: screens 7 and 8 are the income questions", () => {
-    const a = walkApply(APPLY_PERSONAL);
+  test("personal path: screens 7 and 8 are the income questions", async () => {
+    const a = await settleApply(walkApply(APPLY_PERSONAL));
     const got = a.page.events();
     assert.deepEqual(got, [...APPLY_CONTACT_EVENTS, ...answersOf([...APPLY_COMMON, ...APPLY_PERSONAL])]);
     assert.deepEqual(got.at(-3)[1], { survey: "apply", step_num: 7, question_id: "cf_svy_annual_income_range" });
     assertShape(got);
   });
 
-  test("the two calendars: qualified credit frames /funding-book-call; every other score answer frames the copy", () => {
+  test("a failed final save keeps booking hidden until the person retries successfully", async () => {
+    let failFinal = true;
+    const a = openApply({ fetchImpl: async (_url, init) => {
+      const final = JSON.parse(init.body).step_key === "cf_svy_available_capital";
+      return final && failFinal
+        ? { ok: false, status: 503 }
+        : { ok: true, json: async () => ({ ok: true, emitted: [{ name: "survey.completed" }] }) };
+    } });
+    fillApplyContact(a);
+    for (const [, label] of [...APPLY_COMMON, ...APPLY_BIZ]) a.pick(label);
+    await settleApply(a);
+    assert.equal(a.byId("cal").hidden, true);
+    assert.equal(a.byId("fh-book-frame").src, undefined);
+    assert.equal(a.page.events().some((e) => e[1].last), false);
+    assert.match(a.byId("err").textContent, /could not save/);
+
+    failFinal = false;
+    a.pick(APPLY_BIZ.at(-1)[1]);
+    await settleApply(a);
+    assert.equal(a.byId("cal").hidden, false);
+    assert.equal(a.byId("fh-book-frame").src, "https://apply.fundhub.ai/funding-book-call");
+    assert.equal(a.page.events().filter((e) => e[1].last).length, 1);
+  });
+
+  test("the two calendars: qualified credit frames /funding-book-call; every other score answer frames the copy", async () => {
     // The score answers owner-set 2026-10-31: 700 and up books the first calendar.
     const want = { "700-759": "https://apply.fundhub.ai/funding-book-call", "760-850": "https://apply.fundhub.ai/funding-book-call",
       "620-699": "https://apply.fundhub.ai/funding-book-call--02424", "500-619": "https://apply.fundhub.ai/funding-book-call--02424",
@@ -436,19 +476,20 @@ describe("/apply survey hooks (apply-survey.html)", () => {
       const a = openApply();
       fillApplyContact(a);
       for (const [key, label] of [...APPLY_COMMON, ...APPLY_BIZ]) a.pick(key === "cf_svy_self_reported_fico" ? score : label);
-      a.page.flush();
+      await settleApply(a);
       assert.equal(a.byId("fh-book-frame").src, src, score);
       assert.ok(a.doc.body.textContent.includes("You're qualified. Pick a time below."), `${score}: the page words do not change`);
     }
   });
 
-  test("the credit bucket: 700-759 and 760-850 are qualified; every other score answer, Not sure too, is unqualified", () => {
+  test("the credit bucket: 700-759 and 760-850 are qualified; every other score answer, Not sure too, is unqualified", async () => {
     const tiers = { "500-619": "unqualified", "620-699": "unqualified",
       "700-759": "qualified", "760-850": "qualified", "Not sure": "unqualified" };
     for (const [score, tier] of Object.entries(tiers)) {
       const a = openApply();
       fillApplyContact(a);
       for (const [key, label] of [...APPLY_COMMON, ...APPLY_BIZ]) a.pick(key === "cf_svy_self_reported_fico" ? score : label);
+      await settleApply(a);
       const got = a.page.events().filter((e) => e[1].credit_tier !== undefined);
       assert.deepEqual(got, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: tier })], score);
       assert.ok(a.doc.body.textContent.includes("You're qualified. Pick a time below."), `${score}: the page words do not change`);
@@ -466,7 +507,7 @@ describe("/apply survey hooks (apply-survey.html)", () => {
       if (key === "cf_svy_funding_target_amount" || key === "cf_svy_planned_use") continue;
       a.pick(label);
     }
-    a.page.flush();
+    await settleApply(a);
     const done = JSON.parse(JSON.stringify(a.page.win.FH_SURVEY_PAYLOAD));
     assert.equal(done.email, "dana.rivers@example.com", "the finished survey carries the saved contact");
     assert.equal(done.answers.cf_svy_funding_target_amount, "$100k - $200k", "earlier answers are kept");
@@ -492,16 +533,17 @@ describe("/apply survey hooks (apply-survey.html)", () => {
     assert.equal(a.title(), "Let's Start With Your Info");
   });
 
-  test("only the final question (available capital, step 9) carries last: true, on both paths", () => {
+  test("only the final question (available capital, step 9) carries last: true, on both paths", async () => {
     for (const rest of [APPLY_BIZ, APPLY_PERSONAL]) {
-      const lasts = walkApply(rest).page.events().filter((e) => e[1].last !== undefined);
+      const a = await settleApply(walkApply(rest));
+      const lasts = a.page.events().filter((e) => e[1].last !== undefined);
       assert.deepEqual(lasts, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: "qualified" })]);
     }
   });
 
-  test("no answer and no typed value is ever queued", () => {
+  test("no answer and no typed value is ever queued", async () => {
     for (const rest of [APPLY_BIZ, APPLY_PERSONAL]) {
-      const got = walkApply(rest).page.events();
+      const got = (await settleApply(walkApply(rest))).page.events();
       assertNoValues(got, [
         ...[...APPLY_COMMON, ...rest].map(([, label]) => label),
         APPLY_CONTACT.first, APPLY_CONTACT.last, APPLY_CONTACT.email, "555-0123", APPLY_CONTACT.phone,

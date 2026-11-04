@@ -117,6 +117,7 @@ input:focus{border-color:rgb(var(--blue))}
 .trustrow svg{width:12px;height:12px;flex:0 0 12px}
 .reassure{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(var(--blue),.07);font-size:13.5px;line-height:1.5;color:var(--ink2);animation:in .25s ease-out both}
 .err{min-height:18px;margin-top:8px;font-size:13px;color:var(--bad)}
+.err.saving{color:var(--gray)}
 .actions{display:flex;justify-content:flex-end;margin-top:12px}
 .btn{border:0;border-radius:10px;padding:14px 26px;font:600 15px var(--sans);color:#fff;background:rgb(var(--blue));cursor:pointer;box-shadow:0 8px 20px -10px rgba(var(--blue),.8)}
 .btn:disabled{opacity:.45;cursor:default}
@@ -189,7 +190,7 @@ pre{margin:18px 0 0;padding:14px;background:var(--panel);border-radius:10px;font
      (owner-set 2026-10-31). The two older labels only come back on a resumed survey
      saved before that day; they read the same way the server reads them. */
   var QUALIFIED_SCORES = { '700-759': 1, '760-850': 1, '700-749': 1, '750+': 1 };
-  var A = {}, at = 0;
+  var A = {}, at = 0, savingFinal = false;
   var body = document.getElementById('body'), form = document.getElementById('sv');
 
   function path() {
@@ -421,7 +422,7 @@ pre{margin:18px 0 0;padding:14px;background:var(--panel);border-radius:10px;font
     if (window.FH_APPLY_SURVEY_WEBHOOK_FORCE) return true;
     return !!window.FH_APPLY_SURVEY_INGEST;
   }
-  function SEND_STEP(stepKey) {
+  function SEND_STEP(stepKey, requireComplete) {
     var payload = stepPayload(stepKey);
     var hasSurvey = Object.keys(payload.answers).length > 0;
     STEP_LOG.push({
@@ -430,14 +431,32 @@ pre{margin:18px 0 0;padding:14px;background:var(--panel);border-radius:10px;font
       email: payload.email,
       answers: payload.answers
     });
-    if (!WEBHOOK_URL || !webhookEnabled() || !payload.email) return;
+    if (!WEBHOOK_URL || !webhookEnabled() || !payload.email) {
+      return requireComplete && location.protocol !== 'file:'
+        ? Promise.reject(new Error('survey_ingest_unavailable')) : Promise.resolve(null);
+    }
     var headers = { 'Content-Type': 'application/json' };
     if (window.FH_APPLY_SURVEY_INGEST) headers['X-Fundhub-Apply-Survey-Ingest'] = window.FH_APPLY_SURVEY_INGEST;
-    fetch(WEBHOOK_URL, { method: 'POST', headers: headers, body: JSON.stringify(payload), keepalive: true }).catch(function () {});
+    return fetch(WEBHOOK_URL, { method: 'POST', headers: headers, body: JSON.stringify(payload), keepalive: true })
+      .then(function (res) {
+        if (!requireComplete) return null;
+        if (!res.ok) throw new Error('survey_ingest_refused');
+        return res.json();
+      })
+      .then(function (saved) {
+        if (!requireComplete) return null;
+        if (!saved || !saved.ok || !Array.isArray(saved.emitted) ||
+            !saved.emitted.some(function (e) { return e.name === 'survey.completed'; })) {
+          throw new Error('survey_completion_missing');
+        }
+        return saved;
+      });
   }
   function advance() {
+    if (savingFinal) return;
     var list = path();
-    SEND_STEP(list[at].key);
+    var last = at === list.length - 1;
+    var sent = SEND_STEP(list[at].key, last);
     /* step_num: where this screen sat on the path this visitor saw (contact is 1).
        last: the final question (cf_svy_available_capital). The shared tracker turns that
        one into Meta Lead (docs/tracking/meta-events.md, Phase 4 map); this page sends
@@ -447,13 +466,28 @@ pre{margin:18px 0 0;padding:14px;background:var(--panel);border-radius:10px;font
        every other answer, "Not sure" too, is unqualified. Only the tier is sent, never the
        score. The shared tracker turns it into QualifiedLead / UnqualifiedLead and keeps it
        for the booking's Schedule. Nothing on the page changes. */
-    if (at === list.length - 1) p.credit_tier = QUALIFIED_SCORES[A.cf_svy_self_reported_fico] ? 'qualified' : 'unqualified';
-    if (at === list.length - 1) p.last = true;
-    fht('survey_answer', p);
-    if (at < list.length - 1) { at++; render(); }
-    else finish();
+    if (last) p.credit_tier = QUALIFIED_SCORES[A.cf_svy_self_reported_fico] ? 'qualified' : 'unqualified';
+    if (last) p.last = true;
+    if (!last) { sent.catch(function () {}); fht('survey_answer', p); at++; render(); return; }
+    savingFinal = true;
+    var err = document.getElementById('err');
+    err.className = 'err saving';
+    err.textContent = 'Saving your answers…';
+    body.querySelectorAll('.opt, #next').forEach(function (el) { el.disabled = true; });
+    document.getElementById('back').disabled = true;
+    sent.then(function () {
+      savingFinal = false;
+      fht('survey_answer', p);
+      finish();
+    }).catch(function () {
+      savingFinal = false;
+      err.className = 'err';
+      err.textContent = 'We could not save your answers. Tap your choice again to retry.';
+      body.querySelectorAll('.opt, #next').forEach(function (el) { el.disabled = false; });
+      document.getElementById('back').disabled = false;
+    });
   }
-  document.getElementById('back').addEventListener('click', function () { if (at > 0) { at--; render(); } });
+  document.getElementById('back').addEventListener('click', function () { if (!savingFinal && at > 0) { at--; render(); } });
 
   function finish() {
     /* review screen: bar fills while each check completes, then the result */
@@ -564,7 +598,7 @@ pre{margin:18px 0 0;padding:14px;background:var(--panel);border-radius:10px;font
   window.addEventListener('resize', function () { if (perRow() !== lastPer) { lastPer = perRow(); var l = path(); showWins(Math.min(at, l.length - 1), l.length); } });
   form.addEventListener('submit', function (e) { e.preventDefault(); });
 
-  /* Pick up where they stopped. A follow-up text or email links here with ?r=<token>
+  /* Pick up where they stopped. A follow-up email links here with ?r=<token>
      (src/survey/resume-link.mjs). The server answers with their contact info and the
      answers already saved (GET /api/public/survey-resume), so the page opens on the
      first question they have not answered. Only words that are still options on this
