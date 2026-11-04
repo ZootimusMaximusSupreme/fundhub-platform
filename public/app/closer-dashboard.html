@@ -12,12 +12,12 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="fundhub-brand.css">
-<link rel="stylesheet" href="crm-sidebar.css">
+<link rel="stylesheet" href="/app/fundhub-brand.css?v=workspace-20261018">
+<link id="fh-crm-sidebar-css" rel="stylesheet" href="/app/crm-sidebar.css?v=workspace-20261018">
 <link rel="stylesheet" href="closer-dashboard.css">
+<link rel="preload" as="script" href="contract-send.js">
+<link rel="preload" as="script" href="closer-call.js">
+<link rel="preload" as="script" href="closer-report.js">
 <style>
 .calc-grid[hidden],#breakdown[hidden]{display:none!important;}
 .calc-panel[data-fh-busy]{opacity:.6;}
@@ -27,6 +27,7 @@
 <script src="demo-client-bootstrap.js"></script>
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-staff.css">
+<link id="fh-workspace-css" rel="stylesheet" href="/app/workspace-ui.css">
 </head>
 <body class="closer-workspace fh-astra fh-astra-staff fh-astra--closer-dashboard">
 <script>

@@ -223,3 +223,7 @@ These lines sit on top of Cole’s shape. They match owner law in the repo.
 **Chris is setter + closer today.** The booking-confirmation SMS goes to the **lead only**; the full handoff text is saved on the client record for Present / Closer Dashboard. When a hire is setter-only, Fundhub sends the lead confirmation and closer handoff separately.
 
 **Speed alert.** On `booking.created`, setter gets staff SMS when `notify_booked_call_sms` is on (see Staff & Teams). Target: dial within **60 seconds** of that alert or the book event.
+
+## Change log
+
+2026-11-04 — Added the OffersIQ setter-to-closer flow: saved residential address, separate permission, one durable request, replay protection, optional returned score/debt values, saved receipt and stale-result handling. Existing generated role journeys stay current because no route or role gate moved. Morning/hourly ledger checks cover stalled requests, missing receipts and recent provider uncertainty. Provider activation and automatic address append require their own external setup and proof.
