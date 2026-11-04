@@ -24,7 +24,7 @@ async function markedShot(page,name,selector,caption){
 for(const width of [1440,390,320])test(`Money task summary and complete details at ${width}`,async({page})=>{
   fs.mkdirSync(evidence,{recursive:true});
   await page.setViewportSize({width,height:1000});
-  let state='full',role='client';const writes=[],errors=[],mfaRequests=[],linkBodies=[];
+  let state='full',role='client';const writes=[],errors=[],consentRequests=[],linkBodies=[];
   await page.addInitScript(()=>localStorage.setItem('fh_token','money-page-fixture-session'));
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/api/**',async route=>{
@@ -33,10 +33,10 @@ for(const width of [1440,390,320])test(`Money task summary and complete details 
     if(route.request().method()!=='GET'){
       writes.push(p);
       if(p==='/api/auth/plaid-mfa'){
-        const body=route.request().postDataJSON();mfaRequests.push(body);
-        if(body.action==='setup')return json({ok:true,enrolled:true,consent_text:'I authorize Fundhub to connect my bank account.',privacy_url:'/privacy/'});
-        if(body.action==='authorize')return json({ok:true,grant_token:'money-page-mfa-grant'});
-        return json({ok:false,error:'unexpected_mfa_action'},400);
+        const body=route.request().postDataJSON();consentRequests.push(body);
+        if(body.action==='consent_details')return json({ok:true,consent_text:'I authorize Fundhub to connect my bank account.',privacy_url:'/privacy/'});
+        if(body.action==='authorize')return json({ok:true,grant_token:'money-page-consent-grant'});
+        return json({ok:false,error:'unexpected_consent_action'},400);
       }
       if(p==='/api/banking/link-token'){
         linkBodies.push(route.request().postDataJSON());
@@ -102,19 +102,23 @@ for(const width of [1440,390,320])test(`Money task summary and complete details 
   await page.goBack();
   await expect(page.locator('#money-root .tiles')).toBeVisible();
   await page.getByRole('button',{name:'Connect a bank'}).click();
-  const mfaDialog=page.getByRole('dialog');
-  await expect(mfaDialog.getByRole('heading',{name:'Verify before connecting your bank'})).toBeVisible();
+  const consentDialog=page.getByRole('dialog');
+  await expect(consentDialog.getByRole('heading',{name:'Connect your bank'})).toBeVisible();
+  await expect(consentDialog).toContainText('I authorize Fundhub to connect my bank account.');
+  await expect(consentDialog.getByRole('link',{name:'Privacy Policy'})).toHaveAttribute('href','/privacy/');
+  await expect(consentDialog.getByLabel('Authenticator code')).toHaveCount(0);
   expect(writes).toEqual(['/api/auth/plaid-mfa']);
-  await mfaDialog.getByLabel('Authenticator code').fill('123456');
-  await mfaDialog.locator('[name=consent]').check();
-  await mfaDialog.getByRole('button',{name:'Verify and connect',exact:true}).click();
-  await expect(mfaDialog).toHaveCount(0);
+  await consentDialog.getByRole('button',{name:'Agree and connect',exact:true}).click();
+  expect(writes).toEqual(['/api/auth/plaid-mfa']);
+  await consentDialog.locator('[name=consent]').check();
+  await consentDialog.getByRole('button',{name:'Agree and connect',exact:true}).click();
+  await expect(consentDialog).toHaveCount(0);
   await expect(page.locator('#money-root .act-msg')).toContainText('not set up yet');
-  expect(mfaRequests).toEqual([
-    {action:'setup',target_kind:'client_bank'},
-    {action:'authorize',target_kind:'client_bank',code:'123456',consent:true}
+  expect(consentRequests).toEqual([
+    {action:'consent_details',target_kind:'client_bank'},
+    {action:'authorize',target_kind:'client_bank',consent:true}
   ]);
-  expect(linkBodies).toEqual([{client_id:sample.client.id,plaid_grant_token:'money-page-mfa-grant'}]);
+  expect(linkBodies).toEqual([{client_id:sample.client.id,plaid_grant_token:'money-page-consent-grant'}]);
   expect(writes).toEqual(['/api/auth/plaid-mfa','/api/auth/plaid-mfa','/api/banking/link-token']);
   for(const next of ['empty','error','loading']){
     state=next;await page.goto(`/app/money.html?proof=${next}`);
