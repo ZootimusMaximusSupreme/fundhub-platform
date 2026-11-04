@@ -11,14 +11,15 @@
 // a token or this module (the beat guard bans importing it).
 //
 // ORDER (v1 delta 8): decide -> SEND THE TEXT -> write records. This file is split to match:
-//   decide()         pure. Which beats are new breaks, still broken, healed, damped, quiet.
+//   decide()         pure. Which beats are new breaks, changed, healed, damped, quiet.
 //   formatText()     pure. The words. 480 characters or fewer, plain ASCII, 4th grade.
 //   act()            sends. Takes NO database handle: it cannot write a record.
 //   saveIncidents()  records. Called AFTER the text. Opens, claims and closes incidents.
 //
-// DEDUPE. A re-run in the same hour must send one text. Two layers:
-//   1. decide() reads last_alert_at off the open incident the runner loaded before the beats ran. A break whose
-//      last text was under 50 minutes ago is QUIET (no text). This is what stops a retried run.
+// DEDUPE. An unchanged open incident is quiet, however long it remains red.
+// A new break, changed failing step or recovery is news; the morning report still
+// carries all persistent reds. The 50-minute database claim records one winner,
+// but send happens first: two overlapping runs can still send one duplicate.
 //   2. saveIncidents() calls claimAlert() (an atomic UPDATE, one claim per 50 minutes). If another invocation
 //      won the claim first, we count a duplicate in the result (`dupes`). It cannot unsend, and the text goes
 //      before the records on purpose: a slow database must never hold the text back.
@@ -152,8 +153,13 @@ export function decide({ results = [], open = null, prev = null, beatsById = new
       if (inc) {
         const h = hoursBetween(inc.opened_at, nowMs);
         const entry = { beatId, result, incident: inc, hour: h === null ? null : Math.floor(h) + 1, untold: neverTold(inc) };
-        const last = inc.last_alert_at ? new Date(inc.last_alert_at).getTime() : null;
-        if (last === null || !Number.isFinite(last) || nowMs - last >= CLAIM_WINDOW_MS) plan.stillBroken.push(entry);
+        const priorRows = prev instanceof Map ? prev.get(beatId) : prev?.[beatId];
+        const prior = Array.isArray(priorRows) ? priorRows[0] : null;
+        const changed = prior?.ok === false && (
+          (prior.step && result.step && prior.step !== result.step) ||
+          isDbDetail(prior.detail) !== isDbDetail(result.detail)
+        );
+        if (entry.untold || changed) plan.stillBroken.push({ ...entry, changed: !!changed });
         else plan.quiet.push(entry);
         continue;
       }
@@ -239,8 +245,7 @@ export function formatText(plan, { beatsById = new Map() } = {}) {
       const lead = brokenLead(e);
       return fit({ kind: "break", parts: info, make: ({ title, step, fix }) => `Fundhub ${lead}: ${title}. It stopped at "${step}". Fix: ${noDot(fix)}.` });
     }
-    const hourWords = e.hour ? `, hour ${e.hour}` : "";
-    return fit({ kind: "still", parts: info, make: ({ title, step, fix }) => `Fundhub STILL BROKEN${hourWords}: ${title} at "${step}". Fix: ${noDot(fix)}.` });
+    return fit({ kind: "changed", parts: info, make: ({ title, step, fix }) => `Fundhub CHANGED FAILURE: ${title} now stopped at "${step}". Fix: ${noDot(fix)}.` });
   }
   if (total === 1) {
     const h = healed[0];
@@ -251,7 +256,7 @@ export function formatText(plan, { beatsById = new Map() } = {}) {
 
   // Two or more things changed in one run: one text, each fix line cut short.
   const items = [
-    ...breaks.map((e) => ({ type: e.kind === "still" && !e.untold ? "still" : "new", lead: brokenLead(e), info: infoOf(beatsById, e.beatId, e.result), hour: e.hour })),
+    ...breaks.map((e) => ({ type: e.kind === "still" && !e.untold ? "changed" : "new", lead: brokenLead(e), info: infoOf(beatsById, e.beatId, e.result), hour: e.hour })),
     ...healed.map((h) => ({ type: "fixed", info: infoOf(beatsById, h.beatId, h.result), hours: h.hours }))
   ];
   return fitMany(items);
@@ -285,7 +290,7 @@ function fitMany(items) {
     const bits = shown.map((it) => {
       const t = cut(it.info.title, rung.title);
       if (it.type === "fixed") return `FIXED: ${t}${it.hours ? ` (${it.hours} h)` : ""}`;
-      const lead = it.type === "still" ? "STILL BROKEN" : it.lead || "BROKEN";
+      const lead = it.type === "changed" ? "CHANGED FAILURE" : it.lead || "BROKEN";
       const fix = fixCut ? ` Fix: ${noDot(cut(it.info.fix, fixCut))}.` : "";
       return `${lead}: ${t} at "${cut(it.info.step, rung.step)}".${fix}`;
     });

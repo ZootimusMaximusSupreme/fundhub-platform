@@ -82,6 +82,25 @@ test("the na code is only used when its own condition holds: receipts must have 
   assert.equal(late[0].na, undefined);
 });
 
+test("retention review is not marked missed before its first monthly fire after registration", async () => {
+  const retention = JOBS.find((j) => j.job === "retention-review");
+  assert.equal(retention.activatedAt, "2026-11-03T04:43:25.000Z");
+  const db = heartbeatDb({ firstEver: "2026-10-07T20:08:00Z" });
+  const beforeFirstFire = await checkJobHeartbeats({
+    db, now: new Date("2026-11-04T13:00:00Z"), jobs: [retention]
+  });
+  assert.equal(beforeFirstFire[0].status, "na");
+  assert.deepEqual(beforeFirstFire[0].na, {
+    code: "monthly-not-due",
+    args: { cron: retention.cron, activatedAt: retention.activatedAt }
+  });
+  assert.match(beforeFirstFire[0].detail, /before this job was registered/);
+  const afterFirstFire = await checkJobHeartbeats({
+    db, now: new Date("2026-12-03T13:00:00Z"), jobs: [retention]
+  });
+  assert.equal(afterFirstFire[0].status, "FAIL", "a missing December run remains red");
+});
+
 test("a job that ran this month is judged on its run, never na", async () => {
   const now = new Date("2026-10-09T17:00:00Z");
   const db = heartbeatDb({
