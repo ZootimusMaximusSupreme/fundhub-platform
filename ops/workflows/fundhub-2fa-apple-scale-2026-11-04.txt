@@ -3,7 +3,7 @@ Owner lane: native (this worktree)
 
 Parallel workflow A — native app sign-in, owned by this session.
 Prompt: Remove the iPhone app's Face ID/passcode prompt on saved-session restore. Preserve server session verification and sign-out. Update the existing iOS journey docs, build/test, preflight, and ship in order. Do not touch the working tree's unrelated changes.
-Status: implementation and focused proof complete locally; PR blocked by active local peer-branch file ownership pending owner handoff.
+Status: implementation and focused proof complete locally; owner approved the three-file handoff and preflight now passes. Ordered GitHub release is next.
 
 Parallel workflow B — Apple status, read-only, owned by apple_status agent.
 Prompt: Check current App Store Connect and public listing for Fundhub Portal; report version, review state, and release evidence without changing account state.
@@ -26,6 +26,7 @@ Blueprint browser proof, Nov 4: Headless Chromium at 1440x900 and 390x844 opened
 
 Final local proof: combined Node suite 123/123 pass; staff sign-in and payout browser suite 13/13 pass on fresh static server; account/affiliate consent browser suite 16/16 pass; signed iPhone simulator Xcode test suite passed, including Keychain save/read without a second prompt; lint, TypeScript, rules check, diff check passed. Scratch PostgreSQL tests skipped without loopback scratch DB. No release or live user-path claim.
 Preflight second pass after rebase: behind 0, still blocks api/staff/payout-account.mjs, e2e/staff-payout-bank.spec.mjs, src/http/staff-payout-account.test.mjs because local peer meta-neutral-audience-labels-2026-11-02 remains active. Peer has no unsaved edits on those files; current main has later versions. No gate bypass attempted.
+Owner handoff Nov 4: Chris approved handing those three payout paths to this 2FA release. On peer branch meta-neutral-audience-labels-2026-11-02, commit 6c6fbd215 restored only those three paths to current origin/main; all other peer work and unsaved edits stayed untouched. Native branch preflight then returned exit 0, behind 0, no shared or blocking files.
 Native release: source prepared as iOS 1.0.3 build 9; App Store Connect currently has no 1.0.3 version/build. Latest public iOS 1.0.2 is live. Release archive built and App Store IPA exported with the existing App Store Connect API key and Apple's cloud-managed distribution signing. IPA SHA-256: 8ceff2124c63f210148b9654c9fdb430973afeb94720fd407c3284bad3bd439b. Upload and review still wait for the GitHub release path; no App Store 1.0.3 receipt yet.
 
 Change manifest:
