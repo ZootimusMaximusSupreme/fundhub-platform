@@ -149,20 +149,33 @@ async function gh(args) {
   return JSON.parse(result.stdout);
 }
 
-export async function assertMainCi(sha, github = gh) {
+export async function assertMainCi(sha, github = gh, { allowMainAdvance = false } = {}) {
   const main = await github([`repos/${REPO}/commits/main`]);
-  if (main.sha !== sha) throw new Error("Pinned SHA is not current GitHub main");
-  const runs = await github([`repos/${REPO}/actions/workflows/tests.yml/runs?head_sha=${sha}&branch=main&event=push&per_page=30`]);
-  const run = (runs.workflow_runs || []).filter((r) => r.head_sha === sha && r.name === "tests" &&
-    r.event === "push" && r.head_branch === "main" && r.head_repository?.full_name === REPO)
-    .sort((a, b) => Number(b.id) - Number(a.id))[0];
-  if (!run || run.status !== "completed" || run.conclusion !== "success") {
-    throw new Error("Latest exact-main tests run for pinned SHA did not pass");
+  if (main.sha !== sha) {
+    if (!allowMainAdvance) throw new Error("Pinned SHA is not current GitHub main");
+    const compared = await github([`repos/${REPO}/compare/${sha}...${main.sha}`]);
+    if (compared.status !== "ahead" || compared.merge_base_commit?.sha !== sha ||
+        !Array.isArray(compared.files) || compared.files.length >= 300 ||
+        compared.files.some((file) => [file.filename, file.previous_filename]
+          .some((name) => String(name || "").startsWith("tools/fundhub-ios/")))) {
+      throw new Error("Current main is not a proven native-unchanged descendant of pinned SHA");
+    }
   }
-  const jobs = await github([`repos/${REPO}/actions/runs/${run.id}/jobs?per_page=100`]);
-  const verdict = checkRequiredJobs(jobs.jobs || []);
-  if (!verdict.ok) throw new Error(verdict.reason);
-  return run.id;
+  const verifiedRun = async (head) => {
+    const runs = await github([`repos/${REPO}/actions/workflows/tests.yml/runs?head_sha=${head}&branch=main&event=push&per_page=30`]);
+    const run = (runs.workflow_runs || []).filter((r) => r.head_sha === head && r.name === "tests" &&
+      r.event === "push" && r.head_branch === "main" && r.head_repository?.full_name === REPO)
+      .sort((a, b) => Number(b.id) - Number(a.id))[0];
+    if (!run || run.status !== "completed" || run.conclusion !== "success") {
+      throw new Error(`Latest main tests run for ${head} did not pass`);
+    }
+    const jobs = await github([`repos/${REPO}/actions/runs/${run.id}/jobs?per_page=100`]);
+    const verdict = checkRequiredJobs(jobs.jobs || []);
+    if (!verdict.ok) throw new Error(verdict.reason);
+    return run.id;
+  };
+  const pinnedRun = await verifiedRun(sha);
+  return main.sha === sha ? pinnedRun : (await verifiedRun(main.sha));
 }
 
 const link = (type, id) => ({ data: { type, id } });

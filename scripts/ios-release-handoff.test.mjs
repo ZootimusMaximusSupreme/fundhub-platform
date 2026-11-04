@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { REQUIRED_CI_JOBS } from "./release-control.mjs";
 import { applySubmission, assertMainCi, assertProjectVersion, checkReceipt, parseArgs, readReceipt } from "./ios-release-handoff.mjs";
-import { appleTool, assertIpaFields, findIpaInfoPath, parseArgs as parseUploadArgs,
+import { appleTool, assertIpaFields, buildIpa, findIpaInfoPath, parseArgs as parseUploadArgs,
   runUploadAndSubmit } from "./ios-upload-and-submit.mjs";
 
 const SHA = "a".repeat(40);
@@ -68,7 +68,17 @@ function appleFixture({ state = "PREPARE_FOR_SUBMISSION", processingState = "VAL
     throw new Error(`Unexpected ${method} ${endpoint}`);
   };
   return { client, writes, markUploaded: () => { visible = true; },
-    setProcessingState: (value) => { build.attributes.processingState = value; } };
+    setProcessingState: (value) => { build.attributes.processingState = value; },
+    setSubmitted: () => {
+      visible = true;
+      linked = { id: build.id, type: "builds" };
+      version.attributes.appStoreState = "WAITING_FOR_REVIEW";
+      version.attributes.releaseType = "AFTER_APPROVAL";
+      submission = { id: "submission-id", type: "reviewSubmissions",
+        attributes: { state: "WAITING_FOR_REVIEW", submittedDate: "2026-11-04T21:00:00Z" },
+        relationships: { appStoreVersionForReview: { data: { id: version.id } } } };
+      items = [{ id: "item-id", relationships: { appStoreVersion: { data: { id: version.id } } } }];
+    } };
 }
 
 test("explicit version, build, SHA and release intent are required for apply", () => {
@@ -151,12 +161,36 @@ test("latest exact-main run must have all 14 successful named jobs", async () =>
     if (endpoint.includes("/jobs?")) return { jobs: successfulJobs };
     throw new Error(endpoint);
   };
-  await assert.rejects(() => assertMainCi(SHA, github), /Latest exact-main tests run/);
+  await assert.rejects(() => assertMainCi(SHA, github), /Latest main tests run/);
   assert.equal(await assertMainCi(SHA, async ([endpoint]) => {
     const response = await github([endpoint]);
     if (endpoint.includes("/runs?")) response.workflow_runs = [{ ...response.workflow_runs[1], conclusion: "success" }];
     return response;
   }), 2);
+});
+
+test("final CI permits only an unchanged native tree on a newer all-green main", async () => {
+  const newer = "b".repeat(40);
+  const jobs = REQUIRED_CI_JOBS.map((name) => ({ name, status: "completed", conclusion: "success" }));
+  let changedFiles = [{ filename: "src/other.mjs" }];
+  const github = async ([endpoint]) => {
+    if (endpoint.endsWith("/commits/main")) return { sha: newer };
+    if (endpoint.includes("/compare/")) return { status: "ahead", merge_base_commit: { sha: SHA }, files: changedFiles };
+    if (endpoint.includes("/runs?")) {
+      const pinned = endpoint.includes(`head_sha=${SHA}`);
+      return { workflow_runs: [{ id: pinned ? 1 : 2, head_sha: pinned ? SHA : newer,
+        name: "tests", event: "push", head_branch: "main", status: "completed", conclusion: "success",
+        head_repository: { full_name: "ZootimusMaximusSupreme/fundhub-platform" } }] };
+    }
+    if (endpoint.includes("/jobs?")) return { jobs };
+    throw new Error(endpoint);
+  };
+  await assert.rejects(() => assertMainCi(SHA, github), /not current GitHub main/);
+  assert.equal(await assertMainCi(SHA, github, { allowMainAdvance: true }), 2);
+  changedFiles = [{ filename: "tools/fundhub-ios/Fundhub.swift" }];
+  await assert.rejects(() => assertMainCi(SHA, github, { allowMainAdvance: true }), /native-unchanged/);
+  changedFiles = Array.from({ length: 300 }, (_, i) => ({ filename: `src/other-${i}.mjs` }));
+  await assert.rejects(() => assertMainCi(SHA, github, { allowMainAdvance: true }), /native-unchanged/);
 });
 
 test("upload command is explicit and IPA metadata must match exactly", () => {
@@ -189,6 +223,31 @@ test("altool receives Apple's validate and upload syntax with a private key dire
   assert.equal(seen[0].commandArgs.includes("--api-key"), true);
 });
 
+test("archive and export run from the pinned checkout and produce the one IPA output", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-archive-test-"));
+  const ipa = path.join(dir, "Fundhub.ipa");
+  const calls = [];
+  try {
+    await buildIpa({ ...args, ipa }, { keyPath: "/tmp/AuthKey_TEST.p8", keyId: "TEST", issuerId: "ISSUER" },
+      async (program, commandArgs, options) => {
+        assert.equal(program, "xcodebuild");
+        calls.push({ commandArgs, options });
+        if (commandArgs[0] === "-exportArchive") {
+          const exportPath = commandArgs[commandArgs.indexOf("-exportPath") + 1];
+          fs.mkdirSync(exportPath);
+          fs.writeFileSync(path.join(exportPath, "Fundhub.ipa"), "signed-test-artifact");
+        }
+        return { stdout: "" };
+      });
+    assert.equal(fs.readFileSync(ipa, "utf8"), "signed-test-artifact");
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].commandArgs.at(-1), "archive");
+    assert.equal(calls[1].commandArgs[0], "-exportArchive");
+    assert.equal(calls[0].options.cwd, process.cwd());
+    assert.equal(calls[1].options.cwd, process.cwd());
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 function uploadFixture(options = {}) {
   const source = `${"MARKETING_VERSION = 1.0.4; CURRENT_PROJECT_VERSION = 10; ".repeat(4)}PRODUCT_BUNDLE_IDENTIFIER = ai.fundhub.app;`;
   const apple = appleFixture({ uploaded: false, ...options });
@@ -197,15 +256,18 @@ function uploadFixture(options = {}) {
   const keyPath = path.join(dir, "AuthKey_TEST.p8");
   const ipa = path.join(dir, "Fundhub.ipa");
   fs.writeFileSync(keyPath, "test-only");
-  fs.writeFileSync(ipa, "test-only-ipa");
   const deps = { env: { ASC_KEY_ID: "TEST", ASC_ISSUER_ID: "ISSUER", ASC_KEY_PATH: keyPath },
     client: apple.client,
-    command: async (program) => {
+    command: async (program, commandArgs) => {
       assert.equal(program, "git");
-      return { stdout: source };
+      if (commandArgs[0] === "rev-parse") return { stdout: `${SHA}\n` };
+      if (commandArgs[0] === "status") return { stdout: "" };
+      if (commandArgs[0] === "show") return { stdout: source };
+      throw new Error(`Unexpected git ${commandArgs[0]}`);
     },
     inspect: async () => ({ bundle: "ai.fundhub.app", version: "1.0.4", build: "10" }),
     ci: async () => { calls.push("ci"); return 123; },
+    build: async () => { calls.push("build"); fs.writeFileSync(ipa, "test-only-ipa"); },
     apple: async (toolArgs) => { calls.push(toolArgs[0]); if (toolArgs[0] === "--upload-app") apple.markUploaded(); },
     sleep: async () => { calls.push("sleep"); apple.setProcessingState("VALID"); } };
   return { apple, calls, deps, ipa, cleanup: () => fs.rmSync(dir, { recursive: true, force: true }) };
@@ -221,6 +283,31 @@ test("upload dry run does no Apple writes or upload", async () => {
   } finally { fixture.cleanup(); }
 });
 
+test("IPA output inside checkout is refused before archive", async () => {
+  const fixture = uploadFixture();
+  try {
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: path.join(process.cwd(), "Fundhub.ipa") }, fixture.deps), /outside the source checkout/);
+    assert.deepEqual(fixture.calls, []);
+  } finally { fixture.cleanup(); }
+});
+
+test("dirty or different source SHA and an unproven IPA stop before Apple writes", async () => {
+  const fixture = uploadFixture();
+  try {
+    const dirty = { ...fixture.deps, command: async (program, commandArgs, options) =>
+      commandArgs[0] === "status" ? { stdout: " M tools/fundhub-ios/Fundhub.swift" }
+        : fixture.deps.command(program, commandArgs, options) };
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa }, dirty), /clean checkout/);
+    const wrong = { ...fixture.deps, command: async (program, commandArgs, options) =>
+      commandArgs[0] === "rev-parse" ? { stdout: `${"b".repeat(40)}\n` }
+        : fixture.deps.command(program, commandArgs, options) };
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa }, wrong), /clean checkout/);
+    fs.writeFileSync(fixture.ipa, "unproven");
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa }, fixture.deps), /IPA and pinned archive receipt/);
+    assert.deepEqual(fixture.apple.writes, []);
+  } finally { fixture.cleanup(); }
+});
+
 test("one apply validates, uploads, waits VALID, rechecks CI and submits AFTER_APPROVAL", async () => {
   const fixture = uploadFixture();
   fixture.apple.setProcessingState("PROCESSING");
@@ -229,7 +316,7 @@ test("one apply validates, uploads, waits VALID, rechecks CI and submits AFTER_A
     assert.equal(result.mode, "upload-and-submit");
     assert.equal(result.appStoreState, "WAITING_FOR_REVIEW");
     assert.equal(result.releaseType, "AFTER_APPROVAL");
-    assert.deepEqual(fixture.calls, ["ci", "--validate-app", "--upload-app", "sleep", "ci"]);
+    assert.deepEqual(fixture.calls, ["ci", "build", "--validate-app", "--upload-app", "sleep", "ci"]);
     assert.equal(fixture.apple.writes.at(-1).endpoint, "/v1/reviewSubmissions/submission-id");
   } finally { fixture.cleanup(); }
 });
@@ -239,10 +326,21 @@ test("a bad IPA or existing upload stops before upload and submission", async ()
   try {
     const bad = { ...fixture.deps, inspect: async () => ({ bundle: "ai.fundhub.app", version: "1.0.4", build: "9" }) };
     await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa }, bad), /IPA bundle/);
-    assert.deepEqual(fixture.calls, []);
+    assert.deepEqual(fixture.calls, ["ci", "build"]);
+    fs.rmSync(fixture.ipa);
+    fixture.calls.length = 0;
     fixture.apple.markUploaded();
     await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa }, fixture.deps), /already uploaded/);
+    assert.deepEqual(fixture.calls, ["ci"]);
+  } finally { fixture.cleanup(); }
+});
+
+test("a different attached App Store build blocks archive and upload", async () => {
+  const fixture = uploadFixture({ attached: "another-build" });
+  try {
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa }, fixture.deps), /different build attached/);
     assert.deepEqual(fixture.calls, []);
+    assert.deepEqual(fixture.apple.writes, []);
   } finally { fixture.cleanup(); }
 });
 
@@ -259,7 +357,7 @@ test("CI failure before upload blocks altool, and CI change after upload blocks 
     let checks = 0;
     await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: after.ipa },
       { ...after.deps, ci: async () => { if (++checks === 2) throw new Error("main moved"); return 123; } }), /main moved/);
-    assert.deepEqual(after.calls, ["--validate-app", "--upload-app"]);
+    assert.deepEqual(after.calls, ["build", "--validate-app", "--upload-app"]);
     assert.deepEqual(after.apple.writes, []);
   } finally { after.cleanup(); }
 });
@@ -299,6 +397,18 @@ test("a matching IPA marker resumes an upload without sending the build twice", 
   } finally { fixture.cleanup(); }
 });
 
+test("an uncertain upload never sends the same IPA twice", async () => {
+  const fixture = uploadFixture();
+  const uncertain = { ...fixture.deps, apple: async (toolArgs) => { fixture.calls.push(toolArgs[0]); } };
+  try {
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa }, uncertain), /no review submission or duplicate upload/);
+    assert.equal(fixture.calls.filter((call) => call === "--upload-app").length, 1);
+    fixture.calls.length = 0;
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa }, uncertain), /no review submission or duplicate upload/);
+    assert.equal(fixture.calls.includes("--upload-app"), false);
+  } finally { fixture.cleanup(); }
+});
+
 test("a matching already-submitted release returns the Apple receipt without another write", async () => {
   const fixture = uploadFixture();
   try {
@@ -310,7 +420,18 @@ test("a matching already-submitted release returns the Apple receipt without ano
     assert.equal(result.appStoreState, "WAITING_FOR_REVIEW");
     assert.equal(result.releaseType, "AFTER_APPROVAL");
     assert.equal(fixture.apple.writes.length, writeCount);
-    assert.deepEqual(fixture.calls, []);
+    assert.deepEqual(fixture.calls, ["ci"]);
+  } finally { fixture.cleanup(); }
+});
+
+test("a ready archive marker cannot claim another process's submitted build", async () => {
+  const fixture = uploadFixture();
+  try {
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa },
+      { ...fixture.deps, apple: async () => { throw new Error("validation stopped"); } }), /validation stopped/);
+    fixture.apple.setSubmitted();
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa }, fixture.deps), /proven idempotent/);
+    assert.deepEqual(fixture.apple.writes, []);
   } finally { fixture.cleanup(); }
 });
 
@@ -322,7 +443,7 @@ test("a changed IPA cannot use an earlier upload marker", async () => {
       { ...fixture.deps, ci: async () => { if (++checks === 2) throw new Error("main moved"); return 123; } }), /main moved/);
     fs.appendFileSync(fixture.ipa, "changed");
     fixture.calls.length = 0;
-    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa }, fixture.deps), /marker does not match/);
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: fixture.ipa }, fixture.deps), /IPA bytes changed/);
     assert.deepEqual(fixture.calls, []);
   } finally { fixture.cleanup(); }
 });

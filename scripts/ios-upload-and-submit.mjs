@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// One guarded command from an exported IPA through App Store review submission.
+// One guarded command from pinned source through App Store review submission.
 import fs from "node:fs";
 import crypto from "node:crypto";
 import os from "node:os";
@@ -14,6 +14,7 @@ const execFileAsync = promisify(execFile);
 const APP_ID = "6823985032";
 const BUNDLE_ID = "ai.fundhub.app";
 const PROJECT = "tools/fundhub-ios/Fundhub.xcodeproj/project.pbxproj";
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const POLL_ATTEMPTS = 60;
 const POLL_MS = 30_000;
 const MARKER_SUFFIX = ".fundhub-release.json";
@@ -22,7 +23,7 @@ export function parseArgs(argv) {
   const args = [...argv];
   const index = args.indexOf("--ipa");
   if (index < 0 || !args[index + 1] || args[index + 1].startsWith("--")) {
-    throw new Error("Pass the exact exported --ipa path");
+    throw new Error("Pass an unused --ipa output path, or the exact path from a prior run");
   }
   if (args.includes("--release-type")) throw new Error("This release path always uses AFTER_APPROVAL");
   const ipa = path.resolve(args[index + 1]);
@@ -76,24 +77,67 @@ async function ipaHash(ipa) {
   return hash.digest("hex");
 }
 
-function uploadMarker(ipa, args, digest) {
+function uploadMarker(ipa, args) {
   const markerPath = `${ipa}${MARKER_SUFFIX}`;
-  const expected = { schema: 1, sha: args.sha, version: args.version, build: args.build, ipaSha256: digest };
-  const check = () => {
-    if (!fs.existsSync(markerPath)) return false;
+  const fields = { schema: 2, sha: args.sha, version: args.version, build: args.build };
+  const read = () => {
+    if (!fs.existsSync(markerPath)) return null;
     let actual;
     try { actual = JSON.parse(fs.readFileSync(markerPath, "utf8")); } catch { throw new Error("IPA upload marker is unreadable"); }
-    if (Object.keys(expected).some((key) => actual?.[key] !== expected[key])) {
-      throw new Error("IPA upload marker does not match this source, version, build and IPA bytes");
+    if (Object.keys(fields).some((key) => actual?.[key] !== fields[key]) ||
+        !/^[a-f0-9]{64}$/.test(actual?.ipaSha256 || "") ||
+        !["ready", "upload_attempted"].includes(actual?.phase)) {
+      throw new Error("IPA upload marker does not match this source, version and build");
     }
-    return true;
+    return actual;
   };
-  return { path: markerPath, check, write: () => {
-    if (!check()) {
-      try { fs.writeFileSync(markerPath, JSON.stringify(expected) + "\n", { flag: "wx", mode: 0o600 }); }
-      catch (error) { if (error.code !== "EEXIST") throw error; check(); }
+  const write = (value, create = false) => {
+    const temp = `${markerPath}.${process.pid}.tmp`;
+    fs.writeFileSync(temp, JSON.stringify(value) + "\n", { flag: "wx", mode: 0o600 });
+    try {
+      if (create && fs.existsSync(markerPath)) throw new Error("IPA upload marker appeared during archive/export");
+      fs.renameSync(temp, markerPath);
+    } finally { fs.rmSync(temp, { force: true }); }
+  };
+  return { path: markerPath, read, ready: (digest) => write({ ...fields, ipaSha256: digest, phase: "ready" }, true),
+    attempted: (record) => write({ ...record, phase: "upload_attempted" }) };
+}
+
+async function assertCleanPinnedSource(args, command = execFileAsync) {
+  const head = String((await command("git", ["rev-parse", "HEAD"], { cwd: ROOT })).stdout).trim();
+  const dirty = String((await command("git", ["status", "--porcelain", "--untracked-files=all"], { cwd: ROOT })).stdout).trim();
+  if (head !== args.sha || dirty) throw new Error("Archive requires a clean checkout at the exact pinned source SHA");
+}
+
+function assertOutputOutsideCheckout(ipa) {
+  const parent = fs.realpathSync(path.dirname(ipa));
+  if (parent === ROOT || parent.startsWith(`${ROOT}${path.sep}`)) {
+    throw new Error("--ipa output must be outside the source checkout");
+  }
+}
+
+export async function buildIpa(args, toolEnv, command = execFileAsync) {
+  if (fs.existsSync(args.ipa)) throw new Error("Unproven IPA exists at the requested output path");
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-ios-archive-"));
+  const archive = path.join(temp, "Fundhub.xcarchive");
+  const exported = path.join(temp, "export");
+  const auth = ["-allowProvisioningUpdates", "-authenticationKeyPath", toolEnv.keyPath,
+    "-authenticationKeyID", toolEnv.keyId, "-authenticationKeyIssuerID", toolEnv.issuerId];
+  try {
+    await command("xcodebuild", ["-project", "tools/fundhub-ios/Fundhub.xcodeproj", "-scheme", "Fundhub",
+      "-configuration", "Release", "-destination", "generic/platform=iOS", "-archivePath", archive,
+      ...auth, "archive"], { cwd: ROOT, timeout: 60 * 60_000, maxBuffer: 20_000_000 });
+    await command("xcodebuild", ["-exportArchive", "-archivePath", archive,
+      "-exportOptionsPlist", "tools/fundhub-ios/ExportOptions.plist", "-exportPath", exported,
+      ...auth], { cwd: ROOT, timeout: 30 * 60_000, maxBuffer: 20_000_000 });
+    const produced = path.join(exported, "Fundhub.ipa");
+    if (!fs.statSync(produced, { throwIfNoEntry: false })?.isFile()) {
+      throw new Error("Xcode export did not produce Fundhub.ipa");
     }
-  } };
+    fs.copyFileSync(produced, args.ipa, fs.constants.COPYFILE_EXCL);
+  } catch (error) {
+    throw new Error(`Pinned iOS archive/export failed: ${error.message?.startsWith("Xcode export") ? error.message : "inspect the Xcode signing result"}`);
+  } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 }
 
 export async function appleTool(args, env, command = execFileAsync) {
@@ -111,28 +155,45 @@ export async function appleTool(args, env, command = execFileAsync) {
 
 export async function runUploadAndSubmit(args, { env = process.env, client = makeAppleClient(env),
   command = execFileAsync, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-  inspect = inspectIpa, ci = assertMainCi, apple = appleTool } = {}) {
-  const project = (await command("git", ["show", `${args.sha}:${PROJECT}`], { maxBuffer: 1_000_000 })).stdout;
+  inspect = inspectIpa, ci = assertMainCi, apple = appleTool, build = buildIpa } = {}) {
+  assertOutputOutsideCheckout(args.ipa);
+  await assertCleanPinnedSource(args, command);
+  const project = (await command("git", ["show", `${args.sha}:${PROJECT}`], { cwd: ROOT, maxBuffer: 1_000_000 })).stdout;
   assertProjectVersion(project, args);
-  assertIpaFields(await inspect(args.ipa, command), args);
-  const marker = uploadMarker(args.ipa, args, await ipaHash(args.ipa));
-  const marked = marker.check();
+  const marker = uploadMarker(args.ipa, args);
+  let marked = marker.read();
+  const hasIpa = fs.statSync(args.ipa, { throwIfNoEntry: false })?.isFile() || false;
+  if (hasIpa !== Boolean(marked)) throw new Error("IPA and pinned archive receipt must both exist for a retry");
+  if (marked) {
+    assertIpaFields(await inspect(args.ipa, command), args);
+    if (marked.ipaSha256 !== await ipaHash(args.ipa)) {
+      throw new Error("IPA bytes changed since the pinned archive receipt");
+    }
+  }
   let appVersion = await findVersion(client, args.version);
   let existing = await readUploadedBuild(client, args);
+  const attached = appVersion ? (await client("GET", `/v1/appStoreVersions/${appVersion.id}/build`))?.data : null;
+  if (attached && (!existing || attached.id !== existing.id)) {
+    throw new Error("Exact App Store version already has a different build attached");
+  }
+  const firstCiRun = await ci(args.sha, undefined, { allowMainAdvance: marked?.phase === "upload_attempted" });
   if (appVersion && !["PREPARE_FOR_SUBMISSION", "READY_FOR_REVIEW"].includes(appVersion.attributes?.appStoreState)) {
-    if (!marked || !existing) throw new Error("Exact App Store version is not open for a new review submission");
+    if (marked?.phase !== "upload_attempted" || !existing) {
+      throw new Error("Exact App Store version is not open for a proven idempotent review receipt");
+    }
     const completed = await readReceipt(client, args);
     if (!checkReceipt(completed, "AFTER_APPROVAL").submitted) {
       throw new Error("Exact App Store version is not an already-submitted release");
     }
-    return { mode: "already-submitted", ...publicReceipt(completed, args) };
+    return { mode: "already-submitted", ...publicReceipt(completed, args, firstCiRun) };
   }
-  if (existing && !marked) throw new Error("Exact build is already uploaded without this IPA release marker; no automatic resume");
-  const firstCiRun = await ci(args.sha);
+  if (existing && (!marked || marked.phase !== "upload_attempted")) {
+    throw new Error("Exact build is already uploaded without a matching upload attempt receipt; no automatic resume");
+  }
   if (!args.apply) return { mode: "upload-dry-run", version: args.version, build: args.build,
     sha: args.sha, ipa: path.basename(args.ipa), releaseType: "AFTER_APPROVAL", ciRun: firstCiRun,
     createVersion: !appVersion, resumeUpload: Boolean(existing && marked),
-    next: "Run the same command with --apply to create the version if needed, validate, upload, wait VALID and submit" };
+    next: "Run the same command with --apply to archive, export, upload, wait VALID and submit" };
 
   const keyId = String(env.ASC_KEY_ID || "").trim();
   const issuerId = String(env.ASC_ISSUER_ID || "").trim();
@@ -142,6 +203,13 @@ export async function runUploadAndSubmit(args, { env = process.env, client = mak
     throw new Error("A matching ASC API key file is required for IPA upload");
   }
   const toolEnv = { version: args.version, build: args.build, keyId, issuerId, keyPath };
+  if (!marked) {
+    await build(args, toolEnv, command);
+    await assertCleanPinnedSource(args, command);
+    assertIpaFields(await inspect(args.ipa, command), args);
+    marker.ready(await ipaHash(args.ipa));
+    marked = marker.read();
+  }
   if (!appVersion) {
     await client("POST", "/v1/appStoreVersions", { data: { type: "appStoreVersions",
       attributes: { platform: "IOS", versionString: args.version, releaseType: "AFTER_APPROVAL" },
@@ -149,15 +217,9 @@ export async function runUploadAndSubmit(args, { env = process.env, client = mak
     appVersion = await findVersion(client, args.version);
     if (!appVersion) throw new Error("Apple did not return the newly created exact iOS version");
   }
-  if (marked && !existing) {
-    for (let attempt = 0; attempt < 10 && !existing; attempt++) {
-      existing = await readUploadedBuild(client, args);
-      if (!existing && attempt < 9) await sleep(POLL_MS);
-    }
-  }
-  if (!existing) {
+  if (marked.phase === "ready") {
     await apple(["--validate-app", args.ipa], toolEnv, command);
-    marker.write();
+    marker.attempted(marked);
     await apple(["--upload-app", "-f", args.ipa, "--wait"], toolEnv, command);
   }
   let receipt = null;
@@ -173,9 +235,9 @@ export async function runUploadAndSubmit(args, { env = process.env, client = mak
     if (attempt < POLL_ATTEMPTS - 1) await sleep(POLL_MS);
   }
   if (receipt?.uploaded.attributes?.processingState !== "VALID") {
-    throw new Error("Exact uploaded build did not become VALID within 30 minutes; no review submission was sent");
+    throw new Error("Exact upload attempt did not become VALID within 30 minutes; no review submission or duplicate upload was sent");
   }
-  const finalCiRun = await ci(args.sha);
+  const finalCiRun = await ci(args.sha, undefined, { allowMainAdvance: true });
   const submitted = await applySubmission(client, args, receipt);
   return { mode: "upload-and-submit", ...publicReceipt(submitted, args, finalCiRun) };
 }
