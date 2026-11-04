@@ -531,6 +531,9 @@ test("handoff: message grace follows waits, and the immediate setter task has a 
   assert.ok(SETTER_TASK_GRACE_MIN > SETTER_TASK_DUE_MIN);
   assert.match(ALL_SQL.SETTER_TASK_SQL, /t\.body = 'survey-completed:' \|\| l\.cohort_id::text/);
   assert.match(ALL_SQL.SETTER_TASK_SQL, /t\.body = l\.id::text/);
+  assert.match(ALL_SQL.SETTER_TASK_SQL, /t\.title = 'Setter: call now — survey done, no booking'[\s\S]*?t\.updated_at >= l\.created_at - interval '30 seconds'/);
+  assert.match(ALL_SQL.SETTER_TASK_SQL, /t\.source_workflow = 'setter-survey-done'[\s\S]*?t\.title = 'Setter: call — finished the survey, no call booked'[\s\S]*?t\.created_at BETWEEN l\.created_at AND l\.created_at \+ interval '25 minutes'/);
+  assert.doesNotMatch(ALL_SQL.SETTER_TASK_SQL, /t\.title = 'Setter: call new opt-in'/);
   assert.match(ALL_SQL.SETTER_TASK_SQL, /b\.created_at <= l\.created_at/);
   assert.doesNotMatch(ALL_SQL.SETTER_TASK_SQL, /b\.created_at <= l\.created_at \+ interval/);
   assert.match(WF("slo-genuine-followup.mjs"), /WAIT_M1 = "15m"/);

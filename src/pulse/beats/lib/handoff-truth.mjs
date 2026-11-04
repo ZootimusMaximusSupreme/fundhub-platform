@@ -283,11 +283,25 @@ const IS_SUPPRESSED_REPEAT = `(
          )
      )`;
 
-/** The survey was finished (survey.completed, the last answer) by `beforeSql`. */
+/** The survey was finished by `beforeSql`. Older saved surveys have the final
+    answer on survey.submitted but no survey.completed event; the send path
+    checks that same saved final answer before it skips an incomplete nudge. */
 const SURVEY_DONE_BY = (beforeSql) => `EXISTS (
        SELECT 1 FROM events s
         WHERE s.org_id = l.org_id
-          AND s.name = 'survey.completed'
+          AND (s.name = 'survey.completed' OR (
+            s.name = 'survey.submitted' AND (
+              (jsonb_typeof(s.payload->'answers'->'cf_svy_available_capital') = 'string'
+               AND btrim(s.payload->'answers'->>'cf_svy_available_capital') <> '')
+              OR EXISTS (
+                SELECT 1 FROM jsonb_array_elements_text(CASE
+                  WHEN jsonb_typeof(s.payload->'answers'->'cf_svy_available_capital') = 'array'
+                  THEN s.payload->'answers'->'cf_svy_available_capital' ELSE '[]'::jsonb
+                END) AS answer(value)
+                WHERE btrim(answer.value) <> ''
+              )
+            )
+          ))
           AND s.created_at <= ${beforeSql}
           AND (
             (l.cid IS NOT NULL AND s.client_id = l.cid)
@@ -373,7 +387,8 @@ ${tail()}
 
 /** $1 org, $2 ['survey.completed'], $3 window start, $4 cutoff (now minus the grace).
     Match the exact six-hour completion cohort used by the local task handler.
-    Old S-NOBOOK tasks used the event ID and arrived 15 minutes after completion. */
+    Old S-NOBOOK tasks arrived 15 minutes after completion and may carry a
+    different event ID; their survey-specific title proves the handoff. */
 export const SETTER_TASK_SQL = `
 /* gap:handoff-setter-task */
 WITH ${leadCte()},
@@ -403,9 +418,14 @@ ${tail("task_lead l")}
           AND (
             (t.source_workflow IN ('${SETTER_TASK_PROMOTED_SOURCE}', '${SETTER_TASK_SOURCE}')
               AND t.body = 'survey-completed:' || l.cohort_id::text
-              AND t.updated_at >= l.created_at)
+              AND (t.updated_at >= l.created_at OR (
+                t.title = 'Setter: call now — survey done, no booking'
+                AND t.updated_at >= l.created_at - interval '30 seconds')))
             OR (t.source_workflow = '${SETTER_TASK_SOURCE}'
               AND t.body = l.id::text
+              AND t.created_at BETWEEN l.created_at AND l.created_at + interval '${SETTER_TASK_GRACE_MIN} minutes')
+            OR (t.source_workflow = '${SETTER_TASK_SOURCE}'
+              AND t.title = 'Setter: call — finished the survey, no call booked'
               AND t.created_at BETWEEN l.created_at AND l.created_at + interval '${SETTER_TASK_GRACE_MIN} minutes')
           )
      )`.trim();
