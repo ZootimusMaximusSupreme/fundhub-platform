@@ -152,6 +152,14 @@ only. This keeps the confirmation text aimed at the number on the latest form.
 `booking.created` is deliberately **not** repeat-suppressed: it already has
 slot-level dedupe, and a second booking is a real second appointment.
 
+**ClickFunnels receipt proof (2026-11-04).** With `CF_CAPTURE_MODE=0` and
+`WEBHOOK_CAPTURE` enabled, the router saves one receipt after a signed delivery
+completes with HTTP 200. It records the handler's outcome and caps the stored
+body at 64 KiB with an explicit truncation marker. Invalid signatures leave no
+capture. Older raw-only captures have no verified handler result, so Pulse
+keeps them unresolved instead of calling them accepted. An uncaught handler
+error leaves no success receipt and ClickFunnels can retry the delivery.
+
 **One booking, two messages, one moment (2026-10-29).** ClickFunnels posts the
 calendar form and the scheduled event for one booking a fraction of a second
 apart. Each looked for a saved booking at that time before the other had saved

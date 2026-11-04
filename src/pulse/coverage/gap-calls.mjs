@@ -135,15 +135,17 @@ async function calendarPage({ fetchImpl, baseUrl }) {
   );
 }
 
-/* A booking webhook was accepted and no bookings row holds it.
+/* A booking webhook completed successfully and no bookings row holds it.
    A. A stored booking.created / booking.rescheduled event with no bookings row.
       A row counts when it carries the booking id, the event id, or the same
       email at the same start time (ClickFunnels re-keys a form-post booking to
       the call id, and a move or an interview skips on purpose).
-   B. A ClickFunnels appointment capture (created or moved, with an email) that
+   B. A ClickFunnels appointment capture with a successful post-handler receipt
+      (created or moved, with an email) that
       neither a booking event nor a bookings row can be traced to. A ClickFunnels
       body carries the call id at data.id. It never carries a key named bookingUid,
-      so the old test of the raw body for that key could never match. */
+      so the old test of the raw body for that key could never match. Earlier raw
+      captures lack an outcome; report those separately, never as accepted. */
 async function bookingWebhook({ db, orgId, now }) {
   const id = "calls:booking-webhook";
   if (!db || !orgId) return check(id, "skip", "no database in this run — booking webhooks not read");
@@ -182,9 +184,13 @@ async function bookingWebhook({ db, orgId, now }) {
     const eventMisses = rowsOf(events).filter((r) => !isInterviewBooking(r.payload || {}));
     const captures = await db.query(
       `/* gap-calls:booking-webhook:captures */
-       SELECT c.id::text AS key
+       SELECT c.id::text AS key,
+              COALESCE((c.parsed->>'status') ~ '^[0-9]{3}$'
+                AND jsonb_typeof(c.parsed->'outcome') = 'object'
+                AND c.parsed->'outcome' ? 'ok', false) AS handler_recorded,
+              COALESCE(c.parsed->>'status' = '200' AND c.parsed->'outcome'->>'ok' = 'true', false) AS handler_succeeded
          FROM (
-           SELECT w.id,
+           SELECT w.id, w.parsed,
                   substring(w.raw_body from '"data"[[:space:]]*:[[:space:]]*[{][[:space:]]*"id"[[:space:]]*:[[:space:]]*"?([0-9A-Za-z_-]+)') AS call_id,
                   substring(w.raw_body from '^[[:space:]]*[{][[:space:]]*"id"[[:space:]]*:[[:space:]]*"?([0-9A-Za-z_-]+)') AS message_id
              FROM webhook_captures w
@@ -210,14 +216,22 @@ async function bookingWebhook({ db, orgId, now }) {
         LIMIT 50`,
       params
     );
-    const n = eventMisses.length + rowsOf(captures).length;
-    if (n === 0) return check(id, "PASS", "booking webhooks have a bookings row");
+    const captureRows = rowsOf(captures);
+    const accepted = captureRows.filter((row) => truthy(row.handler_succeeded)).length;
+    const unknown = captureRows.filter((row) => !truthy(row.handler_recorded)).length;
+    const rejected = captureRows.length - accepted - unknown;
+    const n = eventMisses.length + accepted;
+    if (n === 0 && unknown === 0 && rejected === 0) return check(id, "PASS", "booking webhooks have a bookings row");
+    if (n === 0) return check(id, "FAIL",
+      [unknown ? `${unknown} booking ${unknown === 1 ? "capture has" : "captures have"} no post-handler outcome` : null,
+       rejected ? `${rejected} booking ${rejected === 1 ? "capture has" : "captures have"} a rejected handler outcome` : null].filter(Boolean).join("; "),
+      `Raw-only captures do not prove the booking handler succeeded; rejected outcomes are not accepted bookings. Reconcile with ClickFunnels and the saved bookings; do not replay production. ${RECON}`);
     const word = n === 1 ? "webhook" : "webhooks";
     return check(
       id,
       "FAIL",
-      `${n} booking ${word} accepted with no bookings row`,
-      `The booking webhook was accepted but the bookings row was not saved. Check the booking handler. ${RECON}`
+      `${n} booking ${word} accepted with no bookings row${unknown ? `; ${unknown} older capture ${unknown === 1 ? "has" : "have"} no outcome` : ""}${rejected ? `; ${rejected} handler ${rejected === 1 ? "outcome was" : "outcomes were"} rejected` : ""}`,
+      `The booking webhook succeeded but the bookings row was not saved. Check the booking handler.${unknown ? " Reconcile older raw captures separately; their outcome is unknown." : ""}${rejected ? " Reconcile rejected outcomes separately; they were not accepted." : ""} ${RECON}`
     );
   } catch (err) {
     return check(id, "FAIL", `booking-webhook read failed: ${clip(err)}`, RECON);
