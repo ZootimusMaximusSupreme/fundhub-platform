@@ -158,10 +158,12 @@
         (o.maxlength ? ' maxlength="' + esc(o.maxlength) + '"' : "") +
         (o.placeholder ? ' placeholder="' + esc(o.placeholder) + '"' : "") +
         (o.autocomplete ? ' autocomplete="' + esc(o.autocomplete) + '"' : ' autocomplete="off"') +
-        (o.required ? " required" : "") + '>';
+        (o.required ? " required" : "") +
+        (o.help ? ' aria-describedby="' + esc(id) + '-help"' : "") + '>';
     }
     return '<div class="' + cls + '"' + (o.onlyCard ? ' data-only-card="1"' : "") + (o.onlyDue ? ' data-only-due="1"' : "") + '>' +
-      '<label for="' + esc(id) + '">' + esc(text) + '</label>' + input + '</div>';
+      '<label for="' + esc(id) + '">' + esc(text) + '</label>' + input +
+      (o.help ? '<p class="caption" id="' + esc(id) + '-help">' + esc(o.help) + '</p>' : "") + '</div>';
   }
 
   /* The business info fields, filled from `b` when editing. */
@@ -174,7 +176,8 @@
       field("entity_type", "Entity type", { prefix: prefix, value: v.entity_type, options: ENTITY_TYPES }) +
       field("formation_state", "State formed in", { prefix: prefix, value: v.formation_state, maxlength: 2, placeholder: "AZ" }) +
       field("started", "Start date", { prefix: prefix, value: started, type: "month" }) +
-      field("industry", "Industry", { prefix: prefix, value: v.industry, wide: true }) +
+      field("industry", "Industry", { prefix: prefix, value: v.industry, wide: true,
+        help: "Choose the industry that truly fits what you sell. For example: Professional Services for consulting, Education for courses, or Retail for goods, if accurate. A wrong category can delay approval with Whop or Commas." }) +
       field("address_line1", "Street address", { prefix: prefix, value: v.address_line1, wide: true, autocomplete: "address-line1" }) +
       field("city", "City", { prefix: prefix, value: v.city }) +
       field("state", "State", { prefix: prefix, value: v.state, maxlength: 2, placeholder: "AZ" }) +

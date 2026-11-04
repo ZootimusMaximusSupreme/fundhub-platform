@@ -107,6 +107,15 @@ test("empty: no business → one action, add a business", () => {
   assert.doesNotMatch(html, /data-act="create"/);
 });
 
+test("merchant setup uses the saved business profile and attributed provider signup links", () => {
+  const html = M.render(fixture(), null);
+  assert.match(html, /href="\/app\/money-accounts\.html">Save business profile<\/a>/);
+  assert.match(html, /href="https:\/\/whop\.com\/start\/\?code=UHBPLO"[^>]*><img[^>]*src="\/assets\/merchant-whop\.svg"[^>]*>Create a Whop account<\/a>/);
+  assert.match(html, /href="https:\/\/commas\.com\/login\?ref=M4glr1Xi"[^>]*><img[^>]*src="\/assets\/merchant-commas\.png"[^>]*>Create a Commas account<\/a>/);
+  assert.match(text(html), /You will enter your details again on their site/);
+  assert.doesNotMatch(M.render({ ...fixture(), containers: [] }, null), /Create a Whop account/);
+});
+
 test("loading is skeletons in the real layout; error says what failed and offers a retry", () => {
   assert.match(M.renderLoading(), /aria-busy="true"/);
   const err = M.renderError("nodb");
