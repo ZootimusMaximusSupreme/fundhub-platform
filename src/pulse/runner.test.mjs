@@ -736,7 +736,7 @@ describe("the text provider is down", () => {
   });
 });
 
-describe("one text an hour", () => {
+describe("one text per meaningful incident change", () => {
   test("a second invocation in the same hour sends NO second text", async () => {
     const h = harness([redBeat("a")]);
     await h.go();
@@ -749,14 +749,26 @@ describe("one text an hour", () => {
     assert.equal(h.rdb.state.beats.length, 2, "but the second run is still recorded");
   });
 
-  test("an hour later (past the 50 minute claim) it texts 'still broken, hour N'", async () => {
+  test("an hour later an unchanged red is still recorded but sends no repeat text", async () => {
     const old = new Date(clockMs() - 3 * 3600 * 1000).toISOString();
     const h = harness([redBeat("a")], { rdbOpts: { open: [{ id: INC(1), beat_id: "a", opened_at: old, opened_run_id: INC(2), first_step: "two", first_detail: "x", last_alert_at: new Date(clockMs() - 61 * 60 * 1000).toISOString(), alerts_sent: 3, closed_at: null }] } });
     const out = await h.go();
-    assert.deepEqual(out.alerts.stillBroken, ["a"]);
-    assert.match(h.sinks.calls.text[0], /^Fundhub STILL BROKEN, hour 4: Beat a at "two"\. Fix: /);
-    assert.equal(h.rdb.state.claims, 1);
+    assert.deepEqual(out.alerts.quiet, ["a"]);
+    assert.equal(h.sinks.calls.text.length, 0);
+    assert.equal(h.rdb.state.claims, 0);
     assert.equal(h.rdb.state.opens, 0, "the existing incident is reused");
+    assert.equal(h.rdb.state.beats.length, 1, "the red result is still saved");
+  });
+
+  test("a new failing step sends a changed alert without opening another incident", async () => {
+    const old = new Date(clockMs() - 3 * 3600 * 1000).toISOString();
+    const h = harness([redBeat("a")], { rdbOpts: { open: [{ id: INC(1), beat_id: "a", opened_at: old, opened_run_id: INC(2), first_step: "one", first_detail: "x", last_alert_at: new Date(clockMs() - 61 * 60 * 1000).toISOString(), alerts_sent: 1, closed_at: null }] } });
+    h.rdb.state.beats.push({ seq: 1, beat_id: "a", ok: false, step: "one", detail: "x" });
+    const out = await h.go();
+    assert.deepEqual(out.alerts.stillBroken, ["a"]);
+    assert.match(h.sinks.calls.text[0], /^Fundhub CHANGED FAILURE: Beat a now stopped at "two"\. Fix: /);
+    assert.equal(h.rdb.state.claims, 1);
+    assert.equal(h.rdb.state.opens, 0);
   });
 
   test("a storm (4+ red at once) is ONE text", async () => {
