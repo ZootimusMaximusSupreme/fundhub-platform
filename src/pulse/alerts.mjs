@@ -18,7 +18,8 @@
 //
 // DEDUPE. An unchanged open incident is quiet, however long it remains red.
 // A new break, changed failing step or recovery is news; the morning report still
-// carries all persistent reds. The 50-minute database claim guards concurrent sends.
+// carries all persistent reds. The 50-minute database claim records one winner,
+// but send happens first: two overlapping runs can still send one duplicate.
 //   2. saveIncidents() calls claimAlert() (an atomic UPDATE, one claim per 50 minutes). If another invocation
 //      won the claim first, we count a duplicate in the result (`dupes`). It cannot unsend, and the text goes
 //      before the records on purpose: a slow database must never hold the text back.

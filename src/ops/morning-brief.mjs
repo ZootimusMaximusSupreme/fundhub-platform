@@ -43,6 +43,7 @@ import { loadCashflowByDay } from "../finance/cashflow.mjs";
 import { fromCents } from "../commissions/money.mjs";
 import { textMorningBrief } from "../pulse/notify.mjs";
 import { TRIPWIRES } from "../pulse/tripwires.mjs";
+import { BEAT_FILES } from "../pulse/beats/index.mjs";
 import { buildSuggestions } from "./suggestions.mjs";
 import { briefUrl } from "./brief-link.mjs";
 import { groupByOfferFunnel, groupClosers, loadOfferNumbers, readClosersByOffer, OFFER_NOTES } from "./brief-offers.mjs";
@@ -199,15 +200,25 @@ export function redEvidenceKind(check) {
   const proof = String(check?.proof || "");
   if (id === "audit:not-checked" ||
       (id.startsWith("wf:") && /no receipt shows this workflow started/i.test(proof)) ||
-      (id.startsWith("catalog-display:") && /no saved receipt or linked result exists/i.test(proof))) {
+      (id.startsWith("catalog-display:") && /no saved receipt or linked result exists/i.test(proof)) ||
+      (id === "live-playwright:desks" && /preflight failed|browser tests did not run/i.test(proof))) {
     return "needs_proof";
   }
-  if (id === "live-playwright:desks" && /\b(?:stale|old|ago)\b/i.test(proof)) return "stale_check";
+  if (id === "live-playwright:desks" && /\b(?:stale|too old)\b/i.test(proof)) return "stale_check";
   return "failed_result";
 }
 
+const HOURLY_BEAT_IDS = new Set(BEAT_FILES.map(([file]) => file.slice("beat-".length, -".mjs".length)));
+
 export function redScope(check) {
-  return /^(?:live-playwright:|job:|wf:|audit:|gap-jobs:|gap-outside-inngest:)/.test(String(check?.id || ""))
+  const id = String(check?.id || "");
+  const proof = String(check?.proof || "");
+  // This one aggregate audit row names an unproved buyer-session check on the
+  // saved morning card. Keep future mixed audit gaps in Heartbeat health.
+  if (id === "audit:not-checked" && /^1 check was not checked: soft-pull:approve-signed-read\./i.test(proof)) {
+    return "business";
+  }
+  return HOURLY_BEAT_IDS.has(id) || /^(?:live-playwright:|job:|wf:|audit:|gap-jobs:|gap-outside-inngest:)/.test(id)
     ? "heartbeat"
     : "business";
 }
