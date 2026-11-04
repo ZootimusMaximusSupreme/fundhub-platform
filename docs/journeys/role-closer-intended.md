@@ -104,3 +104,7 @@ Meet responses must match the expanded call's bookingId and fresh checkedAt befo
 ## Payout bank (owner-approved 2026-11-02)
 
 A signed-in closer may see a masked payout bank and link or replace their own destination from the account menu when production Plaid Transfer is available. They cannot choose another employee's destination or send a payout. A paid commission event may send a fixed, amount-free iPhone alert to their registered device; the alert opens their workspace.
+
+## Saved offer match (owner-directed 2026-11-04)
+
+The existing private call workspace reads the selected client's saved OffersIQ result. It shows the overall offer match, optional returned score and financial attributes, and provider receipt without starting another check. Missing attributes stay missing. Sandbox results are labelled. A saved result for earlier name, phone or residential address details must show that it needs review and hide the old financial values. This result does not complete the separate full credit pull or claim a credit approval. The assigned setter's existing desk owns permission, the confirmed residential address and the single request; the closer view remains read-only.

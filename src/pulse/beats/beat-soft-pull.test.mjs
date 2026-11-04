@@ -27,11 +27,24 @@ test("soft-pull is valid, green on a healthy ledger and a live setup, red when a
   assert.deepEqual(await checkBeatSelfTest(beat), []);
   const passed = await runBeat(beat, makeFakeCtx(beat, beat.selfTest.pass()));
   assert.equal(passed.ok, true, passed.detail);
-  assert.equal(passed.detail, "6 soft pull checks passed");
+  assert.equal(passed.detail, "7 soft pull checks passed");
   const failed = await runBeat(beat, makeFakeCtx(beat, beat.selfTest.fail()));
   assert.equal(failed.ok, false);
   assert.equal(failed.step, "softpull-request-failed-or-stuck");
   assert.match(failed.detail, /1 failed in the last 3 days \(reason: vendor timeout\)/);
+});
+
+test("soft-pull: OffersIQ ledger failures are red at the hourly ledger step", async () => {
+  for (const [counts, words] of [
+    [{ stale: 1, missing_receipt: 0, errors: 0 }, /in flight over 15 minutes/],
+    [{ stale: 0, missing_receipt: 1, errors: 0 }, /completed without a provider receipt/],
+    [{ stale: 0, missing_receipt: 0, errors: 1 }, /unresolved errors in the last 3 days/]
+  ]) {
+    const result = await runBeat(beat, makeFakeCtx(beat, withRows([[truth.OFFERSIQ_LEDGER_SQL, [counts]]])));
+    assert.equal(result.ok, false);
+    assert.equal(result.step, "softpull-offersiq-ledger");
+    assert.match(result.detail, words);
+  }
 });
 
 test("soft-pull: a paid buyer past 2 hours with no form and no reminder is red at the paid-form step", async () => {
@@ -115,6 +128,7 @@ test("soft-pull: the copies equal the code they were taken from", () => {
 
 test("soft-pull: the daily lanes and the hourly beat share one SQL and one judge", () => {
   assert.equal(lane.LEDGER_SQL, truth.LEDGER_SQL);
+  assert.equal(lane.OFFERSIQ_LEDGER_SQL, truth.OFFERSIQ_LEDGER_SQL);
   assert.equal(lane.PAID_FORM_ORDERS_SQL, truth.PAID_FORM_ORDERS_SQL);
   assert.equal(lane.PAID_DIAGNOSTICS_SQL, truth.PAID_DIAGNOSTICS_SQL);
   assert.equal(lane.judgeLedger, truth.judgeLedger);

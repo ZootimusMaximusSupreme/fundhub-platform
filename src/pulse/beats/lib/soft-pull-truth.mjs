@@ -14,6 +14,7 @@
 //   softpull:request-failed-or-stuck   a credit pull failed in the last 3 days, or is stuck
 //   softpull:paid-form-not-filled-2h   a paid roadmap buyer has an empty pull form and got no reminder
 //   softpull:approve-click-no-pull     a client approved and paid, and no pull was started
+//   softpull:offersiq-ledger           an OffersIQ request stalled, lost its receipt, or has a recent unresolved error
 //
 // The signed approve read (it runs the real handler in process) stays in the lane.
 // `web(url, init)` answers like fetch: the lane hands in its fetch, the beat a GET through ctx.http.
@@ -232,7 +233,8 @@ export async function checkApproveRead({ web, baseUrl = DEFAULT_BASE_URL } = {})
 export const PULL_CHECK_IDS = Object.freeze([
   "softpull:request-failed-or-stuck",
   "softpull:paid-form-not-filled-2h",
-  "softpull:approve-click-no-pull"
+  "softpull:approve-click-no-pull",
+  "softpull:offersiq-ledger"
 ]);
 
 /** Every row this lane returns, doors first. */
@@ -255,6 +257,7 @@ export const NO_PULL_MINUTES = 15;
 export const NO_PULL_LOOKBACK_DAYS = 30;
 /** Clock slop between the payment stamp and the pull row's own stamp. */
 export const NO_PULL_SLOP_MINUTES = 2;
+export const OFFERSIQ_STALE_MINUTES = 15;
 /** The reminder C-00's sibling sends 15 minutes after a $297 payment. */
 export const NUDGE_KEYS = Object.freeze(["SMS-SLO-PAID-FORM-01", "EMAIL-SLO-PAID-FORM-01"]);
 /** A reminder in one of these never reached the buyer. */
@@ -276,6 +279,8 @@ const PAID_FORM_FIX =
   "Read the slo-paid-form-nudge run for these buyers and the EMAIL-SLO-PAID-FORM-01 and SMS-SLO-PAID-FORM-01 rows in messages. The buyer needs the roadmap form link. This check only reads. Do not send from it. Do not auto-fix.";
 const NO_PULL_FIX =
   "Read the C-00 run for the payment (diagnostic.paid). It stops with no row when the client has no portal account. Fix that on the client record, then run the staff pull button. This check only reads. Do not pull credit from it. Do not auto-fix.";
+const OFFERSIQ_FIX =
+  "Read offersiq_requests for the affected company. Resolve stale in-flight requests, provider errors, or completed rows missing the provider request receipt. This check only reads. Do not pull credit or send anything from it. Do not auto-fix.";
 
 /* A test client is one nobody is selling to: the demo flag, the synthetic flag,
    or an address the sim seeder and our own e2e runs use. Same rule as
@@ -305,6 +310,32 @@ SELECT r.id::text AS id,
         OR r.requested_at > $2::timestamptz - interval '${FAILED_LOOKBACK_DAYS} days')
  ORDER BY (r.status IN ('queued', 'processing')) DESC, r.requested_at DESC
  LIMIT ${LEDGER_ROW_CAP}
+`.trim();
+
+/** One count per OffersIQ failure mode; no client identity or provider payload leaves the database. */
+export const OFFERSIQ_LEDGER_SQL = `
+/* gap:softpull-offersiq-ledger */
+SELECT count(*) FILTER (WHERE r.status = 'in_flight'
+                         AND r.created_at < $2::timestamptz - interval '${OFFERSIQ_STALE_MINUTES} minutes')::int AS stale,
+       count(*) FILTER (WHERE r.status IN ('matched', 'not_matched')
+                         AND NULLIF(btrim(r.provider_request_id), '') IS NULL)::int AS missing_receipt,
+       count(*) FILTER (WHERE r.status = 'error'
+                         AND r.created_at > $2::timestamptz - interval '${FAILED_LOOKBACK_DAYS} days'
+                         AND NOT EXISTS (
+                           SELECT 1 FROM offersiq_requests newer
+                            WHERE newer.org_id = r.org_id
+                              AND newer.client_id = r.client_id
+                              AND newer.identity_fingerprint = r.identity_fingerprint
+                              AND newer.rule_set_id = r.rule_set_id
+                              AND newer.environment = r.environment
+                              AND newer.created_at > r.created_at
+                              AND newer.status IN ('matched', 'not_matched')
+                              AND NULLIF(btrim(newer.provider_request_id), '') IS NOT NULL
+                         ))::int AS errors
+  FROM offersiq_requests r
+  JOIN clients c ON c.id = r.client_id AND c.org_id = r.org_id
+ WHERE r.org_id = $1::uuid
+   AND ($3::boolean OR NOT ${testClientSql("c", "$4")})
 `.trim();
 
 /** Paid $297 roadmap orders whose pull form is still empty. */
@@ -403,7 +434,7 @@ SELECT r.client_id::text AS client_id,
 
 export const PULL_READ_SQL = Object.freeze([
   LEDGER_SQL, PAID_FORM_ORDERS_SQL, PAID_DIAGNOSTICS_SQL,
-  LIVE_CONSENT_SQL, HAS_FILE_SQL, NUDGES_SQL, PULL_TIMES_SQL
+  LIVE_CONSENT_SQL, HAS_FILE_SQL, NUDGES_SQL, PULL_TIMES_SQL, OFFERSIQ_LEDGER_SQL
 ]);
 
 /** A pull check never writes. Refuse any statement that is not a plain read. */
@@ -585,6 +616,34 @@ export async function checkRequestFailedOrStuck(io = {}) {
     `${total} credit ${plural(total, "pull needs", "pulls need")} a look: ${parts.join("; ")}. Clients: ${ids.join(", ")}`,
     LEDGER_FIX
   );
+}
+
+/** OffersIQ provider state, read only. A broken read is red because it cannot prove the ledger is healthy. */
+export async function checkOffersIqLedger(io = {}) {
+  const id = "softpull:offersiq-ledger";
+  const early = guard(io, id, "OffersIQ ledger");
+  if (early) return early;
+  let counts;
+  try {
+    counts = await withReader(io, "OffersIQ ledger", async (q) => {
+      const result = await q.query(OFFERSIQ_LEDGER_SQL, [io.orgId.trim(), nowOf(io).toISOString(), io.demoOn === true, TEST_CLIENT_EMAIL_RE]);
+      return result?.rows?.[0];
+    });
+  } catch (err) {
+    return check(id, "FAIL", `could not read OffersIQ ledger: ${clip(err && err.message)}`, OFFERSIQ_FIX);
+  }
+  const raw = [counts?.stale, counts?.missing_receipt, counts?.errors];
+  const values = raw.map(Number);
+  if (!counts || raw.some((n) => n == null || n === "") || values.some((n) => !Number.isSafeInteger(n) || n < 0)) {
+    return check(id, "FAIL", "OffersIQ ledger did not return valid counts", OFFERSIQ_FIX);
+  }
+  const [stale, missingReceipt, errors] = values;
+  if (stale + missingReceipt + errors === 0) {
+    return check(id, "PASS", `no OffersIQ request is stale, missing a provider receipt, or has an unresolved error in the last ${FAILED_LOOKBACK_DAYS} days`);
+  }
+  return check(id, "FAIL",
+    `${stale} OffersIQ requests in flight over ${OFFERSIQ_STALE_MINUTES} minutes; ${missingReceipt} completed without a provider receipt; ${errors} unresolved errors in the last ${FAILED_LOOKBACK_DAYS} days`,
+    OFFERSIQ_FIX);
 }
 
 // ---- row 2: paid, form still empty, and nobody reminded them -------------
@@ -777,13 +836,14 @@ export async function checkApproveClickNoPull(io = {}) {
 }
 
 /**
- * The three credit-pull ledger rows. Read only, database only.
+ * The credit and OffersIQ ledger rows. Read only, database only.
  * @param {object} [io]
  */
 export async function pullLedgerChecks(io = {}) {
   return Promise.all([
     checkRequestFailedOrStuck(io),
     checkPaidFormNotFilled(io),
-    checkApproveClickNoPull(io)
+    checkApproveClickNoPull(io),
+    checkOffersIqLedger(io)
   ]);
 }

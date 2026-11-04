@@ -296,8 +296,37 @@
     });
   }
 
+  function paintOffersIq(result) {
+    var box = document.getElementById("fh-offersiq");
+    var note = document.getElementById("fh-offersiq-note");
+    var facts = document.getElementById("fh-offersiq-facts");
+    var details = document.getElementById("fh-offersiq-details");
+    if (!box || !note || !facts || !details) return;
+    box.hidden = !result;
+    facts.replaceChildren();
+    details.hidden = true;
+    if (!result) return;
+    var label = result.stale ? "Earlier details — needs review" : ({ matched: "Matched the saved offer rules",
+      not_matched: "No match for these offer rules", needs_review: "Needs identity or file review", error: "Match result unavailable" }[result.outcome] || "No confirmed match");
+    note.textContent = (result.environment === "sandbox" ? "Sandbox test · " : "") + label + ". A credit application is reviewed separately.";
+    function add(value) { var li = document.createElement("li"); li.textContent = value; facts.appendChild(li); }
+    if (result.stale) return;
+    if (result.rule_set_name) add(result.rule_set_name);
+    if (typeof result.credit_score === "number") add("OffersIQ score: " + result.credit_score);
+    var profile = result.offers_iq_summary || {};
+    Object.keys(profile).forEach(function (key) {
+      var value = profile[key];
+      if (typeof value === "number" || typeof value === "boolean") {
+        add(key.replace(/([a-z])([A-Z])/g, "$1 $2") + ": " + (typeof value === "boolean" ? value ? "Yes" : "No" : value.toLocaleString("en-US")));
+      }
+    });
+    if (result.request_id) add("Receipt: " + result.request_id);
+    details.hidden = !facts.children.length;
+  }
+
   function paint(data) {
     state.data = data;
+    paintOffersIq(data.offersiq);
     var staff = data.staff || {};
     var client = data.client || {};
     var credit = data.credit || {};

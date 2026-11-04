@@ -10,6 +10,8 @@ The human Setter Dashboard is watched at its page and read/write API doors:
 expected and never sends a text. Completion and same-staff send behavior are
 proved by `src/setter/dashboard.test.mjs` and `src/setter/send-actions.test.mjs`.
 
+OffersIQ uses those same setter doors and the existing private closer read. It makes no scheduled provider request. The morning and hourly soft-pull lanes read `offersiq_requests` through `softpull:offersiq-ledger`: an attempt in flight over15 minutes, a completed match missing its provider receipt, a recent unresolved error, or a failed ledger read stays red. This is ledger-health proof; provider credentials, actual account-enabled summary fields, and a real sandbox response need separate evidence. The setter/closer browser cases and nonprivileged scratch PostgreSQL tests cover permission, org/assignment, one in-flight attempt, replay, saved receipt, identity corrections and stale results.
+
 - A **check** asks one yes-or-no question about the company. "Does the login page answer?" "Did every paid client get the portal?"
 - A **tripwire** is a check that goes red before a customer hits the break.
 - Every morning at **6:00 a.m. Arizona**, one job runs more than 1,000 checks. Every red one goes in the text to Chris.

@@ -30,6 +30,8 @@ import {
   READ_KIND,
   READ_TIMEOUT_MS,
   LEDGER_SQL,
+  OFFERSIQ_LEDGER_SQL,
+  OFFERSIQ_STALE_MINUTES,
   PAID_DIAGNOSTICS_SQL,
   PAID_FORM_ORDERS_SQL,
   LIVE_CONSENT_SQL,
@@ -43,6 +45,7 @@ import {
   checkApproveSignedRead,
   checkPaidFormNotFilled,
   checkRequestFailedOrStuck,
+  checkOffersIqLedger,
   gapChecks,
   judgeLedger,
   judgeNoPull,
@@ -473,7 +476,7 @@ test("the client pick only reads", () => {
   assert.doesNotMatch(CLIENT_PICK_SQL, /\b(INSERT|UPDATE|DELETE)\b/i);
 });
 
-test("all six rows go out together in the lane", async () => {
+test("all seven rows go out together in the lane", async () => {
   const { fetchImpl } = fakeFetch([
     { url: `https://fundhub.ai${APPROVE_PAGE_PATH}`, status: 200, body: PAGE_HTML },
     { url: `https://fundhub.ai${APPROVE_READ_PATH}`, status: 400, body: UNSIGNED }
@@ -482,7 +485,7 @@ test("all six rows go out together in the lane", async () => {
   const rows = await gapChecks({ fetchImpl, db: both, scope: (fn) => fn(both), orgId: ORG, env: ENV, now: NOW });
   assertShape(rows);
   assert.deepEqual(rows.map((r) => r.status),
-    ["PASS", "PASS", ACCOUNT_GATED_APPROVE ? "skip" : "PASS", "PASS", "PASS", "PASS"]);
+    ["PASS", "PASS", ACCOUNT_GATED_APPROVE ? "skip" : "PASS", "PASS", "PASS", "PASS", "PASS"]);
 });
 
 test("the unsigned and plain 200 shapes need every part", () => {
@@ -523,6 +526,7 @@ function ago(ms) {
 
 const TAGS = {
   ledger: "gap:softpull-ledger",
+  offersIq: "gap:softpull-offersiq-ledger",
   formOrders: "gap:softpull-paid-form-orders",
   diagnostics: "gap:softpull-paid-diagnostics",
   live: "gap:softpull-live-consent",
@@ -542,7 +546,7 @@ function ledgerTx(data = {}, { fail = null, onQuery = null } = {}) {
       if (onQuery) await onQuery(text, params);
       if (fail && fail.test(text)) throw new Error("connection terminated");
       for (const [key, tag] of Object.entries(TAGS)) {
-        if (text.includes(tag)) return { rows: data[key] || [] };
+        if (text.includes(tag)) return { rows: data[key] || (key === "offersIq" ? [{ stale: 0, missing_receipt: 0, errors: 0 }] : []) };
       }
       throw new Error(`unexpected sql: ${text.slice(0, 80)}`);
     }
@@ -579,11 +583,12 @@ const ledgerRow = (over = {}) => ({
 
 // ---- ids ------------------------------------------------------------------
 
-test("the three ledger ids are new, unique, and live in this lane only", () => {
+test("the ledger ids are unique and live in this lane only", () => {
   assert.deepEqual([...PULL_CHECK_IDS], [
     "softpull:request-failed-or-stuck",
     "softpull:paid-form-not-filled-2h",
-    "softpull:approve-click-no-pull"
+    "softpull:approve-click-no-pull",
+    "softpull:offersiq-ledger"
   ]);
   assert.equal(new Set(ALL_CHECK_IDS).size, ALL_CHECK_IDS.length);
   const dirs = [HERE, path.join(HERE, "..")];
@@ -608,6 +613,28 @@ test("ledger: a healthy ledger passes and says how many rows it read", async () 
   assert.equal(row.suggestedFix, null);
   assert.equal(tx.calls.length, 1);
   assert.deepEqual(tx.calls[0].params, [ORG, NOW.toISOString(), false, TEST_CLIENT_EMAIL_RE]);
+});
+
+test("OffersIQ ledger: stale in-flight, missing receipt, and errors stay red", async () => {
+  const cases = [
+    [{ stale: 1, missing_receipt: 0, errors: 0 }, /1 OffersIQ requests in flight over 15 minutes/],
+    [{ stale: 0, missing_receipt: 1, errors: 0 }, /1 completed without a provider receipt/],
+    [{ stale: 0, missing_receipt: 0, errors: 1 }, /1 unresolved errors in the last 3 days/]
+  ];
+  for (const [counts, words] of cases) {
+    const tx = ledgerTx({ offersIq: [counts] });
+    const row = await checkOffersIqLedger(scoped(tx));
+    assert.equal(row.status, "FAIL");
+    assert.match(row.detail, words);
+    assert.deepEqual(tx.calls[0].params, [ORG, NOW.toISOString(), false, TEST_CLIENT_EMAIL_RE]);
+  }
+  const healthy = await checkOffersIqLedger(scoped(ledgerTx({})));
+  assert.equal(healthy.status, "PASS");
+  for (const rows of [[], [{ stale: null, missing_receipt: 0, errors: 0 }], [{ stale: "x", missing_receipt: 0, errors: 0 }]]) {
+    assert.equal((await checkOffersIqLedger(scoped(ledgerTx({ offersIq: rows })))).status, "FAIL");
+  }
+  const broken = await checkOffersIqLedger(scoped(ledgerTx({}, { fail: /gap:softpull-offersiq-ledger/ })));
+  assert.equal(broken.status, "FAIL");
 });
 
 test("ledger: a pull that failed in the last 3 days is red, with the reason and a short client id", async () => {
@@ -1041,7 +1068,7 @@ test("every read goes through the plain-read guard, so a write never reaches the
 // ---- the reads themselves --------------------------------------------------
 
 test("every ledger read is one plain SELECT, and a write is refused before it is sent", async () => {
-  assert.equal(PULL_READ_SQL.length, 7);
+  assert.equal(PULL_READ_SQL.length, 8);
   for (const sql of PULL_READ_SQL) {
     assert.doesNotThrow(() => assertReadOnlySql(sql));
     assert.match(sql, /^\/\* gap:softpull-[a-z-]+ \*\/\s*SELECT\b/);
@@ -1058,7 +1085,7 @@ test("every ledger read is one plain SELECT, and a write is refused before it is
 });
 
 test("every read leaves test and demo clients out, unless the pulse says demo is on", async () => {
-  for (const sql of [LEDGER_SQL, PAID_FORM_ORDERS_SQL, PAID_DIAGNOSTICS_SQL]) {
+  for (const sql of [LEDGER_SQL, PAID_FORM_ORDERS_SQL, PAID_DIAGNOSTICS_SQL, OFFERSIQ_LEDGER_SQL]) {
     assert.match(sql, /\$3::boolean OR NOT \(COALESCE\(c\.is_demo, false\)/);
     assert.match(sql, /custom_fields ->> 'synthetic'/);
     assert.match(sql, /c\.email, ''\) ~\* \$4/);
@@ -1219,6 +1246,12 @@ const SQL_SHAPES = [
     from: "soft_pull_requests r",
     where: ["r.org_id = $1::uuid", "r.client_id = ANY($2::uuid[])"],
     tail: ""
+  }],
+  ["OFFERSIQ_LEDGER_SQL", OFFERSIQ_LEDGER_SQL, {
+    select: `count(*) FILTER (WHERE r.status = 'in_flight' AND r.created_at < $2::timestamptz - interval '${OFFERSIQ_STALE_MINUTES} minutes')::int AS stale, count(*) FILTER (WHERE r.status IN ('matched', 'not_matched') AND NULLIF(btrim(r.provider_request_id), '') IS NULL)::int AS missing_receipt, count(*) FILTER (WHERE r.status = 'error' AND r.created_at > $2::timestamptz - interval '${FAILED_LOOKBACK_DAYS} days' AND NOT EXISTS (SELECT 1 FROM offersiq_requests newer WHERE newer.org_id = r.org_id AND newer.client_id = r.client_id AND newer.identity_fingerprint = r.identity_fingerprint AND newer.rule_set_id = r.rule_set_id AND newer.environment = r.environment AND newer.created_at > r.created_at AND newer.status IN ('matched', 'not_matched') AND NULLIF(btrim(newer.provider_request_id), '') IS NOT NULL))::int AS errors`,
+    from: "offersiq_requests r JOIN clients c ON c.id = r.client_id AND c.org_id = r.org_id",
+    where: ["r.org_id = $1::uuid", NOT_A_TEST_CLIENT],
+    tail: ""
   }]
 ];
 
@@ -1318,7 +1351,7 @@ test("the lane returns the door rows and then the ledger rows, red ones carry a 
   const rows = await gapChecks({ fetchImpl, db: both, scope: (fn) => fn(both), orgId: ORG, env: ENV, now: NOW });
   assertShape(rows);
   assert.deepEqual(rows.map((r) => r.status),
-    ["PASS", "PASS", ACCOUNT_GATED_APPROVE ? "skip" : "PASS", "FAIL", "FAIL", "FAIL"]);
+    ["PASS", "PASS", ACCOUNT_GATED_APPROVE ? "skip" : "PASS", "FAIL", "FAIL", "FAIL", "PASS"]);
   assert.deepEqual(rows.map((r) => r.id), [...ALL_CHECK_IDS]);
 });
 

@@ -27,7 +27,7 @@ import { signSoftPullApproveUrl } from "../../consent/approve-token.mjs";
 import * as truth from "../beats/lib/soft-pull-truth.mjs";
 import {
   READ_FIX, READ_KIND, TRIPWIRE, UUID_RE, check, checkApproveClickNoPull, checkPaidFormNotFilled,
-  checkRequestFailedOrStuck, clip
+  checkRequestFailedOrStuck, checkOffersIqLedger, clip
 } from "../beats/lib/soft-pull-truth.mjs";
 
 export * from "../beats/lib/soft-pull-truth.mjs";
@@ -152,8 +152,8 @@ export async function checkApproveSignedRead(ctx = {}) {
 }
 
 /**
- * Soft-pull lane: the approve door (three rows), then the credit-pull ledger
- * (three rows). Everything runs at once, so the lane is as slow as its slowest
+ * Soft-pull lane: the approve door (three rows), then the credit and OffersIQ ledgers
+ * (four rows). Everything runs at once, so the lane is as slow as its slowest
  * read, not the sum.
  * @param {{ fetchImpl?: Function, fetch?: Function, baseUrl?: string, db?: object, scope?: Function, orgId?: string, env?: object, now?: Date }} [ctx]
  * @returns {Promise<Array<{ id: string, status: string, detail: string, suggestedFix: string|null }>>}
@@ -161,13 +161,14 @@ export async function checkApproveSignedRead(ctx = {}) {
 export async function gapChecks(ctx = {}) {
   const fetchImpl = ctx.fetchImpl || ctx.fetch;
   const baseUrl = ctx.baseUrl;
-  const [page, read, signed, ledger, paidForm, noPull] = await Promise.all([
+  const [page, read, signed, ledger, paidForm, noPull, offersIq] = await Promise.all([
     checkApprovePage({ fetchImpl, baseUrl }),
     checkApproveRead({ fetchImpl, baseUrl }),
     checkApproveSignedRead(ctx),
     checkRequestFailedOrStuck(ctx),
     checkPaidFormNotFilled(ctx),
-    checkApproveClickNoPull(ctx)
+    checkApproveClickNoPull(ctx),
+    checkOffersIqLedger(ctx)
   ]);
-  return [page, read, signed, ledger, paidForm, noPull];
+  return [page, read, signed, ledger, paidForm, noPull, offersIq];
 }

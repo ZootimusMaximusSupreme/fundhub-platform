@@ -8,6 +8,7 @@ import { tierBookingLink } from "../workflows/messaging.mjs";
 import { creditTierFor, stampQualificationBucket } from "../config/survey-qualification.mjs";
 import { refreshPrecallForScore } from "../workflows/precall-plan.mjs";
 import { emit } from "../events/bus.mjs";
+import { offersIqIdentityKeyForClient, offersIqSummaryForClient } from "../finance/offersiq.mjs";
 
 // Assigned setters have the same personal queue boundary as primary setters.
 // Only the existing owner/admin seats may use the management-wide view.
@@ -179,6 +180,8 @@ function mapItem(row, staff) {
     survey: surveySummary(cf),
     survey_edits: jsonObject(cf.setter_survey_edits),
     residential_address: jsonObject(cf.setter_residential_address),
+    offersiq_identity_key: offersIqIdentityKeyForClient(row),
+    offersiq: offersIqSummaryForClient(row),
     setter_handoff: handoff,
     setter_staff_id: handoff.setter_staff_id || row.setter_staff_id || staff.id,
     closer_staff_id: handoff.closer_staff_id || row.closer_staff_id || (staff.role === "owner" ? staff.id : null)
