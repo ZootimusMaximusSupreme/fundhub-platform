@@ -4,7 +4,7 @@
 
 The owner opens **Company cash** from the existing account menu. This is a separate company workspace; the client FinanceOS flow below keeps its existing scope. Admins and other staff do not inherit the company page or its two APIs.
 
-`/app/company-cash.html` uses `/api/owner/company-bank` and `/api/owner/company-cash`, registered in the Netlify router. All reads and writes use the authenticated owner's org. Bank Link, exchange, selection, sync and an explicitly enabled balance refresh also require recent staff MFA. Consent confirms a Fundhub LLC business account and read-only data access. Only an eligible selected USD depository account supplies company cash. No action initiates a transfer.
+`/app/company-cash.html` uses `/api/owner/company-bank` and `/api/owner/company-cash`, registered in the Netlify router. All reads and writes use the authenticated owner's org. Bank Link, exchange, selection, sync and an explicitly enabled balance refresh use the owner session without a separate staff MFA prompt. Consent confirms a Fundhub LLC business account and read-only data access. Only an eligible selected USD depository account supplies company cash. No action initiates a transfer.
 
 The page shows the stored posted bank balance less unpaid CRS, approved ad funding and reviewed tech obligations. Missing bank data, unpriced pulls or unreviewed monthly costs leave the result unknown. A cached bank read does not claim a fresh balance. Processor receipts are not reconciled or added to bank cash. Observed recurring charges remain suggestions until the owner saves a real obligation.
 

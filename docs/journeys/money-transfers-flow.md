@@ -9,27 +9,17 @@ event that fires it. Plaid sandbox only until production is switched on.
 the account it comes from, where it goes, the amount and the date. The money
 agent, the rules helper and staff can only set a move up.
 
-## Staff payout bank setup and MFA
+## Staff payout bank setup
 
 This is a separate destination setup for a closer or sales manager. It records
 where Fundhub may later pay that employee; it never sends money by itself.
 
-1. The employee signs in on the web with their own staff email and password.
-   The web login requests payout access. A valid password alone gets only a
-   short MFA challenge, not a payout-ready session. Native app logins remain
-   usable for their existing jobs and cannot use the payout bank write door.
-2. On first use, the employee adds the shown secret to an authenticator app,
-   enters its code, and saves one-use recovery codes. Later sign-ins ask for
-   an authenticator code or one unused recovery code. Setup secrets and recovery
-   codes are shown only in this flow and cleared when the page is left.
-3. A verified web session carries the time of that MFA check. Both opening
-   Plaid Link and exchanging its bank token require an MFA check no older than
-   15 minutes. An old, plain, or other employee's session is refused before
-   either action calls Plaid. The employee signs in again if the window expires.
-4. Plaid Link asks the employee to choose their own bank account. The server
+1. The employee signs in with their own staff email and password. The server
+   checks the session and employee role before opening the bank setup door.
+2. Plaid Link asks the employee to choose their own bank account. The server
    saves only the resulting destination under that employee and company. The
    employee sees masked status; the owner sees masked staff status in People.
-5. Bank linking stays unavailable until Fundhub's staff Plaid Transfer setup
+3. Bank linking stays unavailable until Fundhub's staff Plaid Transfer setup
    is enabled. A connected destination does not authorize a payout amount or
    initiate a transfer.
 

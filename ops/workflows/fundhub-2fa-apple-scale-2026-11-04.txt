@@ -1,0 +1,83 @@
+Fundhub 2FA, Apple, and scale — 2026-11-04
+Owner lane: native (this worktree)
+
+Parallel workflow A — native app sign-in, owned by this session.
+Prompt: Remove the iPhone app's Face ID/passcode prompt on saved-session restore. Preserve server session verification and sign-out. Update the existing iOS journey docs, build/test, preflight, and ship in order. Do not touch the working tree's unrelated changes.
+Status: implementation and focused proof complete locally; owner approved the three-file handoff and preflight now passes. Ordered GitHub release is next.
+
+Parallel workflow B — Apple status, read-only, owned by apple_status agent.
+Prompt: Check current App Store Connect and public listing for Fundhub Portal; report version, review state, and release evidence without changing account state.
+Result: Fundhub Portal iOS 1.0.2 READY_FOR_SALE, public release 2026-11-03 17:01:13 UTC. Portal macOS 1.0 IN_REVIEW. https://apps.apple.com/us/app/fundhub-portal/id6823985032
+
+Parallel workflow C — scale readiness, read-only, owned by scale_readiness agent.
+Prompt: Check latest live pulse, booking capture, funnel doors, release receipt, and traffic plan; identify observed blockers.
+Result: not ready to raise traffic. Nov 3 live pulse 50 red, including 2 ClickFunnels pre-handler captures without downstream receipts or booking rows, plus 17 past booked calls without outcomes. These two captures do not prove the webhook handler accepted them; historical HTTP outcomes are unavailable. Blueprint's three pages were restored on Nov 4 as recorded below. Direct Book and Roadmap doors return 200, but this does not prove bookings. New campaign spend is still a plan, not live.
+
+Dependencies: native release waits for native build/tests and PR gates. Scale increase waits for booking capture and outcome proof plus campaign approval; the Blueprint funnel door has been restored and browser checked.
+
+Native/app proof: 26 focused Node tests passed; 13 focused Playwright tests passed on isolated port 43118; iOS simulator Xcode tests passed; lint, TypeScript, rules check and diff check passed. Marked login draft: ops/workflows/fundhub-2fa-login-draft-2026-11-04-marked.png.
+Account Plaid proof: 86 focused Node and 16 browser checks passed. Scratch PostgreSQL proof skipped because no loopback scratch DB.
+Release preflight first pass: branch two commits behind origin/main and 3 staff-payout paths flagged against local meta-neutral-audience-labels-2026-11-02. This worktree will be stashed temporarily, updated to current origin/main, then restored before a second preflight. Do not modify the peer branch.
+
+Booking follow-up: The two pre-handler capture IDs normalize to booking.created, but no events/bookings rows or current client match exist. The current capture mode writes before client resolution and event emit; no post-handler receipt is kept. Historical Netlify logs did not settle the outcome. Repair needs a post-handler receipt and separate treatment of older unverified captures before traffic is raised. Do not replay old payloads until current ClickFunnels appointment state is checked.
+
+Blueprint funnel repair, Nov 4: Production DB still marked funnel d6e3726c-d9ee-4dff-9721-268582ef1f9f live and active, with Oct 26 HTTP 200 proof for all three pages, but the ClickFunnels funnel 993279 was archived. Its saved page IDs, step paths, and order were intact; apply.fundhub.ai remained a connected ClickFunnels domain. The official ClickFunnels unarchive API restored funnel 993279 (HTTP 200, archived=false). Cache-busted public GETs of /blueprint, /blueprint-book and /blueprint-thank-you each then returned 200 and carried fnl-blueprint. No HTML, payment mode, Meta campaign, or DB state changed. No open PR claimed this funnel.
+Blueprint browser proof, Nov 4: Headless Chromium at 1440x900 and 390x844 opened the public landing page (HTTP 200), rendered its heading and Book My Free Call button without horizontal overflow, clicked the button to /blueprint-book (HTTP 200), and loaded the embedded /funding-book-call calendar. The iframe visibly listed Funding Strategy Meeting, Chris Stanbridge, Phoenix time zone, November dates, and available Nov 5 slots at both sizes. Clicking one available time opened the Confirm time panel with name, email and phone fields; no confirmation, booking, or payment was submitted. This proves the calendar opens and time selection responds, but not a completed booking or CRM receipt. Scale hold remains the booking capture/outcome proof and campaign approval, not the Blueprint door.
+
+Final local proof: combined Node suite 123/123 pass; staff sign-in and payout browser suite 13/13 pass on fresh static server; account/affiliate consent browser suite 16/16 pass; signed iPhone simulator Xcode test suite passed, including Keychain save/read without a second prompt; lint, TypeScript, rules check, diff check passed. Scratch PostgreSQL tests skipped without loopback scratch DB. No release or live user-path claim.
+Preflight second pass after rebase: behind 0, still blocks api/staff/payout-account.mjs, e2e/staff-payout-bank.spec.mjs, src/http/staff-payout-account.test.mjs because local peer meta-neutral-audience-labels-2026-11-02 remains active. Peer has no unsaved edits on those files; current main has later versions. No gate bypass attempted.
+Owner handoff Nov 4: Chris approved handing those three payout paths to this 2FA release. On peer branch meta-neutral-audience-labels-2026-11-02, commit 6c6fbd215 restored only those three paths to current origin/main; all other peer work and unsaved edits stayed untouched. Native branch preflight then returned exit 0, behind 0, no shared or blocking files.
+PR #395 CI repair: no-database unit shard 3 found an old S4 sign-in proof that still expected mfa_for_payout in the request. Updated that proof to assert the password-only request and valid session behavior. The complete S4 public-forms test file passed 8/8 locally; preflight remained exit 0 with no shared or blocking files before the PR update. The first CI run remains failed until the new head runs.
+The first CI run also found the same stale payload expectation in the Display EF/Public wave 2 proof. Updated only that assertion; its complete Chromium test file passed 8/8 locally. Lint passed 4676 files, and the edited test parsed clean. The new PR head must rerun all required jobs.
+The company-cash browser suite still held a removed MFA error fixture. Replaced it with a failed bank-link case that proves an error is shown and no Plaid window opens; all 12 company-cash browser checks passed on isolated port 43120. Preflight before this PR update stayed at exit 0, behind 0, no shared files.
+Independent 2FA review found no P1 login, role, org or consent issue. It found two P2 edges before merge: the old Plaid grant schema would stamp consent-only rows with mfa_verified_at, and a locked phone could make a valid Keychain item temporarily unreadable. Auto-merge was disabled for the repair. Migration 549 drops the grant column's default and NOT NULL while retaining prior true timestamps; new inserts explicitly store NULL, and the scratch-DB test asserts it. iPhone restore now waits for protected data when locked and retries on unlock. A signed simulator test seeded the exact old .userPresence Keychain item; the app could read it without UI on simulator and replace it with a new plain saved session. The full signed simulator test suite passed. Local PostgreSQL proof remains skipped until required CI.
+Independent re-review found both P2 issues addressed and no remaining P1/P2 issue. Restore also retries on active scene and serializes duplicate attempts. The final signed simulator suite passed after this change; Node consent tests passed 3/3 with the PG suite skipped locally, TypeScript, rules and diff checks passed. Required CI must prove migration 549 on scratch Postgres and rerun all web/native source checks before auto-merge is re-enabled.
+App Store Connect upload: the reviewed 1.0.3 build 9 IPA passed Apple altool validation, then altool returned UPLOAD SUCCEEDED with delivery UUID ed50a585-803c-4268-8055-1672b150d3f0. This is an upload receipt only, not processed build, App Review, or public release. The earlier CI browser run on a previous PR head failed 10 tests still expecting removed email/TOTP controls. Updated those focused checks to exercise consent, account switching, and bank Link; affiliate payout browser file passed 16/16 and money page browser file passed 10/10 locally. Full CI on the next PR head remains required.
+Native release: source prepared as iOS 1.0.3 build 9; App Store Connect currently has no 1.0.3 version/build. Latest public iOS 1.0.2 is live. After independent review, the release archive was rebuilt and the App Store IPA exported with the existing App Store Connect API key and Apple's cloud-managed distribution signing. Final IPA SHA-256: 7b2794e38acb0382b3fdd71fdd2218892fae6edeeac0fb6b88ad4f2d89567de8. The signed IPA Info.plist says ai.fundhub.app, 1.0.3 build 9, and has no NSFaceIDUsageDescription; Apple altool validation returned VERIFY SUCCEEDED with no errors. Upload and review still wait for the GitHub release path; no App Store 1.0.3 receipt yet.
+
+Change manifest:
+.env.example
+api/affiliates/payout-account.mjs
+api/auth/login.mjs
+api/auth/plaid-mfa.mjs
+api/banking/link-exchange.mjs
+api/banking/link-token.mjs
+api/owner/company-bank.mjs
+api/staff/payout-account.mjs
+docs/journeys/CHANGELOG.md
+docs/journeys/finance-os-trends-flow.md
+docs/journeys/fundhub-ios-actual.md
+docs/journeys/fundhub-ios-intended.md
+docs/journeys/money-transfers-flow.md
+docs/journeys/role-owner-intended.md
+docs/sops/Fundhub-Information-Security-Policy.txt
+e2e/staff-mfa-login.spec.mjs
+e2e/staff-payout-bank.spec.mjs
+ops/workflows/build-evidence/plaid-security-link/desktop-1440.png
+ops/workflows/build-evidence/plaid-security-link/phone-390.png
+public/app/company-cash.js
+public/app/plaid-stepup.css
+public/app/plaid-stepup.js
+public/app/shell.js
+public/login.html
+src/auth/account-plaid-mfa.mjs
+src/auth/account-plaid-mfa.pg.test.mjs
+src/auth/account-plaid-mfa.test.mjs
+src/auth/login.mjs
+src/auth/login.test.mjs
+src/http/affiliate-payouts-doors.test.mjs
+src/http/company-cash.test.mjs
+src/http/plaid-link.test.mjs
+src/http/staff-payout-account.test.mjs
+src/pulse/beats/beat-auth-links.mjs
+src/pulse/beats/lib/auth-truth.mjs
+src/pulse/catalog/proofs/fin-b23-money-page.test.mjs
+src/pulse/catalog/proofs/s4-money-harness.mjs
+src/pulse/coverage/INDEX.md
+src/pulse/coverage/gap-auth.test.mjs
+tools/fundhub-ios/Fundhub.xcodeproj/project.pbxproj
+tools/fundhub-ios/Fundhub/App/FundhubApp.swift
+tools/fundhub-ios/Fundhub/Core/FundhubAPI.swift
+tools/fundhub-ios/FundhubTests/FundhubTests.swift
+ops/workflows/fundhub-2fa-apple-scale-2026-11-04.txt
+ops/workflows/fundhub-2fa-login-draft-2026-11-04-marked.png

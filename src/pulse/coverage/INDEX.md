@@ -4,7 +4,7 @@ Morning pulse coverage notes. A job is red after 3 times its schedule.
 
 retention-review — monthly count-only review; src/pulse/heartbeats.mjs checks its job_heartbeats receipt after 3 times its schedule. src/workflows/retention-review.test.mjs proves each org gets one dated count-only receipt and a failed org makes the run fail. It does not purge customer data.
 
-auth/plaid-mfa — the registry safely pings GET for a 405 without creating a challenge or grant; gap-auth.mjs and beat-auth-links.mjs share the same read-only MFA and consent integrity check each morning and hour.
+auth/plaid-mfa — the registry safely pings GET for a 405 without creating a consent grant; gap-auth.mjs and beat-auth-links.mjs share the same read-only consent and session integrity check each morning and hour.
 
 owner/company-bank, owner/company-cash, company-cash.html — owner-only company cash. The daily `gap-company-cash.mjs` and existing hourly `money-operations` beat share `company-cash:integrity`: one scoped stored-data read checks business bank consent/owner scope, selected USD depository, exact posted debit for paid obligations, and duplicate CRS months or payment matches. A missing read is red. No link means no company cash balance or transfer readiness; the check never calls Plaid or moves money.
 

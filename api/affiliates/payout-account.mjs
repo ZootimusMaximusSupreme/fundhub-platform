@@ -7,8 +7,8 @@
 // WHO. An affiliate session, or a client who is a light affiliate
 // (accounts.affiliate_id, 340). The affiliate id comes off the session and never
 // from the body, so nobody can link a bank onto somebody else's payouts. Staff
-// are refused: the affiliate must complete authenticator MFA and explicit
-// consent before Link opens, with one saved grant consumed at exchange.
+// are refused: the affiliate must give explicit consent before Link opens,
+// with one saved grant consumed at exchange.
 //
 // Plaid calls: src/affiliates/payout-rail.mjs → src/banking/providers/plaid-http.mjs.
 // The access token is encrypted before it is stored and never returned.
@@ -56,7 +56,7 @@ export default async function handler(req, res, deps = {}) {
         sessionId: principal.sessionId, targetKind: "affiliate_payout",
         targetId: affiliateId, stage: "open"
       });
-      if (!grant) return res.status(403).json({ ok: false, error: "plaid_mfa_consent_required" });
+      if (!grant) return res.status(403).json({ ok: false, error: "plaid_consent_required" });
       const r = await startAffiliateBankLink({ affiliateId, env, http: deps.plaidHttp || null });
       if (!r.ok) return res.status(r.status).json({ ok: false, error: r.error, message: r.message, missing: r.missing ?? [] });
       return res.status(200).json({ ok: true, link_token: r.linkToken, expiration: r.expiration, environment: r.environment });
@@ -69,7 +69,7 @@ export default async function handler(req, res, deps = {}) {
         sessionId: principal.sessionId, targetKind: "affiliate_payout",
         targetId: affiliateId, stage: "exchange"
       });
-      if (!grant) return res.status(403).json({ ok: false, error: "plaid_mfa_consent_required" });
+      if (!grant) return res.status(403).json({ ok: false, error: "plaid_consent_required" });
       const institution = body.institution && typeof body.institution === "object"
         ? { name: body.institution.name ? String(body.institution.name) : null } : null;
       const r = await completeAffiliateBankLink(database, {

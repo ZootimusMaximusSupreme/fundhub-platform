@@ -146,24 +146,18 @@ enum SessionKeychain {
         UserDefaults.standard.bool(forKey: savedSessionKey)
     }
 
-    static var unlockLabel: String {
-        let context = LAContext()
-        var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error),
-              context.biometryType == .faceID else { return "Unlock saved sign-in" }
-        return "Continue with Face ID"
-    }
-
     static func read() -> String? {
         guard hasSavedSession else { return nil }
         let context = LAContext()
-        context.localizedReason = "Unlock your Fundhub sign-in"
+        context.interactionNotAllowed = true
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
+            // Old app versions saved this item behind Face ID. Never show that
+            // prompt; the caller clears an unreadable item and asks for sign-in.
             kSecUseAuthenticationContext as String: context
         ]
         var item: CFTypeRef?
@@ -176,19 +170,12 @@ enum SessionKeychain {
     @discardableResult
     static func save(_ token: String) -> Bool {
         clear()
-        var accessError: Unmanaged<CFError>?
-        guard let access = SecAccessControlCreateWithFlags(
-            nil,
-            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            .userPresence,
-            &accessError
-        ) else { return false }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: Data(token.utf8),
-            kSecAttrAccessControl as String: access
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         ]
         let saved = SecItemAdd(query as CFDictionary, nil) == errSecSuccess
         if saved { UserDefaults.standard.set(true, forKey: savedSessionKey) }

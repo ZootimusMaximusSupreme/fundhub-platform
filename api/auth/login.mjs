@@ -1,4 +1,4 @@
-// POST /api/auth/login  { email, password, mfa_for_payout?: true }
+// POST /api/auth/login  { email, password }
 // → 200 { ok, token, expiresAt, staff }  + Set-Cookie fundhub_session
 // → 400/401/403/429 { ok:false, error }
 //
@@ -78,7 +78,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
   }
   res.setHeader("Cache-Control", "no-store");
-  const { email, password, mfa_for_payout } = req.body || {};
+  const { email, password } = req.body || {};
   const ip = clientIp(req);
   const userAgent = req.headers?.["user-agent"] || null;
 
@@ -94,8 +94,7 @@ export default async function handler(req, res) {
      caller sees. Nothing about the HTTP response changes here. */
   let out;
   try {
-    out = await login(db, { email, password, ip, userAgent,
-      mfaForPayout: mfa_for_payout === true });
+    out = await login(db, { email, password, ip, userAgent });
   } catch (err) {
     console.error(
       `auth/login: staff lookup failed — ${safeError(err)}` +
@@ -166,10 +165,6 @@ export default async function handler(req, res) {
     });
   }
 
-  if (out.mfa_required) {
-    return res.status(200).json({ ok: true, mfa_required: true,
-      mfa_setup_required: out.mfa_setup_required, mfa_token: out.mfa_token });
-  }
 
   const maxAge = Math.max(60, Math.floor((new Date(out.expiresAt).getTime() - Date.now()) / 1000));
   res.setHeader(

@@ -42,9 +42,9 @@ final class FundhubSessionStore: ObservableObject {
     @Published private(set) var staffLinks = StaffDashboardLink.Queue()
 
     private let api = FundhubAPI()
+    private var restoring = false
     private(set) var token: String?
     var hasSavedSession: Bool { SessionKeychain.hasSavedSession }
-    var savedSessionUnlockLabel: String { SessionKeychain.unlockLabel }
 
     init() { Task { await restore() } }
 
@@ -67,15 +67,23 @@ final class FundhubSessionStore: ObservableObject {
     }
 
     func restore() async {
+        guard !restoring else { return }
+        restoring = true
+        defer { restoring = false }
         // A cached widget is not a verified session on a new app launch.
         DockWidgetSnapshot.clear()
         let hadSavedSession = SessionKeychain.hasSavedSession
         guard hadSavedSession else { phase = .signedOut; return }
         phase = .checking
+        // Protected Keychain data is unavailable while the phone is locked.
+        // Wait for unlock instead of deleting a valid saved session.
+        guard UIApplication.shared.isProtectedDataAvailable else { return }
         let stored = await Task.detached(priority: .userInitiated) { SessionKeychain.read() }.value
         guard let stored else {
+            guard UIApplication.shared.isProtectedDataAvailable else { return }
+            SessionKeychain.clear()
             phase = .signedOut
-            message = "Could not unlock your saved sign-in. Try again or sign in another way."
+            message = "Please sign in once more after this update."
             return
         }
         token = stored
@@ -125,11 +133,11 @@ final class FundhubSessionStore: ObservableObject {
             DockWidgetSnapshot.clear()
             if token != nil { staffLinks.clear() }
         }
-        let savedForQuickSignIn = SessionKeychain.save(newToken)
+        let savedSession = SessionKeychain.save(newToken)
         token = newToken
         await refreshSession()
-        if phase == .signedIn && !savedForQuickSignIn {
-            message = "Signed in, but this iPhone could not save Face ID sign-in. You can still use Fundhub now."
+        if phase == .signedIn && !savedSession {
+            message = "Signed in, but this iPhone could not save your session. You can still use Fundhub now."
         }
     }
 
@@ -260,13 +268,21 @@ private struct RootView: View {
             }
         }
         .onOpenURL { url in store.receiveStaffLink(url) }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataDidBecomeAvailableNotification)) { _ in
+            guard store.phase == .checking, store.hasSavedSession else { return }
+            Task { await store.restore() }
+        }
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
             if let url = activity.webpageURL { store.receiveStaffLink(url) }
         }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, store.phase == .signedIn else { return }
-            // Reopening the app refreshes the widget through a verified session.
-            Task { await store.refreshSession() }
+            guard phase == .active else { return }
+            if store.phase == .checking && store.hasSavedSession && UIApplication.shared.isProtectedDataAvailable {
+                Task { await store.restore() }
+            } else if store.phase == .signedIn {
+                // Reopening the app refreshes the widget through a verified session.
+                Task { await store.refreshSession() }
+            }
         }
     }
 }
@@ -305,18 +321,6 @@ private struct SignInView: View {
                         .foregroundStyle(mutedInk)
                 }
                 .padding(.top, 48)
-
-                if store.hasSavedSession {
-                    Button { Task { await store.restore() } } label: {
-                        Label(store.savedSessionUnlockLabel, systemImage: "faceid")
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                    }
-                    .buttonStyle(.plain)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .background(ink, in: RoundedRectangle(cornerRadius: 16))
-                    .padding(.top, 32)
-                }
 
                 if let audience {
                     VStack(alignment: .leading, spacing: 16) {

@@ -18,11 +18,6 @@ function bodyOf(value) {
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
   } catch { return null; }
 }
-function recentMfa(req, now = Date.now()) {
-  const at = new Date(req.session?.mfaVerifiedAt || 0).getTime();
-  const age = now - at;
-  return Number.isFinite(at) && age >= 0 && age <= 15 * 60 * 1000;
-}
 function validCursorDay(value) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
     !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) &&
@@ -62,9 +57,6 @@ export default async function handler(req, res, deps = {}) {
     if (req.method !== "POST") {
       res.setHeader("allow", "GET, POST");
       return res.status(405).json({ ok: false, error: "method_not_allowed" });
-    }
-    if (!recentMfa(req, deps.now?.getTime?.() ?? Date.now())) {
-      return res.status(403).json({ ok: false, error: "mfa_required" });
     }
     const body = bodyOf(req.body);
     if (!body) return res.status(400).json({ ok: false, error: "body_must_be_json" });

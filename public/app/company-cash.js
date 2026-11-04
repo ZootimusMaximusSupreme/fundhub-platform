@@ -95,7 +95,6 @@
   }
   function friendly(error) {
     var code = String(error || "");
-    if (code === "mfa_required") return "Your bank change needs a fresh staff sign-in.";
     if (code === "not_configured") return "Bank connections are not enabled yet.";
     if (code === "realtime_balance_not_enabled") return "Live bank balance refresh is not available yet.";
     if (code === "business_depository_account_required") return "Choose a Fundhub LLC business checking or savings account.";
@@ -112,7 +111,7 @@
     if (!guard(auth)) throw sessionChanged();
     if (!response.ok || !data || data.ok !== true) {
       var code = data && (data.reason || data.error);
-      if (response.status === 401 || (response.status === 403 && code !== "mfa_required") || code === "forbidden" || code === "owner_required") {
+      if (response.status === 401 || response.status === 403 || code === "forbidden" || code === "owner_required") {
         clearSensitive(); throw sessionChanged();
       }
       var err = new Error(friendly(data && (data.reason || data.error)));
@@ -146,7 +145,7 @@
       if (!await load(false, auth)) return false;
       if (!guard(auth)) return false;
       message(successText || "Saved."); return true;
-    } catch (err) { if (guard(auth)) message(err.message, true, err.code === "mfa_required"); return false; }
+    } catch (err) { if (guard(auth)) message(err.message, true); return false; }
     finally { if (guard(auth)) setBusy(button, false); }
   }
   async function load(showSkeleton, expectedAuth) {
@@ -472,7 +471,7 @@
       });
       plaidHandler = handler;
       handler.open();
-    } catch (err) { destroyPlaid(true); if (guard(auth)) message(err.message, true, err.code === "mfa_required"); }
+    } catch (err) { destroyPlaid(true); if (guard(auth)) message(err.message, true); }
     finally { if (guard(auth)) setBusy(btn, false); }
   }
   function openAccountPicker(mode, accounts) {

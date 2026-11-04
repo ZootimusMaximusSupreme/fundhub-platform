@@ -149,14 +149,14 @@ describe("client session — POST /api/banking/link-token", () => {
     assert.equal(res.statusCode, 403);
   });
 
-  test("no MFA and consent grant means no Plaid Link token", async () => {
+  test("no consent grant means no Plaid Link token", async () => {
     const res = makeRes();
     await linkToken({ method: "POST", body: {} }, res, {
       db: scopedDb(), resolvePrincipal: asClient(), requireAuth: noStaff,
       startLink: async () => assert.fail("must not open")
     });
     assert.equal(res.statusCode, 403);
-    assert.equal(res.body.error, "plaid_mfa_consent_required");
+    assert.equal(res.body.error, "plaid_consent_required");
   });
 
   test("an affiliate or partner session is 403", async () => {
@@ -217,14 +217,14 @@ describe("client session — POST /api/banking/link-exchange", () => {
     assert.equal(res.statusCode, 400);
   });
 
-  test("public token without the same MFA and consent grant is refused", async () => {
+  test("public token without the same consent grant is refused", async () => {
     const res = makeRes();
     await linkExchange({ method: "POST", body: { public_token: "public-c" } }, res, {
       db: scopedDb(), resolvePrincipal: asClient(), requireAuth: noStaff,
       completeLink: async () => assert.fail("must not exchange")
     });
     assert.equal(res.statusCode, 403);
-    assert.equal(res.body.error, "plaid_mfa_consent_required");
+    assert.equal(res.body.error, "plaid_consent_required");
   });
 
   test("the session's client gone from the org → 404", async () => {
