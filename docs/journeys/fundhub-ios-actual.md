@@ -4,8 +4,10 @@
 
 The native app stores its session in this iPhone's Keychain without a Face ID or
 device-passcode challenge. On later opens it reads the saved token and verifies
-the server session. An older Face ID-protected Keychain item is never opened
-with a prompt; the app clears it and asks the person to sign in once more.
+the server session. It reads an older Face ID-protected item with interaction
+disabled; if unreadable, the app clears it and asks for one normal sign-in.
+While the phone is locked, it waits for protected data instead of clearing a
+valid saved session.
 Signing out still removes the saved token and revokes the server session.
 
 The client Home calls the native push status route with its bearer session and this installation's

@@ -1,4 +1,5 @@
 import XCTest
+import Security
 @testable import Fundhub
 
 final class FundhubTests: XCTestCase {
@@ -53,6 +54,31 @@ final class FundhubTests: XCTestCase {
         defer { SessionKeychain.clear() }
         XCTAssertTrue(SessionKeychain.save("test-session"))
         XCTAssertEqual(SessionKeychain.read(), "test-session")
+    }
+
+    func testLegacyProtectedSessionCanBeReplacedWithoutPrompt() throws {
+        SessionKeychain.clear()
+        defer { SessionKeychain.clear() }
+        var accessError: Unmanaged<CFError>?
+        let access = try XCTUnwrap(SecAccessControlCreateWithFlags(
+            nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, .userPresence, &accessError
+        ))
+        let legacy: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "ai.fundhub.app.session",
+            kSecAttrAccount as String: "fundhub",
+            kSecValueData as String: Data("old-session".utf8),
+            kSecAttrAccessControl as String: access
+        ]
+        XCTAssertEqual(SecItemAdd(legacy as CFDictionary, nil), errSecSuccess)
+        UserDefaults.standard.set(true, forKey: "ai.fundhub.app.hasSavedSession")
+        // Simulators may satisfy userPresence without UI. Either result is
+        // allowed; the read itself must never ask the user for a second factor.
+        let restored = SessionKeychain.read()
+        XCTAssertTrue(restored == nil || restored == "old-session")
+        if restored == nil { SessionKeychain.clear() }
+        XCTAssertTrue(SessionKeychain.save("new-session"), "normal sign-in must replace the legacy item")
+        XCTAssertEqual(SessionKeychain.read(), "new-session")
     }
 
     func testNativePushEligibilityUsesOnlyKnownPrimaryStaffRoles() {

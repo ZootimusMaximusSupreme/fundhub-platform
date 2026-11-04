@@ -103,6 +103,7 @@ describe("account Plaid consent stored SQL and app-role proof", {
       assert.equal(row.privacy_url, PRIVACY_URL);
       assert.deepEqual(row.consent_scope, ["accounts", "balances", "transactions"]);
       assert.ok(row.consent_granted_at && row.expires_at);
+      assert.equal(row.mfa_verified_at, null, "consent alone is not MFA verification");
       assert.equal((await db.query("SELECT count(*)::int AS n FROM account_plaid_mfa_credentials WHERE account_id=$1",
         [a.accountId])).rows[0].n, 0);
       assert.equal((await db.query("SELECT count(*)::int AS n FROM account_plaid_mfa_email_challenges WHERE account_id=$1",

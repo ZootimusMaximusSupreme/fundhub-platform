@@ -42,6 +42,7 @@ final class FundhubSessionStore: ObservableObject {
     @Published private(set) var staffLinks = StaffDashboardLink.Queue()
 
     private let api = FundhubAPI()
+    private var restoring = false
     private(set) var token: String?
     var hasSavedSession: Bool { SessionKeychain.hasSavedSession }
 
@@ -66,13 +67,20 @@ final class FundhubSessionStore: ObservableObject {
     }
 
     func restore() async {
+        guard !restoring else { return }
+        restoring = true
+        defer { restoring = false }
         // A cached widget is not a verified session on a new app launch.
         DockWidgetSnapshot.clear()
         let hadSavedSession = SessionKeychain.hasSavedSession
         guard hadSavedSession else { phase = .signedOut; return }
         phase = .checking
+        // Protected Keychain data is unavailable while the phone is locked.
+        // Wait for unlock instead of deleting a valid saved session.
+        guard UIApplication.shared.isProtectedDataAvailable else { return }
         let stored = await Task.detached(priority: .userInitiated) { SessionKeychain.read() }.value
         guard let stored else {
+            guard UIApplication.shared.isProtectedDataAvailable else { return }
             SessionKeychain.clear()
             phase = .signedOut
             message = "Please sign in once more after this update."
@@ -260,13 +268,21 @@ private struct RootView: View {
             }
         }
         .onOpenURL { url in store.receiveStaffLink(url) }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataDidBecomeAvailableNotification)) { _ in
+            guard store.phase == .checking, store.hasSavedSession else { return }
+            Task { await store.restore() }
+        }
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
             if let url = activity.webpageURL { store.receiveStaffLink(url) }
         }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, store.phase == .signedIn else { return }
-            // Reopening the app refreshes the widget through a verified session.
-            Task { await store.refreshSession() }
+            guard phase == .active else { return }
+            if store.phase == .checking && store.hasSavedSession && UIApplication.shared.isProtectedDataAvailable {
+                Task { await store.restore() }
+            } else if store.phase == .signedIn {
+                // Reopening the app refreshes the widget through a verified session.
+                Task { await store.refreshSession() }
+            }
         }
     }
 }
