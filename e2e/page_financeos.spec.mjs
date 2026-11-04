@@ -140,7 +140,38 @@ test('FinanceOS preserves staff context, lazy mounts and in-section compatibilit
   await expect(page.locator('#money-back')).toHaveAttribute('href','finance-os.html?client_id=safe-sample');
   await page.locator('#tab-accounts').click();
   await expect(page.locator('#fos-accounts')).toContainText('Personal Checking');
+  await expect(page.locator('#fos-accounts')).toContainText('A wrong category can delay approval with Whop or Commas.');
   expect(reads).toContain('/api/money/accounts?client_id=safe-sample');
+  await page.locator('#tab-connections').click();
+  const merchant = page.locator('#fos-connections .merchant-setup');
+  await expect(merchant).toBeVisible();
+  await expect(merchant.getByRole('link',{name:'Create a Whop account'})).toHaveAttribute('href','https://whop.com/start/?code=UHBPLO');
+  await expect(merchant.getByRole('link',{name:'Create a Commas account'})).toHaveAttribute('href','https://commas.com/login?ref=M4glr1Xi');
+  const merchantEvidence='ops/workflows/build-evidence/merchant-profile-referrals-2026-11-04';
+  fs.mkdirSync(merchantEvidence,{recursive:true});
+  for(const width of [1440,390]){
+    await page.setViewportSize({width,height:900});
+    await merchant.scrollIntoViewIfNeeded();
+    await page.evaluate(()=>{
+      const link=document.querySelector('#fos-connections .merchant-setup-actions a[href*="whop.com"]');
+      const r=link.getBoundingClientRect();
+      const mark=document.createElement('div');mark.id='merchant-proof-mark';
+      Object.assign(mark.style,{position:'fixed',left:`${r.left-5}px`,top:`${r.top-5}px`,width:`${r.width+10}px`,height:`${r.height+10}px`,border:'3px solid #d02525',borderRadius:'999px',pointerEvents:'none',zIndex:500});
+      const number=document.createElement('span');number.textContent='1';
+      Object.assign(number.style,{position:'absolute',left:'-16px',top:'-12px',background:'#d02525',color:'#fff',borderRadius:'50%',padding:'2px 8px',font:'bold 14px Arial'});
+      const arrow=document.createElement('span');arrow.textContent='➜';
+      Object.assign(arrow.style,{position:'absolute',left:'-29px',top:'8px',color:'#f5c400',font:'bold 24px Arial'});
+      mark.append(number,arrow);document.body.append(mark);
+      const caption=document.createElement('div');caption.id='merchant-proof-caption';caption.textContent='1 · Provider sign-up uses the Fundhub referral link';
+      Object.assign(caption.style,{position:'fixed',left:'8px',bottom:'8px',padding:'5px 8px',background:'#fff',color:'#111',font:'bold 13px Arial',zIndex:501});
+      document.body.append(caption);
+    });
+    await page.screenshot({path:`${merchantEvidence}/merchant-setup-${width}.png`});
+    await page.locator('#merchant-proof-mark,#merchant-proof-caption').evaluateAll(els=>els.forEach(el=>el.remove()));
+  }
+  await merchant.getByRole('link',{name:'Save business profile'}).click();
+  await expect(page).toHaveURL(/client_id=safe-sample#accounts$/);
+  await page.setViewportSize({width:1440,height:900});
   await page.locator('#tab-credit').click();
   expect(reads.filter(p=>p.startsWith('/api/money/credit'))).toHaveLength(1);
   await page.evaluate(()=>{const a=document.createElement('a');a.href='money-payments.html';a.textContent='Compatibility route proof';document.querySelector('#fos-credit').append(a);});

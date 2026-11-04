@@ -271,8 +271,20 @@
       '<p>Connect Commas, Whop, or any other processor below. Your sales, refunds and payouts will show here month by month.</p></section>';
   }
 
+  function renderMerchantSetup(d) {
+    if (list(d.containers).length === 0) return "";
+    return '<section class="card merchant-setup" aria-labelledby="merchant-setup-title">' +
+      '<h2 id="merchant-setup-title">Set up your merchant account</h2>' +
+      '<p>Save your business profile, then apply with a processor. You will enter your details again on their site. Once your account is ready, connect it below.</p>' +
+      '<div class="merchant-setup-actions">' +
+      '<a class="btn" href="/app/money-accounts.html">Save business profile</a>' +
+      '<a class="btn" href="https://whop.com/start/?code=UHBPLO" target="_blank" rel="noopener noreferrer">Create a Whop account</a>' +
+      '<a class="btn" href="https://commas.com/login?ref=M4glr1Xi" target="_blank" rel="noopener noreferrer">Create a Commas account</a>' +
+      '</div></section>';
+  }
+
   function render(d, reveal, flash) {
-    return renderHead(d) + renderEmptyNote(d) + renderTiles(d) + renderProviders(d, reveal, flash) + renderMonths(d);
+    return renderHead(d) + renderEmptyNote(d) + renderMerchantSetup(d) + renderTiles(d) + renderProviders(d, reveal, flash) + renderMonths(d);
   }
 
   /* What Sync now / Save key says back, in words (UI-STANDARDS §5: every

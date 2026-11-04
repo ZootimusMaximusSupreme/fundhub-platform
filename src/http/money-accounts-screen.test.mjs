@@ -104,6 +104,13 @@ test("forms ask for last 4 only — never a full account number, EIN or SSN", ()
   assert.doesNotMatch(html, /name="(ein|ssn|account_number|routing_number)"/);
 });
 
+test("industry guidance is shown on new and saved business profiles", () => {
+  const html = M.render(view());
+  assert.equal((html.match(/A wrong category can delay approval with Whop or Commas\./g) || []).length, 2);
+  assert.match(html, /name="industry"[^>]*aria-describedby="nb-industry-help"/);
+  assert.match(html, /name="industry"[^>]*aria-describedby="b-aaaaaaaa-0000-0000-0000-000000000002-industry-help"/);
+});
+
 test("exactly one filled button shows before any form is opened", () => {
   const html = M.render(view());
   const outside = html.replace(/<details[\s\S]*?<\/details>/g, "");
