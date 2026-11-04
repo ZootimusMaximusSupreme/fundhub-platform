@@ -194,11 +194,31 @@ export function buildAlertBody({ client = {}, booking = {}, commissionRules = []
 }
 
 export function buildSetterAlertBody({ client = {}, clientId = client.client_id || client.id, booking = {}, label = "Booked call" } = {}) {
-  return buildStaffLeadText({
+  const full = buildStaffLeadText({
     client: { ...client, first_name: client.first_name || clean(booking.name).split(/\s+/)[0],
       phone: client.phone || booking.phone, email: client.email || booking.email },
     clientId, startTime: booking.startTime
   }).replace(/^New lead:/, `${label}:`);
+  // Carrier 30019 rejected 700-character booked-call texts. Keep the exact
+  // contact, appointment and dashboard link; the dashboard holds the full
+  // survey. Add complete answer lines only while the SMS remains short enough
+  // for seven UCS-2 segments, even when an answer contains emoji.
+  const maxChars = 450;
+  const lines = full.split("\n");
+  const bookedAt = lines.findIndex(line => line.startsWith("Booked:"));
+  const deskAt = lines.findIndex(line => line.startsWith("Open setter:"));
+  const contact = lines.slice(0, bookedAt + 1).filter((line, index) =>
+    index === 0 || !line.startsWith("Phone:") || line.length <= 32
+  ).filter(line => !line.startsWith("Email:") || line.length <= 90);
+  if (contact[0]?.length > 70) contact[0] = `${contact[0].slice(0, 69)}…`;
+  const desk = deskAt < 0 ? [] : [lines[deskAt]];
+  const survey = lines.slice(bookedAt + 1, deskAt < 0 ? undefined : deskAt);
+  const kept = [...contact];
+  for (const line of survey) {
+    if ([...kept, line, ...desk].join("\n").length > maxChars) break;
+    kept.push(line);
+  }
+  return [...kept, ...desk].join("\n");
 }
 
 export async function queueStaffBookedAlerts(db, {

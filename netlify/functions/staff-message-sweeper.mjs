@@ -1,4 +1,4 @@
-// Send held staff replies and retry new credit-report emails.
+// Send held staff replies, recent staff alerts, and retry new credit-report emails.
 //
 // ═══════════════════════════════════════════════════════════════════════════
 // THE HOLE THIS CLOSES.
@@ -35,6 +35,9 @@
 // `senderStaffOnly: true`. It releases messages with a sender_staff_id —
 // rows written by src/messaging/compose.mjs — plus the narrowly prefixed
 // `workflow:crs-full-report:` email cohort, whose failed sends need retry.
+// Recent `staff-alert:` rows also get a second chance only if a process died
+// before their send gate. Older alerts and any row that may have reached the
+// provider stay untouched, so this path cannot create a late or duplicate text.
 //
 // It deliberately does NOT drain the several thousand rows queued by workflows
 // over the past months (110_messages_outbound.sql documents them). Those have
@@ -54,7 +57,7 @@
 import "@pdf-lib/fontkit";
 import { db } from "../../src/db.mjs";
 import { noteScheduledRun } from "../../src/pulse/heartbeats.mjs";
-import { dispatchDue, DEFAULT_BATCH } from "../../src/messaging/dispatch.mjs";
+import { dispatchDue, recoverPreGateStaffAlerts, DEFAULT_BATCH } from "../../src/messaging/dispatch.mjs";
 
 /* Every five minutes. The quiet-hours window opens on the hour, and a text held
    overnight should go out within a few minutes of 11:00 rather than up to an
@@ -90,15 +93,18 @@ export const MAX_BATCHES_PER_PASS = 10;
    directly, without Netlify and without a scheduler.
 
    NEVER THROWS. A pass that fails must not take the schedule down, because the
-   next pass is the recovery: every message it did not finish is still queued
-   and still due. The error is returned so the caller can log it. */
+   next pass can recover only a recent staff alert proven to have stopped before
+   its gate. Other in-flight rows stay red for review. The error is returned so
+   the caller can log it. */
 export async function sweepStaffMessages(db, options = {}) {
   const { limit = DEFAULT_BATCH, maxBatches = MAX_BATCHES_PER_PASS, ...rest } = options;
   const counts = {};
   let claimed = 0;
   let batches = 0;
+  let recovered = 0;
 
   try {
+    recovered = await recoverPreGateStaffAlerts(db, { orgId: rest.orgId });
     while (batches < maxBatches) {
       const pass = await dispatchDue(db, { ...rest, limit, senderStaffOnly: true });
       batches += 1;
@@ -110,10 +116,10 @@ export async function sweepStaffMessages(db, options = {}) {
       // case reports 1 and not 0.
       if (pass.claimed === 0) break;
     }
-    return { ok: true, claimed, batches, counts };
+    return { ok: true, claimed, batches, recovered, counts };
   } catch (err) {
     return {
-      ok: false, claimed, batches, counts,
+      ok: false, claimed, batches, recovered, counts,
       error: String((err && err.message) || err).slice(0, 300)
     };
   }
