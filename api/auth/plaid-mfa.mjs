@@ -1,8 +1,8 @@
-// POST /api/auth/plaid-mfa — account authenticator step-up and consent for
-// one client bank or affiliate payout Link flow. No Link token is issued here.
+// POST /api/auth/plaid-mfa — explicit consent for one client bank or
+// affiliate payout Link flow. No Plaid Link token is issued here.
 import { db } from "../../src/db.mjs";
 import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
-import { accountMfaSetup, verifyAccountMfaEmail, authorizeAccountPlaidLink,
+import { authorizeAccountPlaidLink,
   CONSENT_TEXT, CONSENT_VERSION, PRIVACY_URL } from "../../src/auth/account-plaid-mfa.mjs";
 
 function readBody(raw) {
@@ -34,27 +34,13 @@ export default async function handler(req, res, deps = {}) {
   }
   const identity = { accountId: principal.accountId, orgId: principal.orgId,
     sessionId: principal.sessionId, targetKind: kind, targetId, env };
-  if (body.action === "setup") {
-    const result = await (deps.setup || accountMfaSetup)(database, {
-      accountId: identity.accountId, orgId: identity.orgId,
-      sessionId: identity.sessionId, email: principal.email, env,
-      sendEmail: deps.sendEmail
-    });
-    return res.status(result.status || (result.ok ? 200 : 503)).json({
-      ...result, consent_text: CONSENT_TEXT[kind], consent_version: CONSENT_VERSION,
-      privacy_url: PRIVACY_URL
-    });
-  }
-  if (body.action === "verify_email") {
-    const result = await (deps.verifyEmail || verifyAccountMfaEmail)(database, {
-      accountId: identity.accountId, orgId: identity.orgId,
-      sessionId: identity.sessionId, code: body.email_code, env
-    });
-    return res.status(result.status || (result.ok ? 200 : 400)).json(result);
-  }
+  if (body.action === "consent_details") return res.status(200).json({
+    ok: true, consent_text: CONSENT_TEXT[kind], consent_version: CONSENT_VERSION,
+    privacy_url: PRIVACY_URL
+  });
   if (body.action === "authorize") {
     const result = await (deps.authorize || authorizeAccountPlaidLink)(database, {
-      ...identity, code: body.code, consent: body.consent === true
+      ...identity, consent: body.consent === true
     });
     return res.status(result.status || (result.ok ? 200 : 400)).json(result);
   }

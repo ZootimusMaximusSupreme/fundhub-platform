@@ -27,11 +27,6 @@ export default async function handler(req, res, deps = {}) {
   const staff = await auth(req, res, { db: database });
   if (!staff) return;
   const env = deps.env || process.env;
-  const mfaTime = new Date(req.session?.mfaVerifiedAt || 0).getTime();
-  const age = Date.now() - mfaTime;
-  if (!Number.isFinite(mfaTime) || age < 0 || age > 15 * 60 * 1000) {
-    return res.status(403).json({ ok: false, error: "mfa_required" });
-  }
   if (!canLinkStaffPayout(staff) || !isUuid(staff.id) || !isUuid(staff.org_id)) {
     return res.status(403).json({ ok: false, error: "forbidden" });
   }

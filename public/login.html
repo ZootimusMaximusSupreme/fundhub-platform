@@ -53,27 +53,6 @@ if (new URLSearchParams(location.search).get("next") === "/app/client-portal.htm
       <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required>
       <button class="btn primary" id="go" type="submit">Sign in</button>
     </form>
-    <form id="fh-mfa-form" hidden>
-      <h2 id="fh-mfa-title">Check your authenticator</h2>
-      <p class="note" id="fh-mfa-help">Enter the six-digit code from your authenticator app.</p>
-      <div id="fh-mfa-setup" hidden>
-        <p class="note">Add Fundhub to your authenticator app with this setup key. Keep the key private.</p>
-        <code id="fh-mfa-secret"></code>
-        <button class="btn" id="fh-mfa-copy" type="button">Copy setup key</button>
-        <a id="fh-mfa-open" href="#" hidden>Open authenticator app</a>
-      </div>
-      <label class="client-login-label" for="fh-mfa-code">Authenticator or recovery code</label>
-      <input id="fh-mfa-code" type="text" autocomplete="one-time-code" placeholder="6-digit code" required>
-      <button class="btn primary" id="fh-mfa-verify" type="submit">Verify and sign in</button>
-      <button class="btn" id="fh-mfa-back" type="button">Back to sign in</button>
-    </form>
-    <div id="fh-mfa-recovery" hidden>
-      <h2>Save your recovery codes</h2>
-      <p class="note">Keep these in a safe place. Each code works once if you lose your authenticator.</p>
-      <pre id="fh-mfa-recovery-codes"></pre>
-      <button class="btn" id="fh-mfa-copy-recovery" type="button">Copy recovery codes</button>
-      <button class="btn primary" id="fh-mfa-continue" type="button">I saved my codes — continue</button>
-    </div>
     <p class="login-link-choice"><a href="/portal-login.html">Client sign-in with an email link <span aria-hidden="true">↗</span></a></p>
 
     <p class="note" id="fh-forgot-note" style="margin-top:6px">
@@ -169,10 +148,6 @@ function esc(v) {
    claim he is signed in as an affiliate an hour after he signed out. No token,
    no claim — and the stale key is dropped. */
 var DEMO_ROLE_KEY = "fh_demo_role";
-var pendingMfaToken = null;
-var pendingMfaDestination = null;
-var pendingDemoRole = null;
-var pendingVerifiedSession = null;
 
 function currentDemoRole() {
   try {
@@ -231,14 +206,11 @@ async function signIn(body) {
   localStorage.removeItem("fh_demo");
   localStorage.removeItem("fh_demo_staff");
 
-  // Web staff payout setup needs an MFA-verified session. The backend keeps
-  // native app login compatible and decides whether this request needs MFA.
-  const loginBody = { ...body, mfa_for_payout: true };
   try {
     const r = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(loginBody)
+      body: JSON.stringify(body)
     });
     let data = null;
     try { data = await r.json(); } catch (e) { data = null; }
@@ -249,7 +221,7 @@ async function signIn(body) {
     if (data) return { ok: r.ok && data.ok === true, status: r.status, data };
   } catch (e) { /* no backend at all — fall through to the offline mock */ }
 
-  return FH.api("/api/auth/login", { method: "POST", body: loginBody });
+  return FH.api("/api/auth/login", { method: "POST", body: body });
 }
 
 /* roleFrom — the role key public/app/shell.js gates on, pulled out of whatever
@@ -289,7 +261,6 @@ function failureText(status, data) {
   // variable, and "Account not active — ask an admin" would send whoever hit
   // this to reset a password that was never wrong.
   if (status === 429) return "Too many attempts — wait 15 minutes.";
-  if (data && data.error === "mfa_unavailable") return "Security check is unavailable right now. Try again later.";
   if (data && data.error === "demo_logins_disabled") {
     return "Demo logins are switched off on this deploy. Set DEMO_LOGINS_ENABLED=1 and redeploy.";
   }
@@ -309,65 +280,9 @@ function failureText(status, data) {
 }
 
 function finishSignIn(data, demoRole, destination) {
-  pendingMfaToken = null;
-  pendingMfaDestination = null;
-  pendingDemoRole = null;
-  pendingVerifiedSession = null;
-  document.getElementById("fh-mfa-secret").textContent = "";
-  document.getElementById("fh-mfa-open").removeAttribute("href");
-  document.getElementById("fh-mfa-recovery-codes").textContent = "";
   storeSession(data, demoRole);
   const next = destination || new URLSearchParams(location.search).get("next");
   location.href = next && next.startsWith("/") ? next : "/app/";
-}
-
-async function mfaRequest(body) {
-  try {
-    const response = await fetch("/api/auth/mfa", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    const data = await response.json();
-    return { ok: response.ok && data.ok === true, status: response.status, data };
-  } catch (error) {
-    return { ok: false, status: 0, data: null };
-  }
-}
-
-async function beginMfa(data, demoRole, destination) {
-  pendingMfaToken = data.mfa_token;
-  pendingMfaDestination = destination || null;
-  pendingDemoRole = demoRole || null;
-  document.getElementById("f").hidden = true;
-  document.getElementById("fh-mfa-form").hidden = false;
-  document.getElementById("fh-mfa-code").value = "";
-  const setup = document.getElementById("fh-mfa-setup");
-  setup.hidden = !data.mfa_setup_required;
-  document.getElementById("fh-mfa-title").textContent = data.mfa_setup_required
-    ? "Set up your authenticator" : "Check your authenticator";
-  document.getElementById("fh-mfa-help").textContent = data.mfa_setup_required
-    ? "Add Fundhub to your authenticator app, then enter its six-digit code."
-    : "Enter the six-digit code from your authenticator app.";
-  if (data.mfa_setup_required) {
-    const challengeToken = pendingMfaToken;
-    const result = await mfaRequest({ action: "setup", mfa_token: pendingMfaToken });
-    if (pendingMfaToken !== challengeToken) return;
-    if (!result.ok || !result.data || !result.data.secret) {
-      document.getElementById("err").style.display = "block";
-      document.getElementById("err").textContent = result.data && result.data.error === "mfa_unavailable"
-        ? "Security check is unavailable right now. Try again later."
-        : "Could not start authenticator setup. Try signing in again.";
-      document.getElementById("fh-mfa-verify").disabled = true;
-      return;
-    }
-    document.getElementById("fh-mfa-secret").textContent = result.data.secret;
-    const open = document.getElementById("fh-mfa-open");
-    if (typeof result.data.otpauth_uri === "string" && result.data.otpauth_uri.startsWith("otpauth://totp/")) {
-      open.href = result.data.otpauth_uri;
-      open.hidden = false;
-    } else open.hidden = true;
-  }
-  document.getElementById("fh-mfa-code").focus();
 }
 
 document.getElementById("f").addEventListener("submit", async (e) => {
@@ -384,95 +299,7 @@ document.getElementById("f").addEventListener("submit", async (e) => {
     err.textContent = failureText(status, data);
     return;
   }
-  if (data && data.mfa_required) {
-    if (data.mfa_token) return beginMfa(data, null, null);
-    err.style.display = "block";
-    err.textContent = "Could not start the security check. Try signing in again.";
-    return;
-  }
   finishSignIn(data, null, null);
-});
-
-document.getElementById("fh-mfa-form").addEventListener("submit", async function (event) {
-  event.preventDefault();
-  if (!pendingMfaToken) return;
-  const button = document.getElementById("fh-mfa-verify");
-  const error = document.getElementById("err");
-  const code = document.getElementById("fh-mfa-code").value.trim();
-  if (!code) { error.style.display = "block"; error.textContent = "Enter an authenticator or recovery code."; return; }
-  button.disabled = true;
-  button.textContent = "Verifying…";
-  const challengeToken = pendingMfaToken;
-  const result = await mfaRequest({ action: "verify", mfa_token: pendingMfaToken, code });
-  if (pendingMfaToken !== challengeToken) return;
-  button.disabled = false;
-  button.textContent = "Verify and sign in";
-  if (!result.ok || !result.data || !result.data.token) {
-    error.style.display = "block";
-    error.textContent = result.status === 429 ? "Too many attempts. Sign in again later."
-      : (result.status === 503 || result.status === 0) ? "Security check is unavailable right now. Try again later."
-      : "That code did not work. Check your authenticator and try again.";
-    return;
-  }
-  if (Array.isArray(result.data.recovery_codes) && result.data.recovery_codes.length) {
-    pendingVerifiedSession = result.data;
-    document.getElementById("fh-mfa-secret").textContent = "";
-    document.getElementById("fh-mfa-open").removeAttribute("href");
-    document.getElementById("fh-mfa-form").hidden = true;
-    document.getElementById("fh-mfa-recovery-codes").textContent = result.data.recovery_codes.join("\n");
-    document.getElementById("fh-mfa-recovery").hidden = false;
-    return;
-  }
-  finishSignIn(result.data, pendingDemoRole, pendingMfaDestination);
-});
-
-document.getElementById("fh-mfa-copy-recovery").addEventListener("click", async function () {
-  try { await navigator.clipboard.writeText(document.getElementById("fh-mfa-recovery-codes").textContent); this.textContent = "Copied"; }
-  catch (error) { this.textContent = "Select the codes above to copy"; }
-});
-
-document.getElementById("fh-mfa-continue").addEventListener("click", function () {
-  if (!pendingVerifiedSession) return;
-  document.getElementById("fh-mfa-recovery-codes").textContent = "";
-  finishSignIn(pendingVerifiedSession, pendingDemoRole, pendingMfaDestination);
-});
-
-document.getElementById("fh-mfa-copy").addEventListener("click", async function () {
-  const key = document.getElementById("fh-mfa-secret").textContent;
-  try { await navigator.clipboard.writeText(key); this.textContent = "Copied"; }
-  catch (error) { this.textContent = "Select the key above to copy"; }
-});
-
-document.getElementById("fh-mfa-back").addEventListener("click", function () {
-  pendingMfaToken = null;
-  pendingMfaDestination = null;
-  pendingDemoRole = null;
-  pendingVerifiedSession = null;
-  document.getElementById("fh-mfa-secret").textContent = "";
-  document.getElementById("fh-mfa-open").removeAttribute("href");
-  document.getElementById("fh-mfa-code").value = "";
-  document.getElementById("fh-mfa-form").hidden = true;
-  document.getElementById("f").hidden = false;
-  document.getElementById("fh-mfa-verify").disabled = false;
-  document.getElementById("err").style.display = "none";
-  document.getElementById("pw").focus();
-});
-
-// Browser back/forward cache can keep this page's DOM alive after navigation.
-// Drop the short-lived challenge and one-time secrets before it is cached.
-window.addEventListener("pagehide", function () {
-  pendingMfaToken = null;
-  pendingMfaDestination = null;
-  pendingDemoRole = null;
-  pendingVerifiedSession = null;
-  document.getElementById("fh-mfa-secret").textContent = "";
-  document.getElementById("fh-mfa-open").removeAttribute("href");
-  document.getElementById("fh-mfa-recovery-codes").textContent = "";
-  document.getElementById("fh-mfa-code").value = "";
-  document.getElementById("fh-mfa-recovery").hidden = true;
-  document.getElementById("fh-mfa-form").hidden = true;
-  document.getElementById("f").hidden = false;
-  document.getElementById("pw").value = "";
 });
 
 document.getElementById("fh-forgot-link").addEventListener("click", function (e) {
@@ -602,10 +429,6 @@ async function openAs(d, password, btn) {
     err.style.display = "block";
     err.textContent = failureText(out.status, out.data);
     return;
-  }
-  if (out.data && out.data.mfa_required && out.data.mfa_token) {
-    btn.disabled = false; btn.innerHTML = was;
-    return beginMfa(out.data, d.role, /^\/app\/[a-z0-9-]+\.html$/.test(d.home) ? d.home : "/app/");
   }
   storeSession(out.data, d.role);
   // Straight to the role's own screen. `home` is server-supplied, so it is

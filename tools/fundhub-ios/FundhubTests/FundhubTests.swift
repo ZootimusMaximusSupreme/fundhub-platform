@@ -43,9 +43,16 @@ final class FundhubTests: XCTestCase {
         }
     }
 
-    func testFaceIDPurposeIsPresentForTheApp() {
+    func testAppDoesNotDeclareFaceIDPrompt() {
         let purpose = Bundle.main.object(forInfoDictionaryKey: "NSFaceIDUsageDescription") as? String
-        XCTAssertEqual(purpose, "Use Face ID to unlock your saved Fundhub sign-in.")
+        XCTAssertNil(purpose)
+    }
+
+    func testSavedSessionReadsWithoutASecondPrompt() {
+        SessionKeychain.clear()
+        defer { SessionKeychain.clear() }
+        XCTAssertTrue(SessionKeychain.save("test-session"))
+        XCTAssertEqual(SessionKeychain.read(), "test-session")
     }
 
     func testNativePushEligibilityUsesOnlyKnownPrimaryStaffRoles() {

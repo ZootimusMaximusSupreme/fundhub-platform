@@ -39,7 +39,7 @@ test("payouts: unknown action and bad ids are 400 before any read", async () => 
   assert.equal(res.statusCode, 400);
 });
 
-test("payout-account: staff are refused — affiliate MFA and consent are required", async () => {
+test("payout-account: staff are refused — affiliate consent is required", async () => {
   const res = resMock();
   await payoutAccount({ method: "POST", body: { action: "link_token" } }, res, {
     db: noDb,
@@ -80,7 +80,7 @@ test("payout-account: the affiliate id comes from the session, never the body", 
   assert.deepEqual(asked.products, ["transfer"]);
 });
 
-test("payout-account: no MFA and consent grant means no Link token", async () => {
+test("payout-account: no consent grant means no Link token", async () => {
   const res = resMock();
   await payoutAccount({ method: "POST", body: { action: "link_token" } }, res, {
     db: { query: async () => ({ rows: [] }) },
@@ -89,7 +89,7 @@ test("payout-account: no MFA and consent grant means no Link token", async () =>
     plaidHttp: { createLinkToken: async () => assert.fail("must not call Plaid") }
   });
   assert.equal(res.statusCode, 403);
-  assert.equal(res.body.error, "plaid_mfa_consent_required");
+  assert.equal(res.body.error, "plaid_consent_required");
 });
 
 test("read/affiliate-payouts: GET only, finance only", async () => {

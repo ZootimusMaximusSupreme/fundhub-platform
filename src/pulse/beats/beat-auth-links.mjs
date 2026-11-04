@@ -60,13 +60,13 @@ export async function run(ctx) {
 }
 
 export const fixGuide = [
-  "A sign-in link, session, or Plaid MFA consent receipt is broken.",
+  "A sign-in link, session, or Plaid consent receipt is broken.",
   "",
   "Likely causes:",
   "- The EMAIL-PORTAL-MAGIC-LINK template is missing, not approved, or still draft copy, so no link email queues.",
   "- requestMagicLink saved the link and stopped before it queued the email.",
   "- createSession or the account session insert failed after the password or link was accepted.",
-  "- A Plaid Link consent receipt lacks confirmed MFA, the account target, the right scope, or exchange evidence.",
+  "- A Plaid Link consent receipt lacks its account session, target, scope, or exchange evidence.",
   "",
   "Steps:",
   "- Run node scripts/pulse/run-beat.mjs auth-links and read the red step.",

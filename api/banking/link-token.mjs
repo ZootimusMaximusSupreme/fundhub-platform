@@ -1,8 +1,8 @@
 // POST /api/banking/link-token { client_id } → { ok, link_token, expiration, environment }
 //
 // Opens Plaid Link for a signed-in client on their OWN file, after an
-// authenticator code and a saved consent grant. Staff client Link requests are
-// refused because staff MFA cannot stand in for the client's consent.
+// saved consent grant. Staff client Link requests are refused because staff
+// cannot stand in for the client's consent.
 import { db } from "../../src/db.mjs";
 import { requireAuth, AUTH_UNAVAILABLE } from "../../src/http/middleware/requireAuth.mjs";
 import { resolvePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
@@ -35,7 +35,7 @@ export default async function handler(req, res, deps = {}) {
       sessionId: scope.sessionId, targetKind: "client_bank", targetId: scope.clientId,
       stage: "open"
     });
-    if (!grant) return res.status(403).json({ ok: false, error: "plaid_mfa_consent_required" });
+    if (!grant) return res.status(403).json({ ok: false, error: "plaid_consent_required" });
   } else return res.status(403).json({ ok: false, error: "client_consent_required" });
 
   const r = await start({ clientId: scope.clientId, env });

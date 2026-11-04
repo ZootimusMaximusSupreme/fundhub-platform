@@ -1,0 +1,73 @@
+Fundhub 2FA, Apple, and scale — 2026-11-04
+Owner lane: native (this worktree)
+
+Parallel workflow A — native app sign-in, owned by this session.
+Prompt: Remove the iPhone app's Face ID/passcode prompt on saved-session restore. Preserve server session verification and sign-out. Update the existing iOS journey docs, build/test, preflight, and ship in order. Do not touch the working tree's unrelated changes.
+Status: implementation and focused proof complete locally; PR blocked by active local peer-branch file ownership pending owner handoff.
+
+Parallel workflow B — Apple status, read-only, owned by apple_status agent.
+Prompt: Check current App Store Connect and public listing for Fundhub Portal; report version, review state, and release evidence without changing account state.
+Result: Fundhub Portal iOS 1.0.2 READY_FOR_SALE, public release 2026-11-03 17:01:13 UTC. Portal macOS 1.0 IN_REVIEW. https://apps.apple.com/us/app/fundhub-portal/id6823985032
+
+Parallel workflow C — scale readiness, read-only, owned by scale_readiness agent.
+Prompt: Check latest live pulse, booking capture, funnel doors, release receipt, and traffic plan; identify observed blockers.
+Result: not ready to raise traffic. Nov 3 live pulse 50 red, including 2 ClickFunnels pre-handler captures without downstream receipts or booking rows, plus 17 past booked calls without outcomes. These two captures do not prove the webhook handler accepted them; historical HTTP outcomes are unavailable. Blueprint /blueprint, /blueprint-book, /blueprint-thank-you return 404. Direct Book and Roadmap doors return 200, but this does not prove bookings. New campaign spend is still a plan, not live.
+
+Dependencies: native release waits for native build/tests and PR gates. Scale increase waits for booking capture and Blueprint funnel repair plus live proof.
+
+Native/app proof: 26 focused Node tests passed; 13 focused Playwright tests passed on isolated port 43118; iOS simulator Xcode tests passed; lint, TypeScript, rules check and diff check passed. Marked login draft: ops/workflows/fundhub-2fa-login-draft-2026-11-04-marked.png.
+Account Plaid proof: 86 focused Node and 16 browser checks passed. Scratch PostgreSQL proof skipped because no loopback scratch DB.
+Release preflight first pass: branch two commits behind origin/main and 3 staff-payout paths flagged against local meta-neutral-audience-labels-2026-11-02. This worktree will be stashed temporarily, updated to current origin/main, then restored before a second preflight. Do not modify the peer branch.
+
+Booking follow-up: The two pre-handler capture IDs normalize to booking.created, but no events/bookings rows or current client match exist. The current capture mode writes before client resolution and event emit; no post-handler receipt is kept. Historical Netlify logs did not settle the outcome. Repair needs a post-handler receipt and separate treatment of older unverified captures before traffic is raised. Do not replay old payloads until current ClickFunnels appointment state is checked. Blueprint funnel three-page 404 remains a live blocker.
+
+Final local proof: combined Node suite 123/123 pass; staff sign-in and payout browser suite 13/13 pass on fresh static server; account/affiliate consent browser suite 16/16 pass; signed iPhone simulator Xcode test suite passed, including Keychain save/read without a second prompt; lint, TypeScript, rules check, diff check passed. Scratch PostgreSQL tests skipped without loopback scratch DB. No release or live user-path claim.
+Preflight second pass after rebase: behind 0, still blocks api/staff/payout-account.mjs, e2e/staff-payout-bank.spec.mjs, src/http/staff-payout-account.test.mjs because local peer meta-neutral-audience-labels-2026-11-02 remains active. Peer has no unsaved edits on those files; current main has later versions. No gate bypass attempted.
+Native release: source prepared as iOS 1.0.3 build 9; App Store Connect currently has no 1.0.3 version/build. Latest public iOS 1.0.2 is live. Signed archive/upload/review waits for merge and distribution signing.
+
+Change manifest:
+.env.example
+api/affiliates/payout-account.mjs
+api/auth/login.mjs
+api/auth/plaid-mfa.mjs
+api/banking/link-exchange.mjs
+api/banking/link-token.mjs
+api/owner/company-bank.mjs
+api/staff/payout-account.mjs
+docs/journeys/CHANGELOG.md
+docs/journeys/finance-os-trends-flow.md
+docs/journeys/fundhub-ios-actual.md
+docs/journeys/fundhub-ios-intended.md
+docs/journeys/money-transfers-flow.md
+docs/journeys/role-owner-intended.md
+docs/sops/Fundhub-Information-Security-Policy.txt
+e2e/staff-mfa-login.spec.mjs
+e2e/staff-payout-bank.spec.mjs
+ops/workflows/build-evidence/plaid-security-link/desktop-1440.png
+ops/workflows/build-evidence/plaid-security-link/phone-390.png
+public/app/company-cash.js
+public/app/plaid-stepup.css
+public/app/plaid-stepup.js
+public/app/shell.js
+public/login.html
+src/auth/account-plaid-mfa.mjs
+src/auth/account-plaid-mfa.pg.test.mjs
+src/auth/account-plaid-mfa.test.mjs
+src/auth/login.mjs
+src/auth/login.test.mjs
+src/http/affiliate-payouts-doors.test.mjs
+src/http/company-cash.test.mjs
+src/http/plaid-link.test.mjs
+src/http/staff-payout-account.test.mjs
+src/pulse/beats/beat-auth-links.mjs
+src/pulse/beats/lib/auth-truth.mjs
+src/pulse/catalog/proofs/fin-b23-money-page.test.mjs
+src/pulse/catalog/proofs/s4-money-harness.mjs
+src/pulse/coverage/INDEX.md
+src/pulse/coverage/gap-auth.test.mjs
+tools/fundhub-ios/Fundhub.xcodeproj/project.pbxproj
+tools/fundhub-ios/Fundhub/App/FundhubApp.swift
+tools/fundhub-ios/Fundhub/Core/FundhubAPI.swift
+tools/fundhub-ios/FundhubTests/FundhubTests.swift
+ops/workflows/fundhub-2fa-apple-scale-2026-11-04.txt
+ops/workflows/fundhub-2fa-login-draft-2026-11-04-marked.png

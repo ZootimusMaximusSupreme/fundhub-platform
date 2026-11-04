@@ -134,13 +134,14 @@ test("a quiet healthy login lane passes", async () => {
   assert.deepEqual(sessionCall.params, [SESSION_PROBE_HASH, JSON.stringify(SIGNIN_GRANTS)]);
 });
 
-test("a saved Plaid grant without valid MFA or consent evidence fails without exposing account data", async () => {
+test("a saved Plaid grant without valid session or consent evidence fails without exposing account data", async () => {
   const db = healthyMap({ plaid: { recent_grants: 4, broken_grants: 1 } });
   const row = byId(await gapChecks({ db, env: GOOD_ENV }))["gap:auth-plaid-consent-integrity"];
   assert.equal(row.status, "FAIL");
   assert.match(row.detail, /1 of 4 recent Plaid Link grants/);
   assert.ok(!row.detail.includes("account_id"));
-  assert.match(PLAID_GRANT_SQL, /c\.confirmed_at IS NULL/);
+  assert.doesNotMatch(PLAID_GRANT_SQL, /account_plaid_mfa_credentials/);
+  assert.match(PLAID_GRANT_SQL, /s\.account_id = g\.account_id/);
   assert.match(PLAID_GRANT_SQL, /g\.consent_scope <>/);
   assert.match(PLAID_GRANT_SQL, /g\.consumed_at IS NOT NULL AND g\.link_opened_at IS NULL/);
 });

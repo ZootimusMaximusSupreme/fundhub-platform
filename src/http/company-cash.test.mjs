@@ -53,20 +53,45 @@ test("owner GET uses only session org for bank and cash data", async () => {
   assert.equal(cash.statusCode, 200);
 });
 
-test("bank Link, exchange, and selected-account writes require recent staff MFA", async () => {
+test("owner bank actions use the owner session without a separate MFA check", async () => {
   for (const action of ["link_token", "exchange", "select_account", "sync", "refresh_balance"]) {
     const response = res();
+    let called = 0;
+    const complete = async (_database, args) => {
+      called += 1;
+      assert.equal(args.orgId, ORG);
+      assert.equal(args.staffId, STAFF);
+      return { ok: true };
+    };
+    const scoped = async (...args) => {
+      called += 1;
+      assert.equal((args[1] || args[0]).orgId, ORG);
+      return { ok: true };
+    };
     await bankRoute({ method: "POST", body: { action, item_id: OTHER, account_id: OTHER,
       public_token: "public", consent: true, confirm_business_account: true } }, response,
     { db: noDb, requireAuth: auth("owner", false),
-      linkToken: () => { throw new Error("provider called before MFA"); },
-      completeLink: () => { throw new Error("provider called before MFA"); },
-      selectAccount: () => { throw new Error("database changed before MFA"); },
-      sync: () => { throw new Error("provider called before MFA"); },
-      refreshBalance: () => { throw new Error("billed provider called before MFA"); } });
-    assert.equal(response.statusCode, 403);
-    assert.equal(response.body.error, "mfa_required");
+      linkToken: scoped, completeLink: complete, selectAccount: complete,
+      sync: scoped, refreshBalance: scoped });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.ok, true);
+    assert.equal(called, 1);
   }
+});
+
+test("bank writes still require owner role and explicit business consent", async () => {
+  const denied = res();
+  await bankRoute({ method: "POST", body: { action: "link_token" } }, denied,
+    { db: noDb, requireAuth: auth("admin", false),
+      linkToken: () => { throw new Error("non-owner reached bank provider"); } });
+  assert.equal(denied.statusCode, 403);
+  const noConsent = res();
+  await bankRoute({ method: "POST", body: { action: "exchange", public_token: "public",
+    account_id: "plaid-business", confirm_business_account: true } }, noConsent,
+    { db: noDb, requireAuth: auth("owner", false),
+      completeLink: () => { throw new Error("bank exchange ran without consent"); } });
+  assert.equal(noConsent.statusCode, 400);
+  assert.equal(noConsent.body.error, "business_account_and_consent_required");
 });
 
 test("bank exchange pins owner identity and records consent; cash match pins org", async () => {

@@ -4,7 +4,7 @@
 // Finishes Plaid Link: trades the public_token, stores the encrypted item, reads
 // every account on it (checking, savings, credit cards) and saves them. Same
 // gate as link-token: the signed-in client for their OWN file, with the same
-// MFA and consent grant used to open Link. Staff client exchange is refused.
+// consent grant used to open Link. Staff client exchange is refused.
 // The access token never appears in a response.
 import { db } from "../../src/db.mjs";
 import { requireAuth, AUTH_UNAVAILABLE } from "../../src/http/middleware/requireAuth.mjs";
@@ -45,7 +45,7 @@ export default async function handler(req, res, deps = {}) {
       sessionId: scope.sessionId, targetKind: "client_bank", targetId: scope.clientId,
       stage: "exchange"
     });
-    if (!grant) return res.status(403).json({ ok: false, error: "plaid_mfa_consent_required" });
+    if (!grant) return res.status(403).json({ ok: false, error: "plaid_consent_required" });
     consentAt = grant.consent_granted_at;
     consentScope = grant.consent_scope;
   } else return res.status(403).json({ ok: false, error: "client_consent_required" });

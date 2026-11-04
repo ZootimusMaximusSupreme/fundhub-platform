@@ -59,19 +59,19 @@ test("payout link stays hidden when Plaid Transfer is unavailable", async ({ pag
   await expect(page.locator("#fh-account-payout-link")).toBeHidden();
 });
 
-test("expired payout MFA asks staff to sign in again", async ({ page }) => {
+test("a failed payout link shows the server's message and can be retried", async ({ page }) => {
   await wireApi(page, {
     session: CLOSER,
     handlers: {
       "/api/read/staff-payout-account": () => ({ ok: true, account: null, linking_available: true }),
-      "/api/staff/payout-account": () => ({ ok: false, error: "mfa_required" })
+      "/api/staff/payout-account": () => ({ ok: false, message: "Bank linking is unavailable." })
     }
   });
   await gotoScreen(page, "closer-dashboard.html", "", CLOSER);
   await page.locator("#fh-shell-chip-show").click();
   await page.locator("#fh-account-payout-link").click();
-  await expect(page.locator("#fh-account-payout-status")).toHaveText("Sign in again to connect your payout bank.");
-  await expect(page.locator("#fh-account-payout-link")).toBeHidden();
+  await expect(page.locator("#fh-account-payout-status")).toHaveText("Bank linking is unavailable.");
+  await expect(page.locator("#fh-account-payout-link")).toBeVisible();
 });
 
 test("owner account menu has no employee payout bank control", async ({ page }) => {

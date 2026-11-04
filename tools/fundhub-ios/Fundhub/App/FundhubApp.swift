@@ -44,7 +44,6 @@ final class FundhubSessionStore: ObservableObject {
     private let api = FundhubAPI()
     private(set) var token: String?
     var hasSavedSession: Bool { SessionKeychain.hasSavedSession }
-    var savedSessionUnlockLabel: String { SessionKeychain.unlockLabel }
 
     init() { Task { await restore() } }
 
@@ -74,8 +73,9 @@ final class FundhubSessionStore: ObservableObject {
         phase = .checking
         let stored = await Task.detached(priority: .userInitiated) { SessionKeychain.read() }.value
         guard let stored else {
+            SessionKeychain.clear()
             phase = .signedOut
-            message = "Could not unlock your saved sign-in. Try again or sign in another way."
+            message = "Please sign in once more after this update."
             return
         }
         token = stored
@@ -125,11 +125,11 @@ final class FundhubSessionStore: ObservableObject {
             DockWidgetSnapshot.clear()
             if token != nil { staffLinks.clear() }
         }
-        let savedForQuickSignIn = SessionKeychain.save(newToken)
+        let savedSession = SessionKeychain.save(newToken)
         token = newToken
         await refreshSession()
-        if phase == .signedIn && !savedForQuickSignIn {
-            message = "Signed in, but this iPhone could not save Face ID sign-in. You can still use Fundhub now."
+        if phase == .signedIn && !savedSession {
+            message = "Signed in, but this iPhone could not save your session. You can still use Fundhub now."
         }
     }
 
@@ -305,18 +305,6 @@ private struct SignInView: View {
                         .foregroundStyle(mutedInk)
                 }
                 .padding(.top, 48)
-
-                if store.hasSavedSession {
-                    Button { Task { await store.restore() } } label: {
-                        Label(store.savedSessionUnlockLabel, systemImage: "faceid")
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                    }
-                    .buttonStyle(.plain)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .background(ink, in: RoundedRectangle(cornerRadius: 16))
-                    .padding(.top, 32)
-                }
 
                 if let audience {
                     VStack(alignment: .leading, spacing: 16) {

@@ -1,5 +1,13 @@
 # Fundhub iOS app — actual push path (2026-10-17)
 
+## Saved sign-in (2026-11-04)
+
+The native app stores its session in this iPhone's Keychain without a Face ID or
+device-passcode challenge. On later opens it reads the saved token and verifies
+the server session. An older Face ID-protected Keychain item is never opened
+with a prompt; the app clears it and asks the person to sign in once more.
+Signing out still removes the saved token and revokes the server session.
+
 The client Home calls the native push status route with its bearer session and this installation's
 UUID. If the server lacks the Apple signing key or encryption key, the card says setup is not
 ready and never spends the iOS permission prompt. If ready, the client may grant permission;

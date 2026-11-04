@@ -2655,11 +2655,6 @@
         if (!current(flow)) return;
         button.disabled = false;
         if (result && result.ok) { paint(result.account); return; }
-        if (result && result.error === "mfa_required") {
-          button.hidden = true;
-          status.textContent = "Sign in again to connect your payout bank.";
-          return;
-        }
         status.textContent = (result && result.message) || "The bank did not save. Open Plaid again.";
         button.textContent = "Link payout bank with Plaid";
       });
@@ -2694,11 +2689,6 @@
         if (!current(flow)) return;
         if (!result || !result.ok || !result.link_token) {
           button.disabled = false;
-          if (result && result.error === "mfa_required") {
-            button.hidden = true;
-            status.textContent = "Sign in again to connect your payout bank.";
-            return;
-          }
           button.textContent = "Link payout bank with Plaid";
           status.textContent = (result && result.message) || "Bank linking is unavailable right now. Try again later.";
           return;

@@ -38,8 +38,8 @@ function plaidRoutes({ script = "serves", linkToken = { status: 200, body: { ok:
     "/api/auth/plaid-mfa": async (route) => {
       const body = bodyOf(route);
       log.authPosts.push(body);
-      return json(route, body.action === "setup"
-        ? { ok: true, enrolled: true,
+      return json(route, body.action === "consent_details"
+        ? { ok: true,
           consent_text: "I agree that Fundhub may collect, process, use, and store my bank account, balance, and transaction data obtained through Plaid for Finance OS. I can disconnect my bank later.",
           privacy_url: "https://fundhub.ai/privacy/" }
         : { ok: true, grant_token: "grant-token" });
@@ -65,12 +65,11 @@ function plaidRoutes({ script = "serves", linkToken = { status: 200, body: { ok:
 
 async function authorizeLink(page) {
   await page.locator('[data-act="connect"]').first().click();
-  await page.locator('.fh-plaid-stepup [name="code"]').fill("123456");
   await page.locator('.fh-plaid-stepup [name="consent"]').check();
   await page.locator('.fh-plaid-stepup [data-continue]').click();
 }
 
-test("MFA and consent dialog has review screenshots at desktop and phone widths", { timeout: 60_000 }, async (t) => {
+test("consent dialog has review screenshots at desktop and phone widths", { timeout: 60_000 }, async (t) => {
   const { open } = await startPages(t);
   const { handlers, before } = plaidRoutes();
   const { page } = await open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers, before });
@@ -89,7 +88,6 @@ test("MFA and consent dialog has review screenshots at desktop and phone widths"
       document.getElementById("fh-plaid-review-markup")?.remove();
       const dialog = document.querySelector(".fh-plaid-stepup");
       const bounds = dialog.getBoundingClientRect();
-      const code = document.querySelector('.fh-plaid-stepup [name="code"]').getBoundingClientRect();
       const consent = document.querySelector('.fh-plaid-stepup [name="consent"]').getBoundingClientRect();
       const consentRow = document.querySelector(".fh-plaid-stepup-consent").getBoundingClientRect();
       const ns = "http://www.w3.org/2000/svg";
@@ -116,16 +114,6 @@ test("MFA and consent dialog has review screenshots at desktop and phone widths"
         head.setAttribute("points", `${x2},${y2} ${x2 - 10},${y2 - 4} ${x2 - 3},${y2 - 10}`);
         head.setAttribute("fill", "#ffd324"); svg.appendChild(head);
       };
-      const codeX = code.left - bounds.left, codeY = code.top - bounds.top;
-      const codeMark = document.createElementNS(ns, "ellipse");
-      codeMark.setAttribute("cx", String(codeX + code.width / 2));
-      codeMark.setAttribute("cy", String(codeY + code.height / 2));
-      codeMark.setAttribute("rx", String(code.width / 2 + 6));
-      codeMark.setAttribute("ry", String(code.height / 2 + 6));
-      codeMark.setAttribute("fill", "none"); codeMark.setAttribute("stroke", "#e11d25");
-      codeMark.setAttribute("stroke-width", "4"); svg.appendChild(codeMark);
-      textAt(24, codeY - 18, "1. Authenticator code");
-      arrow(165, codeY - 23, codeX + code.width - 15, codeY - 8);
       const consentX = consent.left - bounds.left + consent.width / 2;
       const consentY = consent.top - bounds.top + consent.height / 2;
       const consentMark = document.createElementNS(ns, "circle");
@@ -134,7 +122,7 @@ test("MFA and consent dialog has review screenshots at desktop and phone widths"
       consentMark.setAttribute("stroke", "#e11d25"); consentMark.setAttribute("stroke-width", "4");
       svg.appendChild(consentMark);
       const consentCaptionY = consentRow.bottom - bounds.top + 25;
-      textAt(85, consentCaptionY, "2. Consent checkbox");
+      textAt(85, consentCaptionY, "Consent checkbox");
       arrow(112, consentCaptionY - 15, consentX + 12, consentY + 12);
       dialog.appendChild(svg);
     });
@@ -148,9 +136,8 @@ test("Connect a bank waits for a checked consent box before asking for Plaid Lin
   const { log, handlers, before } = plaidRoutes();
   const { page } = await open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers, before });
   await page.locator('[data-act="connect"]').first().click();
-  await page.locator('.fh-plaid-stepup [name="code"]').fill("123456");
   await page.locator('.fh-plaid-stepup [data-continue]').click();
-  assert.deepEqual(log.authPosts.map((p) => p.action), ["setup"]);
+  assert.deepEqual(log.authPosts.map((p) => p.action), ["consent_details"]);
   assert.deepEqual(log.posts, []);
   assert.deepEqual(log.scriptRequests, []);
   await page.locator('.fh-plaid-stepup [data-cancel]').click();
@@ -174,7 +161,7 @@ test("Connect a bank loads the bank script only when it is pressed, then runs to
     { path: "link-token", body: { client_id: CLIENT_ID, plaid_grant_token: "grant-token" } },
     { path: "link-exchange", body: { public_token: "fake-public-token", institution: { institution_id: "ins_sample", name: "Sample Bank" }, plaid_grant_token: "grant-token", client_id: CLIENT_ID } },
   ]);
-  assert.deepEqual(log.authPosts.map((p) => p.action), ["setup", "authorize"]);
+  assert.deepEqual(log.authPosts.map((p) => p.action), ["consent_details", "authorize"]);
   assert.equal(log.authPosts[1].consent, true);
   await waitFor(() => log.overviewReads >= 2, "the accounts are read again after the connect");
   assert.deepEqual(errors, []);
