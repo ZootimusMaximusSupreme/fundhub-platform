@@ -110,6 +110,33 @@ function handlers(over = {}) {
 
 const url = `/app/closer-dashboard.html?client_id=${CLIENT_ID}`;
 
+test("closer sees the saved OffersIQ match without implying a full credit pull", async ({ page }) => {
+  await freezeClock(page, NOW);
+  await openScreen(page, url, CLOSER, handlers({ "/api/read/closer-call": cockpit({ offersiq: {
+    outcome: "matched", environment: "sandbox", credit_score: 721, rule_set_name: "Funding rules",
+    request_id: "12345678-1234-4234-8234-123456789abc",
+    offers_iq_summary: { revolvingUtilization: 24 }
+  } }) }));
+  const box = page.locator("#fh-offersiq");
+  await expect(box).toBeVisible();
+  await expect(box).toContainText("Matched the saved offer rules");
+  await expect(box).toContainText("Sandbox test");
+  await box.getByText("Returned match details", { exact: true }).click();
+  await expect(box).toContainText("721");
+  await expect(box).toContainText("24");
+  await expect(box).toContainText("12345678-1234-4234-8234-123456789abc");
+});
+
+test("closer does not display stale OffersIQ financial values", async ({ page }) => {
+  await freezeClock(page, NOW);
+  await openScreen(page, url, CLOSER, handlers({ "/api/read/closer-call": cockpit({ offersiq: {
+    outcome: "needs_review", stale: true, credit_score: 721,
+    offers_iq_summary: { revolvingUtilization: 24 }
+  } }) }));
+  await expect(page.locator("#fh-offersiq")).toContainText("Earlier details — needs review");
+  await expect(page.locator("#fh-offersiq")).not.toContainText("721");
+});
+
 test("a closer can clock in without a current call", async ({ page }) => {
   await freezeClock(page, NOW);
   let onShift = false;

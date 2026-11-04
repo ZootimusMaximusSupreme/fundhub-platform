@@ -16,6 +16,10 @@ import {
   assertIdentityAllowed,
   livePullAllowed
 } from "../../finance/crs-identities.mjs";
+import {
+  assertOffersIqWireBody,
+  isOffersIqProductionFixtureIdentity
+} from "../../finance/offersiq-contract.mjs";
 
 export const TRANSMITS = true;
 
@@ -29,6 +33,8 @@ const REPORT_PATHS = Object.freeze({
   EX: "/api/experian/credit-profile/credit-report/standard/exp-prequal-fico9",
   EQ: "/api/equifax/credit-report/standard/efx-prequal-fico9"
 });
+const OFFERSIQ_EVALUATE_PATH = "/api/offersiq/evaluate";
+const OFFERSIQ_REEVALUATE_PATH = /^\/api\/offersiq\/reevaluate\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
 
 /* Company search and report. Not a consumer identity, so they do not go
    through the personal-file gate. The host check above still applies. */
@@ -113,7 +119,10 @@ export function requestCrsSandbox({
   }
 
   const bureau = bureauForReportPath(target.pathname);
-  if (!AUTH_PATHS.has(target.pathname) && !BUSINESS_PATHS.has(target.pathname) && !bureau) {
+  const offersIqEvaluate = target.pathname === OFFERSIQ_EVALUATE_PATH;
+  const offersIqReevaluate = OFFERSIQ_REEVALUATE_PATH.test(target.pathname);
+  if (!AUTH_PATHS.has(target.pathname) && !BUSINESS_PATHS.has(target.pathname) && !bureau
+      && !offersIqEvaluate && !offersIqReevaluate) {
     return Promise.resolve(refused("CRS request refused: endpoint not allowed"));
   }
   if (bureau) {
@@ -124,6 +133,21 @@ export function requestCrsSandbox({
     } catch {
       return Promise.resolve(refused("CRS request refused: identity not allowed for host"));
     }
+  }
+  if (offersIqEvaluate) {
+    try {
+      const requestBody = typeof body === "string" ? JSON.parse(body) : body;
+      const checked = assertOffersIqWireBody(requestBody, { sandbox: sandboxOk });
+      if (productionOk && isOffersIqProductionFixtureIdentity(checked.consumerData)) {
+        return Promise.resolve(refused("CRS request refused: sandbox identity on production"));
+      }
+      body = JSON.stringify(checked);
+    } catch {
+      return Promise.resolve(refused("CRS request refused: OffersIQ identity or consent not allowed"));
+    }
+  }
+  if (offersIqReevaluate && body !== undefined && body !== null) {
+    return Promise.resolve(refused("CRS request refused: OffersIQ re-evaluation has no body"));
   }
 
   return transmit(target.toString(), {

@@ -37,6 +37,148 @@ const queue = {
   }]
 };
 
+const confirmedHome = {
+  line1: "123 Main St", line2: "", city: "Phoenix", state: "AZ", zip: "85001",
+  source: "setter_confirmed", confirmed_at: "2026-11-04T18:00:00.000Z"
+};
+
+function offersIqQueue(over = {}) {
+  return { ...queue, offersiq_available: true,
+    items: [{ ...structuredClone(queue.items[0]), residential_address: { ...confirmedHome } }], ...over };
+}
+
+test("OffersIQ asks for distinct permission and sends one stored-identity request", async ({ page }) => {
+  const writes = [];
+  let finish;
+  const pending = new Promise(resolve => { finish = resolve; });
+  const data = offersIqQueue();
+  data.items.push({ ...data.items[0], client_id: "bbbbbbbb-2222-4222-8222-222222222222", client_name: "Next Lead" });
+  data.count = 2;
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": data,
+    "/api/setter-dashboard": async route => {
+      writes.push(route.request().postDataJSON());
+      await pending;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true,
+        status: "matched", result: { outcome: "matched", environment: "sandbox", credit_score: 721,
+          request_id: "12345678-1234-4234-8234-123456789abc", rule_set_name: "Funding rules",
+          offers_iq_summary: { creditScore: 721, revolvingUtilization: 24 } } }) });
+    }
+  });
+  const check = page.getByRole("button", { name: "Check offer match", exact: true });
+  await check.click();
+  await expect(page.locator("#setter-offersiq-status")).toHaveText("Ask for the lead's permission first.");
+  expect(writes).toHaveLength(0);
+  await page.getByLabel("The lead agreed to offer matching under these terms").check();
+  expect(writes).toHaveLength(0);
+  await check.click();
+  await expect.poll(() => writes.length).toBe(1);
+  expect(Object.keys(writes[0]).sort()).toEqual(["action", "client_id", "consent_accepted", "operation_id"]);
+  expect(writes[0]).toMatchObject({ action: "evaluate_offersiq", client_id: queue.items[0].client_id, consent_accepted: true });
+  expect(writes[0].operation_id).toMatch(/^[0-9a-f-]{36}$/i);
+  await expect(check).toBeDisabled();
+  await expect(page.getByLabel("Street address")).toBeDisabled();
+  await page.locator('[data-client-id="bbbbbbbb-2222-4222-8222-222222222222"]').click();
+  await expect(page.locator("#setter-detail h2")).toHaveText(queue.items[0].client_name);
+  finish();
+  const section = page.locator("#setter-offersiq-section");
+  await expect(section).toContainText("Matched these rules");
+  await expect(section).toContainText("Sandbox test");
+  await expect(section).toContainText("OffersIQ score: 721");
+  await expect(page.getByLabel("Street address")).toBeEnabled();
+  await section.getByText("Returned financial profile", { exact: true }).click();
+  await expect(section).toContainText("revolving Utilization: 24");
+  await section.getByText("Saved receipt", { exact: true }).click();
+  await expect(section).toContainText("12345678-1234-4234-8234-123456789abc");
+  expect(writes).toHaveLength(1);
+});
+
+test("OffersIQ unavailable and missing-address states do not offer a paid check", async ({ page }) => {
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": queue
+  });
+  await expect(page.locator("#setter-offersiq-section")).toHaveCount(0);
+  await page.route("**/api/read/setter-dashboard**", route => route.fulfill({ status: 200,
+    contentType: "application/json", body: JSON.stringify({ ...queue, offersiq_available: true }) }));
+  await page.getByRole("button", { name: "Refresh queue" }).click();
+  await expect(page.locator("#setter-offersiq-section")).toContainText("Confirm and save the current home address above first.");
+  await expect(page.getByRole("button", { name: "Check offer match", exact: true })).toHaveCount(0);
+});
+
+for (const state of [
+  { outcome: "not_matched", label: "No match for these rules" },
+  { outcome: "needs_review", label: "Needs review" },
+  { outcome: "error", label: "Result unavailable" }
+]) {
+  test("OffersIQ presents " + state.outcome + " without inventing a score", async ({ page }) => {
+    const data = offersIqQueue();
+    data.items[0].offersiq = { outcome: state.outcome, request_id: "12345678-1234-4234-8234-123456789abc" };
+    await openScreen(page, "/app/setter-dashboard.html", SETTER, { "/api/read/setter-dashboard": data });
+    const section = page.locator("#setter-offersiq-section");
+    await expect(section).toContainText(state.label);
+    await expect(section).not.toContainText("OffersIQ score:");
+    await expect(section.getByText("Returned financial profile", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Check offer match", exact: true })).toHaveCount(0);
+  });
+}
+
+test("OffersIQ keeps an uncertain retry on the same operation and preserves the address", async ({ page }) => {
+  const writes = [];
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": offersIqQueue(),
+    "/api/setter-dashboard": async route => {
+      writes.push(route.request().postDataJSON());
+      await route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ ok: false, status: "error" }) });
+    }
+  });
+  await page.getByLabel("The lead agreed to offer matching under these terms").check();
+  const check = page.getByRole("button", { name: "Check offer match", exact: true });
+  await check.click();
+  await expect(page.locator("#setter-offersiq-status")).toContainText("Refresh the lead before trying again");
+  await expect(check).toBeEnabled();
+  await check.click();
+  await expect.poll(() => writes.length).toBe(2);
+  expect(writes[1].operation_id).toBe(writes[0].operation_id);
+  await expect(page.getByLabel("Street address")).toHaveValue(confirmedHome.line1);
+});
+
+test("OffersIQ hides old financial values when contact details changed", async ({ page }) => {
+  const data = offersIqQueue();
+  data.items[0].offersiq = { outcome: "needs_review", stale: true, credit_score: 721,
+    offers_iq_summary: { creditScore: 721 }, request_id: "12345678-1234-4234-8234-123456789abc" };
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, { "/api/read/setter-dashboard": data });
+  const section = page.locator("#setter-offersiq-section");
+  await expect(section).toContainText("Needs a fresh address check");
+  await expect(section).not.toContainText("721");
+  await expect(page.getByLabel("The lead agreed to offer matching under these terms")).not.toBeChecked();
+});
+
+test("a corrected OffersIQ identity gets a new operation even when the address is unchanged", async ({ page }) => {
+  const writes = [];
+  let data = offersIqQueue();
+  data.items[0].offersiq_identity_key = "initial-identity";
+  await openScreen(page, "/app/setter-dashboard.html", SETTER, {
+    "/api/read/setter-dashboard": () => data,
+    "/api/setter-dashboard": async route => {
+      writes.push(route.request().postDataJSON());
+      await route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ ok: false, status: "error" }) });
+    }
+  });
+  await page.getByLabel("The lead agreed to offer matching under these terms").check();
+  await page.getByRole("button", { name: "Check offer match", exact: true }).click();
+  await expect(page.locator("#setter-offersiq-status")).toContainText("Refresh the lead before trying again");
+  data = structuredClone(data);
+  data.items[0].phone = "+14702920107";
+  data.items[0].offersiq_identity_key = "corrected-identity";
+  await page.getByRole("button", { name: "Refresh queue" }).click();
+  await expect(page.locator("#setter-queue")).toContainText("(470) 292-0107");
+  await page.getByLabel("The lead agreed to offer matching under these terms").check();
+  await page.getByRole("button", { name: "Check offer match", exact: true }).click();
+  await expect.poll(() => writes.length).toBe(2);
+  expect(writes[1].operation_id).not.toBe(writes[0].operation_id);
+  await expect(page.getByLabel("Street address")).toHaveValue(confirmedHome.line1);
+});
+
 test("setter sees self-scoped dial, book and show numbers plus honest two-message handoff", async ({ page }) => {
   await openScreen(page, "/app/setter-dashboard.html", SETTER, {
     "/api/read/setter-dashboard": queue

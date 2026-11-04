@@ -37,6 +37,7 @@ import { prequalFromCustomFields } from "../http/portal-prequal.mjs";
 import { getLatestPull } from "../finance/soft-pulls.mjs";
 import { isSloPostPurchaseEnabled } from "../slo/purchase.mjs";
 import { buildDeckVisualData } from "./deck-visual-data.mjs";
+import { offersIqSummaryForClient } from "../finance/offersiq.mjs";
 
 /* COMPLIANCE REVIEW REQUIRED — credit-pull type/reuse.
    Owner-set 2026-09-19: when SLO_POST_PURCHASE_ENABLED is on, a closer does
@@ -446,6 +447,7 @@ export async function buildCloserDeck(db, { orgId, clientId }) {
 
   return {
     client_id: client.id,
+    offersiq: offersIqSummaryForClient(client),
     setter_handoff: client.custom_fields?.setter_handoff?.complete_at
       ? client.custom_fields.setter_handoff : null,
     slo_ref: cf(client, "slo_ref"),

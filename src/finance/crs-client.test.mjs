@@ -59,6 +59,103 @@ test("CRS client: missing configuration fails before transport", async () => {
   assert.equal(called, false);
 });
 
+const OFFERSIQ_ID = "550e8400-e29b-41d4-a716-446655440000";
+const OFFERSIQ_IDENTITY = Object.freeze({
+  fname: "YXHVVO", lname: "IMAEIF", streetName: "SYMFO", city: "HUNTSVILLE", state: "AL", zip: "35692"
+});
+const OFFERSIQ_CONSENT = Object.freeze({ accepted: true, termsUrl: "https://fundhub.ai/credit-consent" });
+
+test("CRS client: OffersIQ uses existing login and sends only the documented minimal fields", async () => {
+  const calls = [];
+  const client = createCrsClient({ env: LIVE_ENV, fetchImpl: async (url, init) => {
+    calls.push({ url, init });
+    if (url.endsWith("/users/login")) return response(200, { token: "unit-offersiq-token", expires: 3600000 });
+    return response(200, { ruleSetId: "752", decisionStatus: "APPROVED", overallDecision: true }, { RequestID: OFFERSIQ_ID });
+  } });
+  const result = await client.evaluateOffersIq({ ruleSetId: 752,
+    identity: { ...OFFERSIQ_IDENTITY, ssn: "not-sent", dob: "not-sent" }, consent: OFFERSIQ_CONSENT });
+  assert.equal(result.ok, true);
+  assert.equal(result.decision.outcome, "matched");
+  assert.equal(result.requestId, OFFERSIQ_ID);
+  assert.deepEqual(calls.map(c => new URL(c.url).pathname), ["/api/users/login", "/api/offersiq/evaluate"]);
+  assert.equal(calls[1].init.headers.Authorization, "Bearer unit-offersiq-token");
+  assert.deepEqual(JSON.parse(calls[1].init.body), {
+    ruleSetId: 752, consumerData: OFFERSIQ_IDENTITY, userConsent: OFFERSIQ_CONSENT
+  });
+});
+
+test("CRS client: OffersIQ refuses wrong sandbox identity and consent before login", async () => {
+  let calls = 0;
+  const client = createCrsClient({ env: LIVE_ENV, fetchImpl: async () => { calls++; return response(200, {}); } });
+  await assert.rejects(client.evaluateOffersIq({ ruleSetId: 752,
+    identity: { ...OFFERSIQ_IDENTITY, fname: "Real" }, consent: OFFERSIQ_CONSENT }),
+  e => e.code === "identity_not_allowed_on_sandbox");
+  await assert.rejects(client.evaluateOffersIq({ ruleSetId: 752,
+    identity: OFFERSIQ_IDENTITY, consent: { ...OFFERSIQ_CONSENT, accepted: false } }),
+  e => e.code === "consent_required");
+  assert.equal(calls, 0);
+});
+
+test("CRS client: production refuses a sandbox fixture with optional phone before login", async () => {
+  let calls = 0;
+  const client = createCrsClient({
+    env: { ...LIVE_ENV, CRS_API_HOST: CRS_PRODUCTION_HOST, CRS_ALLOW_LIVE: "1" },
+    fetchImpl: async () => { calls++; return response(200, {}); }
+  });
+  await assert.rejects(client.evaluateOffersIq({ ruleSetId: 752,
+    identity: { ...OFFERSIQ_IDENTITY, phone: "6025550123" }, consent: OFFERSIQ_CONSENT }),
+  e => e.code === "test_identity_on_production");
+  await assert.rejects(client.evaluateOffersIq({ ruleSetId: 752,
+    identity: { firstName: "PAMQLOH", lastName: "ADJNXZ", address: {
+      line1: "791 GIGUZQTTQSA PNES", city: "BIRMINGHAM", state: "AL", zip: "35107"
+    } }, consent: OFFERSIQ_CONSENT }),
+  e => e.code === "test_identity_on_production");
+  assert.equal(calls, 0);
+});
+
+test("CRS client: OffersIQ does not retry a 503 and reports no-hit as review", async () => {
+  let evaluations = 0;
+  const client = createCrsClient({ env: LIVE_ENV, fetchImpl: async url => {
+    if (url.endsWith("/users/login")) return response(200, { token: "unit-token", expires: 3600000 });
+    evaluations++;
+    return response(503, { codes: ["CRS100"], messages: ["Unavailable"] }, { RequestID: OFFERSIQ_ID });
+  } });
+  const failed = await client.evaluateOffersIq({ ruleSetId: 752, identity: OFFERSIQ_IDENTITY, consent: OFFERSIQ_CONSENT });
+  assert.equal(failed.ok, false);
+  assert.equal(failed.status, 503);
+  assert.equal(evaluations, 1);
+
+  const noHit = createCrsClient({ env: LIVE_ENV, fetchImpl: async url =>
+    url.endsWith("/users/login") ? response(200, { token: "unit-token", expires: 3600000 }) :
+      response(200, { ruleSetId: "752", decisionStatus: "INSUFFICIENT_DATA", overallDecision: false }, { RequestID: OFFERSIQ_ID })
+  });
+  const reviewed = await noHit.evaluateOffersIq({ ruleSetId: 752, identity: OFFERSIQ_IDENTITY, consent: OFFERSIQ_CONSENT });
+  assert.equal(reviewed.ok, true);
+  assert.equal(reviewed.decision.outcome, "needs_review");
+});
+
+test("CRS client: OffersIQ token lifetime caps millisecond expiry; re-evaluation sends no body", async () => {
+  let now = 0;
+  let logins = 0;
+  const calls = [];
+  const client = createCrsClient({ env: LIVE_ENV, now: () => now, fetchImpl: async (url, init) => {
+    calls.push({ url, init });
+    if (url.endsWith("/users/login")) {
+      logins++;
+      return response(200, { token: `unit-token-${logins}`, expires: 3600000 });
+    }
+    return response(200, { ruleSetId: "752", decisionStatus: "DECLINED", overallDecision: false }, { RequestID: OFFERSIQ_ID });
+  } });
+  const first = await client.reevaluateOffersIq({ requestId: OFFERSIQ_ID });
+  assert.equal(first.decision.outcome, "not_matched");
+  assert.equal(logins, 1);
+  assert.equal(calls[1].init.body, undefined);
+  now = 3_600_001;
+  await client.reevaluateOffersIq({ requestId: OFFERSIQ_ID });
+  assert.equal(logins, 2);
+  await assert.rejects(client.reevaluateOffersIq({ requestId: "bad" }), e => e.code === "request_id_invalid");
+});
+
 test("CRS client: production host without CRS_ALLOW_LIVE is refused before login", async () => {
   let called = false;
   const client = createCrsClient({
