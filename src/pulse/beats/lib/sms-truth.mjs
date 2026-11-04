@@ -247,9 +247,15 @@ SELECT count(*)::int AS n,
    )`.trim();
 }
 
+// A staff-authored reply still goes to a customer. Staff-recipient texts are
+// identified by the same explicit template/ref families as message-recipient.mjs.
+export const STAFF_RECIPIENT_SQL = `(template_key = 'SMS-S04C-STAFF-BOOKED'
+  OR COALESCE(provider_ref, '') ~ '^staff-alert:(lead|set|upcoming):'
+  OR (COALESCE(template_key, '') = '' AND COALESCE(provider_ref, '') ~ '^setter:.+:closer:'))`;
+
 export const SENDING_SQL = `
-SELECT count(*) FILTER (WHERE sender_staff_id IS NULL)::int AS customer_n,
-       count(*) FILTER (WHERE sender_staff_id IS NOT NULL)::int AS staff_n
+SELECT count(*) FILTER (WHERE NOT ${STAFF_RECIPIENT_SQL})::int AS customer_n,
+       count(*) FILTER (WHERE ${STAFF_RECIPIENT_SQL})::int AS staff_n
   FROM messages
  WHERE org_id = $1::uuid
    AND direction = 'outbound'
@@ -261,8 +267,8 @@ SELECT count(*) FILTER (WHERE sender_staff_id IS NULL)::int AS customer_n,
 // (src/messaging/dispatch.mjs, no_address). That is a hole in the client record, not the phone
 // company saying no, so it is left out. gap-email.mjs drops the same class.
 export const FAILED_SQL = `
-SELECT count(*) FILTER (WHERE sender_staff_id IS NULL)::int AS customer_n,
-       count(*) FILTER (WHERE sender_staff_id IS NOT NULL)::int AS staff_n
+SELECT count(*) FILTER (WHERE NOT ${STAFF_RECIPIENT_SQL})::int AS customer_n,
+       count(*) FILTER (WHERE ${STAFF_RECIPIENT_SQL})::int AS staff_n
   FROM messages
  WHERE org_id = $1::uuid
    AND direction = 'outbound'

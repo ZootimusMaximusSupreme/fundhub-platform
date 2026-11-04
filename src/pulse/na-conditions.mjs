@@ -285,9 +285,8 @@ export const NA_CONDITIONS = Object.freeze({
     }
   }),
 
-  /* A monthly job whose last due time came before the receipts began. True when
-     the oldest job receipt is later than the last time the cron was due. The row
-     must be job:<name>, and the cron must be that job's cron on the job list. */
+  /* A monthly job whose last due time came before receipts began or before
+     that job was registered. The activation date must match the job list. */
   "monthly-not-due": core({
     say(args = {}, now = new Date()) {
       const last = lastMonthlyFire(args.cron, now);
@@ -297,13 +296,16 @@ export const NA_CONDITIONS = Object.freeze({
         const next = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth() + 1, parts[2], parts[1], parts[0]));
         when = monthDay(next);
       }
-      return `Runs once a month. Its last due time came before receipts began. First judged ${when}.`;
+      return `Runs once a month. Its last due time came before ${args.activatedAt ? "this job was registered" : "receipts began"}. First judged ${when}.`;
     },
-    claim() {
-      return "The first job receipt came after the last due time.";
+    claim(args = {}) {
+      return args.activatedAt
+        ? "The job was registered after the last due time."
+        : "The first job receipt came after the last due time.";
     },
     problem(args) {
       if (!isText(args.cron)) return "cron is not a schedule";
+      if (args.activatedAt != null && !isTime(args.activatedAt)) return "activatedAt is not a time";
       return lastMonthlyFire(args.cron) ? null : "cron is not a monthly schedule";
     },
     rowProblem(row, args) {
@@ -314,6 +316,9 @@ export const NA_CONDITIONS = Object.freeze({
       if (String(args.cron).trim() !== job.cron) {
         return `The schedule on this row (${args.cron}) is not the real schedule of ${name} (${job.cron}).`;
       }
+      if ((args.activatedAt || null) !== (job.activatedAt || null)) {
+        return `The activation time on this row is not the real activation time of ${name}.`;
+      }
       return null;
     },
     async look(args, ctx) {
@@ -322,7 +327,9 @@ export const NA_CONDITIONS = Object.freeze({
       const rows = await readRows(ctx, `SELECT min(finished_at) AS first_at FROM job_heartbeats`, []);
       const first = rows[0]?.first_at ? new Date(rows[0].first_at) : null;
       if (!first || Number.isNaN(first.getTime())) return { held: false, found: "No job receipt is on file at all." };
-      if (first.getTime() > last.getTime()) return { held: true, found: "" };
+      if (Math.max(first.getTime(), args.activatedAt ? new Date(args.activatedAt).getTime() : 0) > last.getTime()) {
+        return { held: true, found: "" };
+      }
       return {
         held: false,
         found: `The first job receipt is from ${monthDay(first)}. The job was due ${monthDay(last)}, so a run should be there.`

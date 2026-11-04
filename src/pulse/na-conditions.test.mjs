@@ -395,6 +395,23 @@ test("monthly-not-due FAILS when the cron is not the job's own cron, so a made-u
   assert.equal(db.calls.length, 0);
 });
 
+test("monthly-not-due checks the retention job's real registration date and expires after its first due time", async () => {
+  const retention = JOBS.find((j) => j.job === "retention-review");
+  const row = { id: `job:${retention.job}`, na: { code: "monthly-not-due", args: {
+    cron: retention.cron, activatedAt: retention.activatedAt
+  } } };
+  const db = fakeDb(() => [{ first_at: "2026-10-07T20:08:00.000Z" }]);
+  const before = await verifyNa(row, { db, now: new Date("2026-11-04T13:00:00Z") });
+  assert.equal(before.ok, true);
+  assert.equal(before.reason, "The job was registered after the last due time.");
+  const after = await verifyNa(row, { db, now: new Date("2026-12-03T13:00:00Z") });
+  assert.equal(after.ok, false, "a missed December run must be judged");
+  const forged = { ...row, na: { ...row.na, args: { ...row.na.args, activatedAt: "2027-01-01T00:00:00Z" } } };
+  const invalid = await verifyNa(forged, { db, now: new Date("2026-11-04T13:00:00Z") });
+  assert.equal(invalid.ok, false);
+  assert.match(invalid.reason, /not the real activation time/);
+});
+
 /* ---------- lane codes ---------- */
 
 test("a lane code is answered by the lane: true stands, false does not, and the lane gets the right arguments", async () => {

@@ -100,12 +100,16 @@ test("no key, account id, token, header or answer body ever reaches the result",
 
 /* ---------------- twilio-key ---------------- */
 
-test("FAIL twilio-key: 401 and 403 are red and name Twilio", async () => {
+test("FAIL twilio-key: code 20003 is red and names account access without guessing the key is bad", async () => {
   for (const status of [401, 403]) {
     const r = redAt(await go(withHttp({ [U.twilio]: { status, body: '{"code":20003}' } })), "twilio-key");
-    assert.match(r.detail, new RegExp(`Twilio refused our text key \\(HTTP ${status}\\)`));
+    assert.match(r.detail, new RegExp(`Twilio denied text access \\(HTTP ${status}, code 20003\\)`));
+    assert.match(r.detail, /Check the account and billing status/);
     assert.match(r.detail, /No text can leave/);
+    assert.doesNotMatch(r.detail, /refused our text key/);
   }
+  const other401 = redAt(await go(withHttp({ [U.twilio]: { status: 401, body: '{"code":20004}' } })), "twilio-key");
+  assert.match(other401.detail, /Twilio refused our text key/);
 });
 
 test("FAIL twilio-key: a suspended or closed account is red even though the key was taken", async () => {

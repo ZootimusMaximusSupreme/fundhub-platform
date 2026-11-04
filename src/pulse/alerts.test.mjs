@@ -59,11 +59,24 @@ describe("decide", () => {
     assert.equal(formatText(plan, { beatsById: byId(beat("a")) }), null);
   });
 
-  test("red with an open incident whose last text is over 50 minutes old is STILL BROKEN, with the hour", () => {
+  test("an unchanged open red stays quiet even when its last text was hours ago", () => {
     const plan = decide({ results: [red("a")], open: [openRow("a", 1)], prev: new Map(), beatsById: byId(beat("a")), now: NOW });
-    assert.equal(plan.stillBroken.length, 1);
-    assert.equal(plan.stillBroken[0].hour, 4, "opened 3 hours ago -> hour 4");
+    assert.equal(plan.stillBroken.length, 0);
+    assert.deepEqual(plan.quiet.map((e) => e.beatId), ["a"]);
     assert.equal(plan.newBreaks.length, 0);
+    assert.equal(hasNews(plan), false);
+  });
+
+  test("a changed failing step is news once, even inside the old hourly reminder window", () => {
+    const row = openRow("a", 1, { last_alert_at: new Date(NOW.getTime() - 5 * 60_000).toISOString() });
+    const changed = decide({ results: [red("a", "new-step")], open: [row],
+      prev: new Map([["a", [{ ok: false, step: "old-step", detail: "x" }]]]), beatsById: byId(beat("a")), now: NOW });
+    assert.equal(changed.stillBroken.length, 1);
+    assert.equal(changed.stillBroken[0].changed, true);
+    assert.match(formatText(changed, { beatsById: byId(beat("a")) }).body, /^Fundhub CHANGED FAILURE:/);
+    const repeated = decide({ results: [red("a", "new-step")], open: [row],
+      prev: new Map([["a", [{ ok: false, step: "new-step", detail: "x" }]]]), beatsById: byId(beat("a")), now: NOW });
+    assert.equal(hasNews(repeated), false);
   });
 
   test("red with an open incident texted under 50 minutes ago is QUIET (a re-run in the same hour)", () => {
@@ -119,8 +132,8 @@ describe("decide", () => {
 
   test("DAMPING never hides a break that already has an open incident", () => {
     const b = beat("v", { damp: 2 });
-    const plan = decide({ results: [red("v")], open: [openRow("v", 4)], prev: new Map([["v", [{ ok: true }]]]), beatsById: byId(b), now: NOW });
-    assert.equal(plan.stillBroken.length, 1);
+    const plan = decide({ results: [red("v", "new-step")], open: [openRow("v", 4)], prev: new Map([["v", [{ ok: false, step: "old-step" }]]]), beatsById: byId(b), now: NOW });
+    assert.equal(plan.stillBroken.length, 1, "a changed step alerts despite flap damping");
   });
 
   test("open unknown (null): every red beat is a new break, so the text repeats every hour with no state", () => {
@@ -169,13 +182,13 @@ describe("formatText: 480 characters, ASCII only, 4th grade, carries the fix lin
     assert.match(t.body, /Fix apply-links by opening the page/);
   });
 
-  test("still broken: the hour and the fix line", () => {
+  test("changed failure: the new step and fix line", () => {
     const b = beat("a", { title: "Thing A" });
-    const plan = decide({ results: [red("a", "one")], open: [openRow("a", 1)], prev: new Map(), beatsById: byId(b), now: NOW });
+    const plan = decide({ results: [red("a", "one")], open: [openRow("a", 1)], prev: new Map([["a", [{ ok: false, step: "old" }]]]), beatsById: byId(b), now: NOW });
     const t = formatText(plan, { beatsById: byId(b) });
-    ascii480(t, "still");
-    assert.equal(t.kind, "still");
-    assert.match(t.body, /^Fundhub STILL BROKEN, hour 4: Thing A at "one"\. Fix: /);
+    ascii480(t, "changed");
+    assert.equal(t.kind, "changed");
+    assert.match(t.body, /^Fundhub CHANGED FAILURE: Thing A now stopped at "one"\. Fix: /);
   });
 
   test("fixed: one short text with the hours", () => {
@@ -431,10 +444,11 @@ describe("saveIncidents: the records, written after the text", () => {
   const bs = byId(beat("a"), beat("b"), beat("c"));
   const plan = () => decide({
     results: [red("a"), red("b"), green("c")],
-    open: [openRow("b", 2), openRow("c", 3)], prev: new Map(), beatsById: bs, now: NOW
+    open: [openRow("b", 2), openRow("c", 3)],
+    prev: new Map([["b", [{ ok: false, step: "old-step", detail: "x" }]]]), beatsById: bs, now: NOW
   });
 
-  test("delivered: opens the new break, claims it, claims the still-broken one, closes the healed one", async () => {
+  test("delivered: opens the new break, claims it, claims the changed one, closes the healed one", async () => {
     const rdb = recordsDb();
     const r = await saveIncidents(plan(), { rdb, orgId: ORG, runId: RUN, delivered: true });
     assert.deepEqual(r, { opened: 1, claimed: 2, dupes: 0, closed: 1, errors: [] });
@@ -555,13 +569,13 @@ describe("texting hours: nothing is sent at night, and the morning text tells wh
     assert.ok(t.body.length <= MAX_TEXT_CHARS);
   });
 
-  test("a break Chris WAS told about still says STILL BROKEN, with the hour", () => {
+  test("a break Chris was told about stays quiet until its failing step changes", () => {
     const plan = decide({ results: [red("a")], open: [openRow("a", 1)], prev: new Map(), beatsById: byId(b), now: NOW });
-    assert.equal(plan.stillBroken[0].untold, false);
-    assert.match(formatText(plan, { beatsById: byId(b) }).body, /^Fundhub STILL BROKEN, hour 4: Thing A/);
+    assert.equal(plan.stillBroken.length, 0);
+    assert.equal(formatText(plan, { beatsById: byId(b) }), null);
   });
 
-  test("two overnight breaks and one told one: one text, the overnight ones say since when", () => {
+  test("two overnight breaks and one unchanged told one: text only the untold breaks", () => {
     const bs = [beat("a", { title: "Thing A" }), beat("b", { title: "Thing B" }), beat("c", { title: "Thing C" })];
     const plan = decide({
       results: [red("a"), red("b"), red("c")],
@@ -576,7 +590,7 @@ describe("texting hours: nothing is sent at night, and the morning text tells wh
     assert.equal(t.kind, "mixed");
     assert.match(t.body, /BROKEN since 2:07 a\.m\.: Thing A/);
     assert.match(t.body, /BROKEN since 4:07 a\.m\.: Thing B/);
-    assert.match(t.body, /STILL BROKEN: Thing C/);
+    assert.doesNotMatch(t.body, /Thing C/);
   });
 
   test("opened and healed overnight with no text ever sent: no FIXED text, but the incident is still closed", async () => {
