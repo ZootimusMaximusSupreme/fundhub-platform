@@ -105,10 +105,19 @@ export const CRON_JOBS = Object.freeze([...INNGEST_JOBS, ...CLOCK_JOBS]);
 /** The function that runs each CLOCK_JOBS job, named in that job's fix line. */
 export const CLOCK_FUNCTION = "cron-clock";
 
+// retention-review first registered after the November 1 monthly fire.
+// Before this date, a missing run cannot be treated as a missed schedule.
+export const JOB_ACTIVATED_AT = Object.freeze({
+  "retention-review": "2026-11-03T04:43:25.000Z"
+});
+
 export const JOBS = Object.freeze([
   ...INNGEST_JOBS.map(([job, cron]) => Object.freeze({ job, cron, runner: "inngest" })),
   ...NETLIFY_JOBS.map(([job, cron]) => Object.freeze({ job, cron, runner: "netlify" })),
-  ...CLOCK_JOBS.map(([job, cron]) => Object.freeze({ job, cron, runner: "netlify", via: CLOCK_FUNCTION }))
+  ...CLOCK_JOBS.map(([job, cron]) => Object.freeze({
+    job, cron, runner: "netlify", via: CLOCK_FUNCTION,
+    ...(JOB_ACTIVATED_AT[job] ? { activatedAt: JOB_ACTIVATED_AT[job] } : {})
+  }))
 ]);
 
 export const STALE_MULTIPLE = 3;
@@ -280,7 +289,8 @@ export async function checkJobHeartbeats({ db, now = new Date(), jobs = JOBS } =
 
     if (!hit) {
       if (!firstEver) return mk(row, "skip", "no job heartbeats recorded yet — the receipts start with this change");
-      const tooSoon = firstEver.getTime() > dueBy || nowMs <= dueBy + graceMs && interval == null;
+      const firstJudgedAt = Math.max(firstEver.getTime(), row.activatedAt ? new Date(row.activatedAt).getTime() : 0);
+      const tooSoon = firstJudgedAt > dueBy || nowMs <= dueBy + graceMs && interval == null;
       if (tooSoon) {
         // A monthly job whose last due time came BEFORE receipts began has
         // nothing to judge yet. That is a verified "nothing to judge" (code
@@ -288,7 +298,7 @@ export async function checkJobHeartbeats({ db, now = new Date(), jobs = JOBS } =
         // is later than lastMonthlyFire). The one-day grace after a due time
         // is different (receipts began earlier, the run just is not in yet), so
         // it stays a skip and lands "not checked" instead of a claim that fails.
-        if (interval == null && firstEver.getTime() > monthly.getTime()) {
+        if (interval == null && firstJudgedAt > monthly.getTime()) {
           const nextDue = new Date(Date.UTC(
             monthly.getUTCFullYear(), monthly.getUTCMonth() + 1,
             monthly.getUTCDate(), monthly.getUTCHours(), monthly.getUTCMinutes()
@@ -297,9 +307,12 @@ export async function checkJobHeartbeats({ db, now = new Date(), jobs = JOBS } =
             ...mk(
               row,
               "na",
-              `Runs once a month. Its last due time came before receipts began. First judged after ${nextDue.toISOString().slice(0, 10)}.`
+              `Runs once a month. Its last due time came before ${row.activatedAt ? "this job was registered" : "receipts began"}. First judged after ${nextDue.toISOString().slice(0, 10)}.`
             ),
-            na: { code: "monthly-not-due", args: { cron: row.cron } }
+            na: { code: "monthly-not-due", args: {
+              cron: row.cron,
+              ...(row.activatedAt ? { activatedAt: row.activatedAt } : {})
+            } }
           };
         }
         return mk(row, "skip", `no run recorded yet; heartbeats started ${ago(nowMs - firstEver.getTime())} ago, too soon to expect one`);

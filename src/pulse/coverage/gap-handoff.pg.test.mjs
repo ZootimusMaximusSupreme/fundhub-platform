@@ -53,8 +53,8 @@ const SHADOWS = {
     rec: "client_id uuid, channel text, opted_in_at timestamptz"
   },
   tasks: {
-    cols: "org_id, client_id, created_at, updated_at, source_workflow, body",
-    rec: "org_id uuid, client_id uuid, created_at timestamptz, updated_at timestamptz, source_workflow text, body text"
+    cols: "org_id, client_id, created_at, updated_at, source_workflow, title, body",
+    rec: "org_id uuid, client_id uuid, created_at timestamptz, updated_at timestamptz, source_workflow text, title text, body text"
   },
   payment_links: {
     cols: "org_id, client_id, purpose, status, paid_at, updated_at, is_demo, description, product_id",
@@ -215,6 +215,18 @@ test("handoff SQL: finish-application nudge", { skip: !HAS_DB }, async (t) => {
   await expectN(t, "RED: answered some questions 10 min after sign-up, never finished, and no nudge", N, first(25), {
     clients: [x], events: [e, ev("survey.submitted", 110, x)]
   }, 1);
+  await expectN(t, "GREEN: final survey answer saved before nudge, even without completion event", N, first(25), {
+    clients: [x], events: [e, ev("survey.submitted", 110, x, { answers: { cf_svy_available_capital: "$5k - $25k" } })]
+  }, 0);
+  await expectN(t, "GREEN: final answer in an array is also saved completion", N, first(25), {
+    clients: [x], events: [e, ev("survey.submitted", 110, x, { answers: { cf_svy_available_capital: ["$5k - $25k"] } })]
+  }, 0);
+  await expectN(t, "RED: an empty final answer does not excuse a missed nudge", N, first(25), {
+    clients: [x], events: [e, ev("survey.submitted", 110, x, { answers: { cf_svy_available_capital: [""] } })]
+  }, 1);
+  await expectN(t, "RED: final answer arrived after the nudge was due", N, first(25), {
+    clients: [x], events: [e, ev("survey.submitted", 80, x, { answers: { cf_svy_available_capital: "$5k - $25k" } })]
+  }, 1);
   await expectN(t, "GREEN: survey finished, matched by email only (no client id on the survey)", N, first(25), {
     clients: [x], events: [e, ev("survey.completed", 110, x, {}, { client_id: null })]
   }, 0);
@@ -271,6 +283,7 @@ test("handoff SQL: immediate survey setter task and recent legacy task", { skip:
   const params = survey(M.SETTER_TASK_GRACE_MIN);
   const task = (over = {}) => ({ org_id: ORG, client_id: x.id,
     created_at: ago(121), updated_at: ago(119), source_workflow: "setter-entry",
+    title: "Setter: call now — survey done, no booking",
     body: `survey-completed:${s.id}`, ...over });
   await expectN(t, "RED: completed survey got no setter task", T, params,
     { clients: [x], events: [s] }, 1);
@@ -288,6 +301,14 @@ test("handoff SQL: immediate survey setter task and recent legacy task", { skip:
   await expectN(t, "RED: a legacy task for another event cannot cover this completion", T, params,
     { clients: [x], events: [s], tasks: [task({ source_workflow: "setter-survey-done",
       body: uuid(), created_at: ago(105), updated_at: ago(105) })] }, 1);
+  await expectN(t, "GREEN: old survey-titled task with alternate event id proves the handoff", T, params,
+    { clients: [x], events: [s], tasks: [task({ source_workflow: "setter-survey-done",
+      title: "Setter: call — finished the survey, no call booked",
+      body: uuid(), created_at: ago(105), updated_at: ago(105) })] }, 0);
+  await expectN(t, "GREEN: exact promoted task updated 17 seconds before completion event", T, params,
+    { clients: [x], events: [s], tasks: [task({ updated_at: new Date(Date.parse(s.created_at) - 17000).toISOString() })] }, 0);
+  await expectN(t, "RED: a promoted task updated one minute before completion is too early", T, params,
+    { clients: [x], events: [s], tasks: [task({ updated_at: new Date(Date.parse(s.created_at) - 60000).toISOString() })] }, 1);
   await expectN(t, "RED: task for another lead is not this lead's task", T, params,
     { clients: [x], events: [s], tasks: [task({ client_id: uuid() })] }, 1);
   await expectN(t, "GREEN: booking already present at survey completion", T, params,
