@@ -23,7 +23,7 @@ import { db } from "../db.mjs";
 import { emit } from "../events/bus.mjs";
 import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { mergeCustomFields } from "./custom-fields.mjs";
-import { moveCardToStage } from "./cards.mjs";
+import { advanceCardToStage, moveCardToStage } from "./cards.mjs";
 import { addTags } from "./tags.mjs";
 import { bookingStateAt, SLOT_STATE } from "../bookings/store.mjs";
 import { CANCEL_RULES, RESCHEDULE_CANCEL_RULES } from "./booking-cancel-rules.mjs";
@@ -115,7 +115,7 @@ export async function handle({ event, db, step }) {
 
   if (showed) {
     await step.run("set-call-outcome-showed", () => mergeCustomFields(db, clientId, { call_outcome: "showed", last_progress_action: "call_held" }));
-    const card = await step.run("move-to-showed", () => moveCardToStage(db, { orgId, clientId, pipelineKey: "sales", stageKey: "showed" }));
+    const card = await step.run("move-to-showed", () => advanceCardToStage(db, { orgId, clientId, pipelineKey: "sales", stageKey: "showed" }));
     return { done: true, outcome: "showed", card };
   }
 
