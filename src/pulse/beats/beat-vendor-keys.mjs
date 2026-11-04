@@ -137,9 +137,13 @@ function noAnswer(res, who) {
 export function judgeTwilio(res) {
   const quiet = noAnswer(res, "Twilio");
   if (quiet) return quiet;
+  const body = jsonOf(res);
+  if ((res.status === 401 || res.status === 403) && Number(body?.code) === 20003) {
+    return `Twilio denied text access (HTTP ${res.status}, code 20003). Check the account and billing status. No text can leave.`;
+  }
   if (res.status === 401 || res.status === 403) return `Twilio refused our text key (HTTP ${res.status}). No text can leave.`;
   if (res.status === 200) {
-    const status = String(jsonOf(res)?.status ?? "").toLowerCase();
+    const status = String(body?.status ?? "").toLowerCase();
     if (status === "suspended" || status === "closed") return `Twilio took the key, but the account is ${status}. No text can leave.`;
     return null;
   }

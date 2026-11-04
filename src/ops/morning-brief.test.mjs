@@ -261,7 +261,7 @@ test("the systems line counts green, red and 'nothing to judge' apart, and the n
   ];
   const s = summarizeSystems({ checks });
   assert.equal(checks.length, 757);
-  assert.equal(s.line, "Company checks: 690 of 757 checks green. 3 red checks (3 reported failures). First: job:one, job:two, job:three. 64 had nothing to judge today.");
+  assert.equal(s.line, "Company checks: 690 of 757 checks green. 3 red checks (3 reported failures). Heartbeat health: 3; business/customer: 0. Open the report for each check and its fix. 64 had nothing to judge today.");
   assert.deepEqual([s.total, s.green, s.red, s.broken, s.not_proved, s.na, s.not_checked], [757, 690, 3, 3, 0, 64, 0]);
   assert.equal(s.green + s.red + s.not_proved + s.na + s.not_checked, s.total);
   assert.equal(s.reds.length, 3);
@@ -299,7 +299,7 @@ test("the systems line says the whole-company number, read from the real catalog
   const s = summarizeSystems({ checks });
   assert.equal(
     s.line,
-    "Company checks: 5 of 6 checks green. 1 red check (1 reported failure). First: catalog:proof-linked. Whole company: 3,919 of 3,942 items have a test or live check behind them. 23 do not yet."
+    "Company checks: 5 of 6 checks green. 1 red check (1 reported failure). Heartbeat health: 0; business/customer: 1. Open the report for each check and its fix. Whole company: 3,919 of 3,942 items have a test or live check behind them. 23 do not yet."
   );
   assert.deepEqual([s.company.linked, s.company.total, s.company.open], [3919, 3942, 23]);
 });
@@ -341,7 +341,7 @@ test("the systems line separates broken from not proved, and a marked real break
     { broken: s.broken, not_proved: s.not_proved, not_checked: s.not_checked },
     { broken: 1, not_proved: 2, not_checked: 1 }
   );
-  assert.equal(s.line, "Company checks: 1 of 5 checks green. 1 red check (1 reported failure). First: meta-sync. 2 not proved yet. 1 not checked.");
+  assert.equal(s.line, "Company checks: 1 of 5 checks green. 1 red check (1 reported failure). Heartbeat health: 0; business/customer: 1. Open the report for each check and its fix. 2 not proved yet. 1 not checked.");
   assert.doesNotMatch(s.line, /Nothing needs you/);
 });
 
@@ -387,7 +387,8 @@ test("reds are named in this order: new today, money tripwire, customer tripwire
     "job:plain-old",
     "job:plain-old-two"
   ]);
-  assert.match(s.line, /7 red checks \(6 reported failures, 1 needs proof\)\. First: job:plain-new, [^,]+, [^,]+, and 4 more in the report\./);
+  assert.match(s.line, /7 red checks \(6 reported failures, 1 needs proof\)\. Heartbeat health: 4; business\/customer: 3\. Open the report for each check and its fix\./);
+  assert.doesNotMatch(s.line, /job:plain-new/);
 });
 
 test("a new red that is a money tripwire comes before a new red that is plain", () => {
@@ -405,12 +406,13 @@ test("an id on both money and customer ranks as money, and a red with no day_cou
   assert.deepEqual(s2.reds.map((r) => r.id), ["job:b", "job:a"]);
 });
 
-test("the sort never loses or changes a red, and the day suffix stays on reds past day 1", () => {
+test("the sort never loses or changes a red, and the report keeps its day count", () => {
   const checks = [redRow("job:a", { day_count: 4 }), redRow("job:b", { day_count: 1 })];
   const s = summarizeSystems({ checks });
   assert.equal(s.reds.length, 2);
   assert.equal(s.reds[1], checks[0], "the very same row objects");
-  assert.match(s.line, /2 red checks \(2 reported failures\)\. First: job:b, job:a \(day 4\)\./);
+  assert.equal(s.reds[1].day_count, 4);
+  assert.doesNotMatch(s.line, /job:b|job:a/);
 });
 
 test("red labels keep missing proof and stale checks red without calling them failed results", () => {

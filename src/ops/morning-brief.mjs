@@ -206,19 +206,30 @@ export function redEvidenceKind(check) {
   return "failed_result";
 }
 
+export function redScope(check) {
+  return /^(?:live-playwright:|job:|wf:|audit:|gap-jobs:|gap-outside-inngest:)/.test(String(check?.id || ""))
+    ? "heartbeat"
+    : "business";
+}
+
 export function summarizeSystems(scorecard, { prefix = "Company checks:", missingLine = LINES.systemsMissing } = {}) {
   if (!scorecard || !Array.isArray(scorecard.checks)) {
-    return { status: "missing", total: 0, green: 0, red: 0, broken: 0, red_kinds: { failed_result: 0, needs_proof: 0, stale_check: 0 }, red_kinds_by_id: {}, not_proved: 0, na: 0, not_checked: 0, reds: [], line: missingLine };
+    return { status: "missing", total: 0, green: 0, red: 0, broken: 0, red_kinds: { failed_result: 0, needs_proof: 0, stale_check: 0 }, red_kinds_by_id: {}, red_scopes: { heartbeat: 0, business: 0 }, red_scopes_by_id: {}, not_proved: 0, na: 0, not_checked: 0, reds: [], line: missingLine };
   }
   const checks = scorecard.checks;
   const green = checks.filter((c) => c.status === "green").length;
   const reds = orderReds(checks.filter((c) => c.status === "red"));
   const redKinds = { failed_result: 0, needs_proof: 0, stale_check: 0 };
   const redKindsById = {};
+  const redScopes = { heartbeat: 0, business: 0 };
+  const redScopesById = {};
   for (const c of reds) {
     const kind = redEvidenceKind(c);
     redKinds[kind] += 1;
     redKindsById[c.id] = kind;
+    const scope = redScope(c);
+    redScopes[scope] += 1;
+    redScopesById[c.id] = scope;
   }
   // "na" is its own count now (zero-unchecked build, 2026-10-09). It is nothing to judge
   // today, with a reason the computer re-checks, and it is not "not checked".
@@ -233,10 +244,7 @@ export function summarizeSystems(scorecard, { prefix = "Company checks:", missin
     if (redKinds.failed_result) kinds.push(`${redKinds.failed_result} reported ${redKinds.failed_result === 1 ? "failure" : "failures"}`);
     if (redKinds.needs_proof) kinds.push(`${redKinds.needs_proof} ${redKinds.needs_proof === 1 ? "needs" : "need"} proof`);
     if (redKinds.stale_check) kinds.push(`${redKinds.stale_check} ${redKinds.stale_check === 1 ? "stale check" : "stale checks"}`);
-    line += ` ${reds.length} red ${reds.length === 1 ? "check" : "checks"} (${kinds.join(", ")}). First: ` + reds.slice(0, 3).map((c) => {
-      const day = c.day_count > 1 ? ` (day ${c.day_count})` : "";
-      return `${c.id}${day}`;
-    }).join(", ") + (reds.length > 3 ? `, and ${reds.length - 3} more in the report.` : ".");
+    line += ` ${reds.length} red ${reds.length === 1 ? "check" : "checks"} (${kinds.join(", ")}). Heartbeat health: ${redScopes.heartbeat}; business/customer: ${redScopes.business}. Open the report for each check and its fix.`;
   }
   if (notProved) line += ` ${notProved} not proved yet.`;
   if (notChecked) line += ` ${notChecked} not checked.`;
@@ -253,6 +261,8 @@ export function summarizeSystems(scorecard, { prefix = "Company checks:", missin
     broken: reds.length,
     red_kinds: redKinds,
     red_kinds_by_id: redKindsById,
+    red_scopes: redScopes,
+    red_scopes_by_id: redScopesById,
     not_proved: notProved,
     na,
     not_checked: notChecked,

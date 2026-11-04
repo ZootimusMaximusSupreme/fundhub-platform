@@ -251,6 +251,8 @@ test("Display EF/Public contracts prove each exported row in rendered Chromium",
               status: "ok", total: 10, green: 4, red: 6, not_checked: 0, reds,
               red_kinds: { failed_result: 4, needs_proof: 1, stale_check: 1 },
               red_kinds_by_id: { "wf:s-04-call-booked": "needs_proof", "live-playwright:desks": "stale_check" },
+              red_scopes: { heartbeat: 2, business: 4 },
+              red_scopes_by_id: { "wf:s-04-call-booked": "heartbeat", "live-playwright:desks": "heartbeat" },
             },
             team: null,
             money: null,
@@ -275,6 +277,9 @@ test("Display EF/Public contracts prove each exported row in rendered Chromium",
     mark(openCase);
 
     const button = page.locator("section", { has: page.locator("h2", { hasText: "Company checks" }) }).locator("button.more");
+    assert.deepEqual(await page.locator("section.card h3").allTextContents(), ["Heartbeat health", "Money and customer checks"]);
+    assert.equal(await page.locator('ul[aria-label="Heartbeat health red checks"] li').count(), 2);
+    assert.equal(await page.locator('ul[aria-label="Money and customer checks red checks"] li').count(), 4);
     assert.equal(normalize(await page.locator("li.red-item").first().locator(".tag").textContent()), "Needs proof");
     assert.equal(normalize(await page.locator("li.red-item").nth(1).locator(".tag").textContent()), "Check stale · day 2");
     assert.equal(normalize(await button.textContent()), "Show all 6 red checks");

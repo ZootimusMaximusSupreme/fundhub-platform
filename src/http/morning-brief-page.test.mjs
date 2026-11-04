@@ -101,8 +101,8 @@ test("the page's money() prints exactly what the brief's money() prints", () => 
   assert.equal(pageMoney(12.5), "unknown", "a value that is not whole cents is not guessed at");
 });
 
-test("the report shows broken and not proved as separate counts", () => {
-  assert.match(JS, /tile\("Broken", count\(red\)/);
+test("the report shows red checks and not proved as separate counts", () => {
+  assert.match(JS, /tile\("Red checks", count\(red\)/);
   assert.match(JS, /tile\("Not proved", count\(notProved\)/);
   assert.doesNotMatch(JS, /tile\("Red", count\(red\)/);
 });

@@ -283,11 +283,25 @@ const IS_SUPPRESSED_REPEAT = `(
          )
      )`;
 
-/** The survey was finished (survey.completed, the last answer) by `beforeSql`. */
+/** The survey was finished by `beforeSql`. Older saved surveys have the final
+    answer on survey.submitted but no survey.completed event; the send path
+    checks that same saved final answer before it skips an incomplete nudge. */
 const SURVEY_DONE_BY = (beforeSql) => `EXISTS (
        SELECT 1 FROM events s
         WHERE s.org_id = l.org_id
-          AND s.name = 'survey.completed'
+          AND (s.name = 'survey.completed' OR (
+            s.name = 'survey.submitted' AND (
+              (jsonb_typeof(s.payload->'answers'->'cf_svy_available_capital') = 'string'
+               AND btrim(s.payload->'answers'->>'cf_svy_available_capital') <> '')
+              OR EXISTS (
+                SELECT 1 FROM jsonb_array_elements_text(CASE
+                  WHEN jsonb_typeof(s.payload->'answers'->'cf_svy_available_capital') = 'array'
+                  THEN s.payload->'answers'->'cf_svy_available_capital' ELSE '[]'::jsonb
+                END) AS answer(value)
+                WHERE btrim(answer.value) <> ''
+              )
+            )
+          ))
           AND s.created_at <= ${beforeSql}
           AND (
             (l.cid IS NOT NULL AND s.client_id = l.cid)
