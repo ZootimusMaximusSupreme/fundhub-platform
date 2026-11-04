@@ -373,7 +373,8 @@ ${tail()}
 
 /** $1 org, $2 ['survey.completed'], $3 window start, $4 cutoff (now minus the grace).
     Match the exact six-hour completion cohort used by the local task handler.
-    Old S-NOBOOK tasks used the event ID and arrived 15 minutes after completion. */
+    Old S-NOBOOK tasks arrived 15 minutes after completion and may carry a
+    different event ID; their survey-specific title proves the handoff. */
 export const SETTER_TASK_SQL = `
 /* gap:handoff-setter-task */
 WITH ${leadCte()},
@@ -403,9 +404,14 @@ ${tail("task_lead l")}
           AND (
             (t.source_workflow IN ('${SETTER_TASK_PROMOTED_SOURCE}', '${SETTER_TASK_SOURCE}')
               AND t.body = 'survey-completed:' || l.cohort_id::text
-              AND t.updated_at >= l.created_at)
+              AND (t.updated_at >= l.created_at OR (
+                t.title = 'Setter: call now — survey done, no booking'
+                AND t.updated_at >= l.created_at - interval '30 seconds')))
             OR (t.source_workflow = '${SETTER_TASK_SOURCE}'
               AND t.body = l.id::text
+              AND t.created_at BETWEEN l.created_at AND l.created_at + interval '${SETTER_TASK_GRACE_MIN} minutes')
+            OR (t.source_workflow = '${SETTER_TASK_SOURCE}'
+              AND t.title = 'Setter: call — finished the survey, no call booked'
               AND t.created_at BETWEEN l.created_at AND l.created_at + interval '${SETTER_TASK_GRACE_MIN} minutes')
           )
      )`.trim();
