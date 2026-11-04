@@ -27,6 +27,7 @@
 .closer-workspace .chip.on .cd{background:#62956b;}
 .closer-workspace .client-file-link{font-size:13px;line-height:20px;font-weight:600;color:var(--text-dim);text-decoration:none;min-height:32px;display:inline-flex;gap:8px;align-items:center;}
 .closer-workspace .client-file-link:hover{color:var(--text);text-decoration:underline;}
+.closer-workspace #fh-offersiq-profile-link{min-height:44px}
 .closer-workspace .cockpit-wrap{display:grid;grid-template-columns:minmax(0,1fr) 258px;gap:28px;align-items:start;}
 .closer-workspace .cockpit-main{display:flex;flex-direction:column;min-width:0;}
 .closer-workspace .call-identity{display:flex;flex-direction:column;gap:22px;padding:25px 26px;background:var(--surface);border:1px solid var(--line);border-radius:16px;margin:0 0 24px;}

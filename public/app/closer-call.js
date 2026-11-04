@@ -296,15 +296,21 @@
     });
   }
 
-  function paintOffersIq(result) {
+  function paintOffersIq(result, clientId) {
     var box = document.getElementById("fh-offersiq");
     var note = document.getElementById("fh-offersiq-note");
     var facts = document.getElementById("fh-offersiq-facts");
     var details = document.getElementById("fh-offersiq-details");
+    var profileLink = document.getElementById("fh-offersiq-profile-link");
     if (!box || !note || !facts || !details) return;
     box.hidden = !result;
     facts.replaceChildren();
     details.hidden = true;
+    if (profileLink) {
+      profileLink.hidden = !result || !/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(String(clientId || ""));
+      if (profileLink.hidden) profileLink.removeAttribute("href");
+      else profileLink.href = "client-control-panel.html?client_id=" + encodeURIComponent(clientId) + "#ccp-view-credit";
+    }
     if (!result) return;
     var label = result.stale ? "Earlier details — needs review" : ({ matched: "Matched the saved offer rules",
       not_matched: "No match for these offer rules", needs_review: "Needs identity or file review", error: "Match result unavailable" }[result.outcome] || "No confirmed match");
@@ -326,7 +332,7 @@
 
   function paint(data) {
     state.data = data;
-    paintOffersIq(data.offersiq);
+    paintOffersIq(data.offersiq, data.client && data.client.id);
     var staff = data.staff || {};
     var client = data.client || {};
     var credit = data.credit || {};

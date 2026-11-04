@@ -94,6 +94,10 @@ Read the permission line in **Offer match**, then check **The lead agreed to off
 
 The check is hidden until OffersIQ is connected. Address corrections make the old result stale. If a request is still pending or its result is uncertain, refresh the lead and review the stored receipt; do not try address variations to force a match. A unit or identity detail that the current provider request cannot represent goes to review. Continue the normal handoff while it is unresolved.
 
+The closer's **Open lead enrichment** link opens the saved profile in the Client Workspace's **Credit & inquiries** tab. The four fit cards are draft screening targets, not approvals: Blueprint620+, Prime Funding750+, Super Prime800+, and two Real Estate paths without one universal score floor. Do not describe the provider's starter rules as these four configured offers. Exact score and debt values depend on the account-enabled OffersIQ summary being returned.
+
+OffersIQ does not document income, assets, homeownership or paid-off auto count. Collect income and project details from the lead, mark them as stated, and keep verification separate. Existing bureau income estimates and saved bank records show their own sources and dates. These cards do not change the current booking buckets.
+
 Administrator setup uses dedicated `CRS_OFFERSIQ_API_HOST`, `CRS_OFFERSIQ_API_USERNAME`, `CRS_OFFERSIQ_API_PASSWORD` and `CRS_OFFERSIQ_RULESET_ID` values from the same CRS environment. The sandbox host is `https://api-sandbox.stitchcredit.com/api`; production is `https://mware.crscreditapi.com/api` and also requires `CRS_OFFERSIQ_ALLOW_LIVE=1`. Existing full-report credentials are never used as a fallback. Verify the documented synthetic sandbox identities and actual response before activating production. Keep credentials out of this document and GitHub.
 
 Say it like a person. Do not read it like a form.
@@ -227,3 +231,5 @@ These lines sit on top of Cole’s shape. They match owner law in the repo.
 ## Change log
 
 2026-11-04 — Added the OffersIQ setter-to-closer flow: saved residential address, separate permission, one durable request, replay protection, optional returned score/debt values, saved receipt and stale-result handling. Existing generated role journeys stay current because no route or role gate moved. Morning/hourly ledger checks cover stalled requests, missing receipts and recent provider uncertainty. Provider activation and automatic address append require their own external setup and proof.
+
+2026-11-04 — Added the read-only Lead enrichment profile, source-labelled bureau and income evidence, four draft fit cards, both Real Estate profiles, and stored cash/holdings coverage in the existing Client Workspace. No provider order or calendar change occurs when it opens.

@@ -1146,6 +1146,19 @@
     </section>
     <section class="workspace-view" id="ccp-view-credit" role="tabpanel" aria-labelledby="ccp-tab-credit" tabindex="0" hidden>
       <div class="workspace-section-head"><h2>Credit &amp; inquiries</h2><p>Check permission and identity before a bureau pull.</p></div>
+      <div class="group" id="ccp-lead-enrichment" aria-live="polite">
+        <div class="group-title card-title">Lead enrichment</div>
+        <p class="fact-note">Internal fit drafts for staff review. These are not lender approvals or verified income.</p>
+        <p class="fact-note" id="ccp-enrichment-state">Open a client file to see saved financial facts.</p>
+        <p class="fact-note" id="ccp-enrichment-role" hidden></p>
+        <div id="ccp-enrichment-offer"></div>
+        <div class="kv-grid" id="ccp-enrichment-facts"></div>
+        <div class="cp-sec-title card-title">Offer fit drafts</div>
+        <div id="ccp-enrichment-models"></div>
+        <div class="cp-sec-title card-title">Recorded cash and investments</div>
+        <p class="fact-note" id="ccp-enrichment-assets-state">Open the Credit tab to read saved account records.</p>
+        <div id="ccp-enrichment-assets"></div>
+      </div>
 <div class="group">
         <div class="group-title card-title">Bureau pulls &amp; inquiry removal</div>
         <p id="ccp-actions-desk-note" style="font-size:var(--fs-body);line-height:1.45;color:var(--text);margin:0 0 10px;">Pull one bureau at a time. Each button answers underneath itself.</p>
@@ -2611,6 +2624,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function render(d) {
     var c = (d && d.client) || {};
     var cf = c.custom_fields || {};
+    paintLeadEnrichment(d);
     /* The Capital Blueprint group reads its two saved flags off this record. */
     try { document.dispatchEvent(new CustomEvent("ccp:client", { detail: c })); } catch (e) {}
     var name = [c.first_name, c.last_name].filter(Boolean).join(" ");
@@ -2821,6 +2835,271 @@ document.addEventListener("DOMContentLoaded", function () {
   var id = FHData.param("id") || FHData.param("client_id") || FHData.param("client") || FHData.param("contact");
   wireLinks(id);
   wireFinanceOsLink(id);
+  var enrichmentClientId = null;
+  var enrichmentAssetsRead = false;
+  var enrichmentAssets = null;
+  var enrichmentReady = false;
+  var enrichmentGeneration = 0;
+  var enrichmentCreditView = $("ccp-view-credit");
+  var enrichmentObserver = enrichmentCreditView && new MutationObserver(function () {
+    if (!enrichmentCreditView.hidden) loadEnrichmentAssets();
+  });
+  if (enrichmentObserver) enrichmentObserver.observe(enrichmentCreditView, { attributes: true, attributeFilter: ["hidden"] });
+
+  function enrichmentText(value, fallback) {
+    return value === null || value === undefined || value === "" ? (fallback || "Unknown") : String(value);
+  }
+  function enrichmentWhen(value) {
+    if (!value || !Number.isFinite(Date.parse(value))) return "date unknown";
+    return new Date(value).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
+  function enrichmentBalanceDates(item) {
+    var range = item && item.date_range || {};
+    var oldest = range.oldest && Number.isFinite(Date.parse(range.oldest)) ? range.oldest : null;
+    var newest = range.newest && Number.isFinite(Date.parse(range.newest)) ? range.newest : null;
+    var dates = item && item.as_of ? enrichmentWhen(item.as_of)
+      : oldest && newest && oldest !== newest ? enrichmentWhen(oldest) + " to " + enrichmentWhen(newest)
+        : enrichmentWhen(oldest || newest);
+    var unknown = Number.isSafeInteger(range.unknown) && range.unknown > 0 ? range.unknown : 0;
+    return dates + (unknown ? " · " + unknown + " balance date" + (unknown === 1 ? "" : "s") + " unknown" : "");
+  }
+  function enrichmentMoney(cents, currency) {
+    if (!Number.isSafeInteger(cents) || !currency || !/^[A-Z]{3}$/.test(currency)) return "Unknown";
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: currency }).format(cents / 100);
+  }
+  function enrichmentClear(node) { if (node) node.replaceChildren(); }
+  function enrichmentLine(parent, label, value, note) {
+    if (!parent) return;
+    var wrap = document.createElement("div");
+    wrap.className = "kv";
+    var key = document.createElement("div");
+    key.className = "kv-label";
+    key.textContent = label;
+    var val = document.createElement("div");
+    val.className = "kv-value";
+    val.textContent = enrichmentText(value);
+    wrap.appendChild(key);
+    wrap.appendChild(val);
+    if (note) {
+      var p = document.createElement("p");
+      p.className = "fact-note";
+      p.textContent = note;
+      wrap.appendChild(p);
+    }
+    parent.appendChild(wrap);
+  }
+  function enrichmentNote(parent, message) {
+    var p = document.createElement("p");
+    p.className = "fact-note";
+    p.textContent = message;
+    parent.appendChild(p);
+  }
+  function enrichmentSection(parent, title) {
+    var heading = document.createElement("div");
+    heading.className = "cp-sec-title card-title";
+    heading.textContent = title;
+    parent.appendChild(heading);
+    return parent;
+  }
+  function paintEnrichmentAssets(profile) {
+    var box = $("ccp-enrichment-assets");
+    var state = $("ccp-enrichment-assets-state");
+    enrichmentClear(box);
+    if (!box || !state) return;
+    if (!profile || !Array.isArray(profile.cash) || !Array.isArray(profile.holdings)) {
+      state.textContent = "Saved account records are unavailable. No balance has been assumed.";
+      return;
+    }
+    state.textContent = "Recorded accounts only. Balances are not proof of complete assets or spendable cash.";
+    var cashRows = 0;
+    profile.cash.forEach(function (group) {
+      if (!group || !Array.isArray(group.currencies)) return;
+      group.currencies.forEach(function (entry) {
+        if (!entry) return;
+        cashRows++;
+        var owner = enrichmentText(group.entity_kind, "unknown").replace(/_/g, " ");
+        var currency = entry.currency_code || "currency unknown";
+        enrichmentSection(box, owner.charAt(0).toUpperCase() + owner.slice(1) + " cash · " + currency);
+        var grid = document.createElement("div");
+        grid.className = "kv-grid";
+        [["Current", entry.current], ["Available", entry.available]].forEach(function (pair) {
+          var item = pair[1] || {};
+          var basis = item.basis || {};
+          enrichmentLine(grid, pair[0], enrichmentMoney(item.value_cents, entry.currency_code),
+            "Recorded " + enrichmentText(basis.status, "unknown") + " · " +
+            (Array.isArray(basis.providers) && basis.providers.length ? basis.providers.join(", ") : "source unknown") +
+            " · " + enrichmentBalanceDates(item));
+        });
+        box.appendChild(grid);
+      });
+    });
+    if (!cashRows) enrichmentNote(box, "No open depository cash accounts are recorded.");
+    var accounts = (Array.isArray(profile.accounts) ? profile.accounts : []).filter(function (row) {
+      return row && row.included_in_cash;
+    });
+    if (accounts.length) enrichmentSection(box, "Account sources");
+    accounts.forEach(function (row) {
+      var name = enrichmentText(row.name, "Recorded account") + (row.mask ? " · ending " + row.mask : "");
+      var provider = enrichmentText(row.provider, "unknown");
+      var basis = provider === "plaid" ? "connected account record" : "recorded entry, not bank verified";
+      var ownership = enrichmentText(row.entity_kind, "unknown") + " ownership · " +
+        enrichmentText(row.entity_kind_source, "basis unknown").replace(/_/g, " ");
+      var grid = document.createElement("div");
+      grid.className = "kv-grid";
+      enrichmentLine(grid, name + " · current", enrichmentMoney(row.current_balance_cents, row.currency_code),
+        provider + " · " + basis + " · " + ownership + " · " + enrichmentWhen(row.balance_as_of));
+      enrichmentLine(grid, name + " · available", enrichmentMoney(row.available_balance_cents, row.currency_code),
+        provider + " · " + basis + " · " + enrichmentWhen(row.balance_as_of));
+      box.appendChild(grid);
+    });
+    enrichmentSection(box, "Investment holdings");
+    var holdings = profile.holdings.filter(function (row) { return row && row.account_status !== "closed"; });
+    if (!holdings.length) enrichmentNote(box, "No investment holdings are recorded.");
+    holdings.forEach(function (row) {
+      var grid = document.createElement("div");
+      grid.className = "kv-grid";
+      enrichmentLine(grid, enrichmentText(row.account_name || row.symbol || row.description, "Holding"),
+        enrichmentMoney(row.current_value_cents, row.currency_code),
+        enrichmentText(row.entity_kind, "unknown") + " ownership · " +
+        enrichmentText(row.provider, "unknown") + " / " + enrichmentText(row.source, "unknown") +
+        " · " + enrichmentWhen(row.as_of) + " · separate from cash");
+      box.appendChild(grid);
+    });
+    if (profile.truncated?.accounts || profile.truncated?.holdings) enrichmentNote(box, "Some stored rows were not included in this view.");
+  }
+  function loadEnrichmentAssets() {
+    if (!enrichmentReady || !enrichmentClientId || !enrichmentCreditView || enrichmentCreditView.hidden || enrichmentAssetsRead) return;
+    enrichmentAssetsRead = true;
+    var clientId = enrichmentClientId;
+    var generation = enrichmentGeneration;
+    var state = $("ccp-enrichment-assets-state");
+    if (state) state.textContent = "Reading saved account records…";
+    var headers = { accept: "application/json" };
+    try { var token = localStorage.getItem("fh_token"); if (token) headers.authorization = "Bearer " + token; } catch (e) {}
+    fetch("/api/banking/accounts?client_id=" + encodeURIComponent(clientId), { method: "GET", headers: headers })
+      .then(function (response) { if (!response.ok) throw new Error("read failed"); return response.json(); })
+      .then(function (body) {
+        if (generation !== enrichmentGeneration || clientId !== enrichmentClientId) return;
+        if (!body || !body.ok || !body.asset_profile) throw new Error("profile unavailable");
+        enrichmentAssets = body.asset_profile;
+        paintEnrichmentAssets(enrichmentAssets);
+      }).catch(function () {
+        if (generation !== enrichmentGeneration || clientId !== enrichmentClientId) return;
+        paintEnrichmentAssets(null);
+      });
+  }
+  function paintLeadEnrichment(d) {
+    var profile = d && d.financial_profile;
+    var clientId = d && d.client && d.client.id;
+    if (clientId !== enrichmentClientId) {
+      enrichmentGeneration++;
+      enrichmentClientId = clientId || null;
+      enrichmentAssetsRead = false;
+      enrichmentAssets = null;
+    }
+    enrichmentReady = !!clientId;
+    var state = $("ccp-enrichment-state");
+    var offer = $("ccp-enrichment-offer");
+    var facts = $("ccp-enrichment-facts");
+    var models = $("ccp-enrichment-models");
+    enrichmentClear(offer); enrichmentClear(facts); enrichmentClear(models);
+    if (!profile || !enrichmentReady) {
+      if (state) state.textContent = "No saved financial profile is available for this client.";
+      paintEnrichmentAssets(null);
+      return;
+    }
+    if (state) state.textContent = "Saved facts only · unknown values need review · no report is ordered by this view.";
+    var role = "";
+    try { role = String(localStorage.getItem("fh_role") || "").trim().toLowerCase(); } catch (e) {}
+    var hints = {
+      setter: "Setter: confirm the residential address, separate credit permission and missing facts.",
+      closer: "Closer: review the profile, budget and program fit on the call.",
+      funding_advisor: "Funding advisor: verify reports and supporting documents before lender work.",
+      owner: "Owner: review coverage and missing evidence.", admin: "Admin: review coverage and missing evidence."
+    };
+    var roleLine = $("ccp-enrichment-role");
+    if (roleLine) { roleLine.textContent = hints[role] || ""; roleLine.hidden = !hints[role]; }
+    var match = profile.offerMatch;
+    if (match) enrichmentNote(offer, "OffersIQ · " + enrichmentText(match.outcome || match.decision_status) +
+      (match.stale ? " · stale identity" : "") + " · " + enrichmentWhen(match.checked_at) +
+      " · rule match, not lender approval");
+    else enrichmentNote(offer, "OffersIQ: no saved result.");
+    (Array.isArray(profile.creditScores) ? profile.creditScores : []).forEach(function (score) {
+      enrichmentLine(facts, enrichmentText(score.bureau, "Bureau") + " credit score",
+        Number.isInteger(score.score) ? score.score : "Unknown",
+        enrichmentText(score.model, "model unknown") + " · " + enrichmentText(score.source, "source unknown") +
+        " · " + enrichmentWhen(score.asOf));
+    });
+    if (!profile.creditScores?.length) enrichmentLine(facts, "Bureau credit scores", "Unknown", "No current real report score was returned.");
+    (Array.isArray(profile.incomeModels) ? profile.incomeModels : []).forEach(function (income) {
+      var amount = income.status === "model_estimate" && Number.isFinite(income.annual)
+        ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(income.annual)
+        : "Annual amount unknown";
+      enrichmentLine(facts, enrichmentText(income.bureau, "Bureau") + " income model", amount,
+        enrichmentText(income.model, "model unknown") + " · " +
+        (income.rawCode ? "raw code " + income.rawCode + " · " : "") +
+        "model estimate, not verified income · " + enrichmentWhen(income.asOf));
+    });
+    if (!profile.incomeModels?.length) enrichmentLine(facts, "Bureau income models", "Unknown");
+    enrichmentLine(facts, "Client-stated income range", profile.reportedIncome?.range,
+      "Client stated · verification ability: " + enrichmentText(profile.reportedIncome?.verificationStated));
+    enrichmentLine(facts, "Client-stated available capital", profile.reportedCapital?.range, "Client stated, not a verified balance.");
+    enrichmentLine(facts, "Verified income", profile.verifiedIncome?.annual, "No provider or document verification on file.");
+    enrichmentLine(facts, "Property", profile.property?.description, "No property source connected in this profile.");
+    var list = Array.isArray(profile.fitModels) ? profile.fitModels : [];
+    if (!list.length) enrichmentNote(models, "No fit drafts are available for this client.");
+    list.forEach(function (model) {
+      var card = document.createElement("div");
+      card.className = "cp-sec";
+      enrichmentSection(card, enrichmentText(model.name, "Offer model") + " · draft");
+      enrichmentNote(card, "Internal fit: " + enrichmentText(model.outcome, "needs data").replace(/_/g, " ") +
+        " · not lender approval · " + enrichmentText(model.version, "version unknown"));
+      if (Number.isInteger(model.scoreFloor)) enrichmentNote(card, "Proposed score floor: " + model.scoreFloor +
+        " · " + enrichmentText(model.thresholdSource, "source unknown").replace(/_/g, " "));
+      else enrichmentNote(card, "Score floor: pending owner and lender policy.");
+      var checks = Array.isArray(model.scoreChecks) ? model.scoreChecks : [];
+      checks.forEach(function (check) {
+        enrichmentNote(card, enrichmentText(check.bureau, "Bureau") + " " +
+          (Number.isInteger(check.score) ? check.score : "unknown") + " · " +
+          enrichmentText(check.model, "model unknown") + " · " +
+          enrichmentText(check.status).replace(/_/g, " ") + " · " + enrichmentWhen(check.asOf));
+      });
+      (Array.isArray(model.icpPaths) ? model.icpPaths : []).forEach(function (path) {
+        enrichmentSection(card, enrichmentText(path.name, "Real Estate path"));
+        enrichmentNote(card, enrichmentText(path.targetProfile, "Profile definition pending") +
+          " · " + enrichmentText(path.outcome, "needs data").replace(/_/g, " "));
+        if (Number.isInteger(path.scoreFloor)) enrichmentNote(card,
+          "Proposed path credit focus: " + path.scoreFloor + " · property ownership " +
+          (path.homeownershipRequired ? "part of this path" : "optional"));
+        else enrichmentNote(card, "No universal score floor on this path · property ownership " +
+          (path.homeownershipRequired ? "part of this path" : "optional"));
+        (Array.isArray(path.scoreChecks) ? path.scoreChecks : []).forEach(function (check) {
+          enrichmentNote(card, enrichmentText(check.bureau, "Bureau") + " " +
+            (Number.isInteger(check.score) ? check.score : "unknown") + " · " +
+            enrichmentText(check.model, "model unknown") + " · " +
+            enrichmentText(check.status).replace(/_/g, " ") + " · " + enrichmentWhen(check.asOf));
+        });
+        (Array.isArray(path.supportingChecks) ? path.supportingChecks : []).forEach(function (check) {
+          enrichmentNote(card, enrichmentText(check.criterion).replace(/_/g, " ") + ": " +
+            enrichmentText(check.status).replace(/_/g, " ") +
+            (check.documentationVerified === false ? " · documentation still needed" : ""));
+          if (Array.isArray(check.requestMarkers) && check.requestMarkers.length) enrichmentNote(card,
+            "Project or combined request examples: " + check.requestMarkers.map(function (amount, index) {
+              return Number.isFinite(amount) ? "$" + Math.round(amount / 1000) + "k" +
+                (index === check.requestMarkers.length - 1 ? "+" : "") : "unknown";
+            }).join(" · ") + " · multiple facilities depend on program");
+        });
+      });
+      var missing = (Array.isArray(model.supportingChecks) ? model.supportingChecks : [])
+        .concat(Array.isArray(model.pendingCriteria) ? model.pendingCriteria : [])
+        .filter(function (check) { return check && check.status && !["meets", "ideal"].includes(check.status); })
+        .map(function (check) { return enrichmentText(check.criterion).replace(/_/g, " ") + ": " + enrichmentText(check.status).replace(/_/g, " "); });
+      if (missing.length) enrichmentNote(card, "Review: " + missing.join(" · "));
+      models.appendChild(card);
+    });
+    if (enrichmentAssets) paintEnrichmentAssets(enrichmentAssets);
+    else if (!enrichmentAssetsRead) loadEnrichmentAssets();
+  }
   /* Nothing picked is not the same as nothing known. It used to print a dash
      where the client's name goes, next to nine more dashes, which reads as a
      screen that failed rather than one waiting to be pointed at a file. */
