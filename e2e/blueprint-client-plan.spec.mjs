@@ -204,7 +204,20 @@ test('all seventeen requested lessons are usable, with business-specific website
   const{app}=await open(page,{started:true,business:true});await app.getByRole('button',{name:'Step-by-step help',exact:true}).click();await expect(app.getByRole('button',{name:'Open step',exact:true})).toHaveCount(17);await app.locator('[data-key=business_website]').click();await app.locator('[data-bp-business]').selectOption(PLAN);await expect(app.locator('#bp-website-prompt')).toContainText('Cedar Grove LLC');await expect(app.locator('#bp-website-prompt')).toContainText('Web design for local shops');
 });
 test('saved step date creates a usable Google calendar event link',async({page})=>{
-  const{app,state}=await open(page,{started:true});await app.getByRole('button',{name:'Step-by-step help',exact:true}).click();await app.locator('[data-key=credit_review]').click();await app.locator('input[name=targetDate]').fill('2027-02-01');await app.locator('select[name=status]').selectOption('in_progress');await app.getByRole('button',{name:'Save this step',exact:true}).click();expect(state.stepProgress).toHaveLength(1);await app.getByRole('button',{name:'Timeline',exact:true}).click();const link=app.getByRole('link',{name:/Add to Google Calendar/});await expect(link).toHaveAttribute('href',/calendar\.google\.com\/calendar\/render/);expect(new URL(await link.getAttribute('href')).searchParams.get('dates')).toBe('20270201/20270202');
+  const{app,state}=await open(page,{started:true});
+  await app.getByRole('button',{name:'Step-by-step help',exact:true}).click();
+  await app.locator('[data-key=credit_review]').click();
+  await app.locator('input[name=targetDate]').fill('2027-02-01');
+  await app.locator('select[name=status]').selectOption('in_progress');
+  await app.getByRole('button',{name:'Save this step',exact:true}).click();
+  await expect(app.locator('[data-bp-status]')).toHaveText('Saved to your client file.');
+  expect(state.stepProgress).toHaveLength(1);
+  const timeline=app.getByRole('button',{name:'Timeline',exact:true});
+  await timeline.click();
+  await expect(timeline).toHaveAttribute('aria-current','page');
+  const link=app.getByRole('link',{name:/Add to Google Calendar/});
+  await expect(link).toHaveAttribute('href',/calendar\.google\.com\/calendar\/render/);
+  expect(new URL(await link.getAttribute('href')).searchParams.get('dates')).toBe('20270201/20270202');
 });
 for(const width of[1440,390])test(`real buyer controls fit at ${width}px`,async({page})=>{await page.setViewportSize({width,height:1000});const{app}=await open(page,{started:true,business:true});for(const name of['Businesses','Step-by-step help','Letters and responses','Timeline','Get help','Today']){await app.getByRole('button',{name,exact:true}).click();expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);}await expect(app).toContainText('FinanceOS is not live yet.');await expect(page.locator('a[href*="finance-os"]:visible,a[href*="financeos"]:visible,#money-link:visible')).toHaveCount(0);});
 
