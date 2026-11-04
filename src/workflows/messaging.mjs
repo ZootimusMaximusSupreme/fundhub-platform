@@ -32,9 +32,8 @@ import { UNSUBSCRIBE_TAG_RE, unsubscribeTagValue } from "../messaging/unsubscrib
 // The one E.164 converter in the repo. Reused, not re-written (CLAUDE.md §8).
 import { normalizePhone } from "../messaging/providers/bland-voice.mjs";
 import { applyRepToContext } from "../auth/authorized-rep.mjs";
-import { creditTierFor } from "../config/survey-qualification.mjs";
 import { experimentFor, baseKeyOf, variantKeyFor, armFor } from "../messaging/experiments.mjs";
-import { RESUME_BASE_URL, RESUME_LINK_TAG, readSurveyResumeToken, surveyResumeTokenMatchesEmail } from "../survey/resume-link.mjs";
+import { RESUME_BASE_URL, RESUME_LINK_TAG, readSurveyResumeToken, surveyResumeTokenMatchesEmail, surveyResumeEmailUrl } from "../survey/resume-link.mjs";
 
 /* Which column on the client record is the destination for a channel.
    The destination is recorded in the terms of the CHANNEL, not of whichever
@@ -46,22 +45,10 @@ const ADDRESS_BY_CHANNEL = { email: "email", sms: "phone", voice: "phone" };
 
 const FUNDHUB_TZ = "America/Phoenix";
 
-/* The two funding calendars (owner-set 2026-10-29/30). /apply frames the first for a
-   700-and-up score answer (700-759 or 760-850; 700-749 or 750+ on answers saved before
-   2026-10-31) and the second for every other answer, "Not sure" too.
-   A text or email link opens in a tab that never saw /apply, so the link itself picks
-   the calendar from the saved answer, and fh_tier tells the tracker which label the
-   booking carries (QualifiedSchedule / UnqualifiedSchedule). One letter: never the
-   score, never the word. No readable answer: no tier, today's link. */
-export const TIER_BOOKING_LINKS = Object.freeze({
-  qualified: "https://apply.fundhub.ai/funding-book-call?fh_tier=q",
-  unqualified: "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u"
-});
-
-export function tierBookingLink(cf = {}) {
-  // creditTierFor reads a setter's correction on the call (setter_survey_edits) first.
-  const tier = creditTierFor(cf || {});
-  return tier ? TIER_BOOKING_LINKS[tier] : null;
+export function tierBookingLink() {
+  // The public calendars open only inside /apply after the saved-survey receipt.
+  // A message or setter link starts at /apply regardless of the saved score.
+  return RESUME_BASE_URL;
 }
 
 // Several ClickFunnels posts can start separate runs for one application. Use
@@ -173,9 +160,10 @@ async function clientContext(db, clientId) {
      it rather than this URL being cleaned up. */
   const portalUrl = `${base}/app/client-portal.html?email=${encodeURIComponent(c.email || "")}`;
   const cf = c.custom_fields || {};
+  const explicitBookingLink = cf.calendar_booking_link || cf.booking_link || null;
+  const fundingCalendarLink = /^https:\/\/apply\.fundhub\.ai\/funding-book-call(?:--02424)?(?:[/?#]|$)/.test(String(explicitBookingLink || ""));
   const bookingLink =
-    cf.calendar_booking_link ||
-    cf.booking_link ||
+    (fundingCalendarLink ? RESUME_BASE_URL : explicitBookingLink) ||
     tierBookingLink(cf) ||
     process.env.SALES_MEET_BOOKING_URL ||
     "https://apply.fundhub.ai/funding-book-call";
@@ -325,6 +313,17 @@ export async function sendTemplated(db, { orgId, clientId, channel, templateKey,
         resolveAppointmentTimeZone(mergeContext)
       )
     };
+  }
+  // Funding booking email links can restore saved survey answers. The signed
+  // link is bound to the email address this message is being sent to; texts
+  // keep the plain public /apply URL because the phone may be shared.
+  if (channel === "email" && clientId && base.custom_values?.booking_link === RESUME_BASE_URL &&
+      mergeContext.custom_values?.booking_link === RESUME_BASE_URL) {
+    const url = surveyResumeEmailUrl({ orgId, clientId, email: base.contact?.email });
+    mergeContext.custom_values = { ...mergeContext.custom_values, booking_link: url };
+    mergeContext.contact = { ...mergeContext.contact, booking_link: url, calendar_booking_link: url };
+    mergeContext.calendar = { ...mergeContext.calendar, booking_link: url };
+    mergeContext.reschedule_link = url;
   }
   // {{unsubscribe}} in a template footer had nothing to resolve against and
   // rendered blank (N11). Fill it with the same signed link dispatch uses.

@@ -616,23 +616,22 @@ const LINK_CASES = [
   ["setter fixed a high score down", { cf_svy_self_reported_fico_label: "760-850", setter_survey_edits: { cf_svy_self_reported_fico: "620-699" } }, U]
 ];
 
-test("nobook: every text and email carries the calendar link for the person's score", async () => {
+test("nobook: every text and email enters the survey for every score", async () => {
   for (const [label, custom_fields, expected] of LINK_CASES) {
     const db = makeDb({ clients: [{ ...PERSON, custom_fields }], templates: linkTemplates() });
     const res = await handle({ event: finishedEvent({ id: `evt-link-${label}` }), db, step: fakeStep() });
     assert.equal(res.exitedAt, "completed", label);
     assert.equal(db.messages.length, 6, label);
-    const other = expected === Q ? U : Q;
     for (const m of db.messages) {
-      assert.ok(m.rendered_body.includes(expected), `${label}: ${m.template_key} -> ${m.rendered_body}`);
-      assert.ok(!m.rendered_body.includes(other), `${label}: ${m.template_key} has the wrong calendar`);
+      assert.ok(m.rendered_body.includes("https://apply.fundhub.ai/apply"), `${label}: ${m.template_key} -> ${m.rendered_body}`);
+      assert.ok(!m.rendered_body.includes("funding-book-call"), `${label}: ${m.template_key} bypasses the survey`);
     }
   }
 });
 
-test("nobook: a person with no score answer yet gets no tier label on the link", async () => {
+test("nobook: a person with no score answer yet opens the survey", async () => {
   const db = makeDb({ clients: [{ ...PERSON }], templates: linkTemplates() });
   await handle({ event: finishedEvent({ id: "evt-link-none" }), db, step: fakeStep() });
   assert.equal(db.messages.length, 6);
-  assert.ok(db.messages.every((m) => m.rendered_body.includes("funding-book-call") && !m.rendered_body.includes("fh_tier")));
+  assert.ok(db.messages.every((m) => m.rendered_body.includes("https://apply.fundhub.ai/apply") && !m.rendered_body.includes("fh_tier")));
 });

@@ -10,7 +10,7 @@ import { withReplyRead } from "./stop-on-reply.test-support.mjs";
 
 const MSG_KEYS = [MSG1_KEY, MSG2_KEY, MSG3_KEY];
 const OPTIN_KEYS = [OPTIN1_KEY, OPTIN2_KEY, OPTIN3_KEY];
-const QUALIFIED_LINK = "https://apply.fundhub.ai/funding-book-call?fh_tier=q";
+const SURVEY_LINK = "https://apply.fundhub.ai/apply";
 
 // Each body names its set and carries the tag that set can use.
 const templates = () => [
@@ -109,12 +109,12 @@ test("starts on the setter's No answer and on a finished no-answer call", () => 
   assert.deepEqual(aiSet03NoAnswerCadence.opts.triggers, [{ event: "call.completed" }, { event: "setter.no_answer" }]);
 });
 
-test("setter No answer, no call booked: the three opt-in texts go out, each with the person's own calendar link", async () => {
+test("setter No answer, no call booked: the three opt-in texts enter the survey", async () => {
   const db = makeDb({ client: { custom_fields: { cf_svy_self_reported_fico_label: "760-850" } } });
   const res = await run(db, noAnswer());
   assert.equal(res.exitedAt, "completed");
   assert.deepEqual(db.messages.map((m) => m.template_key), OPTIN_KEYS);
-  for (const m of db.messages) assert.ok(m.rendered_body.includes(QUALIFIED_LINK), m.rendered_body);
+  for (const m of db.messages) assert.ok(m.rendered_body.includes(SURVEY_LINK), m.rendered_body);
 });
 
 test("a call still ahead: the three call-booked texts go out, with the time of that call", async () => {

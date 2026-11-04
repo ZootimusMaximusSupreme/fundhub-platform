@@ -314,7 +314,7 @@ describe("every step of /watch and /roadmap carries the tracking", () => {
   test("/watch and /roadmap are in different funnels, and the map says which", () => {
     const watchIds = new Set(PUSH_MANIFEST.filter((r) => r.liveUrl.includes("/watch") || r.key.startsWith("apply-")).map((r) => r.funnelId));
     const roadmapIds = new Set(PUSH_MANIFEST.filter((r) => r.key.startsWith("slo-297-")).map((r) => r.funnelId));
-    assert.deepEqual([...watchIds], ["968281"], "the watch path is the Fundhub Funnel");
+    assert.deepEqual([...watchIds].sort(), ["968281", "994750"], "the apply path includes both native funding calendars");
     assert.deepEqual([...roadmapIds], ["984178"], "the $297 roadmap is Fundhub $297 Roadmap");
     assert.equal(PUSH_MANIFEST.every((r) => r.funnelId), true, "every row names its funnel");
   });

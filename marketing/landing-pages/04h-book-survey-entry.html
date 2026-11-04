@@ -1,0 +1,18 @@
+<!-- fh-book-survey-entry:start v1 -->
+<script>
+(function () {
+  var APPLY = 'https://apply.fundhub.ai/apply';
+  function returnToSurvey() { window.location.replace(APPLY); }
+  if (window.self !== window.top) {
+    try {
+      var parent = window.parent.location;
+      if (parent.origin === 'https://apply.fundhub.ai' &&
+          (parent.pathname === '/apply' || parent.pathname === '/roadmap-book')) return;
+    } catch (e) {}
+    returnToSurvey();
+    return;
+  }
+  returnToSurvey();
+})();
+</script>
+<!-- fh-book-survey-entry:end -->

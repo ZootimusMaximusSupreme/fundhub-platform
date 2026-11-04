@@ -93,11 +93,9 @@ const SIX_PM_MST = Date.parse("2026-11-05T01:00:00Z");   // Wed  6:00 p.m. Arizo
 const NINE_AM_MST = Date.parse("2026-11-05T16:00:00Z");  // Thu  9:00 a.m. Arizona, when it opens
 
 // The two funding calendars and the plain link (src/workflows/messaging.mjs).
-const LINK_Q = "https://apply.fundhub.ai/funding-book-call?fh_tier=q";
-const LINK_U = "https://apply.fundhub.ai/funding-book-call--02424?fh_tier=u";
-const LINK_PLAIN = "https://apply.fundhub.ai/funding-book-call";
+const SURVEY_LINK = "https://apply.fundhub.ai/apply";
 
-const bookingLinksIn = (text) => String(text).match(/https:\/\/apply\.fundhub\.ai\/funding-book-call[^\s"<]*/g) || [];
+const bookingLinksIn = (text) => String(text).match(/https:\/\/apply\.fundhub\.ai\/apply[^\s"<]*/g) || [];
 
 /* The booked time as Arizona reads it, worked out here from the clock and not
    by calling the code under test. Arizona has no daylight saving, so the zone
@@ -553,16 +551,16 @@ describe("booked lane", () => {
     assert.deepEqual(s04CallBooked.opts.triggers.map((t) => t.event), ["booking.created"]);
   });
 
-  check("(a) S-04B: confirm text and email at once, handed to the sender, reminders at 24 hours and 2 hours, in Arizona time, with the link for the person's credit tier", async () => {
+  check("(a) S-04B: confirm text and email at once, handed to the sender, reminders at 24 hours and 2 hours, in Arizona time, with the survey entry link", async () => {
     const people = [
-      { label: "q", score: "700-759", link: LINK_Q },
-      { label: "q-high", score: "760-850", link: LINK_Q },
-      { label: "q-old-750", score: "750+", link: LINK_Q },
-      { label: "q-old-700", score: "700-749", link: LINK_Q },
-      { label: "u", score: "620-699", link: LINK_U },
-      { label: "u-low", score: "500-619", link: LINK_U },
-      { label: "u-unsure", score: "Not sure", link: LINK_U },
-      { label: "none", score: null, link: LINK_PLAIN }
+      { label: "q", score: "700-759", link: SURVEY_LINK },
+      { label: "q-high", score: "760-850", link: SURVEY_LINK },
+      { label: "q-old-750", score: "750+", link: SURVEY_LINK },
+      { label: "q-old-700", score: "700-749", link: SURVEY_LINK },
+      { label: "u", score: "620-699", link: SURVEY_LINK },
+      { label: "u-low", score: "500-619", link: SURVEY_LINK },
+      { label: "u-unsure", score: "Not sure", link: SURVEY_LINK },
+      { label: "none", score: null, link: SURVEY_LINK }
     ];
     for (const spec of people) {
       const p = await makePerson(`s04b-${spec.label}`, { score: spec.score });
@@ -858,7 +856,7 @@ describe("booked lane", () => {
     const newConfirm = only(msgs, SMS_CONFIRM).find((m) => m.provider_ref.includes(moved.row.id));
     assert.ok(newConfirm, "the move's confirmation is its own row");
     assertArizonaTime(newConfirm.body, t2, "confirmation after the move");
-    assert.ok(newConfirm.body.includes(LINK_U), "the move link follows the person's tier");
+    assert.ok(newConfirm.body.includes(SURVEY_LINK), "the move link returns to the survey");
     const newEmail = only(msgs, EMAIL_CONFIRM).find((m) => m.provider_ref.includes(moved.row.id));
     assertArizonaTime(newEmail.subject, t2, "confirmation email after the move");
     assert.deepEqual(second.driver.wakes.map((w) => [w.id, iso(w.at.getTime())]), [
@@ -1038,7 +1036,7 @@ describe("booked lane", () => {
       assert.ok(!/\{\{/.test(m.body), `${m.template_key}: unrendered tag`);
       const links = bookingLinksIn(m.body);
       assert.ok(links.length >= 1, `${m.template_key}: carries a calendar link`);
-      assert.ok(links.every((l) => l === LINK_U), `${m.template_key}: only this person's own calendar, got ${links.join(" ")}`);
+      assert.ok(links.every((l) => l.startsWith(SURVEY_LINK)), `${m.template_key}: only the survey entry, got ${links.join(" ")}`);
     }
     // The first email tells the person which call was missed.
     const first = msgs.find((m) => m.template_key === EMAIL_NOSHOW_01);
