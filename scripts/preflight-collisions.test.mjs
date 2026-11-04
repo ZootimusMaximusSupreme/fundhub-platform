@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { blockingOverlaps, chooseMainUpdate, excludeExpectedBase, fileHandoffs, findOverlaps, inheritedOrderedRefs, isOlderOpenPr, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, recordedExpectedParent, resolveFileHandoffs, stackAncestorNumbers } from "./preflight-collisions.mjs";
+import { blockingOverlaps, chooseMainUpdate, excludeExpectedBase, fileHandoffs, findOverlaps, inheritedOrderedRefs, isOlderOpenPr, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, plannedStackAncestors, recordedExpectedParent, resolveFileHandoffs, stackAncestorNumbers } from "./preflight-collisions.mjs";
 import { FILE_OVERLAP_CUTOVER } from "./release-control.mjs";
 
 test("parsePorcelain keeps the new path on a rename and strips quotes", () => {
@@ -236,6 +236,30 @@ test("branch with no open PR still treats peer PR overlap as blocking", () => {
   const sources = [{ label: "PR #9 peer", kind: "pr", prNumber: 9, prCreatedAt: "2026-10-29T00:00:00Z", files: ["src/a.mjs"] }];
   const { withMine } = findOverlaps(["src/a.mjs"], sources);
   assert.deepEqual(blockingOverlaps(withMine, sources, { currentPr: null, openPrs: [] }).map((x) => x.label), ["PR #9 peer"]);
+});
+
+test("a planned ordered child inherits only exact Git-proven ancestor PRs", () => {
+  const a = "a".repeat(40), b = "b".repeat(40), c = "c".repeat(40);
+  const prs = [
+    { number: 1, headRefName: "first", baseRefName: "main", headRefOid: a, labels: ["ship-order/1"] },
+    { number: 2, headRefName: "parent", baseRefName: "first", headRefOid: b, labels: ["ship-order/2"] },
+    { number: 3, headRefName: "peer", baseRefName: "main", headRefOid: c, labels: ["ship-order/3"] }
+  ];
+  const readGit = (args) => args[0] === "rev-parse" ? b
+    : args[2] === b && args[3] === "HEAD" || [a, b].includes(args[2]) && args[3] === b ? "" : null;
+  assert.deepEqual([...plannedStackAncestors(prs, "origin/parent", readGit)], [1, 2]);
+  const sources = prs.map((pr) => ({ label: `PR #${pr.number}`, kind: "pr", prNumber: pr.number, files: ["shared.mjs"] }));
+  sources.push({ label: "dirty first worktree", kind: "worktree", files: ["shared.mjs"] });
+  sources.push({ label: "active peer branch", kind: "branch", active: true, files: ["shared.mjs"] });
+  const overlaps = findOverlaps(["shared.mjs"], sources).withMine;
+  assert.deepEqual(blockingOverlaps(overlaps, sources, { openPrs: prs, expectedBase: "origin/parent", readGit }).map((o) => o.label),
+    ["PR #3", "dirty first worktree", "active peer branch"]);
+  assert.deepEqual([...plannedStackAncestors(prs, null, readGit)], []);
+  assert.deepEqual([...plannedStackAncestors(prs, "origin/peer", readGit)], []);
+  assert.deepEqual([...plannedStackAncestors(prs, "origin/parent", () => null)], []);
+  assert.deepEqual([...plannedStackAncestors(prs.map((p) => ({ ...p, labels: [] })), "origin/parent", readGit)], []);
+  const moved = prs.map((p) => p.number === 1 ? { ...p, headRefOid: c } : p);
+  assert.deepEqual([...plannedStackAncestors(moved, "origin/parent", readGit)], [2]);
 });
 
 test("isOlderOpenPr and stack ancestors match release-control overlap ordering", () => {
