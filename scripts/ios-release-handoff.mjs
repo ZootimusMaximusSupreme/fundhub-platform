@@ -89,11 +89,20 @@ async function list(client, endpoint) {
   return rows;
 }
 
-export async function readReceipt(client, { version, build }) {
+export async function findVersion(client, version) {
   const versions = await list(client, `/v1/apps/${APP_ID}/appStoreVersions?limit=50`);
   const matches = versions.filter((v) => v.attributes?.platform === "IOS" && v.attributes?.versionString === version);
-  if (matches.length !== 1) throw new Error(`Expected one existing iOS ${version} App Store version; found ${matches.length}`);
-  const appVersion = matches[0];
+  if (matches.length > 1) throw new Error(`Expected at most one iOS ${version} App Store version; found ${matches.length}`);
+  return matches[0] || null;
+}
+
+export async function readVersion(client, version) {
+  const found = await findVersion(client, version);
+  if (!found) throw new Error(`Expected one existing iOS ${version} App Store version; found 0`);
+  return found;
+}
+
+export async function readUploadedBuild(client, { version, build }) {
   const builds = await list(client, `/v1/apps/${APP_ID}/builds?limit=200`);
   const candidates = builds.filter((b) => b.attributes?.version === build);
   const matching = [];
@@ -101,8 +110,14 @@ export async function readReceipt(client, { version, build }) {
     const pre = await client("GET", `/v1/builds/${candidate.id}/preReleaseVersion`);
     if (pre?.data?.attributes?.platform === "IOS" && pre.data.attributes.version === version) matching.push(candidate);
   }
-  if (matching.length !== 1) throw new Error(`Expected one iOS ${version} build ${build} upload; found ${matching.length}`);
-  const uploaded = matching[0];
+  if (matching.length > 1) throw new Error(`Expected at most one iOS ${version} build ${build} upload; found ${matching.length}`);
+  return matching[0] || null;
+}
+
+export async function readReceipt(client, args) {
+  const appVersion = await readVersion(client, args.version);
+  const uploaded = await readUploadedBuild(client, args);
+  if (!uploaded) throw new Error(`Exact iOS ${args.version} build ${args.build} upload is not visible yet`);
   const attached = await client("GET", `/v1/appStoreVersions/${appVersion.id}/build`);
   const submissions = await list(client, `/v1/apps/${APP_ID}/reviewSubmissions?limit=50&include=appStoreVersionForReview`);
   const submission = submissions.filter((s) => s.relationships?.appStoreVersionForReview?.data?.id === appVersion.id)
