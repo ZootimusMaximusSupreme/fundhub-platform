@@ -153,6 +153,7 @@ export const EVENTS_SQL = `SELECT name,
   FROM events
  WHERE name = ANY($1::text[])
    AND created_at > $2::timestamptz
+   AND COALESCE(is_demo, false) = false
  GROUP BY name`;
 
 /* A repeat funnel post: the app stored it and did not hand it to Inngest, so no run can carry its id. Same test
@@ -171,6 +172,30 @@ const REPEAT_POST_SQL = `e.name IN (${REPEAT_SUPPRESSED_EVENTS.map((n) => `'${n}
           AND (COALESCE(p.payload->>'funnel', '') = COALESCE(e.payload->>'funnel', '')
             OR COALESCE(p.payload->>'funnel', '') = ''
             OR COALESCE(e.payload->>'funnel', '') = '')
+     )`;
+
+/* Some booking adapters store a provisional form event, then the real ClickFunnels call event
+   seconds later for the same person and appointment. Only the later event's receipt for THIS
+   function proves that the logical booking was handled. The provisional event's own dead letter
+   remains visible in the failed-events lane. A different client, slot, or missing run stays red. */
+const EQUIVALENT_BOOKING_RUN_SQL = `e.name = 'booking.created'
+     AND e.client_id IS NOT NULL
+     AND COALESCE(e.payload->>'email', '') <> ''
+     AND COALESCE(e.payload->>'startTime', '') <> ''
+     AND EXISTS (
+       SELECT 1 FROM events later
+        JOIN workflow_runs handled
+          ON handled.bus_event_id = later.id::text
+         AND handled.function_id = s.function_id
+        WHERE later.name = 'booking.created'
+          AND later.org_id = e.org_id
+          AND later.client_id = e.client_id
+          AND later.created_at > e.created_at
+          AND later.created_at <= e.created_at + interval '5 minutes'
+          AND lower(later.payload->>'email') = lower(e.payload->>'email')
+          AND COALESCE(later.payload->>'startTime', '') <> ''
+          AND regexp_replace(later.payload->>'startTime', '\\.000Z$', 'Z')
+            = regexp_replace(e.payload->>'startTime', '\\.000Z$', 'Z')
      )`;
 
 /* The runs read. Three kinds of row come back, told apart by `kind`:
@@ -216,6 +241,7 @@ SELECT 'miss', s.function_id, NULL, s.name, NULL, NULL, NULL,
   FROM specs s
   JOIN events e ON e.name = s.name
  WHERE (SELECT at FROM began) IS NOT NULL
+   AND COALESCE(e.is_demo, false) = false
    AND e.created_at > greatest($3::timestamptz, (SELECT at FROM began) + make_interval(mins => $7::int))
    AND e.created_at <= $4::timestamptz
    AND NOT EXISTS (
@@ -223,6 +249,7 @@ SELECT 'miss', s.function_id, NULL, s.name, NULL, NULL, NULL,
       WHERE w.function_id = s.function_id AND w.bus_event_id = e.id::text
    )
    AND NOT (${REPEAT_POST_SQL})
+   AND NOT (${EQUIVALENT_BOOKING_RUN_SQL})
  GROUP BY s.function_id, s.name
 UNION ALL
 SELECT 'meta', NULL, NULL, NULL, NULL, NULL, NULL,

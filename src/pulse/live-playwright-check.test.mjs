@@ -56,3 +56,18 @@ test("checkLivePlaywright PASS for fresh 100 score", async () => {
   const row = await checkLivePlaywright({ db, now });
   assert.equal(row.status, "PASS");
 });
+
+test("checkLivePlaywright keeps a failed auth-fixture preflight red and names the actual repair", async () => {
+  const now = new Date("2026-11-04T21:30:00Z");
+  const db = { async query() { return { rows: [{
+    outcome: "fail", created_at: new Date("2026-11-04T21:28:00Z"),
+    detail: `live-playwright ${JSON.stringify({ suiteNotRun: true, score: 0, passed: 0, failed: 0, total: 0,
+      failedTitles: ["staff test credential matches no active principal"] })}`
+  }] }; } };
+  const row = await checkLivePlaywright({ db, now });
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /preflight failed.*live browser tests did not run/);
+  assert.match(row.detail, /staff test credential matches no active principal/);
+  assert.match(row.suggestedFix, /Repair the live test principals and credential/);
+  assert.doesNotMatch(row.suggestedFix, /Fix the failing live Playwright specs/);
+});

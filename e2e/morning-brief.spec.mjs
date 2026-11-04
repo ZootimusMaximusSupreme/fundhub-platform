@@ -33,7 +33,7 @@ const K = "AbCdEfGhIjKlMnOpQrStUvWxYz012-_9"; // 32 characters, a stand-in code
 const PAGE_URL = (q) => `/app/morning-brief.html?${q}`;
 const GOOD = `date=2026-10-09&k=${K}`;
 
-const SECTIONS = ["Systems", "Last 24 hours", "Team", "Money", "Ads and sales", "Dying ads", "Suggestions", "Today"];
+const SECTIONS = ["Company checks", "Last 24 hours", "Team", "Money", "Ads and sales", "Dying ads", "Suggestions", "Today"];
 const BAD = "This link is not valid or has expired.";
 const LATER = "The report could not load right now. Try again in a minute.";
 
@@ -43,7 +43,7 @@ const BUSY = {
     kind: "evening",
     systems: {
       status: "ok", total: 420, green: 410, red: 1, not_checked: 9,
-      line: "Systems, from this morning's check at 6:01 AM: 410 of 420 checks green. 1 red: calls:booked-no-join-link (day 3). 9 not checked.",
+      line: "Company checks, from this morning's check at 6:01 AM: 410 of 420 checks green. 1 red: calls:booked-no-join-link (day 3). 9 not checked.",
       reds: [{ id: "calls:booked-no-join-link", status: "red", day_count: 3, since: "2026-10-06",
         customer_sees: "A booked person gets no link to join the call.",
         proof: "2 bookings today have no join link.", fix: "Re-run the calendar link step for those 2 bookings." }]
@@ -86,7 +86,7 @@ const EMPTY = { ok: true, date: "2026-10-09", kind: "morning", brief: {} };
 const PART = {
   ok: true, date: "2026-10-09", kind: "morning",
   brief: {
-    systems: { status: "missing", total: 0, line: "Systems: the morning check did not run, so nothing was checked." },
+    systems: { status: "missing", total: 0, line: "Company checks: the morning check did not run, so nothing was checked." },
     marketing: { status: "error", line: "Ads and sales: could not be read (timeout)." },
     money: { status: "not_connected", line: "Money: not connected yet." },
     team: { status: "ok", company_8: null, closers: null, closers_error: "Closer calls: could not be read (timeout).", csm_overdue: null, unrecorded_calls: 0 },
@@ -148,9 +148,9 @@ for (const vp of [{ width: 375, height: 812 }, { width: 320, height: 640 }]) {
       await expect(page).toHaveURL(/\/app\/morning-brief\.html\?/); // no redirect to sign-in
       await expect(page.locator("h2")).toHaveText(SECTIONS);
       expect(await page.locator("html").getAttribute("data-brief-page")).toBe("1");
-      // Systems: broken and not proved are separate, with broken first.
-      const sys = page.locator("section", { has: page.locator("h2", { hasText: "Systems" }) });
-      await expect(sys.locator(".tile").nth(0)).toContainText("Broken14");
+      // Red checks and not proved are separate, with red checks first.
+      const sys = page.locator("section", { has: page.locator("h2", { hasText: "Company checks" }) });
+      await expect(sys.locator(".tile").nth(0)).toContainText("Red checks14");
       await expect(sys.locator(".tile").nth(1)).toContainText("Not proved0");
       await expect(sys.locator(".tile").nth(2)).toContainText("Green695");
       await expect(sys.locator(".tile").nth(3)).toContainText("Not checked299");
@@ -159,7 +159,7 @@ for (const vp of [{ width: 375, height: 812 }, { width: 320, height: 640 }]) {
       await expect(sys.locator("li.red-item").first()).toContainText("live-playwright:desks");
       await expect(sys.locator("li.red-item").first()).toContainText("Fix: Run node scripts/live-playwright-sweep.mjs");
       await shot(page, `real-morning-${vp.width}.png`);
-      const more = sys.getByRole("button", { name: "Show all 14 broken checks" });
+      const more = sys.getByRole("button", { name: "Show all 14 red checks" });
       const box = await more.boundingBox();
       expect(box.height).toBeGreaterThanOrEqual(44);
       await more.click();
@@ -184,7 +184,7 @@ for (const vp of [{ width: 375, height: 812 }, { width: 320, height: 640 }]) {
       await expect(page.locator("h1")).toHaveText("Thursday, October 8");
       await expect(page.locator("h2")).toHaveText(SECTIONS);
       await expect(page.locator("body")).toContainText("From this morning's check at 6:01 AM.");
-      await expect(page.locator("body")).toContainText("Broken · day 3");
+      await expect(page.locator("body")).toContainText("Failed result · day 3");
       await expect(page.locator("body")).toContainText("What people see: A booked person gets no link to join the call.");
       await expect(page.locator("body")).toContainText("Cash collected$12,345.67");
       await expect(page.locator("body")).toContainText("Funded dollars$150,000.00");
@@ -210,7 +210,7 @@ for (const vp of [{ width: 375, height: 812 }, { width: 320, height: 640 }]) {
       const { errors } = await open(page, { answer: EMPTY });
       await expect(page.locator("h2")).toHaveText(SECTIONS);
       for (const want of [
-        "Systems: could not be read.",
+        "Company checks: could not be read.",
         "Cash collected: unknown.",
         "Team: could not be read.",
         "Money: could not be read.",
@@ -229,7 +229,7 @@ for (const vp of [{ width: 375, height: 812 }, { width: 320, height: 640 }]) {
       const { errors } = await open(page, { answer: PART });
       await expect(page.locator("h2")).toHaveText(SECTIONS);
       for (const want of [
-        "Systems: the morning check did not run, so nothing was checked.",
+        "Company checks: the morning check did not run, so nothing was checked.",
         "Cash collected: unknown.",
         "Closer calls: could not be read (timeout).",
         "Late success team tasks: unknown.",
