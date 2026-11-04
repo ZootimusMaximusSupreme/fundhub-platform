@@ -208,18 +208,16 @@ test("owner controls save reviewed amounts, match only posted debits, and confir
   expect(calls.some(c => c.body.action === "transfer")).toBe(false);
 });
 
-test("a stale staff MFA check offers the normal sign-in link and opens no bank window", async ({ page }) => {
+test("a failed bank link shows the error and opens no bank window", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => { window.Plaid = { create() { throw new Error("Plaid should not open"); } }; });
   const calls = await open(page, { bankPost: (route, body) => body.action === "link_token"
-    ? reply(route, { ok: false, error: "mfa_required" }, 403) : reply(route, { ok: true }) });
+    ? reply(route, { ok: false, error: "not_configured" }, 503) : reply(route, { ok: true }) });
   await page.locator("#ccBusinessConfirm").check(); await page.locator("#ccReadConsent").check();
   await page.locator("#ccConnect").click();
-  await expect(page.locator("#ccMessage")).toContainText("fresh staff sign-in");
-  await expect(page.locator("#ccMessage a")).toHaveAttribute("href", "/login.html");
+  await expect(page.locator("#ccMessage")).toHaveText("Bank connections are not enabled yet.");
+  await expect(page.locator("#ccMessage a")).toHaveCount(0);
   expect(calls.map(c => c.body.action)).toEqual(["link_token"]);
-  await page.locator("#ccMessage a").click();
-  await expect(page).toHaveURL(/\/login\.html$/);
 });
 
 test("an unavailable live balance stays explicit, and bank labels render as text", async ({ page }) => {
