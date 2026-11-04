@@ -29,6 +29,9 @@
 .fos-connections .big,.fos-connections .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .fos-connections .big{display:block;font-weight:500;color:var(--ink);line-height:1.2}
 .fos-connections .tile{display:flex;flex-direction:column;gap:8px}
+.fos-connections .merchant-setup{display:flex;flex-direction:column;gap:16px;margin-bottom:24px}
+.fos-connections .merchant-setup h2{font-weight:600;color:var(--ink)}
+.fos-connections .merchant-setup-actions{display:flex;flex-wrap:wrap;gap:8px}
 
 .fos-connections .prov{display:flex;flex-direction:column;gap:16px}
 .fos-connections .prov-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
