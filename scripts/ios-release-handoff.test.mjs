@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { REQUIRED_CI_JOBS } from "./release-control.mjs";
-import { applySubmission, assertMainCi, assertProjectVersion, checkReceipt, parseArgs, readReceipt } from "./ios-release-handoff.mjs";
+import { applySubmission, assertMainCi, assertPinnedShip, assertProjectVersion, checkReceipt, parseArgs, readReceipt } from "./ios-release-handoff.mjs";
 import { appleTool, assertIpaFields, buildIpa, findIpaInfoPath, parseArgs as parseUploadArgs,
   runUploadAndSubmit } from "./ios-upload-and-submit.mjs";
 
@@ -193,6 +193,38 @@ test("final CI permits only an unchanged native tree on a newer all-green main",
   await assert.rejects(() => assertMainCi(SHA, github, { allowMainAdvance: true }), /native-unchanged/);
 });
 
+test("pinned source needs an actual successful GitHub Ship job, not a skipped green workflow", async () => {
+  const run = { id: 91, head_sha: SHA, name: "Ship to live", event: "workflow_run",
+    head_branch: "main", head_repository: { full_name: "ZootimusMaximusSupreme/fundhub-platform" },
+    status: "completed", conclusion: "success" };
+  let shipConclusion = "skipped";
+  const github = async ([endpoint]) => {
+    if (endpoint.includes("/ship.yml/runs?")) return { workflow_runs: [run] };
+    if (endpoint.includes("/runs/91/jobs?")) return { jobs: [
+      { name: "release_gate", status: "completed", conclusion: "success" },
+      { name: "ship", status: "completed", conclusion: shipConclusion },
+    ] };
+    throw new Error(endpoint);
+  };
+  await assert.rejects(() => assertPinnedShip(SHA, github), /successful ship job/);
+  shipConclusion = "success";
+  assert.equal(await assertPinnedShip(SHA, github), 91);
+  await assert.rejects(() => assertPinnedShip("b".repeat(40), github), /deployed source commit/);
+});
+
+test("a newer skipped Ship does not erase an earlier real deployment of the pinned SHA", async () => {
+  const base = { head_sha: SHA, name: "Ship to live", event: "workflow_run",
+    head_branch: "main", head_repository: { full_name: "ZootimusMaximusSupreme/fundhub-platform" },
+    status: "completed", conclusion: "success" };
+  const github = async ([endpoint]) => {
+    if (endpoint.includes("/ship.yml/runs?")) return { workflow_runs: [{ ...base, id: 92 }, { ...base, id: 91 }] };
+    if (endpoint.includes("/runs/92/jobs?")) return { jobs: [{ name: "ship", status: "completed", conclusion: "skipped" }] };
+    if (endpoint.includes("/runs/91/jobs?")) return { jobs: [{ name: "ship", status: "completed", conclusion: "success" }] };
+    throw new Error(endpoint);
+  };
+  assert.equal(await assertPinnedShip(SHA, github), 91);
+});
+
 test("upload command is explicit and IPA metadata must match exactly", () => {
   const parsed = parseUploadArgs(["--version", "1.0.4", "--build", "10", "--sha", SHA,
     "--ipa", "/tmp/Fundhub.ipa", "--apply"]);
@@ -267,6 +299,7 @@ function uploadFixture(options = {}) {
     },
     inspect: async () => ({ bundle: "ai.fundhub.app", version: "1.0.4", build: "10" }),
     ci: async () => { calls.push("ci"); return 123; },
+    ship: async () => 456,
     build: async () => { calls.push("build"); fs.writeFileSync(ipa, "test-only-ipa"); },
     apple: async (toolArgs) => { calls.push(toolArgs[0]); if (toolArgs[0] === "--upload-app") apple.markUploaded(); },
     sleep: async () => { calls.push("sleep"); apple.setProcessingState("VALID"); } };
@@ -276,8 +309,14 @@ function uploadFixture(options = {}) {
 test("upload dry run does no Apple writes or upload", async () => {
   const fixture = uploadFixture();
   try {
-    const result = await runUploadAndSubmit({ ...args, apply: false, ipa: fixture.ipa }, fixture.deps);
+    const deps = { ...fixture.deps, ci: async (_sha, _github, options) => {
+      assert.equal(options.allowMainAdvance, true);
+      fixture.calls.push("ci");
+      return 123;
+    } };
+    const result = await runUploadAndSubmit({ ...args, apply: false, ipa: fixture.ipa }, deps);
     assert.equal(result.mode, "upload-dry-run");
+    assert.equal(result.shipRun, 456);
     assert.deepEqual(fixture.calls, ["ci"]);
     assert.deepEqual(fixture.apple.writes, []);
   } finally { fixture.cleanup(); }
@@ -359,6 +398,29 @@ test("CI failure before upload blocks altool, and CI change after upload blocks 
       { ...after.deps, ci: async () => { if (++checks === 2) throw new Error("main moved"); return 123; } }), /main moved/);
     assert.deepEqual(after.calls, ["build", "--validate-app", "--upload-app"]);
     assert.deepEqual(after.apple.writes, []);
+  } finally { after.cleanup(); }
+});
+
+test("missing Ship before archive or after upload blocks App Store review submission", async () => {
+  const before = uploadFixture();
+  try {
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: before.ipa },
+      { ...before.deps, ship: async () => { throw new Error("ship missing"); } }), /ship missing/);
+    assert.deepEqual(before.calls, ["ci"]);
+    assert.deepEqual(before.apple.writes, []);
+  } finally { before.cleanup(); }
+  const after = uploadFixture();
+  try {
+    let checks = 0;
+    await assert.rejects(() => runUploadAndSubmit({ ...args, ipa: after.ipa },
+      { ...after.deps, ship: async () => {
+        checks++;
+        if (checks === 2) throw new Error("ship changed");
+        return 456;
+      } }), /ship changed/);
+    assert.equal(checks, 2);
+    assert.equal(after.calls.includes("--upload-app"), true);
+    assert.equal(after.apple.writes.some((write) => write.endpoint.includes("reviewSubmissions")), false);
   } finally { after.cleanup(); }
 });
 

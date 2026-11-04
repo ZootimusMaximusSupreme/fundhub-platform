@@ -7,8 +7,9 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
-import { applySubmission, assertMainCi, assertProjectVersion, checkReceipt, findVersion, makeAppleClient,
+import { applySubmission, assertMainCi, assertPinnedShip, assertProjectVersion, checkReceipt, findVersion, makeAppleClient,
   parseArgs as parseHandoffArgs, publicReceipt, readReceipt, readUploadedBuild } from "./ios-release-handoff.mjs";
+import { completeIntent, intentPath, readIntent, releaseHome, withIntentLock, writeIntent } from "./ios-release-intent.mjs";
 
 const execFileAsync = promisify(execFile);
 const APP_ID = "6823985032";
@@ -155,7 +156,8 @@ export async function appleTool(args, env, command = execFileAsync) {
 
 export async function runUploadAndSubmit(args, { env = process.env, client = makeAppleClient(env),
   command = execFileAsync, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-  inspect = inspectIpa, ci = assertMainCi, apple = appleTool, build = buildIpa } = {}) {
+  inspect = inspectIpa, ci = assertMainCi, ship = assertPinnedShip,
+  apple = appleTool, build = buildIpa } = {}) {
   assertOutputOutsideCheckout(args.ipa);
   await assertCleanPinnedSource(args, command);
   const project = (await command("git", ["show", `${args.sha}:${PROJECT}`], { cwd: ROOT, maxBuffer: 1_000_000 })).stdout;
@@ -176,7 +178,8 @@ export async function runUploadAndSubmit(args, { env = process.env, client = mak
   if (attached && (!existing || attached.id !== existing.id)) {
     throw new Error("Exact App Store version already has a different build attached");
   }
-  const firstCiRun = await ci(args.sha, undefined, { allowMainAdvance: marked?.phase === "upload_attempted" });
+  const firstCiRun = await ci(args.sha, undefined, { allowMainAdvance: true });
+  const firstShipRun = await ship(args.sha);
   if (appVersion && !["PREPARE_FOR_SUBMISSION", "READY_FOR_REVIEW"].includes(appVersion.attributes?.appStoreState)) {
     if (marked?.phase !== "upload_attempted" || !existing) {
       throw new Error("Exact App Store version is not open for a proven idempotent review receipt");
@@ -185,14 +188,14 @@ export async function runUploadAndSubmit(args, { env = process.env, client = mak
     if (!checkReceipt(completed, "AFTER_APPROVAL").submitted) {
       throw new Error("Exact App Store version is not an already-submitted release");
     }
-    return { mode: "already-submitted", ...publicReceipt(completed, args, firstCiRun) };
+    return { mode: "already-submitted", ...publicReceipt(completed, args, firstCiRun), shipRun: firstShipRun };
   }
   if (existing && (!marked || marked.phase !== "upload_attempted")) {
     throw new Error("Exact build is already uploaded without a matching upload attempt receipt; no automatic resume");
   }
   if (!args.apply) return { mode: "upload-dry-run", version: args.version, build: args.build,
     sha: args.sha, ipa: path.basename(args.ipa), releaseType: "AFTER_APPROVAL", ciRun: firstCiRun,
-    createVersion: !appVersion, resumeUpload: Boolean(existing && marked),
+    shipRun: firstShipRun, createVersion: !appVersion, resumeUpload: Boolean(existing && marked),
     next: "Run the same command with --apply to archive, export, upload, wait VALID and submit" };
 
   const keyId = String(env.ASC_KEY_ID || "").trim();
@@ -238,12 +241,46 @@ export async function runUploadAndSubmit(args, { env = process.env, client = mak
     throw new Error("Exact upload attempt did not become VALID within 30 minutes; no review submission or duplicate upload was sent");
   }
   const finalCiRun = await ci(args.sha, undefined, { allowMainAdvance: true });
+  const finalShipRun = await ship(args.sha);
   const submitted = await applySubmission(client, args, receipt);
-  return { mode: "upload-and-submit", ...publicReceipt(submitted, args, finalCiRun) };
+  return { mode: "upload-and-submit", ...publicReceipt(submitted, args, finalCiRun), shipRun: finalShipRun };
+}
+
+export async function executeReleaseIntent(args, { home = releaseHome(), run = runUploadAndSubmit } = {}) {
+  if (!args.apply) {
+    return run(args);
+  }
+  const artifactRoot = path.join(home, "artifacts");
+  if (!args.ipa.startsWith(`${artifactRoot}${path.sep}`)) {
+    throw new Error("--ipa output must be inside the durable iOS release artifacts folder");
+  }
+  fs.mkdirSync(artifactRoot, { recursive: true, mode: 0o700 });
+  fs.mkdirSync(path.dirname(args.ipa), { recursive: true, mode: 0o700 });
+  if (!fs.realpathSync(path.dirname(args.ipa)).startsWith(`${fs.realpathSync(artifactRoot)}${path.sep}`) &&
+      fs.realpathSync(path.dirname(args.ipa)) !== fs.realpathSync(artifactRoot)) {
+    throw new Error("--ipa artifact folder must stay inside durable release storage");
+  }
+  const file = intentPath(args, home);
+  args.resumeIntent = fs.existsSync(file);
+  const preflight = await run({ ...args, apply: false });
+  if (args.resumeIntent && readIntent(file).status === "done") {
+    if (preflight.mode !== "already-submitted" ||
+        preflight.reviewSubmissionId !== readIntent(file).reviewSubmissionId) {
+      throw new Error("Completed release intent does not match Apple's read-only receipt");
+    }
+    return preflight;
+  }
+  const result = await withIntentLock(args, home, async () => {
+    const intent = writeIntent(args, home);
+    const receipt = await run(args);
+    completeIntent(intent, receipt);
+    return receipt;
+  });
+  return result;
 }
 
 async function main() {
-  const result = await runUploadAndSubmit(parseArgs(process.argv.slice(2)));
+  const result = await executeReleaseIntent(parseArgs(process.argv.slice(2)));
   console.log(JSON.stringify(result));
 }
 

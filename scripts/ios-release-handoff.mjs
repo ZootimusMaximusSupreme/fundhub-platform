@@ -178,6 +178,31 @@ export async function assertMainCi(sha, github = gh, { allowMainAdvance = false 
   return main.sha === sha ? pinnedRun : (await verifiedRun(main.sha));
 }
 
+export async function assertPinnedShip(sha, github = gh) {
+  const found = [];
+  for (let page = 1; page <= 3; page++) {
+    const response = await github([`repos/${REPO}/actions/workflows/ship.yml/runs?head_sha=${sha}&branch=main&event=workflow_run&per_page=100&page=${page}`]);
+    const rows = response.workflow_runs || [];
+    found.push(...rows);
+    if (rows.length < 100) break;
+  }
+  const candidates = found.filter((item) => item.head_sha === sha &&
+    item.name === "Ship to live" && item.event === "workflow_run" && item.head_branch === "main" &&
+    item.head_repository?.full_name === REPO && item.status === "completed" && item.conclusion === "success")
+    .sort((a, b) => Number(b.id) - Number(a.id));
+  if (!candidates.length) {
+    throw new Error("Pinned source commit has no successful GitHub Ship run; pin a deployed source commit");
+  }
+  for (const run of candidates) {
+    const jobs = await github([`repos/${REPO}/actions/runs/${run.id}/jobs?per_page=100`]);
+    const ship = (jobs.jobs || []).filter((job) => job.name === "ship");
+    if (ship.length === 1 && ship[0].status === "completed" && ship[0].conclusion === "success") {
+      return run.id;
+    }
+  }
+  throw new Error("Pinned source GitHub Ship did not run a successful ship job");
+}
+
 const link = (type, id) => ({ data: { type, id } });
 
 export async function applySubmission(client, args, receipt) {
