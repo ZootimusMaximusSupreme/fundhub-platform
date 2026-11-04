@@ -147,6 +147,8 @@ test('FinanceOS preserves staff context, lazy mounts and in-section compatibilit
   await expect(merchant).toBeVisible();
   await expect(merchant.getByRole('link',{name:'Create a Whop account'})).toHaveAttribute('href','https://whop.com/start/?code=UHBPLO');
   await expect(merchant.getByRole('link',{name:'Create a Commas account'})).toHaveAttribute('href','https://commas.com/login?ref=M4glr1Xi');
+  await expect(merchant.locator('.provider-mark')).toHaveCount(2);
+  await expect.poll(()=>merchant.locator('.provider-mark').evaluateAll(imgs=>imgs.every(img=>img.complete&&img.naturalWidth>0))).toBe(true);
   const merchantEvidence='ops/workflows/build-evidence/merchant-profile-referrals-2026-11-04';
   fs.mkdirSync(merchantEvidence,{recursive:true});
   for(const width of [1440,390]){

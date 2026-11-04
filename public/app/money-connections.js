@@ -278,8 +278,8 @@
       '<p>Save your business profile, then apply with a processor. You will enter your details again on their site. Once your account is ready, connect it below.</p>' +
       '<div class="merchant-setup-actions">' +
       '<a class="btn" href="/app/money-accounts.html">Save business profile</a>' +
-      '<a class="btn" href="https://whop.com/start/?code=UHBPLO" target="_blank" rel="noopener noreferrer">Create a Whop account</a>' +
-      '<a class="btn" href="https://commas.com/login?ref=M4glr1Xi" target="_blank" rel="noopener noreferrer">Create a Commas account</a>' +
+      '<a class="btn" href="https://whop.com/start/?code=UHBPLO" target="_blank" rel="noopener noreferrer"><img class="provider-mark" src="/assets/merchant-whop.svg" alt="" aria-hidden="true" width="38" height="22">Create a Whop account</a>' +
+      '<a class="btn" href="https://commas.com/login?ref=M4glr1Xi" target="_blank" rel="noopener noreferrer"><img class="provider-mark" src="/assets/merchant-commas.png" alt="" aria-hidden="true" width="22" height="22">Create a Commas account</a>' +
       '</div></section>';
   }
 
