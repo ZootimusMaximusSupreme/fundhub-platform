@@ -93,6 +93,29 @@ test("setter booking alert includes saved survey and its desk link without commi
   assert.doesNotMatch(body, /deposit|commission|Funding, done-for-you/i);
 });
 
+test("setter booking alert keeps contact and call time while bounding long survey copy", () => {
+  const clientId = "11111111-1111-4111-8111-111111111111";
+  const body = buildSetterAlertBody({
+    client: { id: clientId, first_name: "Pat", phone: "+15551234567", email: "pat@example.com",
+      custom_fields: {
+        cf_svy_planned_use_label: "Equipment",
+        cf_svy_funding_target_amount_label: "$100k - $200k",
+        cf_svy_money_change_now_label: "Expansion ".repeat(100),
+        cf_svy_has_negatives_label: "No"
+      } },
+    booking: { startTime: "2026-10-28T21:00:00Z", timezone: "America/Phoenix" }
+  });
+  assert.ok(body.length <= 450, `booked SMS grew to ${body.length} UCS-2 units`);
+  assert.match(body, /^Booked call: Pat/m);
+  assert.match(body, /Phone: \+15551234567/);
+  assert.match(body, /Email: pat@example\.com/);
+  assert.match(body, /Booked:/);
+  assert.match(body, new RegExp(`setter-dashboard\\.html\\?client_id=${clientId}`));
+  assert.match(body, /Set Your Target Amount: \$100k - \$200k/);
+  assert.match(body, /Planned Use: Equipment/);
+  assert.doesNotMatch(body, /Expansion Expansion/, "a partial long answer should not be sent");
+});
+
 test("rebook and reschedule alerts name the changed call", async () => {
   const sent = [];
   const db = { async query(sql, params = []) {
