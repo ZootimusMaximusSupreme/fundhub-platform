@@ -261,18 +261,18 @@ describe("inbound webhook capture (src/http/router.mjs)", { skip: !HAVE_DB ? "no
   /* --- EXACTLY ONE ROW PER DELIVERY, IN BOTH CONFIGURATIONS -----------------
 
      ClickFunnels is the provider every real booking arrives through, and it was
-     the one provider producing NO receipt at all in production.
+     the one provider producing NO receipt when CF_CAPTURE_MODE is off.
 
      The router skipped it, reasoning that src/adapters/clickfunnels.mjs writes
      its own row. It does — but only when process.env.CF_CAPTURE_MODE === "1",
-     and that flag is unset on Netlify. One writer minus a default-off flag is
+     and that flag can be off. One writer minus an off flag is
      zero writers, so the ticket's own goal ("every verified inbound webhook
      leaves a receipt") was missed by the busiest door in the system.
 
      Both settings of that flag are exercised here, against the real table, and
      both must land on exactly ONE row. Not two (a duplicate), not zero (the
      bug). This is the test that would have caught it: the earlier version
-     asserted zero under the production setting and called that correct. */
+     asserted zero under the off setting and called that correct. */
   const cfDelivery = async (marker) => {
     reset();
     // No email → the adapter answers 200 no_email and emits nothing.
@@ -287,9 +287,9 @@ describe("inbound webhook capture (src/http/router.mjs)", { skip: !HAVE_DB ? "no
     return { raw, out };
   };
 
-  test("ClickFunnels leaves exactly one receipt with CF_CAPTURE_MODE unset — the production setting", async () => {
+  test("ClickFunnels leaves exactly one post-handler receipt with CF_CAPTURE_MODE=0", async () => {
     const prev = process.env.CF_CAPTURE_MODE;
-    delete process.env.CF_CAPTURE_MODE;
+    process.env.CF_CAPTURE_MODE = "0";
     try {
       const marker = `${NONCE}-cf-off`;
       const { raw } = await cfDelivery(marker);
@@ -298,12 +298,32 @@ describe("inbound webhook capture (src/http/router.mjs)", { skip: !HAVE_DB ? "no
       assert.equal(
         rows.length,
         1,
-        "with CF_CAPTURE_MODE unset the adapter writes nothing, so the router must — this is the production hole"
+        "with CF_CAPTURE_MODE=0 the adapter writes nothing, so the router must"
       );
       assert.equal(rows[0].raw_body, raw, "the receipt must hold the payload verbatim");
       // The router's receipt records the DECISION; the adapter's does not.
       assert.equal(rows[0].parsed.status, 200);
       assert.equal(rows[0].parsed.outcome.reason, "no_email");
+    } finally {
+      if (prev === undefined) delete process.env.CF_CAPTURE_MODE;
+      else process.env.CF_CAPTURE_MODE = prev;
+    }
+  });
+
+  test("ClickFunnels rejects an invalid signature with CF_CAPTURE_MODE=0 and stores no receipt", async () => {
+    const prev = process.env.CF_CAPTURE_MODE;
+    process.env.CF_CAPTURE_MODE = "0";
+    try {
+      const marker = `${NONCE}-cf-bad-sig`;
+      const raw = JSON.stringify({ event_type: "order.created", id: marker, data: {} });
+      const out = await handleWebhook({
+        db, provider: "clickfunnels", rawBody: raw,
+        headers: { "x-webhook-clickfunnels-signature": "invalid" },
+        url: "https://x/api/webhooks/clickfunnels",
+        env: { CLICKFUNNELS_WEBHOOK_SECRET: CF_SECRET }
+      });
+      assert.equal(out.status, 401);
+      assert.equal((await capturesLike("clickfunnels", marker)).length, 0);
     } finally {
       if (prev === undefined) delete process.env.CF_CAPTURE_MODE;
       else process.env.CF_CAPTURE_MODE = prev;
