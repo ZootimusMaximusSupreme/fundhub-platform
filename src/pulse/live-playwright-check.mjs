@@ -78,6 +78,7 @@ export async function checkLivePlaywright({ db, now = new Date() }) {
   const failed = Number(payload?.failed ?? fromReport.failed ?? 0);
   const total = Number(payload?.total ?? fromReport.total ?? passed + failed);
   const ageHours = (ageMs / 3600000).toFixed(1);
+  const fails = Array.isArray(payload?.failedTitles) ? payload.failedTitles.slice(0, 5).join("; ") : "";
 
   if (ageMs > LIVE_PLAYWRIGHT_MAX_AGE_MS) {
     return check(
@@ -88,8 +89,15 @@ export async function checkLivePlaywright({ db, now = new Date() }) {
         "ops/launchd/ai.fundhub.live-playwright-sweep.plist (install commands are in its header comment)."
     );
   }
+  if (payload?.suiteNotRun === true) {
+    return check(
+      "live-playwright:desks",
+      "FAIL",
+      `Desk sweep preflight failed ${ageHours}h ago; live browser tests did not run.${fails ? ` Reason: ${fails}` : ""}`,
+      "Repair the live test principals and credential, then re-run scripts/live-playwright-sweep.mjs."
+    );
+  }
   if (row.outcome === "fail" || failed > 0 || score < 100) {
-    const fails = Array.isArray(payload?.failedTitles) ? payload.failedTitles.slice(0, 5).join("; ") : "";
     return check(
       "live-playwright:desks",
       "FAIL",

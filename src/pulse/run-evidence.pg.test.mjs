@@ -48,7 +48,7 @@ const uuid = () => crypto.randomUUID();
 
 /* ═════ shared helpers ═════ */
 
-const EVENTS_SHADOW = "events AS (SELECT * FROM jsonb_to_recordset($9::jsonb) AS x(id uuid, org_id uuid, name text, payload jsonb, created_at timestamptz))";
+const EVENTS_SHADOW = "events AS (SELECT * FROM jsonb_to_recordset($9::jsonb) AS x(id uuid, org_id uuid, client_id uuid, is_demo boolean, name text, payload jsonb, created_at timestamptz))";
 const RUNS_SHADOW = "workflow_runs AS (SELECT * FROM jsonb_to_recordset($10::jsonb) AS x(run_id text, attempt int, function_id text, event_name text, bus_event_id text, max_attempts int, started_at timestamptz, finished_at timestamptz, outcome text, \"final\" boolean, skipped boolean, note text, error text))";
 
 /** RUNS_SQL with `events` (and, for Part 1, `workflow_runs`) put in front as CTEs that hold only the made-up rows. */
@@ -70,6 +70,7 @@ function readParams(fnIds, names) {
 describe("RUNS_SQL on a real Postgres, with made-up rows (read only)", { skip: SKIP_READ }, () => {
   const ORG = uuid();
   const OTHER_ORG = uuid();
+  const CLIENT = uuid();
   let probeTable = null;
 
   before(async () => {
@@ -102,6 +103,8 @@ describe("RUNS_SQL on a real Postgres, with made-up rows (read only)", { skip: S
   const post = (name, msAgo, over = {}) => ({
     id: uuid(),
     org_id: over.org || ORG,
+    client_id: "client" in over ? over.client : CLIENT,
+    is_demo: over.demo || false,
     name,
     payload: "payload" in over ? over.payload : { email: over.email ?? "maria@example.com", funnel: over.funnel ?? "apply" },
     created_at: at(msAgo)
@@ -194,6 +197,37 @@ describe("RUNS_SQL on a real Postgres, with made-up rows (read only)", { skip: S
     const b = post("payment.received", 2 * HOUR);
     const r = await read({ fnIds: ["f-pay"], names: ["payment.received"], events: [a, b] });
     assert.equal(missN(r), 2);
+  });
+
+  test("a marked synthetic paid event is not a missing live workflow run", async () => {
+    const synthetic = post("payment.received", 2 * HOUR, { demo: true });
+    const live = post("payment.received", 2 * HOUR - 1000);
+    assert.equal(missN(await read({ fnIds: ["f-pay"], names: ["payment.received"], events: [synthetic, live] })), 1);
+  });
+
+  test("booking miss is covered only by a later same-client, same-slot event with this workflow's run", async () => {
+    const first = post("booking.created", 2 * HOUR, { payload: {
+      email: "maria@example.com", bookingUid: uuid(), startTime: "2026-11-05T19:00:00Z"
+    } });
+    const later = post("booking.created", 2 * HOUR - 2000, { payload: {
+      email: "MARIA@example.com", bookingUid: "76281", startTime: "2026-11-05T19:00:00.000Z"
+    } });
+    assert.equal(missN(await read({ fnIds: ["f-book"], names: ["booking.created"], events: [first, later], runs: [runFor(later, "f-book")] })), 0);
+
+    const wrong = [
+      { events: [first, later], runs: [runFor(later, "f-other")], expected: 2 },
+      { events: [first, { ...later, client_id: uuid() }], runs: [runFor(later, "f-book")], expected: 1 },
+      { events: [first, { ...later, org_id: OTHER_ORG }], runs: [runFor(later, "f-book")], expected: 1 },
+      { events: [first, { ...later, payload: { ...later.payload, email: "other@example.com" } }], runs: [runFor(later, "f-book")], expected: 1 },
+      { events: [first, { ...later, payload: { ...later.payload, startTime: "2026-11-06T19:00:00Z" } }], runs: [runFor(later, "f-book")], expected: 1 },
+      { events: [first, { ...later, created_at: at(2 * HOUR - 6 * MIN) }], runs: [runFor(later, "f-book")], expected: 1 },
+      { events: [first, later], runs: [], expected: 2 },
+      { events: [{ ...first, client_id: null }, later], runs: [runFor(later, "f-book")], expected: 1 }
+    ];
+    for (const { expected, ...scenario } of wrong) {
+      assert.equal(missN(await read({ fnIds: ["f-book"], names: ["booking.created"], ...scenario })), expected,
+        "a different workflow, client, company, address, appointment, late event, absent run, or anonymous event stays red");
+    }
   });
 
   test("miss GREEN: a chain of repeats inside six hours of each other is one first post and its repeats", async () => {

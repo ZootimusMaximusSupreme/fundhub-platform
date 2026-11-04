@@ -5,6 +5,7 @@ import {
   EVENING_BRIEF_CRON,
   formatMorningText,
   redEvidenceKind,
+  redScope,
   summarizeSystems,
   summarizeStoredSystems,
   catalogCoverage,
@@ -420,15 +421,27 @@ test("red labels keep missing proof and stale checks red without calling them fa
     redRow("wf:s-04-call-booked", { proof: "1 event came and no receipt shows this workflow started." }),
     redRow("catalog-display:desks-f.json:products-commissions.html:Page open", { proof: "no saved receipt or linked result exists" }),
     redRow("audit:not-checked", { proof: "1 not checked" }),
-    redRow("live-playwright:desks", { proof: "Last sweep was 663.4h ago" }),
+    redRow("live-playwright:desks", { proof: "Last sweep was 663.4h ago. Too old." }),
     redRow("gap:sms-provider-failed", { proof: "76 customer texts failed at provider" }),
   ];
   const s = summarizeSystems({ checks: rows });
   assert.deepEqual(s.red_kinds, { failed_result: 1, needs_proof: 3, stale_check: 1 });
+  assert.equal(redEvidenceKind(redRow("live-playwright:desks", { proof: "Desk sweep preflight failed 0.1h ago; live browser tests did not run." })), "needs_proof");
   assert.deepEqual(rows.map((c) => redEvidenceKind(c)), ["needs_proof", "needs_proof", "needs_proof", "stale_check", "failed_result"]);
   assert.equal(s.red, 5);
   assert.equal(s.broken, 5);
   assert.ok(s.reds.includes(rows[0]), "the saved red rows are unchanged");
   assert.match(s.line, /5 red checks \(1 reported failure, 3 need proof, 1 stale check\)/);
   assert.doesNotMatch(s.line, /Nothing needs you/);
+});
+
+test("hourly beat failures stay in Heartbeat health while their deep customer tripwires stay separate", () => {
+  for (const id of ["vendor-keys", "message-health", "text-path", "apply-links", "lead-handoff"]) {
+    assert.equal(redScope({ id }), "heartbeat", id);
+  }
+  for (const id of ["keys:vendor-key-read", "gap:sms-sending-stuck", "handoff:lead-first-touches-missing"]) {
+    assert.equal(redScope({ id }), "business", id);
+  }
+  assert.equal(redScope({ id: "audit:not-checked", proof: "1 check was not checked: soft-pull:approve-signed-read. A live thing that is not checked is a break in the heartbeat." }), "business");
+  assert.equal(redScope({ id: "audit:not-checked", proof: "2 checks were not checked: soft-pull:approve-signed-read, job:cron-clock." }), "heartbeat", "a mixed audit gap is not labeled as buyer-only");
 });

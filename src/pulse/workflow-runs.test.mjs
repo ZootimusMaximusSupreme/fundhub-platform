@@ -387,6 +387,12 @@ test("c: the miss read leaves out a repeat funnel post, and only that", () => {
   assert.equal((RUNS_SQL.match(/make_interval\(mins => 360\)/g) || []).length, 1);
 });
 
+test("synthetic events are excluded from both demand and missing-run counts", () => {
+  assert.match(EVENTS_SQL, /COALESCE\(is_demo, false\) = false/);
+  const miss = RUNS_SQL.slice(RUNS_SQL.indexOf("SELECT 'miss'"), RUNS_SQL.indexOf("SELECT 'meta'"));
+  assert.match(miss, /COALESCE\(e\.is_demo, false\) = false/);
+});
+
 /* ═════ d. a run that started and never finished ═════ */
 
 test("d: a workflow that does not sleep, with a run open over 30 minutes: FAIL 'started, never finished'", async () => {
