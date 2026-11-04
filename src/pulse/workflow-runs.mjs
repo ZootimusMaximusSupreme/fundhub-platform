@@ -176,8 +176,9 @@ const REPEAT_POST_SQL = `e.name IN (${REPEAT_SUPPRESSED_EVENTS.map((n) => `'${n}
 
 /* Some booking adapters store a provisional form event, then the real ClickFunnels call event
    seconds later for the same person and appointment. Only the later event's receipt for THIS
-   function proves that the logical booking was handled. The provisional event's own dead letter
-   remains visible in the failed-events lane. A different client, slot, or missing run stays red. */
+   function proves that the logical booking was started. The run branch still judges a later run's
+   failed or unfinished outcome; the provisional event's own dead letter remains visible in the
+   failed-events lane. A different client, slot, or missing run stays red. */
 const EQUIVALENT_BOOKING_RUN_SQL = `e.name = 'booking.created'
      AND e.client_id IS NOT NULL
      AND COALESCE(e.payload->>'email', '') <> ''

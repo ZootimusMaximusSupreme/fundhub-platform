@@ -213,6 +213,10 @@ describe("RUNS_SQL on a real Postgres, with made-up rows (read only)", { skip: S
       email: "MARIA@example.com", bookingUid: "76281", startTime: "2026-11-05T19:00:00.000Z"
     } });
     assert.equal(missN(await read({ fnIds: ["f-book"], names: ["booking.created"], events: [first, later], runs: [runFor(later, "f-book")] })), 0);
+    const laterFailed = await read({ fnIds: ["f-book"], names: ["booking.created"], events: [first, later],
+      runs: [runFor(later, "f-book", { outcome: "error", error: "provider denied" })] });
+    assert.equal(missN(laterFailed), 0, "the booked workflow started even when its later run failed");
+    assert.equal(laterFailed.run[0].outcome, "error", "the run failure remains available for its own red verdict");
 
     const wrong = [
       { events: [first, later], runs: [runFor(later, "f-other")], expected: 2 },

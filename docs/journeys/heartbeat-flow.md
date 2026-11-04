@@ -14,10 +14,12 @@ OffersIQ uses those same setter doors and the existing private closer read. It m
 
 - A **check** asks one yes-or-no question about the company. "Does the login page answer?" "Did every paid client get the portal?"
 - A **tripwire** is a check that goes red before a customer hits the break.
-- Every morning at **6:00 a.m. Arizona**, one job runs more than 1,000 checks. Every red one goes in the text to Chris.
+- Every morning at **6:00 a.m. Arizona**, one job runs more than 1,000 checks. The text gives separate Heartbeat health and money/customer counts; the linked report lists every red check and its evidence.
 - Every **5 minutes**, a small watch runs 5 checks (health, login, apply page, roadmap sales page, outbound sends). If one breaks, Chris gets a text right away. At most one text an hour for the same break.
 - Most checks only run at 6 a.m. A break at noon shows up in the next morning's text, unless it is one of the 5.
 - The pulse **only reports**. It never fixes anything. Chris, or an agent he asks, fixes reds.
+
+The `apply-links` beat's 991 historical `pulse_bank_links` hashes are being reconciled after the owner-approved October 24 lender catalog cutover; the root lane owns the migration and beat repair, and live proof is still pending.
 
 ## Kinds of check
 
