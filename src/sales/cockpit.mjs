@@ -10,6 +10,7 @@ import { toBureaus } from "../underwrite/adapter.mjs";
 import { computeUnderwrite } from "../underwrite/engine.mjs";
 import { applyStackedBusinessFunding } from "../underwrite/business-funding.mjs";
 import { offersForClient } from "../config/offers.mjs";
+import { offersIqSummaryForClient } from "../finance/offersiq.mjs";
 
 function money(n) {
   if (n == null || !Number.isFinite(Number(n))) return null;
@@ -416,6 +417,7 @@ export async function buildCockpit(db, { orgId, staffId, clientId, now = new Dat
       name: staffRow.rows[0]?.name || null,
       shift: describeShift(shift.rows[0], now)
     },
+    offersiq: offersIqSummaryForClient(client),
     kpis: {
       cash_today_cents: await todayCash(db, { orgId, staffId, now }),
       cash_month_cents: Number(kpi.cash_cents || 0),

@@ -8,6 +8,7 @@
 //   softpull:request-failed-or-stuck   a credit pull failed in the last 3 days, or sits queued or mid-run past its clock
 //   softpull:paid-form-not-filled-2h   a paid roadmap buyer left the pull form empty over 2 hours and got no reminder
 //   softpull:approve-click-no-pull     a client approved the pull and paid, and no pull started 15 minutes later
+//   softpull:offersiq-ledger           an OffersIQ request stalled, lost its receipt, or has a recent unresolved error
 //   keys:credit-pull-live-allowed      the live settings allow a real pull (CRS_ALLOW_LIVE on, production host,
 //                                      login set). Judged only on the live server; on a laptop it is a skip.
 // Test clients are left out the same way the lanes leave them out.
@@ -25,8 +26,8 @@
 
 import { laneSelfTest, runLaneBeat, SELF_TEST_NOW } from "./lib/money-hourly.mjs";
 import {
-  APPROVE_PAGE_PATH, APPROVE_READ_PATH, LEDGER_SQL, checkApproveClickNoPull, checkApprovePage, checkApproveRead,
-  checkPaidFormNotFilled, checkRequestFailedOrStuck
+  APPROVE_PAGE_PATH, APPROVE_READ_PATH, LEDGER_SQL, OFFERSIQ_LEDGER_SQL, checkApproveClickNoPull,
+  checkApprovePage, checkApproveRead, checkPaidFormNotFilled, checkRequestFailedOrStuck, checkOffersIqLedger
 } from "./lib/soft-pull-truth.mjs";
 import { creditPullLiveAllowed } from "./lib/credit-pull-key-truth.mjs";
 import { webFromHttp } from "./lib/web-reader.mjs";
@@ -37,6 +38,7 @@ export const HOURLY_CHECK_IDS = Object.freeze([
   "softpull:request-failed-or-stuck",
   "softpull:paid-form-not-filled-2h",
   "softpull:approve-click-no-pull",
+  "softpull:offersiq-ledger",
   "keys:credit-pull-live-allowed"
 ]);
 
@@ -66,7 +68,8 @@ export const LANE = Object.freeze({
       checkApproveRead({ web, baseUrl: io.baseUrl }),
       checkRequestFailedOrStuck(reader),
       checkPaidFormNotFilled(reader),
-      checkApproveClickNoPull(reader)
+      checkApproveClickNoPull(reader),
+      checkOffersIqLedger(reader)
     ]);
     return [...rows, creditPullLiveAllowed(io.env)];
   },
@@ -76,6 +79,9 @@ export const LANE = Object.freeze({
       [`GET ${SITE}${APPROVE_READ_PATH}`]: Object.freeze({ status: 400, body: JSON.stringify({ ok: false, error: "missing_token" }) })
     }),
     passEnv: LIVE_SETUP,
+    passRows: Object.freeze([
+      Object.freeze([OFFERSIQ_LEDGER_SQL, Object.freeze([Object.freeze({ stale: 0, missing_receipt: 0, errors: 0 })])])
+    ]),
     // A pull C-00 ran for a paid buyer failed an hour ago and nobody retried it: red at the ledger step.
     failRows: Object.freeze([
       Object.freeze([LEDGER_SQL, Object.freeze([Object.freeze({
@@ -114,16 +120,18 @@ export async function run(ctx) {
 }
 
 export const fixGuide = [
-  "A soft pull did not run, failed or stalled, the approve screen broke, or real pulls are not allowed.",
+  "A soft pull or OffersIQ request did not run, failed or stalled, the approve screen broke, or real pulls are not allowed.",
   "",
   "Likely causes:",
   "- C-00 stopped with no pull row: the client has no portal account, or no live soft-pull consent.",
   "- The credit vendor refused or timed out, so the pull row is failed or stuck in processing.",
+  "- OffersIQ left a request in flight, failed recently, or completed without a provider receipt.",
   "- CRS_ALLOW_LIVE, CRS_API_HOST or the CRS login on Netlify changed, so the pull refuses the real host.",
   "",
   "Steps:",
   "- Run node scripts/pulse/run-beat.mjs soft-pull and read the red step: it names the count, the age and short client ids.",
   "- Read soft_pull_requests and the C-00 run for that payment; for a paid buyer with an empty form, read the slo-paid-form-nudge run.",
+  "- Read offersiq_requests for a red OffersIQ ledger step. Resolve the recorded cause; the beat makes no provider request.",
   "- Fix the cause, then use the staff pull button. Never pull credit or send bureau mail from the pulse.",
   "Files: src/pulse/beats/lib/soft-pull-truth.mjs, src/workflows/c-00-crs-soft-pull-request.mjs, api/soft-pull-approve.mjs, src/finance/crs-identities.mjs"
 ].join("\n");

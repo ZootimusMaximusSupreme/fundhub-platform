@@ -86,6 +86,16 @@ One follow-up the next day if they stay quiet:
 
 ## Call script — they already booked
 
+### Offer matching, when connected
+
+The setter desk can check the saved CRS offer rules after the lead confirms their current home address. Ask for street, unit, city, state and ZIP; check the confirmation box and click **Save home address**. Do not substitute a business address or ask for an SSN.
+
+Read the permission line in **Offer match**, then check **The lead agreed to offer matching under these terms** only if they agree. Click **Check offer match** once. The saved result and receipt appear on the setter and closer screens. A match means these offer rules matched; it is not a credit approval. A missing file or uncertain identity needs review, rather than a credit decline. Any later credit application is separate.
+
+The check is hidden until OffersIQ is connected. Address corrections make the old result stale. If a request is still pending or its result is uncertain, refresh the lead and review the stored receipt; do not try address variations to force a match. A unit or identity detail that the current provider request cannot represent goes to review. Continue the normal handoff while it is unresolved.
+
+Administrator setup uses dedicated `CRS_OFFERSIQ_API_HOST`, `CRS_OFFERSIQ_API_USERNAME`, `CRS_OFFERSIQ_API_PASSWORD` and `CRS_OFFERSIQ_RULESET_ID` values from the same CRS environment. The sandbox host is `https://api-sandbox.stitchcredit.com/api`; production is `https://mware.crscreditapi.com/api` and also requires `CRS_OFFERSIQ_ALLOW_LIVE=1`. Existing full-report credentials are never used as a fallback. Verify the documented synthetic sandbox identities and actual response before activating production. Keep credentials out of this document and GitHub.
+
 Say it like a person. Do not read it like a form.
 
 1. **Name.** “Hey, is this [Name]?”

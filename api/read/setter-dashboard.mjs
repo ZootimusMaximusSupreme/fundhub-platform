@@ -5,6 +5,7 @@ import { requireRole, isUuid, ROLE_SETS } from "../../src/http/read-api.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 import { latestUndoableDial, listSetterQueue } from "../../src/setter/dashboard.mjs";
 import { hasSetterIntroVideo } from "../../src/setter/send-actions.mjs";
+import { offersIqConfigFromEnv } from "../../src/finance/offersiq.mjs";
 
 export default async function handler(req, res, deps = {}) {
   if (req.method && req.method !== "GET") {
@@ -21,7 +22,9 @@ export default async function handler(req, res, deps = {}) {
   try {
     const data = await listSetterQueue(database, staff, req.query || {});
     const latest_undoable_dial = await latestUndoableDial(database, staff);
-    return res.status(200).json({ ok: true, ...data, latest_undoable_dial, intro_video_available: hasSetterIntroVideo(deps.env ?? process.env) });
+    return res.status(200).json({ ok: true, ...data, latest_undoable_dial,
+      intro_video_available: hasSetterIntroVideo(deps.env ?? process.env),
+      offersiq_available: offersIqConfigFromEnv(deps.env ?? process.env).configured });
   } catch (error) {
     if (dbDown(res, error)) return;
     throw error;

@@ -43,6 +43,13 @@ import {
   classifyBureauReport,
   creditFileStatuses
 } from "./crs-map.mjs";
+import {
+  buildOffersIqRequest,
+  assertOffersIqWireBody,
+  isOffersIqProductionFixtureIdentity,
+  parseOffersIqResponse,
+  OffersIqContractError
+} from "./offersiq-contract.mjs";
 
 /* ── What goes in the request, per bureau ──────────────────────────────────
    Spec docs/specs/roadmap-checkout-soft-pull-2026-09-22.md §2-§3 and its
@@ -251,6 +258,7 @@ export function createCrsClient({ env = process.env, fetchImpl, now = Date.now }
   let token = null;
   let refreshToken = null;
   let expiresAt = 0;
+  let offersIqExpiresAt = 0;
   let inFlight = null;
 
   function requireConfig() {
@@ -307,6 +315,13 @@ export function createCrsClient({ env = process.env, fetchImpl, now = Date.now }
       : null;
     expiresAt = token && Number.isFinite(seconds) && seconds > 0
       ? now() + seconds * 1000
+      : 0;
+    // The existing report API sample says seconds; the OffersIQ OpenAPI says
+    // milliseconds. Keep report behavior intact and cap this product's token
+    // lifetime at one hour under either documented unit.
+    const offersIqTtlMs = seconds > 10_000 ? seconds : seconds * 1000;
+    offersIqExpiresAt = token && Number.isFinite(offersIqTtlMs) && offersIqTtlMs > 0
+      ? now() + Math.min(offersIqTtlMs, 3_600_000)
       : 0;
     return token;
   }
@@ -371,12 +386,61 @@ export function createCrsClient({ env = process.env, fetchImpl, now = Date.now }
      ONE retry, not a loop: if a freshly minted token is also rejected, the
      credentials or the account are the problem and asking again cannot fix it.
      CLAUDE.md §8 — two failed attempts at the same thing is where we stop. */
-  async function authed(path, { method = "POST", body } = {}) {
-    let res = await call(path, { method, body, bearer: await getToken() });
+  async function getOffersIqToken() {
+    if (token && offersIqExpiresAt - TOKEN_SKEW_MS > now()) return token;
+    return getToken({ force: true });
+  }
+
+  async function authed(path, { method = "POST", body, offersIq = false } = {}) {
+    let res = await call(path, { method, body, bearer: offersIq ? await getOffersIqToken() : await getToken() });
     if (res.status === 401 || res.status === 403) {
       res = await call(path, { method, body, bearer: await getToken({ force: true }) });
     }
     return res;
+  }
+
+  function safeOffersIqError(res) {
+    if (res.blocked) return "OffersIQ request blocked by transport fence";
+    const codes = Array.isArray(res.body?.codes)
+      ? res.body.codes.filter(code => typeof code === "string" && /^CRS\d{3,5}$/.test(code)).slice(0, 3)
+      : [];
+    return codes.length ? `OffersIQ ${codes.join(",")}` : `OffersIQ HTTP ${res.status}`;
+  }
+
+  async function evaluateOffersIq({ ruleSetId, identity, consent } = {}) {
+    const body = buildOffersIqRequest({ ruleSetId, identity, consent });
+    // Fail before login too: neither a real consumer on sandbox nor a synthetic
+    // fixture on production may cross the final transport boundary.
+    assertOffersIqWireBody(body, { sandbox: config.host === CRS_SANDBOX_HOST });
+    if (config.host === CRS_PRODUCTION_HOST && isOffersIqProductionFixtureIdentity(body.consumerData)) {
+      throw new OffersIqContractError("test_identity_on_production", "sandbox identity refused on production");
+    }
+    const res = await authed("/offersiq/evaluate", { body, offersIq: true });
+    const requestId = res.headers?.requestid ?? res.headers?.["request-id"] ?? null;
+    if (res.blocked || !res.ok) {
+      return { ok: false, status: res.status, requestId, body: res.body ?? null,
+        decision: null, error: safeOffersIqError(res), blocked: !!res.blocked };
+    }
+    const decision = parseOffersIqResponse({ body: res.body, requestId, expectedRuleSetId: ruleSetId });
+    return { ok: decision.outcome !== "error", status: res.status, requestId: decision.requestId,
+      body: res.body ?? null, decision,
+      error: decision.outcome === "error" ? decision.reason : null, blocked: false };
+  }
+
+  async function reevaluateOffersIq({ requestId } = {}) {
+    if (typeof requestId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+      throw new OffersIqContractError("request_id_invalid", "OffersIQ requestId must be a UUID");
+    }
+    const res = await authed(`/offersiq/reevaluate/${requestId}`, { offersIq: true });
+    const returnedId = res.headers?.requestid ?? res.headers?.["request-id"] ?? null;
+    if (res.blocked || !res.ok) {
+      return { ok: false, status: res.status, requestId: returnedId, body: res.body ?? null,
+        decision: null, error: safeOffersIqError(res), blocked: !!res.blocked };
+    }
+    const decision = parseOffersIqResponse({ body: res.body, requestId: returnedId });
+    return { ok: decision.outcome !== "error", status: res.status, requestId: decision.requestId,
+      body: res.body ?? null, decision,
+      error: decision.outcome === "error" ? decision.reason : null, blocked: false };
   }
 
   function productFor(bureau) {
@@ -582,6 +646,8 @@ export function createCrsClient({ env = process.env, fetchImpl, now = Date.now }
     login,
     refresh,
     getToken,
+    evaluateOffersIq,
+    reevaluateOffersIq,
     orderPrequal,
     retrievePrequal,
     orderBusinessReport,

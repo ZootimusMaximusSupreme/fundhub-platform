@@ -182,6 +182,8 @@ function setterSorted(items) {
   var bookingUrl = "";
   var appStoreUrl = "";
   var introVideoAvailable = false;
+  var offersIqAvailable = false;
+  var offersIqBusy = false;
   var page = 0;
   var saveTimer = 0;
   var busy = false;
@@ -249,6 +251,108 @@ function setterSorted(items) {
 
   function clearDialOperationId(clientId) {
     try { sessionStorage.removeItem("fh:setter:pending-dial:" + clientId); } catch (_) {}
+  }
+
+  function offersIqOperationId(item) {
+    var address = item.residential_address || {};
+    var identityKey = item.offersiq_identity_key || JSON.stringify([item.client_name, item.phone,
+      address.line1, address.line2, address.city, address.state, address.zip]);
+    var key = "fh:setter:offersiq:" + item.client_id + ":" + identityKey;
+    try { var saved = sessionStorage.getItem(key); if (saved) return saved; } catch (_) {}
+    var id = crypto.randomUUID();
+    try { sessionStorage.setItem(key, id); } catch (_) {}
+    return id;
+  }
+
+  function offersIqLabel(result) {
+    if (result && result.stale) return "Needs a fresh address check";
+    return { matched: "Matched these rules", not_matched: "No match for these rules",
+      needs_review: "Needs review", error: "Result unavailable" }[result && result.outcome] || "Not checked";
+  }
+
+  function offersIqContent(item) {
+    var result = item.offersiq;
+    var html = '<h3>Offer match</h3><p>Matches the lead to the saved offer rules. Any credit application is reviewed separately.</p>';
+    if (result) {
+      html += '<p><strong>' + setterEsc(offersIqLabel(result)) + '</strong>' +
+        (result.environment === "sandbox" ? ' · Sandbox test' : '') + '</p>';
+      if (result.stale) html += '<p>The saved result belongs to earlier contact or address details.</p>';
+      if (result.rule_set_name) html += '<p>' + setterEsc(result.rule_set_name) + '</p>';
+      if (!result.stale && typeof result.credit_score === "number") html += '<p>OffersIQ score: <strong>' + setterEsc(result.credit_score) + '</strong></p>';
+      if (result.checked_at) html += '<p>Checked ' + setterEsc(setterDate(result.checked_at)) + '.</p>';
+      var conditions = result.individual_results;
+      if (!result.stale && Array.isArray(conditions) && conditions.length) {
+        html += '<details><summary>Returned rule details</summary><p>Some rules are alternatives. Use the overall match above.</p><ul>';
+        conditions.forEach(function (condition) {
+          html += '<li>' + setterEsc(condition.attributeName || condition.attributeCode || "Rule") + ': ' +
+            setterEsc(condition.status || (condition.passed ? "PASSED" : "UNVERIFIABLE")) +
+            (condition.expectedValue != null ? ' · Target ' + setterEsc(JSON.stringify(condition.expectedValue)) : '') + '</li>';
+        });
+        html += '</ul></details>';
+      }
+      var profile = result.offers_iq_summary;
+      if (!result.stale && profile && Object.keys(profile).length) {
+        html += '<details><summary>Returned financial profile</summary><ul>';
+        Object.keys(profile).forEach(function (key) {
+          var value = profile[key];
+          if (typeof value !== "number" && typeof value !== "boolean") return;
+          var label = key.replace(/([a-z])([A-Z])/g, "$1 $2");
+          html += '<li>' + setterEsc(label) + ': ' + setterEsc(typeof value === "boolean" ? value ? "Yes" : "No" : value.toLocaleString("en-US")) + '</li>';
+        });
+        html += '</ul></details>';
+      }
+      if (result.request_id) html += '<details><summary>Saved receipt</summary><p>' + setterEsc(result.request_id) + '</p></details>';
+    }
+    var address = item.residential_address || {};
+    var checked = result && !result.stale;
+    if (offersIqAvailable && !checked && address.confirmed_at) {
+      html += '<p>Ask: “May Fundhub use your name and current home address with CRS to match you with suitable offers under our offer-matching terms?”</p>' +
+        '<p><a href="/terms/#offer-matching" target="_blank" rel="noopener">Read the offer-matching terms ↗</a></p>' +
+        '<div class="setter-checks"><label><input id="setter-offersiq-consent" type="checkbox"><span>The lead agreed to offer matching under these terms</span></label></div>' +
+        '<button type="button" class="fh-astra-action" data-action="evaluate-offersiq">Check offer match</button>';
+    } else if (offersIqAvailable && !checked) html += '<p>Confirm and save the current home address above first.</p>';
+    return html + '<div class="setter-status" id="setter-offersiq-status" role="status" aria-live="polite"></div>';
+  }
+
+  function repaintOffersIq() {
+    var section = document.getElementById("setter-offersiq-section");
+    if (section && selected) section.innerHTML = offersIqContent(selected);
+  }
+
+  function evaluateOffersIq() {
+    if (!selected || busy || offersIqBusy) return;
+    var consent = document.getElementById("setter-offersiq-consent");
+    var status = document.getElementById("setter-offersiq-status");
+    if (saveTimer || surveyDirty) { if (status) status.textContent = "Finish saving the survey and call notes first."; return; }
+    if (!consent || !consent.checked) { if (status) status.textContent = "Ask for the lead's permission first."; return; }
+    var item = selected;
+    var controls = Array.from(detailEl.querySelectorAll("input, select, textarea, button")).map(function (el) {
+      var original = { el: el, disabled: el.disabled }; el.disabled = true; return original;
+    });
+    busy = true; offersIqBusy = true; addressVersion += 1;
+    if (status) status.textContent = "Checking the saved home address…";
+    request("/api/setter-dashboard", { method: "POST", body: {
+      action: "evaluate_offersiq", client_id: item.client_id,
+      operation_id: offersIqOperationId(item), consent_accepted: true
+    } }).then(function (response) {
+      var body = response.body || {};
+      if (body.result) {
+        item.offersiq = body.result;
+        if (selected && selected.client_id === item.client_id) repaintOffersIq();
+        return;
+      }
+      if (!status) return;
+      var messages = { needs_address: "Confirm and save the current home address first.",
+        needs_consent: "Ask for the lead's permission first.",
+        not_configured: "Offer matching is not connected. Continue the handoff.",
+        needs_review: "The saved identity or address needs review. No match has been confirmed." };
+      status.textContent = messages[body.status] || "The result is unconfirmed. Refresh the lead before trying again.";
+    }).catch(function () {
+      if (status) status.textContent = "The result is unconfirmed. Refresh the lead before trying again.";
+    }).finally(function () {
+      busy = false; offersIqBusy = false;
+      controls.forEach(function (control) { if (control.el.isConnected) control.el.disabled = control.disabled; });
+    });
   }
 
   function undoLastDial() {
@@ -496,6 +600,7 @@ function setterSorted(items) {
       '<div class="setter-checks"><label><input id="setter-address-confirmed" type="checkbox"><span>The lead confirmed this is their current home address</span></label></div>' +
       '<div class="setter-actions"><button type="button" class="fh-astra-action" data-action="save-address">Save home address</button><button type="button" class="fh-astra-action" data-action="cancel-address">Cancel address edits</button></div>' +
       '<div class="setter-status" id="setter-address-status" role="status" aria-live="polite"></div></section>' +
+      (offersIqAvailable || item.offersiq ? '<section class="setter-section" id="setter-offersiq-section">' + offersIqContent(item) + '</section>' : '') +
       '<section class="setter-section" id="setter-details-section"><h3>Setter questions · during the call</h3><p>Confirm the business answers above when they apply. Offer personal funding too, even when they have a business. These call notes do not change the survey.</p>' +
       '<div class="setter-fields"><div class="setter-field"><label for="setter-use">Funding paths discussed</label><select id="setter-use" name="triage_personal_or_business">' + option("", "Not discussed yet", h.triage_personal_or_business || "") + option("business", "Business", h.triage_personal_or_business) + option("personal", "Personal", h.triage_personal_or_business) + option("both", "Business and personal", h.triage_personal_or_business) + '</select></div>' +
       '<div class="setter-field"><label for="setter-employment">Employment</label><select id="setter-employment" name="employment_status">' + option("", "Not asked yet", h.employment_status || "") + option("w2", "W-2 employee", h.employment_status) + option("self_employed", "Self-employed", h.employment_status) + option("retired", "Retired", h.employment_status) + option("not_working", "Not working", h.employment_status) + option("other", "Other income", h.employment_status) + option("not_shared", "Declined to share", h.employment_status) + '</select></div>' +
@@ -533,6 +638,10 @@ function setterSorted(items) {
     if (!selected || busy) return;
     var clientId = selected.client_id;
     var address = readAddress();
+    var priorAddress = selected.residential_address || {};
+    var addressChanged = ["line1", "line2", "city", "state", "zip"].some(function (key) {
+      return String(priorAddress[key] || "").trim().toUpperCase() !== String(address[key] || "").trim().toUpperCase();
+    });
     var status = document.getElementById("setter-address-status");
     var controls = detailEl.querySelectorAll('#setter-address-section input, #setter-address-section button');
     if (status) { status.textContent = "Saving home address…"; status.className = "setter-status"; }
@@ -552,6 +661,8 @@ function setterSorted(items) {
       if (selected && selected.client_id === clientId) selected.residential_address = result.body.address;
       addressDirty = false;
       addressVersion += 1;
+      if (addressChanged && item && item.offersiq) item.offersiq = Object.assign({}, item.offersiq, { stale: true, outcome: "needs_review" });
+      repaintOffersIq();
       if (status) { status.textContent = "Home address saved on this lead."; status.className = "setter-status success"; }
     }).catch(function () {
       if (status) { status.textContent = messageFor(null); status.className = "setter-status error"; }
@@ -748,7 +859,7 @@ function setterSorted(items) {
     refreshBtn.disabled = true;
     queueEl.setAttribute("aria-busy", "true");
     request(queueUrl()).then(function (result) {
-      if (requestId !== loadRequestId || startedAddressVersion !== addressVersion || addressDirty || addressSaving) return;
+      if (requestId !== loadRequestId || startedAddressVersion !== addressVersion || addressDirty || addressSaving || offersIqBusy) return;
       if (result.status < 200 || result.status >= 300 || !result.body || !Array.isArray(result.body.items)) {
         queueEl.innerHTML = '<div class="setter-state fh-astra-state"><h2>Could not load the call queue</h2><p>' + setterEsc(messageFor(result)) + '</p><button type="button" class="fh-astra-action" data-action="retry">Try again</button></div>';
         detailEl.innerHTML = '<div class="setter-state">The checklist will appear when the queue loads.</div>';
@@ -760,6 +871,7 @@ function setterSorted(items) {
       paintUndoDial();
       paintNumbers(result.body.numbers);
       introVideoAvailable = result.body.intro_video_available === true;
+      offersIqAvailable = result.body.offersiq_available === true;
       bookingUrl = /^https:\/\//.test(result.body.booking_url || "") ? result.body.booking_url : "";
       var wanted = selectedId() || requestedClientId;
       var index = wanted ? queue.findIndex(function (row) { return row.client_id === wanted; }) : -1;
@@ -769,7 +881,7 @@ function setterSorted(items) {
       if (statusText && !(requestedClientId && index < 0)) say(statusText, "success");
       if (wanted && index < 0) detailEl.innerHTML = '<div class="setter-state" role="alert">That lead is not in the setter queue. Choose another lead or refresh.</div>';
     }).catch(function () {
-      if (requestId !== loadRequestId || startedAddressVersion !== addressVersion || addressDirty || addressSaving) return;
+      if (requestId !== loadRequestId || startedAddressVersion !== addressVersion || addressDirty || addressSaving || offersIqBusy) return;
       queueEl.innerHTML = '<div class="setter-state fh-astra-state"><h2>Could not load the call queue</h2><p>Check your connection and try again.</p><button type="button" class="fh-astra-action" data-action="retry">Try again</button></div>';
       detailEl.innerHTML = '<div class="setter-state">The checklist will appear when the queue loads.</div>';
       countEl.textContent = "Queue unavailable";
@@ -788,6 +900,7 @@ function setterSorted(items) {
     if (row) {
       var next = queue.find(function (item) { return item.client_id === row.dataset.clientId; }) || null;
       if (addressSaving) { say("Wait for the home address to finish saving.", "error"); return; }
+      if (offersIqBusy) { say("Wait for the offer match to finish.", "error"); return; }
       if (selected && next && next.client_id === selected.client_id) return;
       if (selected && next && next.client_id !== selected.client_id && addressDirty) {
         say("Save or cancel the home address edits before choosing another lead.", "error");
@@ -809,6 +922,7 @@ function setterSorted(items) {
     }
   });
   detailEl.addEventListener("input", function (event) {
+    if (event.target.closest("#setter-offersiq-section")) return;
     if (event.target.closest("#setter-address-section")) {
       addressDirty = true;
       addressVersion += 1;
@@ -827,6 +941,7 @@ function setterSorted(items) {
     saveSoon(!!event.target.closest("#setter-details-section"));
   });
   detailEl.addEventListener("change", function (event) {
+    if (event.target.closest("#setter-offersiq-section")) return;
     if (event.target.closest("#setter-address-section")) {
       addressDirty = true;
       addressVersion += 1;
@@ -847,6 +962,7 @@ function setterSorted(items) {
     if (action === "cancel-address") { cancelAddressEdits(); return; }
     if (addressSaving) { say("Wait for the home address to finish saving.", "error"); return; }
     if (addressDirty) { say("Save or cancel the home address edits first.", "error"); return; }
+    if (action === "evaluate-offersiq") { evaluateOffersIq(); return; }
     if (action === "save-survey") { saveSurvey(); return; }
     if (action === "save-details") {
       clearTimeout(saveTimer);
@@ -879,6 +995,7 @@ function setterSorted(items) {
     }).finally(function () { if (action === "log-dial") dialClickPending = false; });
   });
   refreshBtn.addEventListener("click", function () {
+    if (offersIqBusy) { say("Wait for the offer match to finish.", "error"); return; }
     if (addressSaving) { say("Wait for the home address to finish saving.", "error"); return; }
     if (addressDirty) { say("Save or cancel the home address edits before refreshing.", "error"); return; }
     saveSurvey().then(function (ok) { if (ok) load(); });
