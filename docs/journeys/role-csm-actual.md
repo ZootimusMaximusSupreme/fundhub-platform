@@ -202,9 +202,9 @@ prints a dash for null and never a zero.
 
 The endpoint shipped complete and, until 2026-09-17, **no page in the app had
 ever requested it** — a grep of `public/` for `csm-queue` returned nothing. The
-screen is `public/app/csm-queue.html`, reachable from the Client ops group of
-the shared sidebar (`public/app/sidebar.fragment.html` is the source; every
-screen's copy is written by `scripts/sync-sidebar.mjs`). It carries four things:
+screen is `public/app/csm-queue.html`, reachable from the Clients group of
+the shared header menu. `public/app/shell.js` mounts that menu and applies the
+same role gate on every staff screen. The page carries four things:
 
 * **The list.** One row per call: who, what the call is, when it is due, days
   overdue, the open balance, and the products they already own.

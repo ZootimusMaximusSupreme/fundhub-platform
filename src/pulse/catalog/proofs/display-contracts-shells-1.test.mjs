@@ -125,7 +125,7 @@ test("exports only exact wired rows in the three named source files", () => {
   }
 });
 
-test("rendered sidebar logo and burger show their navigation and rail results", { timeout: 60_000 }, async (t) => {
+test("rendered menu logo and close button show their navigation results", { timeout: 60_000 }, async (t) => {
   const { server, origin } = await startServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => {
@@ -139,6 +139,7 @@ test("rendered sidebar logo and burger show their navigation and rail results", 
 
   const logo = page.locator("#side a.logo");
   assert.equal(await logo.getAttribute("href"), "pipeline.html");
+  await page.locator("#fh-menu-btn").click();
   await logo.click();
   await page.waitForURL(/\/app\/pipeline\.html$/);
   await page.locator("#board").waitFor({ state: "attached" });
@@ -148,18 +149,15 @@ test("rendered sidebar logo and burger show their navigation and rail results", 
   await waitForShell(page);
   const side = page.locator("#side");
   const burger = page.locator("#burger");
-  const expandedWidth = await side.evaluate((node) => node.getBoundingClientRect().width);
+  const menu = page.locator("#fh-menu-btn");
+  assert.equal(await side.isVisible(), false);
+  await menu.click();
+  assert.equal(await side.isVisible(), true);
+  assert.equal(await menu.getAttribute("aria-expanded"), "true");
   await burger.click();
-  assert.equal(await side.evaluate((node) => node.classList.contains("mini")), true);
-  assert.equal(await page.locator("html").evaluate((node) => node.classList.contains("fh-side-mini")), true);
-  await page.waitForFunction((width) => document.querySelector("#side").getBoundingClientRect().width < width, expandedWidth);
-  const collapsedWidth = await side.evaluate((node) => node.getBoundingClientRect().width);
-  assert.ok(collapsedWidth < expandedWidth, `collapsed rail ${collapsedWidth}px should be narrower than ${expandedWidth}px`);
-  await burger.click();
+  assert.equal(await side.isVisible(), false);
+  assert.equal(await menu.getAttribute("aria-expanded"), "false");
   assert.equal(await side.evaluate((node) => node.classList.contains("mini")), false);
-  await page.waitForFunction((width) => Math.abs(document.querySelector("#side").getBoundingClientRect().width - width) < 1, expandedWidth);
-  const restoredWidth = await side.evaluate((node) => node.getBoundingClientRect().width);
-  assert.ok(Math.abs(restoredWidth - expandedWidth) < 1, `restored rail ${restoredWidth}px should match ${expandedWidth}px`);
   await page.close();
 });
 

@@ -110,6 +110,7 @@ test("Sidebar: a partner is shown Social Studio and Creative Factory here, and n
     // the shell gates the rail from the role after the session answers: a gated row carries data-fh-gated
     await page.waitForSelector("#side a.navitem", { state: "attached" });
     await page.waitForFunction(() => document.querySelectorAll("#side [data-fh-gated]").length > 0);
+    await page.locator("#fh-menu-btn").click();
     const rows = await page.evaluate(() => [...document.querySelectorAll("#side a.navitem")].map((a) => {
       const box = a.closest("li") || a;
       return { href: a.getAttribute("data-fh-href") || a.getAttribute("href"), shown: getComputedStyle(box).display !== "none" && getComputedStyle(a).display !== "none" };

@@ -1,4 +1,4 @@
-// Playwright: sidebar item set per role + fixed geometry across navigation.
+// Playwright: role-scoped website menu with no persistent left rail.
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
@@ -62,6 +62,8 @@ async function waitForGate(page) {
 
 async function visibleNavHrefs(page) {
   await waitForGate(page);
+  await page.getByRole("button", { name: "Open menu", exact: true }).click();
+  await expect(page.locator("#side")).toBeVisible();
   return page.evaluate(() => {
     const out = [];
     for (const a of document.querySelectorAll("a.navitem")) {
@@ -87,9 +89,31 @@ async function sideBox(page) {
       left: Math.round(r.left),
       top: Math.round(r.top),
       width: Math.round(r.width),
-      position: cs.position
+      position: cs.position,
+      visibility: cs.visibility,
+      inert: el.inert,
+      pagePadding: Math.round(parseFloat(getComputedStyle(document.querySelector(".app,.app-shell")).paddingLeft))
     };
   });
+}
+
+async function markedMenuShot(page, selector, file, caption) {
+  if (process.env.WEBSITE_NAV_SHOTS !== "1") return;
+  const folder = path.resolve(APP, "../../ops/workflows/portal-tab-jump-2026-11-04");
+  await page.evaluate(({ selector, caption }) => {
+    const r = document.querySelector(selector).getBoundingClientRect();
+    const mark = document.createElement("div");
+    mark.id = "fh-nav-review-mark";
+    mark.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none";
+    const cx = r.left + Math.min(r.width / 2, 310);
+    const cy = r.top + Math.min(r.height / 2, 240);
+    const rx = Math.min(r.width / 2 + 5, 315);
+    const ry = Math.min(r.height / 2 + 5, 245);
+    mark.innerHTML = `<svg width="100%" height="100%"><defs><marker id="fh-arrow" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#ffd100"/></marker></defs><ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="#df222b" stroke-width="4"/><circle cx="${cx + rx - 3}" cy="${cy - ry + 8}" r="16" fill="#df222b"/><text x="${cx + rx - 3}" y="${cy - ry + 14}" text-anchor="middle" fill="#fff" font-size="17" font-weight="bold">1</text><path d="M${Math.min(innerWidth - 20, cx + rx + 125)} ${cy}L${cx + rx - 6} ${cy}" stroke="#ffd100" stroke-width="6" marker-end="url(#fh-arrow)"/></svg><div style="position:absolute;left:16px;bottom:16px;padding:10px 14px;background:#fff;color:#111;border:2px solid #df222b;border-radius:8px;font:600 14px Arial,sans-serif">1. ${caption}</div>`;
+    document.body.appendChild(mark);
+  }, { selector, caption });
+  await page.screenshot({ path: path.join(folder, file) });
+  await page.locator("#fh-nav-review-mark").evaluate((el) => el.remove());
 }
 
 function expectIncludes(hrefs, required) {
@@ -99,7 +123,7 @@ function expectExcludes(hrefs, forbidden) {
   for (const h of forbidden) expect(hrefs, `should not show ${h}`).not.toContain(h);
 }
 
-test.describe("sidebar role visibility", () => {
+test.describe("website menu role visibility", () => {
   test("closer sees closer desk, not sales floor or owner-only rows", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", CLOSER);
     const hrefs = await visibleNavHrefs(page);
@@ -148,7 +172,7 @@ test.describe("sidebar role visibility", () => {
   });
 });
 
-test.describe("sidebar fixed geometry", () => {
+test.describe("website menu without a sidebar", () => {
   test("every staff dashboard loads shared CSS before the shell", () => {
     const staffPages = [...SCREENS].filter((file) => {
       if (file.endsWith(".fragment.html")) return false;
@@ -173,22 +197,26 @@ test.describe("sidebar fixed geometry", () => {
     }
   });
 
-  test("rail stays fixed and identical across page navigation", async ({ page }) => {
+  test("desktop menu reaches key desks and leaves every page full width", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", OWNER);
     const a = await sideBox(page);
     expect(a.position).toBe("fixed");
-    expect(a.left).toBe(0);
-    expect(a.top).toBe(0);
-    expect(a.width).toBeGreaterThanOrEqual(220);
-    expect(a.width).toBeLessThanOrEqual(250);
+    expect(a.visibility).toBe("hidden");
+    expect(a.inert).toBe(true);
+    expect(a.pagePadding).toBe(0);
+    await markedMenuShot(page, "#fh-menu-btn", "website-rail-removed-MARKED.png", "Full-width workspace; routes open from the F menu.");
 
-    // Navigate via a real sidebar link — geometry must not jump.
+    await page.getByRole("button", { name: "Open menu", exact: true }).click();
+    await expect(page.locator("#side")).toBeVisible();
+    await markedMenuShot(page, "#side", "website-menu-open-MARKED.png", "Role-gated routes open in a compact menu.");
     await page.locator('aside.side a.navitem[href="closer-dashboard.html"]').click();
     await page.waitForURL(/closer-dashboard\.html/);
     await waitForGate(page);
     const b = await sideBox(page);
-    expect(b).toEqual(a);
+    expect(b.visibility).toBe("hidden");
+    expect(b.pagePadding).toBe(0);
 
+    await page.getByRole("button", { name: "Open menu", exact: true }).click();
     const insights = page.locator('aside.side [data-fh-section="insights"]');
     if (!(await insights.locator('a[href="sales-floor.html"]').isVisible())) {
       await insights.getByRole('button', { name: 'Insights' }).click();
@@ -197,32 +225,29 @@ test.describe("sidebar fixed geometry", () => {
     await page.waitForURL(/sales-floor\.html/);
     await waitForGate(page);
     const c = await sideBox(page);
-    expect(c).toEqual(a);
+    expect(c.visibility).toBe("hidden");
+    expect(c.pagePadding).toBe(0);
 
     await page.goto("/app/my-numbers.html");
     await waitForGate(page);
     const d = await sideBox(page);
-    expect(d.position).toBe("fixed");
-    expect(d.left).toBe(0);
-    expect(d.top).toBe(0);
-    expect(d.width).toBe(a.width);
+    expect(d.visibility).toBe("hidden");
+    expect(d.pagePadding).toBe(0);
   });
 
-  test("sidebar icons stay styled in every frame while switching dashboards", async ({ page }) => {
+  test("menu stays hidden on each new page even when shared CSS is slow", async ({ page }) => {
     await page.addInitScript(() => {
       window.__sidebarFrames = [];
       function sample() {
         const side = document.querySelector("aside.side#side");
         const icon = document.querySelector('aside.side#side .navitem[href="pipeline.html"] .ico svg');
-        if (icon) {
+        if (icon && side) {
           const rect = icon.getBoundingClientRect();
-          const sideRect = side.getBoundingClientRect();
           if (rect.width && rect.height) window.__sidebarFrames.push({
             width: rect.width,
             height: rect.height,
-            sideWidth: sideRect.width,
-            sideLeft: sideRect.left,
-            sidePosition: getComputedStyle(side).position
+            visibility: getComputedStyle(side).visibility,
+            pagePadding: parseFloat(getComputedStyle(document.querySelector(".app,.app-shell")).paddingLeft)
           });
         }
         requestAnimationFrame(sample);
@@ -241,6 +266,7 @@ test.describe("sidebar fixed geometry", () => {
 
     for (const screen of ["setter-dashboard.html", "closer-dashboard.html", "calendar.html"]) {
       sharedCssRequests.length = 0;
+      await page.getByRole("button", { name: "Open menu", exact: true }).click();
       await page.locator(`aside.side a.navitem[href="${screen}"]`).click();
       await page.waitForURL(new RegExp(screen.replace(".", "\\.")));
       await page.waitForTimeout(750);
@@ -249,10 +275,8 @@ test.describe("sidebar fixed geometry", () => {
       expect(Math.max(...frames.map((frame) => frame.width)), screen).toBeLessThanOrEqual(24);
       expect(Math.max(...frames.map((frame) => frame.height)), screen).toBeLessThanOrEqual(24);
       for (const frame of frames) {
-        expect(frame.sidePosition, screen).toBe("fixed");
-        expect(frame.sideLeft, screen).toBe(0);
-        expect(frame.sideWidth, screen).toBeGreaterThanOrEqual(220);
-        expect(frame.sideWidth, screen).toBeLessThanOrEqual(250);
+        expect(frame.visibility, screen).toBe("hidden");
+        expect(frame.pagePadding, screen).toBe(0);
       }
       expect(sharedCssRequests.filter((path) => path.endsWith("crm-sidebar.css")), screen).toHaveLength(1);
       expect(sharedCssRequests.filter((path) => path.endsWith("fundhub-brand.css")), screen).toHaveLength(1);
