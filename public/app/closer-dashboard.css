@@ -9,6 +9,7 @@
 .closer-workspace *{box-sizing:border-box;}
 .closer-workspace .app{display:flex;height:100dvh;overflow:hidden;}
 .closer-workspace .shell{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;}
+.closer-workspace .shell:not(:has(> #fh-workspace-header))::before{content:"";flex:0 0 88px}
 .closer-workspace main{flex:1;min-height:0;overflow:auto;padding:30px 32px 28px;background:#f8f8f6;scrollbar-gutter:stable;}
 .closer-workspace main :is(button,a,input,select,summary):focus-visible{outline:3px solid #789aad;outline-offset:3px;}
 .closer-workspace [hidden]{display:none!important;}
@@ -26,6 +27,7 @@
 .closer-workspace .chip.on .cd{background:#62956b;}
 .closer-workspace .client-file-link{font-size:13px;line-height:20px;font-weight:600;color:var(--text-dim);text-decoration:none;min-height:32px;display:inline-flex;gap:8px;align-items:center;}
 .closer-workspace .client-file-link:hover{color:var(--text);text-decoration:underline;}
+.closer-workspace #fh-offersiq-profile-link{min-height:44px}
 .closer-workspace .cockpit-wrap{display:grid;grid-template-columns:minmax(0,1fr) 258px;gap:28px;align-items:start;}
 .closer-workspace .cockpit-main{display:flex;flex-direction:column;min-width:0;}
 .closer-workspace .call-identity{display:flex;flex-direction:column;gap:22px;padding:25px 26px;background:var(--surface);border:1px solid var(--line);border-radius:16px;margin:0 0 24px;}

@@ -100,8 +100,8 @@ export function realtimeBalancesOn(env = process.env) {
  * from: /accounts/get answers from Plaid's cache, so `balance_as_of` (the instant we
  * asked) can be up to about a day ahead of the figures, and the row says so.
  */
-export function toRefreshAccount(a, { asOf, source = BALANCE_SOURCES.CACHED } = {}) {
-  const row = toStoreAccount(a, { asOf });
+export function toRefreshAccount(a, { asOf, source = BALANCE_SOURCES.CACHED, environment = null } = {}) {
+  const row = toStoreAccount(a, { asOf, environment });
   return { ...row, raw: { ...row.raw, balance_source: source } };
 }
 
@@ -262,7 +262,7 @@ async function refreshItem(db, item, { orgId, clientId, env, asOf, cfg, realtime
   try {
     saved = await saveAccounts(
       writer,
-      usable.map((a) => toRefreshAccount(a, { asOf, source: usedSource })),
+      usable.map((a) => toRefreshAccount(a, { asOf, source: usedSource, environment: cfg.environment })),
       { orgId, clientId, provider: "plaid", plaidItemId: item.id }
     );
   } catch (e) {
