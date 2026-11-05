@@ -148,6 +148,9 @@ test("role gate: the rail hides the rows a role may not open and keeps the ones 
 // Clock
 test("clock: Arizona time, the date when the bar is wide, only the time when narrow, gone when small, none for a client, and it ticks", { timeout: 60_000 }, async () => {
   const page = await makePage(lab, { role: "owner", width: 1440 });
+  // Keep Date fixed while the real one-second interval runs, so a CI read cannot
+  // race a minute boundary. Start one second before midnight in Phoenix.
+  await page.clock.setFixedTime(new Date("2026-11-05T06:59:59Z"));
   await page.goto(`${lab.origin}/app/products-commissions.html`, { waitUntil: "domcontentloaded" });
   await settle(page);
   const account = page.locator("#fh-shell-chip");
@@ -157,17 +160,12 @@ test("clock: Arizona time, the date when the bar is wide, only the time when nar
   await account.locator("summary").first().click();
   await diagnostics.locator("summary").click();
   await clock.waitFor({ state: "visible" });
-  // The page's clock and this process's clock are read a moment apart, so a minute (or midnight)
-  // can turn over in between: accept Phoenix's reading from just before or just after the read.
-  const readStart = new Date();
   const wide = (await clock.textContent()).trim();
-  const readEnd = new Date();
   assert.match(wide, /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}:\d{2} (AM|PM) MST$/);
-  const phoenixDays = [readStart, readEnd].map((d) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/Phoenix" }));
-  assert.equal(phoenixDays.some((day) => wide.startsWith(`${day}, `)), true, `the day is Phoenix's (${phoenixDays.join(" or ")})`);
-  const phoenixClocks = [readStart, readEnd].map((d) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }).replace(/ (AM|PM)$/, ""));
-  assert.equal(phoenixClocks.some((hm) => wide.includes(hm)), true, `the hour and minute are Phoenix's (${phoenixClocks.join(" or ")})`);
+  assert.equal(wide, "Wed, Nov 4, 11:59:59 PM MST", "the full date and time are Phoenix's");
+  await page.clock.setFixedTime(new Date("2026-11-05T07:00:00Z"));
   await until(async () => (await clock.textContent()).trim() !== wide, { timeout: 4000, message: "the clock to tick" });
+  assert.equal((await clock.textContent()).trim(), "Thu, Nov 5, 12:00:00 AM MST", "the real interval advances Phoenix's date and time at midnight");
   await page.setViewportSize({ width: 1150, height: 900 });
   assert.match((await clock.textContent()).trim(), /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}:\d{2} (AM|PM) MST$/, "the technical clock keeps its full Arizona face when the header narrows");
   assert.equal(await clock.isVisible(), true);
