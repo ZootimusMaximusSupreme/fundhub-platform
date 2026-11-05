@@ -162,6 +162,30 @@ test("registry: a GET ping writes up or down and never auto-fixes", async () => 
   assert.ok(checks.every((c) => c.kind === "registry"));
 });
 
+test("registry: a bounded 32-way pool keeps every result and exposes a slow failed door", async () => {
+  const rows = Array.from({ length: 65 }, (_, index) => ({
+    id: `probe-${index}`, kind: "desk", path: `/app/probe-${index}.html`
+  }));
+  let active = 0;
+  let peak = 0;
+  const checks = await checkRegistry({
+    rows, baseUrl: "https://fundhub.ai", concurrency: 32,
+    fetchImpl: async (url, init) => {
+      assert.equal(init.method, "GET");
+      active += 1;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, url.includes("probe-17.") ? 8 : 2));
+      active -= 1;
+      return { status: url.includes("probe-17.") ? 503 : 200 };
+    }
+  });
+  assert.equal(peak, 32);
+  assert.deepEqual(checks.map((row) => row.id), rows.map((row) => `reg:${row.id}`));
+  assert.equal(checks.filter((row) => row.status === "up").length, 64);
+  assert.equal(checks[17].status, "down");
+  assert.match(checks[17].detail, /503/);
+});
+
 const SEND_PROVIDERS = /(?:messaging\/providers\/(?:twilio|twilio-whatsapp|resend|mailgun|mail-letter|web-push|ntfy)|(?:^|\/)apns)\.mjs$/;
 const ROOT = path.resolve(HERE, "../..");
 

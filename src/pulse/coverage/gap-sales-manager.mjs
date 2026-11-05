@@ -369,8 +369,10 @@ export async function gapChecks(ctx = {}) {
       await checkDropped({ ro: null, orgId, period, now })
     ];
   }
-  const [floorRead, mineRead, dropped] = await Promise.all([
-    readFloor({ ro, orgId, now, reads, timeoutMs }),
+  // The proof runs all reads through one serialized connection. Let the floor
+  // finish before the other two checks queue their own reads against it.
+  const floorRead = await readFloor({ ro, orgId, now, reads, timeoutMs });
+  const [mineRead, dropped] = await Promise.all([
     readMine({ ro, orgId, now, reads, timeoutMs }),
     checkDropped({ ro, orgId, period, now })
   ]);
