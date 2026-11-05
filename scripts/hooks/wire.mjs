@@ -18,13 +18,7 @@ function cmd(rel) {
 }
 
 export const HOOK_SET = [
-  {
-    id: "session-rules.mjs",
-    event: "SessionStart",
-    entry: {
-      hooks: [{ type: "command", command: cmd(".claude/hooks/session-rules.mjs") }]
-    }
-  },
+  // session-rules.mjs (the start-of-chat rules reminder) stays off: owner call 2026-11-04, no session reminders.
   {
     id: "guard-rule-edits.mjs",
     event: "PreToolUse",
