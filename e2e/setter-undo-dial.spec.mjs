@@ -99,7 +99,7 @@ test("eligible Undo stays in the header at desktop and phone widths and works by
       await page.keyboard.press("Escape");
     }
     if (width === 390) {
-      await expect.poll(() => page.locator("#side").evaluate((side) => side.getBoundingClientRect().right)).toBeLessThanOrEqual(1);
+      await expect(page.locator("#side")).toBeHidden();
     }
     await expect(undo).toBeVisible();
     await expect(page.locator("#fh-shell-search-btn")).toBeVisible();

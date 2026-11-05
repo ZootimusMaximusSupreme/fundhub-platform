@@ -94,6 +94,6 @@ test('own payout history, hold gates and clipboard keyboard feedback remain usab
 for(const role of ['owner','affiliate','partner'])test(`affiliate preserves ${role} principal frame`,async({page})=>{
  const session={ok:true,principal:role==='owner'?'staff':role,staff:{id:'safe-'+role,role,name:'Safe '+role,affiliate_id:'safe-affiliate',org_id:'org-1'}};
  await openScreen(page,'/app/affiliate.html',session,{'/api/read/affiliate-portal':full});
- await expect(page.locator('body')).not.toHaveAttribute('data-client-ios','');await expect(page.locator('.client-ios-nav')).toHaveCount(0);await expect(page.locator('#side')).toBeVisible();
+ await expect(page.locator('body')).not.toHaveAttribute('data-client-ios','');await expect(page.locator('.client-ios-nav')).toHaveCount(0);await expect(page.locator('#side')).toBeHidden();
  if(role==='partner'){await expect(page).toHaveURL(/partner-galaxy\.html$/);await expect(page.locator('#affCode')).toHaveCount(0);}else await expect(page.locator('#affCode')).toHaveText('SAFE-PREVIEW');
 });

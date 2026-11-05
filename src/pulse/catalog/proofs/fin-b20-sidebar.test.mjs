@@ -159,6 +159,7 @@ test("each role's rail shows exactly its links and section heads, and never one 
 // ---------------------------------------------------------------------------------------------
 test("section heads: the six groups an owner sees fold their links; hidden Automation stays gated", { timeout: 120_000 }, async () => {
   const page = await openRail("owner", "pipeline.html");
+  await page.locator("#fh-menu-btn").click();
   const got = await shown(page);
   assert.deepEqual(got.heads, ["relationships", "work", "clients", "insights", "marketing", "settings"]);
   for (const key of got.heads) {
@@ -189,29 +190,26 @@ test("section heads: Your work and Clients start open, including the current scr
 });
 
 // ---------------------------------------------------------------------------------------------
-test("collapse button: shrinks the rail to icons and opens every group, a second press restores the rail and the one-group default", { timeout: 60_000 }, async () => {
+test("desktop: the header button opens and closes the full route menu without a persistent rail", { timeout: 60_000 }, async () => {
   const page = await openRail("owner", "pipeline.html");
   const side = page.locator("#side");
-  const burger = page.locator("#burger");
-  assert.equal(await burger.innerText(), "‹");
-  const wide = await side.evaluate((el) => el.getBoundingClientRect().width);
-  await burger.click();
-  assert.equal(await side.evaluate((el) => el.classList.contains("mini")), true);
-  assert.equal(await page.evaluate(() => document.documentElement.classList.contains("fh-side-mini")), true);
-  assert.equal(await burger.innerText(), "›");
-  await page.waitForFunction((w) => document.querySelector("#side").getBoundingClientRect().width < w, wide);
-  const closedWhileMini = await page.evaluate(() => [...document.querySelectorAll("#side .navgroup")].filter((g) => g.style.display !== "none" && g.classList.contains("closed")).length);
-  assert.equal(closedWhileMini, 0, "an icon rail has no closed group");
-  await burger.click();
+  const menu = page.locator("#fh-menu-btn");
+  assert.equal(await side.isVisible(), false);
+  assert.equal(await side.getAttribute("aria-hidden"), "true");
+  assert.equal(await menu.getAttribute("aria-expanded"), "false");
+  assert.equal(await page.locator(".app").evaluate((el) => getComputedStyle(el).paddingLeft), "0px");
+  await menu.click();
+  assert.equal(await side.isVisible(), true);
+  assert.equal(await menu.getAttribute("aria-expanded"), "true");
   assert.equal(await side.evaluate((el) => el.classList.contains("mini")), false);
-  assert.equal(await burger.innerText(), "‹");
-  await page.waitForFunction((w) => Math.abs(document.querySelector("#side").getBoundingClientRect().width - w) < 1, wide);
-  const open = await page.evaluate(() => [...document.querySelectorAll("#side .navgroup")].filter((g) => !g.classList.contains("closed")).map((g) => g.getAttribute("data-fh-section")));
-  assert.deepEqual(open, ["work", "clients"]);
+  assert.equal(await page.locator("#burger").innerText(), "×");
+  await page.locator("#burger").click();
+  assert.equal(await side.isVisible(), false);
+  assert.equal(await menu.getAttribute("aria-expanded"), "false");
   await page.close();
 });
 
-test("phone: the rail is off-screen, Menu opens it with a scrim, the scrim, Escape, the close button and a link close it", { timeout: 90_000 }, async () => {
+test("phone: the menu opens with a scrim; the scrim, Escape, close button and a link close it", { timeout: 90_000 }, async () => {
   const page = await makePage(lab, { role: "owner", width: 390, height: 844 });
   await page.goto(`${lab.origin}/app/pipeline.html`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => document.documentElement.classList.contains("fh-page-access-confirmed"), null, { polling: 100, timeout: 20_000 });
@@ -221,13 +219,14 @@ test("phone: the rail is off-screen, Menu opens it with a scrim, the scrim, Esca
   const isOpen = () => side.evaluate((el) => el.classList.contains("open"));
   assert.equal(await isOpen(), false);
   assert.equal(await menu.getAttribute("aria-expanded"), "false");
-  assert.equal(await page.locator("#burger").innerText(), "×", "on a phone the same button closes");
+  assert.equal(await side.isVisible(), false);
 
   await menu.click();
   assert.equal(await isOpen(), true);
+  assert.equal(await page.locator("#burger").innerText(), "×", "the open menu offers a close button");
   assert.equal(await menu.getAttribute("aria-expanded"), "true");
   assert.equal(await scrim.evaluate((el) => el.classList.contains("show")), true);
-  await page.mouse.click(385, 400);                                              // the scrim, right of the rail
+  await page.mouse.click(385, 400);                                              // the scrim, right of the menu
   assert.equal(await isOpen(), false);
   assert.equal(await scrim.evaluate((el) => el.classList.contains("show")), false);
 

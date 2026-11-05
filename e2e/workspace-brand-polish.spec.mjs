@@ -62,7 +62,7 @@ async function baseline(page, mobile) {
   await page.unroute("**/api/**");
 }
 
-test("Fundhub sidebar uses all six pastel stops despite the saved blue ramp", async ({ page }) => {
+test("Fundhub website menu uses all six pastel stops despite the saved blue ramp", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await baseline(page, false);
   await openScreen(page, "/app/calendar.html", OWNER, { "/api/org-brand": { ok: true, brand: FUNDHUB } });
@@ -98,7 +98,7 @@ test("the F mark beside Calendar opens the phone menu and preserves keyboard ret
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
 });
 
-test("another company retains its own sidebar spectrum and approved menu logo", async ({ page }) => {
+test("another company retains its own menu spectrum and approved logo", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const custom = { ...FUNDHUB, slug: "other-company", entity_name: "Other Company", wordmark_url: "https://brand.example.test/wordmark.svg" };
   await page.route(custom.wordmark_url, (route) => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40"><rect width="100" height="40" fill="#4866D7"/></svg>' }));
@@ -111,12 +111,13 @@ test("another company retains its own sidebar spectrum and approved menu logo", 
   await expect.poll(() => stripe(page)).toContain("18, 52, 86");
 });
 
-test("the compact desktop rail still expands and the phone F control fits at 320px", async ({ page }) => {
+test("the desktop and phone F control open the same compact menu", async ({ page }) => {
   await openScreen(page, "/app/calendar.html", OWNER, { "/api/org-brand": { ok: true, brand: FUNDHUB } });
-  await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
-  await expect(page.locator("#side")).toHaveClass(/mini/);
-  await page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
-  await expect(page.locator("#side")).not.toHaveClass(/mini/);
+  await expect(page.locator("#side")).toBeHidden();
+  await page.getByRole("button", { name: "Open menu", exact: true }).click();
+  await expect(page.locator("#side")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#side")).toBeHidden();
   await page.setViewportSize({ width: 320, height: 844 });
   await expect(page.locator(".fh-menu-mark")).toBeVisible();
   const box = await page.locator("#fh-menu-btn").boundingBox();

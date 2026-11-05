@@ -59,6 +59,7 @@ test("the eleven left-out rows stay hidden and Bank outreach follows its exact r
     await page.goto(`${lab.origin}/app/${role === "outbound_rep" ? "bank-outreach.html" : "sales-floor.html"}`, { waitUntil: "domcontentloaded" });
     await page.locator('#side[data-fh-wired="1"]').waitFor({ state: "attached" });
     await page.waitForFunction(() => !document.getElementById("fh-gate-style"), null, { polling: 100, timeout: 30_000 });
+    await page.locator("#fh-menu-btn").click();
     await page.evaluate(() => document.querySelectorAll("#side .navgroup").forEach((g) => g.classList.remove("closed")));
     const shown = await page.evaluate(() => [...document.querySelectorAll("#side a.navitem")]
       .filter((a) => a.getClientRects().length > 0).map((a) => a.getAttribute("href")));
@@ -84,6 +85,7 @@ async function openAsOwner(lab) {
   const page = await newStaffPage(lab, { role: "owner" });
   await page.goto(`${lab.origin}/app/sales-floor.html`, { waitUntil: "domcontentloaded" });
   await waitForShell(page);
+  await page.locator("#fh-menu-btn").click();
   return page;
 }
 

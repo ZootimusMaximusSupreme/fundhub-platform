@@ -27,6 +27,7 @@ async function railOf(role) {
   await page.goto(`${lab.origin}${role === "partner" ? "/app/partner-galaxy.html" : "/app/pipeline.html"}`, { waitUntil: "domcontentloaded" });
   await page.locator('#side[data-fh-wired="1"]').waitFor({ state: "attached" });
   await page.waitForFunction(() => !document.getElementById("fh-gate-style"), null, { polling: 100, timeout: 30_000 });
+  await page.locator("#fh-menu-btn").click();
   await page.evaluate(() => document.querySelectorAll("#side .navgroup").forEach((g) => g.classList.remove("closed")));
   const heads = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll("#side .navgroup")]
     .filter((g) => getComputedStyle(g).display !== "none" && g.getClientRects().length > 0)
@@ -127,6 +128,7 @@ for (const [key, section] of Object.entries(SECTIONS)) {
       await page.goto(`${lab.origin}/app/pipeline.html`, { waitUntil: "domcontentloaded" });
       await page.locator('#side[data-fh-wired="1"]').waitFor({ state: "attached" });
       await page.waitForFunction(() => !document.getElementById("fh-gate-style"), null, { polling: 100, timeout: 30_000 });
+      await page.locator("#fh-menu-btn").click();
       const ownerGroups = [...new Set((section.sees.owner || []).map((href) => section.placement[href]))];
       for (const groupKey of ownerGroups) {
         const group = page.locator(`#side .navgroup[data-fh-section="${groupKey}"]`);

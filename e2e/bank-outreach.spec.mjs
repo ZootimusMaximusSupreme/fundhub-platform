@@ -41,7 +41,11 @@ for (const width of [1440, 390, 320]) {
           await expect(page.locator('#verified-compare')).toHaveText('vs 4 last week');
           await expect(page.locator('#import-open')).toBeHidden(); await expect(page.locator('#view-switch')).toBeHidden();
           await expect(page.locator('#queue-scope')).toContainText('Assigned banks only');
-          await expect(page.locator('#fh-shell-search-btn')).toHaveCount(0); await expect(page.locator('#fh-chat-fab')).toHaveCount(0); await expect(page.locator('.navitem:visible')).toHaveCount(1);
+          await expect(page.locator('#fh-shell-search-btn')).toHaveCount(0); await expect(page.locator('#fh-chat-fab')).toHaveCount(0);
+          await expect(page.locator('#side')).toBeHidden();
+          await page.locator('#fh-menu-btn').click();
+          await expect(page.locator('.navitem:visible')).toHaveCount(1);
+          await page.locator('#burger').click();
           const open = page.locator('.open-bank').first(); expect((await open.boundingBox()).height).toBeGreaterThanOrEqual(44);
         } else if (state === 'empty') await expect(page.locator('#empty-action')).toHaveText('Clear filters');
         else if (state === 'error') { await expect(page.locator('#queue-retry')).toBeVisible(); await expect(page.locator('#queue-state')).toContainText('temporarily unavailable'); await page.locator('#queue-retry').click(); }
