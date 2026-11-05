@@ -58,6 +58,23 @@ test("happy path: call happened before the check — moves to showed", async () 
   assert.equal(db.events.filter((e) => e.name === "booking.noshow").length, 0);
 });
 
+test("held call does not move a paid diagnostic Sales card backward to showed", async () => {
+  const db = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }],
+    events: [{ client_id: "cl-1", name: "call.completed" }],
+    pipelineStages: [
+      { pipeline_key: "sales", stage_key: "showed", pipeline_id: "pl-sales", stage_id: "st-showed", sort_order: 4 },
+      { pipeline_key: "sales", stage_key: "diagnostic_paid", pipeline_id: "pl-sales", stage_id: "st-paid", sort_order: 5 }
+    ],
+    cards: [{ id: "card-1", client_id: "cl-1", pipeline_id: "pl-sales", stage_id: "st-paid" }]
+  });
+  const res = await handle({ event: ev("booking.created", { endTime: futureEnd() }, { clientId: "cl-1" }), db, step: fakeStep() });
+  assert.equal(res.outcome, "showed");
+  assert.equal(res.card.moved, false);
+  assert.equal(res.card.reason, "already_at_or_past");
+  assert.equal(db.cards[0].stage_id, "st-paid");
+});
+
 test("branch: no call — no-show, tagged, moved to lost", async () => {
   const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", custom_fields: {} }], ...withStages() });
   const res = await handle({ event: ev("booking.created", { endTime: futureEnd() }, { clientId: "cl-1" }), db, step: fakeStep() });
