@@ -66,6 +66,25 @@ Nothing in the refresh deletes a row, closes an account, sets `entity_kind`, or 
 `created_at` (the one exception is the first-read baseline above, which only ever moves a row
 the same read just created). An unknown balance is stored as null, never 0.
 
+## Stored source environment (owner-directed 2026-11-04)
+
+Successful Link and account refresh writes stamp `raw.plaid_environment` from the server's
+actual Plaid transport configuration and `raw.plaid_environment_source = server_transport`.
+Account payload flags are not accepted as that stamp. Refresh merges the new raw fields into
+the existing JSON so unrelated stored evidence survives; no schema or provider setting changes.
+
+The client account read joins the Item by row id, organization and client. Only a non-synthetic
+Plaid Item association with recorded credential and consent plus the server stamp establishes production provenance. An exact legacy
+`(Plaid sandbox — test data)` Item-name suffix establishes sandbox, including when it conflicts
+with a claimed production stamp. Other legacy rows stay unknown; the current environment is
+never used to backfill their source. Manual/imported raw flags cannot promote a record to Plaid.
+The response exposes only derived source fields, never raw JSON or the Item credential.
+
+The closer's saved-assets view keeps excluded records visible. Sandbox, development and mock
+records are labelled test data; these and unknown-source Plaid rows are excluded from cash and
+investment totals. Manual/imported evidence stays recorded, with currencies, ownership and
+dates separate, and does not become bank-verified or a funding approval.
+
 ## Staff: refresh one client now
 
 `POST /api/banking/sync-accounts` `{ client_id, provider: "plaid" }`, owner / admin / sales_manager.

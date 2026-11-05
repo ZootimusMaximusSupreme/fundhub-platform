@@ -103,6 +103,18 @@ test("a hand-entered account has NULL plaid ids — 081's marker for manual entr
   assert.equal(row.plaid_account_id, null);
 });
 
+test("manual input cannot acquire Plaid identity even with forged provider and raw provenance", async () => {
+  const db = fakeDb();
+  const raw = { plaid_environment: "production", plaid_environment_source: "server_transport", evidence: "keep this" };
+  await createManualBankAccount(db, { name: "Recorded account", provider: "plaid", plaid_item_id: ACCOUNT,
+    plaid_account_id: "forged", provider_environment: "production", raw }, { orgId: ORG, clientId: CLIENT });
+  const row = insertedRow(db.calls[0]);
+  assert.equal(row.plaid_item_id, null);
+  assert.equal(row.plaid_account_id, null);
+  assert.equal(row.provider, undefined, "database manual default is retained");
+  assert.deepEqual(JSON.parse(row.raw), raw, "original recorded evidence is not erased");
+});
+
 test("an unknown amount stays NULL and never becomes zero", async () => {
   const db = fakeDb();
   await createManualBankAccount(db, {
@@ -343,7 +355,8 @@ test("quantity is passed as a string, not coerced to cents", async () => {
 test("listBankAccounts filters on org_id, so a missing org matches nothing", async () => {
   const db = fakeDb(() => ({ rows: [] }));
   await listBankAccounts(db, { orgId: ORG, clientId: CLIENT });
-  assert.match(db.calls[0].sql, /WHERE org_id = \$1 AND client_id = \$2/);
+  assert.match(db.calls[0].sql, /WHERE a.org_id = \$1 AND a.client_id = \$2/);
+  assert.match(db.calls[0].sql, /p.id = a.plaid_item_id\s+AND p.org_id = a.org_id AND p.client_id = a.client_id/);
   assert.deepEqual(db.calls[0].params, [ORG, CLIENT]);
 });
 
@@ -359,5 +372,12 @@ test("the account read never selects the encrypted access token", async () => {
   const db = fakeDb(() => ({ rows: [] }));
   await listBankAccounts(db, { orgId: ORG, clientId: CLIENT });
   assert.equal(/SELECT \*/.test(db.calls[0].sql), false);
-  assert.equal(/encrypted/.test(db.calls[0].sql), false);
+  assert.equal(/encrypted_access_token\s*(?:,|AS|FROM)/i.test(db.calls[0].sql), false,
+    "only a presence predicate may reference the credential; its value is never projected");
+  assert.equal(/(?:SELECT|,)\s*(?:a|p)\.raw\s*(?:,|FROM)/i.test(db.calls[0].sql), false);
+  assert.match(db.calls[0].sql, /p.encrypted_access_token IS NOT NULL/);
+  assert.match(db.calls[0].sql, /p.consent_granted_at IS NOT NULL/);
+  assert.match(db.calls[0].sql, /p.plaid_item_id NOT LIKE 'plaid:%'/);
+  assert.match(db.calls[0].sql, /plaid_environment_source' = 'server_transport'/);
+  assert.match(db.calls[0].sql, /ELSE NULL END AS provider_environment/);
 });

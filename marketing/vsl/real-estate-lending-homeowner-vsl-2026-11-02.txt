@@ -15,7 +15,7 @@ BODY
 
 I'm Chris. I run Fundhub. I've spent close to a decade in funding, reviewed hundreds of files, and studied thousands of data points on what makes a file ready for a lender.
 
-I keep seeing homeowners with strong income, solid credit, and a serious project get stuck at the same point. The contractor gives them a real price, and then every financing page gives them a different answer.
+I keep seeing homeowners with strong income and a serious project get stuck at the same point. The contractor gives them a real price, and then every financing page gives them a different answer.
 
 One page sends them toward home equity. Another shows a personal loan that stops far below the project cost. The contractor has a financing link, but it only works with that contractor. Then a marketplace asks for their phone number before it explains who gets the money or what the payment looks like.
 

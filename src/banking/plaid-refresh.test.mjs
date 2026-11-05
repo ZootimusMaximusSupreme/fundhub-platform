@@ -90,6 +90,8 @@ describe("balances", () => {
     assert.equal(chk.balance_as_of, NOW, "stamped with the instant the caller gave, not a time the store made up");
     assert.equal(chk.entity_kind, "business", "a refresh must never reset whose money an account is");
     assert.equal(chk.raw.balance_source, BALANCE_SOURCES.CACHED, "the row says the balance came from Plaid's cache");
+    assert.equal(chk.raw.plaid_environment, "sandbox", "the successful request host, not old account flags");
+    assert.equal(chk.raw.plaid_environment_source, "server_transport");
 
     assert.deepEqual(r.items[0].balancesChanged, [{
       id: "acc-chk", name: "Business Checking", mask: "2202",
@@ -584,7 +586,8 @@ describe("toRefreshAccount", () => {
       plaidAccountId: "p1", name: "Visa", officialName: null, mask: "3303", type: "credit", subtype: "credit card",
       currentBalance: 1233.3, availableBalance: null, creditLimit: 8000, isoCurrencyCode: "USD", holderCategory: "personal"
     };
-    const row = toRefreshAccount(a, { asOf: NOW, source: BALANCE_SOURCES.REALTIME });
+    const row = toRefreshAccount({ ...a, raw: { plaid_environment: "production" } },
+      { asOf: NOW, source: BALANCE_SOURCES.REALTIME, environment: "sandbox" });
     assert.equal(row.providerAccountId, "p1");
     assert.equal(row.currentBalanceCents, 123330);
     assert.equal(row.availableBalanceCents, null);
@@ -592,7 +595,10 @@ describe("toRefreshAccount", () => {
     assert.equal(row.balanceAsOf, NOW);
     assert.equal(row.raw.balance_source, BALANCE_SOURCES.REALTIME);
     assert.equal(row.raw.holder_category, "personal", "Plaid's tag is kept for the record");
+    assert.equal(row.raw.plaid_environment, "sandbox");
+    assert.equal(row.raw.plaid_environment_source, "server_transport");
     assert.equal(row.entityKind, undefined, "no ownership claim of any kind");
     assert.equal(toRefreshAccount(a, { asOf: NOW }).raw.balance_source, BALANCE_SOURCES.CACHED);
+    assert.equal(toRefreshAccount(a, { asOf: NOW }).raw.plaid_environment, undefined);
   });
 });

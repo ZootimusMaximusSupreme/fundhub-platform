@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { openScreen, json, OWNER, CLOSER, CLIENT_ID, CLIENT_ROW } from './harness.mjs';
+import { clientAssetProfile } from '../src/http/client-asset-profile.mjs';
 
 const evidence = path.resolve('ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18');
 const full = {
@@ -68,8 +69,8 @@ const financialProfile = {
 const assetProfile = {
   source: 'stored_bank_records', scope: 'recorded_rows_only',
   accounts: [
-    { name: 'Main checking', mask: '1234', included_in_cash: true, entity_kind: 'personal', entity_kind_source: 'connection_metadata', currency_code: 'USD', current_balance_cents: 200000, available_balance_cents: 0, balance_as_of: '2026-11-01T10:00:00Z', provider: 'plaid' },
-    { name: 'Savings', mask: '5678', included_in_cash: true, entity_kind: 'personal', entity_kind_source: 'connection_metadata', currency_code: 'USD', current_balance_cents: 100000, available_balance_cents: 0, balance_as_of: '2026-11-04T10:00:00Z', provider: 'plaid' },
+    { name: 'Main checking', mask: '1234', included_in_cash: true, entity_kind: 'personal', entity_kind_source: 'connection_metadata', currency_code: 'USD', current_balance_cents: 200000, available_balance_cents: 0, balance_as_of: '2026-11-01T10:00:00Z', provider: 'plaid', provider_environment: 'production' },
+    { name: 'Savings', mask: '5678', included_in_cash: true, entity_kind: 'personal', entity_kind_source: 'connection_metadata', currency_code: 'USD', current_balance_cents: 100000, available_balance_cents: 0, balance_as_of: '2026-11-04T10:00:00Z', provider: 'plaid', provider_environment: 'production' },
     { name: 'Imported cash', mask: '9876', included_in_cash: true, entity_kind: 'personal', entity_kind_source: 'client_stated', currency_code: 'USD', current_balance_cents: 50000, available_balance_cents: 0, balance_as_of: null, provider: 'import' },
     { name: 'Business reserve', mask: '4321', included_in_cash: true, entity_kind: 'business', entity_kind_source: 'staff_reviewed', currency_code: 'USD', current_balance_cents: 400000, available_balance_cents: null, balance_as_of: '2026-11-02T10:00:00Z', provider: 'manual' }
   ],
@@ -150,6 +151,72 @@ test('four draft profiles and recorded assets fit a 390px phone', async ({ page 
   await noOverflow(page);
   expect(errors).toEqual([]);
 });
+
+for (const width of [1440, 390]) {
+  test(`Plaid provenance keeps test and unknown records outside cash totals at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+    const account = (n, name, overrides = {}) => ({ id: id(n), name, provider: 'plaid',
+      account_type: 'depository', entity_kind: 'personal', entity_kind_source: 'client_stated',
+      currency_code: 'USD', current_balance_cents: 10000, available_balance_cents: 9000,
+      balance_as_of: '2026-11-04T10:00:00Z', provider_item_scoped: true,
+      provider_environment: 'production', provider_environment_evidence: 'server_transport', ...overrides });
+    const mixed = clientAssetProfile({ accounts: [
+      account(1, 'Production checking'),
+      account(2, 'Sandbox checking', { provider_environment: 'sandbox', current_balance_cents: 9000000 }),
+      account(3, 'Legacy checking', { provider_environment: null, provider_environment_evidence: null, current_balance_cents: 8000000 }),
+      account(4, 'Manual CAD reserve', { provider: 'manual', currency_code: 'CAD', current_balance_cents: 5000 }),
+      account(5, 'Imported cash', { provider: 'import', current_balance_cents: 20000 }),
+      account(6, 'Sandbox brokerage', { account_type: 'investment', provider_environment: 'sandbox' })
+    ], holdings: [{ id: id(100), bank_account_id: id(6), symbol: 'TEST', source: 'provider',
+      current_value_cents: 7000000, currency_code: 'USD', as_of: '2026-11-04T10:00:00Z' }] });
+    const writes = [];
+    let reads = 0;
+    page.on('request', request => { if (request.method() !== 'GET') writes.push(request.url()); });
+    const errors = await open(page, '#ccp-view-credit', {
+      '/api/dashboard/client?': { ...full, financial_profile: financialProfile },
+      '/api/banking/accounts?': () => { reads++; return { ok: true, asset_profile: mixed }; }
+    });
+    const assets = page.locator('#ccp-enrichment-assets');
+    await expect(assets).toContainText('Personal cash · USD');
+    const usd = assets.locator('.card-title', { hasText: 'Personal cash · USD' });
+    await expect(usd.locator('xpath=following-sibling::*[1]')).toContainText('$300.00');
+    await expect(usd.locator('xpath=following-sibling::*[1]')).not.toContainText('$90,000.00');
+    await expect(assets).toContainText('Personal cash · CAD');
+    await expect(assets).toContainText('production connection record');
+    await expect(assets).toContainText('Excluded account records');
+    await expect(assets).toContainText('Sandbox checking');
+    await expect(assets).toContainText('$90,000.00');
+    await expect(assets).toContainText('Test data · sandbox · excluded from cash totals');
+    await expect(assets).toContainText('Legacy checking');
+    await expect(assets).toContainText('plaid · environment unknown · excluded from cash totals');
+    await expect(assets).toContainText('Manual CAD reserve');
+    await expect(assets).toContainText('manual · recorded entry, not bank verified');
+    await expect(assets).toContainText('Sandbox brokerage');
+    await expect(assets).toContainText('excluded from investment totals · test data');
+    await expect(page.locator('#ccp-enrichment-assets-state')).toContainText('excluded from totals');
+    await noOverflow(page);
+    expect(reads).toBe(1);
+    expect(writes.filter(url => /offersiq|crs-pull|banking/i.test(url))).toEqual([]);
+    expect(errors).toEqual([]);
+    if (process.env.PLAID_PROVENANCE_EVIDENCE_DIR) {
+      fs.mkdirSync(process.env.PLAID_PROVENANCE_EVIDENCE_DIR, { recursive: true });
+      await assets.locator('.card-title', { hasText: 'Excluded account records' }).scrollIntoViewIfNeeded();
+      // Proof annotations only; do not change the product or page layout.
+      await page.evaluate(() => {
+        const target = [...document.querySelectorAll('#ccp-enrichment-assets .card-title')]
+          .find(el => el.textContent === 'Excluded account records');
+        const rect = target.getBoundingClientRect();
+        const proof = document.createElement('div');
+        proof.style.cssText = `position:absolute;pointer-events:none;z-index:10000;left:${Math.max(8, rect.left + scrollX)}px;top:${rect.top + scrollY - 48}px;background:white;color:black;font:12px sans-serif;`;
+        proof.innerHTML = '<svg width="280" height="48" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="14" r="12" fill="white" stroke="red" stroke-width="3"/><text x="10" y="18" fill="red" font-size="13">1</text><path d="M32 16 L100 40 M89 29 L100 40 L85 40" fill="none" stroke="#e6b800" stroke-width="4"/><text x="40" y="12" font-size="11">Test / unknown excluded; evidence kept</text></svg>';
+        document.body.appendChild(proof);
+      });
+      await page.screenshot({ path: path.join(process.env.PLAID_PROVENANCE_EVIDENCE_DIR,
+        `plaid-provenance-${width}.png`) });
+    }
+  });
+}
 
 for (const width of [1440, 390, 320]) {
   test(`workspace fits ${width}px and keeps every section usable`, async ({ page }) => {

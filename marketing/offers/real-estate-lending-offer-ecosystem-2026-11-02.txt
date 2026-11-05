@@ -1,7 +1,7 @@
 FUNDHUB REAL ESTATE LENDING OFFER ECOSYSTEM
 Built: November 2, 2026
 Owner scope updated: November 4, 2026
-Status: working offer and operating plan; no lender relationship, new fee, or financing approval is established by this document.
+Status: OWNER-REVIEW COMMERCIAL DRAFT. No new fee, product, contract, campaign, lender relationship, or financing approval is activated by this document. The proposed paid renovation service still needs written coverage for the actual facility and a confirmed application route before collection.
 
 THE COMMERCIAL DECISION
 
@@ -91,6 +91,8 @@ The homeowner completes the renovation they actually want, keeps the current mor
 
 WHAT THE CUSTOMER GETS
 
+The free Funding Map includes the initial project/payment review, route summary, and document checklist. Application preparation, submission, lender coordination, and ongoing funding follow-up belong to a separately signed paid engagement where its scope covers the selected facility. The complete service path is described below; the free assessment does not silently enroll the homeowner in paid work.
+
 1. Project Map
    - project type, amount, state, property, contractor, timeline, and payment schedule;
    - full-project budget, own cash contribution, combined financing target, and any practical phase-one amount;
@@ -161,26 +163,55 @@ If the offered amount is below the budget, Fundhub maps a smaller phase, another
 Bonus 6: Second-Route Review
 If the first selected provider does not return a workable offer, Fundhub reviews the next appropriate path using the completed intake.
 
-PRICE
+PRICE AND PAID HANDOFF
 
-Launch the Renovation Funding Map at $0 to the homeowner.
+The Renovation Funding Map is the free first step. It shows the project, payment picture, required documents, and next suitable route.
 
-This is the right starting price because:
+Proposed paid presentation: Renovation Funding, Done for You. After the free review, a ready client can choose a separately signed Funding DFY engagement for the application work. This proposal uses the existing FUNDING_DFY economics where the signed service scope applies:
 
-- the customer is already taking on a substantial financing decision;
-- a free project-first map creates more qualified applications than a generic lead form;
-- Fundhub can build revenue from confirmed provider, contractor, marketplace, and later advisory relationships;
-- no public partner compensation is assumed in the model.
+- a standard $3,000 deposit for the engagement;
+- a 10% success fee on the confirmed approved funding covered by that agreement;
+- the deposit is credited once, dollar for dollar, against the success fee and is not added on top of it;
+- the fee base is the confirmed approved limits or amounts, not only what the client draws from a credit line;
+- calculate the fee for each funded round, apply the deposit credit once against the total, and give the client the approval and payment record;
+- the remaining fee is due as approved funds or credit access are received;
+- no back-end success fee is due if no funding is secured;
+- one engagement covers the agreed scope; a later engagement requires a new agreement rather than a new deposit for each facility within the same engagement.
 
-Keep the free map distinct from any separately scoped financing or concierge engagement. The owner's proposed business-financing success fee is 10%; it remains a commercial idea requiring a defined service, fee basis, timing, and agreement before activation. It is not a flat 10% consumer HELOC, refinance, or home-improvement fee. No new fee is activated by this plan.
+These are current general Funding DFY terms, not proof that every renovation loan is covered. The existing Funding Agreement lists personal/business cards, personal/business lines, other business credit, merchant cash advances, and SBA products. It does not expressly list personal home-improvement installment loans. Before collecting payment for that delivery, the written engagement must cover the actual selected facility and its fee, and the lender application route must be confirmed. Do not automatically attach this fee to a consumer renovation loan, HELOC, or refinance.
+
+The operative signed agreement controls the exact price, payment trigger, scope, and guarantees. This draft activates no fee or product. Public lender referral payouts are not the assumed revenue model; include partner compensation only when an executed relationship supplies it.
+
+Source terms: src/config/offers.mjs, FUNDING_DFY; docs/agreements/FUNDING-AGREEMENT-ready-to-send.txt, sections 1 through 4. Use the operative agreement's payment wording, not a new deadline inferred from catalog metadata.
 
 SERVICE PROMISE
 
 Once the homeowner completes the required intake, Fundhub delivers the route summary, document checklist, and next-step recommendation within two business days. If information is missing, the homeowner receives the exact missing-item list instead of a silent delay.
 
+For a paid engagement validly using the current Funding Agreement, both action clocks begin at signing: work begins within 24 business hours and the first authorized applications are submitted within 72 business hours. Client delay or error does not pause either clock. If Fundhub misses either deadline, the client may request return of the deposit. If both deadlines are met, lack of approval or funding alone does not return the deposit. No back-end success fee is due without funding; nonwaivable cancellation, refund, and dispute rights remain intact.
+
+Written withdrawal of application authority stops new applications and does not undo applications already submitted. The agreement allows limited status follow-up afterward. Do not add a new cancellation window, approval deadline, or payment clock to these signed terms.
+
 CALL TO ACTION
 
 Build My Renovation Funding Map
+
+PAID SERVICE CHECK
+
+Before asking a homeowner to sign or pay, the closer confirms a real application route, ready records, an agreement covering the actual facility, and an available fulfillment owner. Complete this check before signature because the action-guarantee clocks do not pause for missing client information.
+
+The paid service covers file review, document organization, preparation and submission of authorized applications through the selected provider's actual process, lender-request coordination, status follow-up, and fee reconciliation. The borrower reviews and accepts the lender's credit terms. Record each facility's payment and accepted obligations before reviewing a further application.
+
+CUSTOMER PATH
+
+1. Free assessment: record contact details, address, ownership, project, contribution, requested financing, income, current payments, existing applications, reserves, and available records. Keep stated, modeled, and verified evidence distinct; the initial form asks for no SSN.
+2. Setter review: resolve missing address and project facts, document the evidence, and prepare the closer handoff. An unresolved match stays in review rather than becoming a decline.
+3. Free Funding Map: deliver the route summary, document checklist, and next step within two business days of completed intake; send missing items when incomplete.
+4. Readiness check: confirm the actual lender route, records, facility coverage in the agreement, and fulfillment capacity before paid signature.
+5. Closer handoff: explain the project/payment plan, Fundhub's work, and exact deposit/success-fee terms. The client accepts the covered service under its separate agreement before payment.
+6. Paid fulfillment: start work and submit authorized applications under the signed terms and the selected lender's process. Track requests and decisions; the borrower accepts the credit agreement.
+7. Funding and fee reconciliation: record confirmed approved limits, offered amounts, actual funding or credit access received, dates, and conditions separately. Apply the deposit credit once and separate fee invoices from cash collected.
+8. Follow-up: track each facility's payment, outstanding requests, remaining project needs, and any further suitable route using the updated obligation picture.
 
 WHO GETS ROUTED TO A LIVE CALL
 
@@ -307,6 +338,8 @@ Two-Round Ready Trial
 - two rounds of guided optimization and a revised Deal-Ready Profile;
 - route into the full concierge only when the customer needs more work.
 
+Keep the business/investor funding path separate from personal renovation financing. When there is a defined financing request, an actual application route, and a product covered by the existing Funding DFY agreement, present that existing paid service with its deposit credit, fee basis, payment trigger, and action guarantees. A Deal-Ready Profile does not itself establish a financing approval, an available opportunity, or paid enrollment.
+
 SERVICE PROMISE
 
 Fundhub completes the profile, lane recommendation, and missing-item plan after the participant supplies the requested information. Preparation clients receive the agreed profile rebuilds and remain in the Ready Track through the stated service period.
@@ -402,7 +435,8 @@ UPSELL OFFERS
 - self-employed income document preparation;
 - joint-applicant readiness;
 - future refinance, HELOC, investor, and business equity-line services after lender relationships and product/state coverage are confirmed;
-- proposed 10% business-financing success-fee engagement, separately scoped and not activated here.
+- Renovation Funding, Done for You: proposed use of the current $3,000 deposit and 10% success-fee economics under an agreement covering the selected facility; the deposit is credited once, and fee basis, payment trigger, and action guarantees follow that signed agreement;
+- business/investor Funding DFY: the current paid engagement where the actual credit product is covered by the existing agreement, with a route separate from personal renovation financing.
 
 DOWNSELL OFFERS
 
@@ -529,6 +563,8 @@ Use the Jeremy Haynes sequence:
 INTAKE
 
 Homeowner:
+- first and last name, phone, email, and current residential address;
+- project property address and ownership evidence when different from the residence;
 - project type and amount;
 - separate project budget, own contribution, combined financing target, and per-facility requests;
 - state and ownership;
@@ -570,6 +606,8 @@ Do not use a dead thank-you page.
 
 THE 90-DAY LAUNCH
 
+This is the original planning sequence, not a fixed waiting period or an instruction to spend. Move through the stages as the actual route, service scope, capacity, and customer evidence are ready. The proposed first commercial test remains the homeowner service.
+
 DAYS 1 TO 14
 
 - contact HFS, BHG, Lyon, Hearth, Next-Financing, Enhancify, FNBO Slice, and Nelnet;
@@ -604,7 +642,16 @@ DAYS 61 TO 90
 
 THE SCOREBOARD
 
+First-launch sequence: validate the homeowner free-map-to-paid-service path first. Keep entrant readiness and contractor distribution separate while their actual delivery and commercial routes are completed. The $40,000 available budget is an owner-set resource, not a required initial spend or permission to change campaigns. Release an affordable first test within the team's handling capacity; increase spend only after completed customer cohorts show positive collected contribution and the team meets its service deadlines.
+
+Ownership and capacity:
+- setter: complete intake, missing address/project facts, evidence, and documented closer handoff;
+- closer: project/payment review, actual route, paid scope, exact agreement, and signature;
+- fulfillment owner: authorized application actions, lender requests, status, and the signed service clocks;
+- available call slots, response time, open files, and deadline capacity are recorded before volume increases.
+
 Acquisition:
+- spend, leads, booked calls, attended calls, and complete files kept separate;
 - cost per completed Funding Map;
 - cost per completed Deal-Ready Profile;
 - contractor-sourced applications;
@@ -634,6 +681,11 @@ Application:
 - days to decision and funding.
 
 Commercial:
+- signed paid engagements and deposits actually collected;
+- success-fee invoices versus cash actually collected, with deposit credits applied once;
+- authorized applications, funded cases, days to cash, refunds, and clawbacks;
+- direct sales, verification, and fulfillment cost;
+- collected contribution after acquisition and direct delivery costs;
 - average funded amount;
 - revenue per funded customer;
 - acquisition cost per funded customer;
@@ -641,6 +693,8 @@ Commercial:
 - revenue by provider and contractor;
 - cross-sell revenue;
 - clawbacks and unresolved attribution.
+
+Keep loan volume separate from Fundhub revenue. Do not count approvals, invoices, or a public provider payout as collected revenue. These measurements establish whether the proposed paid homeowner offer works; projected monthly revenue does not establish it.
 
 THE FIRST CREATIVE TEST
 
@@ -668,6 +722,8 @@ Contractor majority angles:
 FINAL RECOMMENDATION
 
 Start with home-improvement loans and the Renovation Funding Map for high-income property owners. Use $75,000, $100,000, $175,000, $250,000, and $500,000+ request markers; distinguish the project from each facility and assess permitted combinations as a complete payment and debt picture.
+
+Owner decision for this draft: approve the homeowner free-map-to-paid-service model using the existing $3,000 credited deposit and 10% approved-funding economics, with written coverage for the actual renovation facility before collection. This is the recommended first model; approval of the model does not itself confirm a lender route or activate a fee on every consumer loan.
 
 Build the Deal-Ready Profile at the same time as a separate front door. Begin with readiness and defined roles. Add live opportunity matching only as actual opportunities, provider structures, and operating partners are available.
 

@@ -7,6 +7,7 @@ const MAX_ACCOUNTS = 200;
 const MAX_HOLDINGS = 500;
 const PROVIDERS = new Set(["manual", "mock", "plaid", "import"]);
 const TYPES = new Set(["depository", "credit", "loan", "investment", "other"]);
+const PLAID_ENVIRONMENTS = new Set(["sandbox", "development", "production"]);
 const OWNERSHIP_SOURCES = new Set([
   "client_stated", "staff_reviewed", "document_verified", "connection_metadata"
 ]);
@@ -55,7 +56,20 @@ function boundedRows(input, cap) {
 function accountView(a) {
   const closed = a.closed_at !== null && a.closed_at !== undefined && a.closed_at !== "";
   const type = enumValue(a.account_type, TYPES, "unknown");
-  const cash = !closed && type === "depository";
+  const provider = providerOf(a.provider);
+  // These fields are selected by the server's tenant/item-scoped read. Raw
+  // browser/import flags are deliberately not a source of environment proof.
+  const scopedPlaid = provider === "plaid" && a.provider_item_scoped === true;
+  const evidence = scopedPlaid && ["server_transport", "legacy_sandbox_label"].includes(a.provider_environment_evidence)
+    ? a.provider_environment_evidence : null;
+  const environment = evidence === "server_transport"
+    ? enumValue(a.provider_environment, PLAID_ENVIRONMENTS)
+    : evidence === "legacy_sandbox_label" && a.provider_environment === "sandbox" ? "sandbox" : null;
+  const testData = provider === "mock" || environment === "sandbox" || environment === "development";
+  const usableSource = ["manual", "import"].includes(provider) || (scopedPlaid && environment === "production");
+  const sourceExclusion = testData ? "test_data" : provider === "plaid" && !environment
+    ? "plaid_environment_unknown" : !usableSource ? "source_unknown" : null;
+  const cash = !closed && type === "depository" && !sourceExclusion;
   return {
     id: uuid(a.id),
     name: text(a.name) || text(a.official_name),
@@ -71,16 +85,24 @@ function accountView(a) {
     balance_as_of: date(a.balance_as_of),
     closed_at: date(a.closed_at),
     account_status: closed ? "closed" : "open",
-    provider: providerOf(a.provider),
+    provider,
+    provider_environment: environment,
+    provider_environment_evidence: environment ? evidence : "unknown",
+    test_data: testData,
     source: "bank_accounts",
     included_in_cash: cash,
-    exclusion_reason: cash ? null : closed ? "closed_account" : "not_depository"
+    exclusion_reason: cash ? null : closed ? "closed_account" : type !== "depository" ? "not_depository" : sourceExclusion
   };
 }
 
 function holdingView(h, accounts) {
   const parent = accounts.get(h.bank_account_id);
   const source = h.source === "manual" || h.source === "provider" ? h.source : "unknown";
+  const hasAccountReference = h.bank_account_id !== null && h.bank_account_id !== undefined && h.bank_account_id !== "";
+  const sourceExclusion = hasAccountReference && !parent ? "account_unavailable"
+    : parent?.test_data ? "test_data"
+    : parent?.provider === "plaid" && parent.provider_environment !== "production" ? "plaid_environment_unknown"
+      : source !== "manual" && (!parent || parent.provider === "unknown" || source === "unknown") ? "source_unknown" : null;
   return {
     id: uuid(h.id),
     bank_account_id: uuid(h.bank_account_id),
@@ -95,8 +117,11 @@ function holdingView(h, accounts) {
     source,
     // Manual positions on a connected account remain manually recorded.
     provider: source === "manual" ? "manual" : source === "provider" ? parent?.provider || "unknown" : "unknown",
-    included_in_investments: parent?.account_status !== "closed",
-    exclusion_reason: parent?.account_status === "closed" ? "closed_account" : null
+    provider_environment: parent?.provider_environment || null,
+    provider_environment_evidence: parent?.provider_environment_evidence || "unknown",
+    test_data: parent?.test_data === true,
+    included_in_investments: parent?.account_status !== "closed" && !sourceExclusion,
+    exclusion_reason: parent?.account_status === "closed" ? "closed_account" : sourceExclusion
   };
 }
 
@@ -160,6 +185,12 @@ export function clientAssetProfile({ accounts = [], holdings = [], asOf = null }
     as_of: date(asOf),
     accounts: accountViews,
     holdings: holdingViews,
+    source_summary: {
+      test_accounts: accountViews.filter((a) => a.test_data).length,
+      unknown_plaid_environment_accounts: accountViews.filter((a) => a.provider === "plaid" && !a.provider_environment).length,
+      excluded_cash_accounts: accountViews.filter((a) => a.account_type === "depository" && a.account_status === "open" && !a.included_in_cash).length,
+      excluded_holdings: holdingViews.filter((h) => !h.included_in_investments).length
+    },
     cash: groups(accountViews.filter((a) => a.included_in_cash), {
       current: "current_balance_cents", available: "available_balance_cents"
     }, "balance_as_of", boundedAccounts.truncated),

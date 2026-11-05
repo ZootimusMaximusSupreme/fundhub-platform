@@ -2910,7 +2910,7 @@ document.addEventListener("DOMContentLoaded", function () {
       state.textContent = "Saved account records are unavailable. No balance has been assumed.";
       return;
     }
-    state.textContent = "Recorded accounts only. Balances are not proof of complete assets or spendable cash.";
+    state.textContent = "Recorded accounts only. Test data and Plaid records with an unknown environment are excluded from totals. Balances are not proof of complete assets or spendable cash.";
     var cashRows = 0;
     profile.cash.forEach(function (group) {
       if (!group || !Array.isArray(group.currencies)) return;
@@ -2933,27 +2933,37 @@ document.addEventListener("DOMContentLoaded", function () {
         box.appendChild(grid);
       });
     });
-    if (!cashRows) enrichmentNote(box, "No open depository cash accounts are recorded.");
-    var accounts = (Array.isArray(profile.accounts) ? profile.accounts : []).filter(function (row) {
-      return row && row.included_in_cash;
-    });
-    if (accounts.length) enrichmentSection(box, "Account sources");
+    if (!cashRows) enrichmentNote(box, "No eligible recorded cash balances. Excluded records remain below.");
+    var accounts = (Array.isArray(profile.accounts) ? profile.accounts : []).filter(Boolean);
+    var sourceLabel = function (row) {
+      if (row.test_data) return "Test data · " + enrichmentText(row.provider_environment || row.provider, "unknown");
+      if (row.provider === "plaid") return row.provider_environment === "production"
+        ? "plaid · production connection record" : "plaid · environment unknown";
+      return enrichmentText(row.provider, "unknown") + " · recorded entry, not bank verified";
+    };
+    if (accounts.some(function (row) { return row.included_in_cash; })) enrichmentSection(box, "Account sources");
+    accounts.sort(function (a, b) { return Number(!!b.included_in_cash) - Number(!!a.included_in_cash); });
+    var excludedHeading = false;
     accounts.forEach(function (row) {
+      if (!row.included_in_cash && !excludedHeading) {
+        enrichmentSection(box, "Excluded account records");
+        excludedHeading = true;
+      }
       var name = enrichmentText(row.name, "Recorded account") + (row.mask ? " · ending " + row.mask : "");
-      var provider = enrichmentText(row.provider, "unknown");
-      var basis = provider === "plaid" ? "connected account record" : "recorded entry, not bank verified";
+      var basis = sourceLabel(row) + (row.included_in_cash ? "" : " · excluded from cash totals · " +
+        enrichmentText(row.exclusion_reason, "source unknown").replace(/_/g, " "));
       var ownership = enrichmentText(row.entity_kind, "unknown") + " ownership · " +
         enrichmentText(row.entity_kind_source, "basis unknown").replace(/_/g, " ");
       var grid = document.createElement("div");
       grid.className = "kv-grid";
       enrichmentLine(grid, name + " · current", enrichmentMoney(row.current_balance_cents, row.currency_code),
-        provider + " · " + basis + " · " + ownership + " · " + enrichmentWhen(row.balance_as_of));
+        basis + " · " + ownership + " · " + enrichmentWhen(row.balance_as_of));
       enrichmentLine(grid, name + " · available", enrichmentMoney(row.available_balance_cents, row.currency_code),
-        provider + " · " + basis + " · " + enrichmentWhen(row.balance_as_of));
+        basis + " · " + enrichmentWhen(row.balance_as_of));
       box.appendChild(grid);
     });
     enrichmentSection(box, "Investment holdings");
-    var holdings = profile.holdings.filter(function (row) { return row && row.account_status !== "closed"; });
+    var holdings = profile.holdings.filter(Boolean);
     if (!holdings.length) enrichmentNote(box, "No investment holdings are recorded.");
     holdings.forEach(function (row) {
       var grid = document.createElement("div");
@@ -2961,8 +2971,10 @@ document.addEventListener("DOMContentLoaded", function () {
       enrichmentLine(grid, enrichmentText(row.account_name || row.symbol || row.description, "Holding"),
         enrichmentMoney(row.current_value_cents, row.currency_code),
         enrichmentText(row.entity_kind, "unknown") + " ownership · " +
-        enrichmentText(row.provider, "unknown") + " / " + enrichmentText(row.source, "unknown") +
-        " · " + enrichmentWhen(row.as_of) + " · separate from cash");
+        sourceLabel(row) + " / " + enrichmentText(row.source, "unknown") +
+        " · " + enrichmentWhen(row.as_of) + " · separate from cash" +
+        (row.included_in_investments === false ? " · excluded from investment totals · " +
+          enrichmentText(row.exclusion_reason, "source unknown").replace(/_/g, " ") : ""));
       box.appendChild(grid);
     });
     if (profile.truncated?.accounts || profile.truncated?.holdings) enrichmentNote(box, "Some stored rows were not included in this view.");
