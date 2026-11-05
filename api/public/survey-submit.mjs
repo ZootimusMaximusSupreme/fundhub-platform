@@ -1,6 +1,6 @@
 // POST /api/public/survey-submit — homepage (and later) multi-step survey capture.
-// Emits entry.captured + survey.submitted (+ survey.completed when the last
-// answer is in), then returns classifySurvey redirect.
+// Emits entry.captured + survey.submitted (+ survey.completed after the full
+// answer set is saved and read back), then returns classifySurvey redirect.
 
 import { db } from "../../src/db.mjs";
 import { emit } from "../../src/events/bus.mjs";
@@ -173,10 +173,20 @@ export async function runSurveySubmit(parsed, deps = {}) {
     },
     { idempotencyKey: `${idemBase}:survey`, clientId }
   );
-  // The homepage sends the full survey in one post. A last answer alone is not
-  // completion: the lead must have every visible question on their branch.
-  // Partial posts stay in S-02 instead of starting the no-booking chase.
-  const completed = surveyIsComplete(parsed.answers) && nextSurveyKey(parsed.answers) === null
+  // The homepage sends the full survey in one post. The event is a STOP signal
+  // for S-02, so require the current answers to be saved before emitting it.
+  // A final-answer write failure must leave the incomplete-survey chase active.
+  let savedComplete = false;
+  if (clientId && surveyIsComplete(parsed.answers) && nextSurveyKey(parsed.answers) === null) {
+    try {
+      savedComplete = await (deps.hasSavedCompleteSurvey || hasSavedCompleteSurvey)(
+        database, clientId, parsed.answers
+      );
+    } catch (err) {
+      console.warn(`[survey-submit] saved completion not verified (${safeError(err)})`);
+    }
+  }
+  const completed = savedComplete
     ? await emitFn(
       database,
       "survey.completed",
@@ -198,16 +208,13 @@ export async function runSurveySubmit(parsed, deps = {}) {
     // gets a ten-minute, no-PII calendar ticket. A partial survey or missing
     // signing key goes back to /apply; it never receives a direct booking door.
     redirect = RESUME_BASE_URL;
-    if (completed && clientId) {
+    if (completed) {
       try {
-        const saved = await (deps.hasSavedCompleteSurvey || hasSavedCompleteSurvey)(database, clientId, parsed.answers);
-        if (saved) {
-          redirect = `${SURVEY_REDIRECTS.PASS}#fh_survey_ticket=${mintBookingTicket({
-            now: deps.now, secret: deps.secret, env: deps.env
-          })}`;
-        }
+        redirect = `${SURVEY_REDIRECTS.PASS}#fh_survey_ticket=${mintBookingTicket({
+          now: deps.now, secret: deps.secret, env: deps.env
+        })}`;
       } catch (err) {
-        console.warn(`[survey-submit] saved completion not verified (${safeError(err)})`);
+        console.warn(`[survey-submit] no booking ticket (${safeError(err)})`);
       }
     }
   }

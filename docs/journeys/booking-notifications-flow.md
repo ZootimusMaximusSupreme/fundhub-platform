@@ -310,14 +310,15 @@ the ClickFunnels page push.
 
 **Homepage calendar handoff (2026-11-05 source repair).** The homepage sends all
 answers to `api/public/survey-submit.mjs`. That route saves `survey.completed`
-only when every visible question on the person's branch is answered. A qualified
+only when every visible question on the person's branch is answered and the
+current answers have been read back from the saved client row. A qualified
 completed response with a resolved client carries a random, ten-minute booking ticket in the calendar
 URL fragment. The native calendar's head block checks that ticket through the
 existing `public/survey-resume` door before showing a top-level scheduler; the
 check returns no saved name, email, phone, answers or client id. Before issuing
-the ticket, the route reads the saved client answers and requires each answer
-in this submission to match; an older complete survey cannot mask a failed
-new answer write. A direct, bad,
+the ticket, the route requires each answer in this submission to match the
+saved client answers; an older complete survey cannot mask a failed new answer
+write or falsely stop the incomplete-survey chase. A direct, bad,
 expired or timed-out calendar visit returns to `/apply`. The `/apply` and paid
 roadmap frames keep their existing paths. A deduped homepage submit can still
 continue when the completed event is already saved. The email-only `?r=` resume
