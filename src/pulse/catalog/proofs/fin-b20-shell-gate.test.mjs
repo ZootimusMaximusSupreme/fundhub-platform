@@ -148,6 +148,12 @@ test("role gate: the rail hides the rows a role may not open and keeps the ones 
 // Clock
 test("clock: Arizona time, the date when the bar is wide, only the time when narrow, gone when small, none for a client, and it ticks", { timeout: 60_000 }, async () => {
   const page = await makePage(lab, { role: "owner", width: 1440 });
+  // Date stays fixed across a slow shell load; the app's interval remains real.
+  await page.clock.setFixedTime(new Date("2026-07-15T20:34:56Z"));
+  await page.route("**/app/shell.js", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await route.continue();
+  });
   await page.goto(`${lab.origin}/app/products-commissions.html`, { waitUntil: "domcontentloaded" });
   await settle(page);
   const account = page.locator("#fh-shell-chip");
@@ -157,17 +163,11 @@ test("clock: Arizona time, the date when the bar is wide, only the time when nar
   await account.locator("summary").first().click();
   await diagnostics.locator("summary").click();
   await clock.waitFor({ state: "visible" });
-  // The page's clock and this process's clock are read a moment apart, so a minute (or midnight)
-  // can turn over in between: accept Phoenix's reading from just before or just after the read.
-  const readStart = new Date();
   const wide = (await clock.textContent()).trim();
-  const readEnd = new Date();
-  assert.match(wide, /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}:\d{2} (AM|PM) MST$/);
-  const phoenixDays = [readStart, readEnd].map((d) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/Phoenix" }));
-  assert.equal(phoenixDays.some((day) => wide.startsWith(`${day}, `)), true, `the day is Phoenix's (${phoenixDays.join(" or ")})`);
-  const phoenixClocks = [readStart, readEnd].map((d) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }).replace(/ (AM|PM)$/, ""));
-  assert.equal(phoenixClocks.some((hm) => wide.includes(hm)), true, `the hour and minute are Phoenix's (${phoenixClocks.join(" or ")})`);
-  await until(async () => (await clock.textContent()).trim() !== wide, { timeout: 4000, message: "the clock to tick" });
+  assert.equal(wide, "Wed, Jul 15, 1:34:56 PM MST", "the wide clock shows the pinned Arizona date and time");
+  await page.clock.setFixedTime(new Date("2026-07-15T20:34:57Z"));
+  await until(async () => (await clock.textContent()).trim() !== wide, { timeout: 4000, message: "the real clock interval to tick" });
+  assert.equal((await clock.textContent()).trim(), "Wed, Jul 15, 1:34:57 PM MST", "the Arizona clock ticks");
   await page.setViewportSize({ width: 1150, height: 900 });
   assert.match((await clock.textContent()).trim(), /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}:\d{2} (AM|PM) MST$/, "the technical clock keeps its full Arizona face when the header narrows");
   assert.equal(await clock.isVisible(), true);
