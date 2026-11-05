@@ -283,6 +283,49 @@ test.describe("website menu without a sidebar", () => {
     }
   });
 
+  test("workspace content holds position while the header loads", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__headerFrames = [];
+      const anchors = {
+        "pipeline.html": ".railbar",
+        "setter-dashboard.html": ".content",
+        "closer-dashboard.html": "#closer-workspace",
+        "calendar.html": ".calendar-intro"
+      };
+      function sample() {
+        const file = location.pathname.split("/").pop();
+        const anchor = document.querySelector(anchors[file]);
+        const host = document.querySelector(".app > .shell, .app > .main");
+        if (anchor && host) window.__headerFrames.push({
+          top: anchor.getBoundingClientRect().top,
+          header: Boolean(document.getElementById("fh-workspace-header")),
+          reserved: getComputedStyle(host, "::before").content !== "none"
+        });
+        requestAnimationFrame(sample);
+      }
+      requestAnimationFrame(sample);
+    });
+
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      for (const screen of ["pipeline.html", "setter-dashboard.html", "closer-dashboard.html", "calendar.html"]) {
+        await openScreen(page, `/app/${screen}`, OWNER, {
+          "/api/auth/session": async () => {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            return OWNER;
+          }
+        });
+        await expect(page.locator("#fh-workspace-header")).toBeVisible();
+        await page.waitForFunction(() => window.__headerFrames?.some((frame) => frame.header));
+        const frames = await page.evaluate(() => window.__headerFrames);
+        expect(frames.some((frame) => frame.reserved && !frame.header), `${screen} needs a reserved first frame`).toBe(true);
+        expect(frames.some((frame) => frame.header), `${screen} needs a mounted header frame`).toBe(true);
+        const tops = frames.map((frame) => frame.top);
+        expect(Math.max(...tops) - Math.min(...tops), `${screen} moved at ${viewport.width}px`).toBeLessThanOrEqual(2);
+      }
+    }
+  });
+
   test("section order matches the simplified shell structure", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", OWNER);
     await waitForGate(page);
