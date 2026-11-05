@@ -16,6 +16,13 @@ const CANDIDATES_SQL = `
          b.qualification_bucket,
          b.attendee_email, COALESCE(NULLIF(b.raw->>'phone', ''), c.phone) AS phone,
          c.is_demo, c.custom_fields,
+         EXISTS (
+           SELECT 1 FROM events e
+            WHERE e.org_id = b.org_id AND e.client_id = b.client_id
+              AND e.name = 'survey.completed'
+              AND lower(btrim(e.payload->>'email')) = lower(btrim(b.attendee_email))
+              AND e.created_at <= b.created_at
+         ) AS has_completed_survey,
          a.utm_source, a.utm_medium, a.utm_campaign, a.utm_content
     FROM bookings b
     LEFT JOIN clients c ON c.id = b.client_id AND c.org_id = b.org_id

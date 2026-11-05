@@ -308,6 +308,30 @@ with a retry message. Earlier per-screen posts remain best-effort; the final pos
 carries every answer. This requires a live browser and persisted-row check after
 the ClickFunnels page push.
 
+**Homepage calendar handoff (2026-11-05 source repair).** The homepage sends all
+answers to `api/public/survey-submit.mjs`. That route saves `survey.completed`
+only when every visible question on the person's branch is answered and the
+current answers have been read back from the saved client row. A qualified
+completed response with a resolved client carries a random, ten-minute booking ticket in the calendar
+URL fragment. The native calendar's head block checks that ticket through the
+existing `public/survey-resume` door before showing a top-level scheduler; the
+check returns no saved name, email, phone, answers or client id. Before issuing
+the ticket, the route requires each answer in this submission to match the
+saved client answers; an older complete survey cannot mask a failed new answer
+write or falsely stop the incomplete-survey chase. A direct, bad,
+expired or timed-out calendar visit returns to `/apply`. The `/apply` and paid
+roadmap frames keep their existing paths. A deduped homepage submit can still
+continue when the completed event is already saved. The email-only `?r=` resume
+link remains separate and still opens at the first unanswered question.
+The native scheduler still accepts the email typed on the appointment. The
+booking feed therefore checks a saved `survey.completed` event for the same
+organization, client and normalized appointment email, dated no later than the
+booking. If that receipt is absent, Cortana gets a booked-call event with no
+funding bucket, offer-financing score or capital band. The appointment and
+closer task remain visible so staff can resolve an unverified booking. This
+does not prove an appointment was created by the ticket holder; a real booked
+webhook and persisted-row check are still required after release.
+
 "Finished" means `survey.completed`. A reply means a `message.inbound` event for
 the client after the flow started.
 

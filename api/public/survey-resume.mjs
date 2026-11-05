@@ -44,6 +44,7 @@
 import { db as defaultDb } from "../../src/db.mjs";
 import { safeError } from "../../src/http/health.mjs";
 import { readSurveyResumeToken, surveyResumeTokenMatchesEmail } from "../../src/survey/resume-link.mjs";
+import { validBookingTicket } from "../../src/survey/booking-ticket.mjs";
 import { nextSurveyKey, savedSurveyAnswers } from "../../src/survey/resume-state.mjs";
 import { answerPreflight, applySloCors } from "../../src/slo/cors.mjs";
 
@@ -88,6 +89,16 @@ export default async function handler(req, res, deps = {}) {
   if (method !== "GET") {
     res.setHeader("allow", METHODS);
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
+  }
+
+  // The homepage's completed-survey handoff uses this existing public door
+  // only to check a short-lived ticket. It never reads or returns saved data.
+  const bookingTicket = req.query?.booking_ticket;
+  if (bookingTicket != null) {
+    const valid = validBookingTicket(bookingTicket, {
+      now: deps.now, secret: deps.secret, env: deps.env
+    });
+    return res.status(valid ? 200 : 404).json({ ok: valid });
   }
 
   const raw = req.query?.r;

@@ -471,6 +471,30 @@ test("gap sales manager: a read that never answers is FAIL, not a hang", async (
   assert.equal(byId(rows, "sales-manager:totals").status, "FAIL");
 });
 
+test("gap sales manager: other proof reads wait for the sales floor", async () => {
+  const db = fakeDb();
+  let finishFloor;
+  let mineStarted = false;
+  const floor = new Promise((resolve) => { finishFloor = resolve; });
+  const pending = gapChecks({
+    db, orgId: ORG, now: NOW,
+    reads: {
+      salesFloor: () => floor,
+      closerMyNumbers: async () => {
+        mineStarted = true;
+        return { pace: {}, month: {}, team: [] };
+      }
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(mineStarted, false);
+  assert.equal(db.seen.length, 0);
+  finishFloor({ hero: { cash_cents: 0 }, funnel: { booked: 0, held: 0, deposits: 0 }, closers: [], setters: [] });
+  const rows = await pending;
+  assert.equal(mineStarted, true);
+  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS"]);
+});
+
 test("gap sales manager: manager totals that cannot be read are FAIL", async () => {
   const floor = (hero, funnel) => ({ hero, funnel, closers: [], setters: [] });
   const mine = { pace: {}, month: {}, team: [] };

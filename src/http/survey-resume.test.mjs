@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import handler, { readSurveyResume } from "../../api/public/survey-resume.mjs";
 import { ROUTES } from "../../netlify/functions/api.mjs";
 import { surveyResumeToken } from "../survey/resume-link.mjs";
+import { BOOKING_TICKET_TTL_MS, mintBookingTicket } from "../survey/booking-ticket.mjs";
 
 const ORG = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const OTHER_ORG = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
@@ -64,6 +65,22 @@ const getToken = (t, opts) => get({ r: t }, opts);
 
 test("the door is routed", () => {
   assert.equal(ROUTES["public/survey-resume"], handler);
+});
+
+test("a homepage booking ticket proves completion without reading or revealing saved contact", async () => {
+  const db = fakeDb([pat()]);
+  const ticket = mintBookingTicket({ now: NOW, secret: SECRET });
+  const valid = await get({ booking_ticket: ticket }, { db });
+  assert.equal(valid.statusCode, 200);
+  assert.deepEqual(valid.body, { ok: true });
+  assert.equal(valid.headers["cache-control"], "no-store");
+  assert.equal(db.calls.length, 0, "booking validation never opens the client row");
+
+  const expired = mintBookingTicket({ now: NOW - BOOKING_TICKET_TTL_MS - 1000, secret: SECRET });
+  const old = await get({ booking_ticket: expired }, { db });
+  assert.equal(old.statusCode, 404);
+  assert.deepEqual(old.body, { ok: false });
+  assert.equal(db.calls.length, 0);
 });
 
 test("someone who only filled in the contact screen starts at the first question", async () => {

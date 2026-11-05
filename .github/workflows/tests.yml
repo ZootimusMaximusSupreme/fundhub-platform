@@ -116,7 +116,7 @@ jobs:
       # repository state this workflow does not control.
       - name: Install dependencies
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          if [ -f package-lock.json ]; then npm ci || { sleep 10; npm ci; }; else npm install || { sleep 10; npm install; }; fi
 
       # Some unit proofs launch Playwright themselves; they need the same browser
       # and system libraries as the dedicated screens job.
@@ -184,7 +184,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          if [ -f package-lock.json ]; then npm ci || { sleep 10; npm ci; }; else npm install || { sleep 10; npm install; }; fi
 
       # --with-deps pulls the system libraries Chromium needs on a bare runner.
       # The main project uses Chromium; the PDF annotation and report-overlay
@@ -253,7 +253,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          if [ -f package-lock.json ]; then npm ci || { sleep 10; npm ci; }; else npm install || { sleep 10; npm install; }; fi
 
       # Unit proofs that launch Playwright also run against the scratch database.
       - name: Install Chromium for nested browser proofs
@@ -328,7 +328,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          if [ -f package-lock.json ]; then npm ci || { sleep 10; npm ci; }; else npm install || { sleep 10; npm install; }; fi
 
       # This is a real check in its own right. `db/migrate.mjs` applies db/schema,
       # then db/migrations, then db/seed, recording each file in `schema_migrations`

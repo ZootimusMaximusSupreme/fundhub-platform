@@ -56,10 +56,13 @@ export async function sendCortanaBooking(booking, { env = process.env, fetchImpl
     event_name: "funding_call_booked",
     event_id: `fundhub_booking_${booking.id}`,
     booking_id: booking.provider_uid,
-    qualification_bucket: ["funding_qualified", "funding_unqualified"].includes(booking.qualification_bucket)
+    qualification_bucket: booking.has_completed_survey === true &&
+      ["funding_qualified", "funding_unqualified"].includes(booking.qualification_bucket)
       ? booking.qualification_bucket : null,
-    offer_financing_screen: offerFinancingScreen(booking.custom_fields),
-    available_capital_band: availableCapitalBand(booking.custom_fields),
+    offer_financing_screen: booking.has_completed_survey === true
+      ? offerFinancingScreen(booking.custom_fields) : "score_unconfirmed",
+    available_capital_band: booking.has_completed_survey === true
+      ? availableCapitalBand(booking.custom_fields) : null,
     name: booking.attendee_name || null,
     email: booking.attendee_email,
     phone: booking.phone || null,

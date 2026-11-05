@@ -727,6 +727,15 @@ describe("fundhub.ai homepage survey hooks (public/js/homepage-survey.js)", () =
     assertShape(got);
   });
 
+  test("a saved completion retry still takes the lead to the calendar", async () => {
+    const redirect = "https://apply.fundhub.ai/funding-book-call#fh_survey_ticket=receipt123";
+    const h = await walkHome(HOME_BIZ, { fetchImpl: () => Promise.resolve({
+      ok: true, status: 200,
+      json: () => Promise.resolve({ ok: true, deduped: true, redirect })
+    }) });
+    assert.equal(h.page.win.__assigned, redirect);
+  });
+
   test("personal path: screens 7 and 8 are the income questions", async () => {
     const h = await walkHome(HOME_PERSONAL);
     const got = h.page.events();

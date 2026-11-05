@@ -452,7 +452,9 @@ export async function runDailyPulse({
   }
   checks.push(await checkGmail({ env, fetchImpl, gmailClient }));
   checks.push(...await guard("machine", () => checkMachine({ db: dbDown ? null : db, scope: dbDown ? null : staffScope, now })));
-  checks.push(...await checkRegistry({ fetchImpl, baseUrl: origin }));
+  // All registry doors still run; a bounded pool keeps 465 GET pings within
+  // the morning step's 20-second proof budget when a few doors answer slowly.
+  checks.push(...await checkRegistry({ fetchImpl, baseUrl: origin, concurrency: 32 }));
   if (naDbBlocked) {
     checks.push(check("jobs", "skip", "Job heartbeats were not read because the earlier database read is still running."));
   } else {
