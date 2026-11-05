@@ -32,6 +32,7 @@ Live follow-up, 2026-11-05
 - Root cause: shell.js mounts the shared header only after /api/auth/session resolves. The content was allowed to paint before the header occupied its normal layout space.
 - A shared CSS placeholder now reserves 96px for Astra staff pages with a workspace shell, then disappears in the same paint as the real header. Partner-accessible design pages are excluded because they do not mount this staff header.
 - New Playwright regression samples animation frames with a delayed session on Pipeline, Setter dashboard, Sales workspace and Calendar at 1440px and 390px. It requires a reserved first frame and a mounted header frame, with <=2px content movement. The focused test and full 11-test navigation suite pass on current main; TypeScript and lint pass. The follow-up is on codex/portal-header-stability-20261105 pending GitHub delivery and live proof.
+- A fresh fictional-data recording of the header fix is saved as ops/workflows/portal-tab-jump-2026-11-04/after-header-stability-fictional.webm. It contains 168 extracted frames; a contact sheet of transition frames was visually reviewed, and the Playwright frame probe measured content position throughout the delayed-session transition.
 
 2026-11-05 owner correction — website has no sidebar
 - Owner lane: front-house. The Fundhub Mac floating Dock is a separate native surface and is untouched here. No animations or customer writes.
