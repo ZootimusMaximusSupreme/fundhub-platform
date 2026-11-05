@@ -279,7 +279,9 @@ test("the beta banner is not drawn today, and when a page is listed it shows for
     const banner = owner.locator("#fh-beta-banner");
     await banner.waitFor({ state: "visible" });
     assert.match(await banner.innerText(), /^Beta — under development\. Data may be incomplete or inaccurate\. Do not use for client decisions\./);
+    await owner.locator("#fh-menu-btn").click();
     assert.equal(await owner.locator('a.navitem[href="sales-floor.html"] .beta-badge').innerText(), "BETA", "the nav row carries the badge");
+    await owner.locator("#burger").click();
     await owner.locator("[data-fh-beta-dismiss]").click();
     assert.equal(await owner.locator("#fh-beta-banner").count(), 0, "Dismiss removes it");
     await owner.reload({ waitUntil: "domcontentloaded" });
@@ -606,23 +608,23 @@ test("the search overlay opens from the button and the keyboard, asks the server
   });
 });
 
-test("the sidebar logo goes to the pipeline, and the collapse button folds the rail to icons and back", { timeout: 120_000 }, async () => {
+test("the menu logo goes to the pipeline, and the close button hides the menu on desktop and phone", { timeout: 120_000 }, async () => {
   await proof.check(/^Sidebar logo link/, async () => {
     const page = await lab.open();
     await go(page);
     assert.equal(await page.locator("#side a.logo").getAttribute("href"), "pipeline.html");
     const side = page.locator("#side");
     const burger = page.locator("#burger");
-    assert.equal((await burger.innerText()).trim(), "‹");
+    const menu = page.locator("#fh-menu-btn");
+    assert.equal(await side.isVisible(), false);
+    await menu.click();
+    assert.equal(await side.isVisible(), true);
+    assert.equal((await burger.innerText()).trim(), "×");
     assert.equal(await side.evaluate((el) => el.classList.contains("mini")), false);
     await burger.click();
-    assert.equal(await side.evaluate((el) => el.classList.contains("mini")), true, "folded to the icon strip");
-    assert.equal(await page.evaluate(() => document.documentElement.classList.contains("fh-side-mini")), true);
-    assert.equal((await burger.innerText()).trim(), "›");
-    assert.equal(await page.locator("#side .navgroup.closed").count(), 0, "every section is open on the icon strip, so no row is lost");
-    await burger.click();
-    assert.equal(await side.evaluate((el) => el.classList.contains("mini")), false, "and back");
-    assert.equal((await burger.innerText()).trim(), "‹");
+    assert.equal(await side.isVisible(), false);
+    assert.equal(await menu.getAttribute("aria-expanded"), "false");
+    await menu.click();
     await page.locator("#side a.logo").click();
     await page.waitForURL((url) => url.pathname === "/app/pipeline.html");
     await page.close();
@@ -632,11 +634,11 @@ test("the sidebar logo goes to the pipeline, and the collapse button folds the r
     const phone = await lab.open({ width: 390, height: 800 });
     await go(phone);
     assert.equal(await phone.locator("#side").evaluate((el) => el.classList.contains("open")), false);
-    assert.equal((await phone.locator("#burger").innerText()).trim(), "×");
     await phone.locator("#fh-menu-btn").click();
     assert.equal(await phone.locator("#side").evaluate((el) => el.classList.contains("open")), true, "the menu button opens the drawer");
+    assert.equal((await phone.locator("#burger").innerText()).trim(), "×");
     await phone.locator("#burger").click();
-    assert.equal(await phone.locator("#side").evaluate((el) => el.classList.contains("open")), false, "the collapse button closes the drawer on a phone");
+    assert.equal(await phone.locator("#side").evaluate((el) => el.classList.contains("open")), false, "the close button hides the menu on a phone");
     assert.equal(await phone.locator("#side").evaluate((el) => el.classList.contains("mini")), false, "and does not fold it");
     await phone.close();
   });

@@ -949,18 +949,14 @@
     if (document.getElementById("fh-side-lock")) return;
     var lock = document.createElement("style");
     lock.id = "fh-side-lock";
+    // Legacy page styles may reserve rail space after the shared CSS loads.
+    // The website menu floats above the page at every width.
     lock.textContent =
-      "aside.side,.side{position:fixed!important;top:0!important;left:0!important;" +
-      "bottom:0!important;width:var(--fh-side-w,224px)!important;flex:none!important;" +
-      "margin:0!important;max-height:none!important;z-index:400!important}" +
-      ".side.mini{width:var(--fh-side-w-mini,72px)!important}" +
-      ".app,.app-shell{padding-left:var(--fh-side-w,224px)!important;box-sizing:border-box}" +
-      "html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:var(--fh-side-w-mini,72px)!important}" +
-      "@media(max-width:860px){" +
-        "aside.side,.side,.side.mini{width:min(292px,calc(100vw - 36px))!important;transform:translateX(-100%)}" +
-        "aside.side.open,.side.open{transform:translateX(0)}" +
-        ".app,.app-shell,html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:0!important}" +
-      "}";
+      ".app,.app-shell,html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:0!important;box-sizing:border-box}" +
+      "aside.side,.side{position:fixed!important;bottom:auto!important;" +
+      "width:min(760px,calc(100vw - 32px))!important;max-height:calc(100dvh - 92px)!important;" +
+      "transform:none!important;z-index:400!important}" +
+      "@media(max-width:620px){aside.side,.side{width:calc(100vw - 24px)!important;max-height:calc(100dvh - 82px)!important}}";
     (document.head || document.documentElement).appendChild(lock);
   }
 
@@ -1049,7 +1045,6 @@
   /* Keep the user's navigation arrangement across screens. The current
      destination is always revealed; other groups retain their chosen state. */
   var SIDE_GROUP_KEY = "fh_sidebar_groups";
-  var SIDE_MINI_KEY = "fh_sidebar_mini";
 
   function sidebarGroupState() {
     try { return JSON.parse(localStorage.getItem(SIDE_GROUP_KEY) || "null"); }
@@ -1086,24 +1081,11 @@
     syncGroupAria(side);
   }
 
-  function openAllGroups(side) {
-    var groups = side.querySelectorAll(".navgroup");
-    for (var i = 0; i < groups.length; i++) groups[i].classList.remove("closed");
-    syncGroupAria(side);
-  }
-
   function wireSidebarChrome(side) {
     if (!side || side.getAttribute("data-fh-wired") === "1") return;
     side.setAttribute("data-fh-wired", "1");
     var burger = side.querySelector("#burger") || document.getElementById("burger");
-    var restoreMini = false;
-    try { restoreMini = localStorage.getItem(SIDE_MINI_KEY) === "1"; } catch (e) {}
-    if (restoreMini) side.classList.add("mini");
     var beforeDrawerFocus = null;
-
-    function isMobile() {
-      return !!(window.matchMedia && window.matchMedia("(max-width:860px)").matches);
-    }
 
     /* The scrim used to be looked up as "side-scrim" while the ten pages that
        shipped one called it "sideScrim", so getElementById always returned null
@@ -1127,7 +1109,7 @@
       return scrim;
     }
 
-    /* Below 860px the rail is off-canvas, so it needs a way back in. */
+    /* The same header control opens this compact menu at every width. */
     function getMenuBtn() {
       var btn = document.getElementById("fh-menu-btn");
       if (!btn) {
@@ -1138,21 +1120,14 @@
         btn.setAttribute("aria-label", "Open menu");
         btn.setAttribute("aria-controls", "side");
         btn.innerHTML = '<span class="fh-menu-mark" aria-hidden="true"></span>';
-        btn.addEventListener("click", function () { openMobile(); });
+        btn.addEventListener("click", function () { setDrawer(!side.classList.contains("open")); });
         if (side.parentNode) side.parentNode.insertBefore(btn, side.nextSibling);
         else document.body.appendChild(btn);
       }
       return btn;
     }
 
-    /* The session chip and the search button are position:fixed at z-index
-       ~2147483000, three orders of magnitude above the rail's 400, so with the
-       drawer open they sit on top of the navigation and cover menu entries.
-       Raising the rail above them would start a z-index war with the search
-       overlay, which legitimately has to cover everything. Hiding the two
-       floating controls while the drawer is open is the smaller change: they
-       are chrome for the screen underneath, which you cannot interact with
-       anyway while the scrim is up. */
+    /* Keep the page inert while its route menu is open. */
     function setDrawer(open) {
       var wasOpen = side.classList.contains("open");
       if (open && !wasOpen) beforeDrawerFocus = document.activeElement;
@@ -1160,57 +1135,27 @@
       getScrim().classList.toggle("show", open);
       getMenuBtn().setAttribute("aria-expanded", open ? "true" : "false");
       document.documentElement.classList.toggle("fh-drawer-open", open);
-      if (isMobile()) {
-        side.setAttribute("aria-hidden", open ? "false" : "true");
-        side.inert = !open;
-      } else {
-        side.removeAttribute("aria-hidden");
-        side.inert = false;
-      }
+      side.setAttribute("aria-hidden", open ? "false" : "true");
+      side.inert = !open;
       if (open && !wasOpen && burger) burger.focus();
       if (!open && wasOpen && beforeDrawerFocus && beforeDrawerFocus.focus) beforeDrawerFocus.focus();
     }
-    function openMobile() { setDrawer(true); }
     function closeMobile() { setDrawer(false); }
-
-    function syncMini() {
-      var mini = side.classList.contains("mini");
-      document.documentElement.classList.toggle("fh-side-mini", mini && !isMobile());
-      /* The 60px icon rail hides every label, group headers included, so a
-         closed group there is a row with nothing left to open it. Open them all
-         while the rail is mini; put the one-group-open default back when it is
-         not. */
-      if (mini && !isMobile()) openAllGroups(side);
-      else setGroupDefault(side);
-      if (burger) {
-        burger.textContent = isMobile() ? "×" : (mini ? "›" : "‹");
-        burger.setAttribute("aria-label", isMobile() ? "Close menu" : (mini ? "Expand sidebar" : "Collapse sidebar"));
-        burger.title = burger.getAttribute("aria-label");
-        burger.setAttribute("aria-expanded", mini && !isMobile() ? "false" : "true");
-      }
-      getMenuBtn();
-      if (!isMobile()) closeMobile();
-    }
-
     if (burger) {
-      burger.addEventListener("click", function () {
-        /* On a phone the same control closes the drawer; on desktop it still
-           collapses the rail to the icon strip. */
-        if (isMobile()) { closeMobile(); return; }
-        side.classList.toggle("mini");
-        try { localStorage.setItem(SIDE_MINI_KEY, side.classList.contains("mini") ? "1" : "0"); } catch (e) {}
-        syncMini();
-      });
+      burger.textContent = "×";
+      burger.setAttribute("aria-label", "Close menu");
+      burger.title = "Close menu";
+      burger.addEventListener("click", closeMobile);
     }
 
     /* Tapping a destination should not leave the drawer sitting over it. */
     side.addEventListener("click", function (ev) {
-      if (isMobile() && ev.target && ev.target.closest && ev.target.closest("a.navitem")) closeMobile();
+      if (ev.target && ev.target.closest && ev.target.closest("a.navitem")) closeMobile();
     });
 
     document.addEventListener("keydown", function (ev) {
       if (ev.key === "Escape" && side.classList.contains("open")) closeMobile();
-      if (ev.key === "Tab" && side.classList.contains("open") && isMobile()) {
+      if (ev.key === "Tab" && side.classList.contains("open")) {
         var focusable = Array.prototype.filter.call(side.querySelectorAll('a[href],button:not([disabled])'), function (item) { return item.getClientRects().length > 0; });
         var first = focusable[0], last = focusable[focusable.length - 1];
         if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
@@ -1224,30 +1169,10 @@
         if (g) { g.classList.toggle("closed"); rememberGroups(side); }
       });
     }
-    if (window.matchMedia) {
-      var mq = window.matchMedia("(max-width:860px)");
-      function onMq() {
-        /* Was: force .mini below 860, which left a 60px unlabelled glyph rail
-           permanently docked on a 390px phone. Now the rail is off-canvas and
-           starts closed; the brand-mark button brings it in. */
-        if (mq.matches) {
-          /* Drop .mini so a rail collapsed on desktop does not carry over as a
-             60px glyph strip after a resize or rotate. Mobile is one state:
-             off-canvas, full labels. */
-          side.classList.remove("mini");
-          document.documentElement.classList.remove("fh-side-mini");
-          closeMobile();
-        } else {
-          try { side.classList.toggle("mini", localStorage.getItem(SIDE_MINI_KEY) === "1"); } catch (e) {}
-        }
-        syncMini();
-      }
-      if (mq.addEventListener) mq.addEventListener("change", onMq);
-      else if (mq.addListener) mq.addListener(onMq);
-      onMq();
-    } else {
-      syncMini();
-    }
+    side.classList.remove("mini");
+    document.documentElement.classList.remove("fh-side-mini");
+    getMenuBtn();
+    closeMobile();
   }
 
   /* Mount before first paint when possible — head script + documentElement. */

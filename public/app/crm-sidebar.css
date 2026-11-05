@@ -153,3 +153,38 @@ html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:var(--fh-side-w
 
 /* Atomic desktop rail changes preserve labels and screenshot geometry; mobile keeps its drawer animation. */
 @media(min-width:861px){.side,.app,.app-shell{transition:none!important}}
+
+/* Website navigation lives in a compact header menu; no page reserves a rail. */
+.app,.app-shell,html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:0 !important;transition:none}
+aside.side,.side,.side.mini{
+  top:calc(var(--fh-workspace-header-h,72px) + 8px) !important;
+  left:16px !important;bottom:auto !important;
+  width:min(760px,calc(100vw - 32px)) !important;
+  height:auto !important;max-height:calc(100dvh - 92px) !important;
+  visibility:hidden;pointer-events:none;
+  border:1px solid var(--line,#E3E5E0);border-radius:14px;
+  box-shadow:0 20px 60px rgba(13,17,19,.18);
+  transition:none !important;
+}
+aside.side.open,.side.open{visibility:visible;pointer-events:auto;transform:none !important}
+.side .side-top{height:64px;flex-basis:64px}
+.side .burger{min-width:44px;min-height:44px;width:44px;height:44px;flex-basis:44px}
+.side .side-scroll{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-content:start;gap:8px 12px;padding:16px;overflow:auto}
+.side .navgroup,.side.mini .navgroup{margin:0}
+.side .navhead,.side.mini .navhead{display:flex;min-height:44px}
+.side .navitem,.side.mini .navitem{justify-content:flex-start;min-height:44px;padding:10px 12px}
+.side.mini .navitem .lbl,.side.mini .navitem .beta-badge{display:initial}
+.side.mini .side-top .logo,.side.mini .side-foot .who{display:initial}
+.side-scrim.show{z-index:79}
+.fh-menu-btn{display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;min-height:44px;flex:0 0 44px;border:1px solid var(--line);background:var(--paper,#F8F8F6);color:var(--ink);border-radius:10px;cursor:pointer}
+.fh-menu-btn:not(.fh-workspace-header .fh-menu-btn){position:fixed;top:12px;left:12px;z-index:401}
+.fh-drawer-open #fh-workspace-header .fh-workspace-tools{pointer-events:none}
+.fh-drawer-open{overflow:hidden}
+@media(max-width:860px){
+  aside.side,.side,.side.mini{transform:none !important;width:min(760px,calc(100vw - 32px)) !important}
+  .side .side-scroll{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  aside.side,.side,.side.mini{left:12px !important;width:calc(100vw - 24px) !important;max-height:calc(100dvh - 82px) !important}
+  .side .side-scroll{grid-template-columns:minmax(0,1fr)}
+}

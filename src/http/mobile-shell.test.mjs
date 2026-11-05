@@ -1,4 +1,4 @@
-/* The phone-width sidebar. One implementation, in the shell — not 35 copies.
+/* The compact website route menu. One implementation in the shell.
  *
  * WHAT THIS FILE USED TO ASSERT, AND WHY IT CHANGED. Until 2026-08-05 the phone
  * treatment was pasted into nine screens: each carried its own
@@ -11,7 +11,7 @@
  * attached to an element that no longer existed a moment later. The CSS was
  * worse than inert: `.side:not(.mini)` set `z-index:500` and `width:250px`
  * against the shell's locked 400 and 228, and the forced `.mini` fought the
- * off-canvas drawer the shell now owns.
+ * shared route menu the shell now owns.
  *
  * The behaviour moved to crm-sidebar.css plus the lock stylesheet shell.js
  * injects, and the per-page copies were deleted. So the thing worth testing is
@@ -19,7 +19,7 @@
  * implements it, and no screen re-implements it.
  *
  * Read as text, same convention as app-nav-reachability.test.mjs — these are
- * static files with no server. Rendered behaviour (the drawer opens, closes on
+ * static files with no server. Rendered behaviour (the menu opens, closes on
  * scrim tap, and no screen scrolls sideways at 390px) is covered by
  * ops/workflows/mobile-check.mjs, which drives a real browser.
  */
@@ -35,26 +35,24 @@ const APP = path.resolve(HERE, "../../public/app");
 const shell = fs.readFileSync(path.join(APP, "shell.js"), "utf8");
 const sidebarCss = fs.readFileSync(path.join(APP, "crm-sidebar.css"), "utf8");
 
-describe("mobile sidebar — owned by the shell", () => {
-  test("crm-sidebar.css takes the rail off-canvas below 860px", () => {
+describe("compact website menu — owned by the shell", () => {
+  test("crm-sidebar.css hides the menu until opened at every width", () => {
+    assert.match(sidebarCss, /aside\.side,\.side,\.side\.mini\s*\{[^}]*visibility:hidden;pointer-events:none/s,
+      "the closed menu is still visible or clickable");
+    assert.match(sidebarCss, /aside\.side\.open,\.side\.open\s*\{visibility:visible;pointer-events:auto/,
+      "the open menu cannot be used");
     assert.match(sidebarCss, /@media\s*\(max-width:\s*860px\)/,
-      "crm-sidebar.css has no 860px breakpoint");
-    assert.match(sidebarCss, /transform:\s*translateX\(-100%\)/,
-      "the rail is not parked off-canvas below 860px");
-    assert.match(sidebarCss, /\.side\.open\s*\{[^}]*transform:\s*translateX\(0\)/,
-      "nothing brings the rail back on screen when .open is set");
+      "crm-sidebar.css has no phone breakpoint");
   });
 
-  test("the lock stylesheet clears the content's left padding on mobile", () => {
+  test("the lock stylesheet clears the content's left padding at every width", () => {
     /* This has to be in the lock, not crm-sidebar.css. The lock is injected at
        runtime and appended to <head>, so at equal specificity it wins on source
        order. Written in the stylesheet instead, it lost, and every screen kept
        228px of dead padding on a 390px phone. */
     const lock = shell.slice(shell.indexOf('lock.textContent'), shell.indexOf('(document.head || document.documentElement).appendChild(lock)'));
-    assert.match(lock, /@media\s*\(max-width:\s*860px\)/,
-      "the injected lock stylesheet has no mobile block");
     assert.match(lock, /padding-left:0!important/,
-      "the lock never clears the content's left padding on mobile");
+      "the lock never clears the content's left padding");
   });
 
   test("shell.js owns the scrim and creates it if a screen has none", () => {
@@ -71,9 +69,9 @@ describe("mobile sidebar — owned by the shell", () => {
     assert.match(sidebarCss, /\.fh-menu-btn/, "the menu button has no styles");
   });
 
-  test("entering mobile strips .mini so a desktop-collapsed rail cannot carry over", () => {
+  test("the old mini rail state cannot carry into the menu", () => {
     assert.match(shell, /classList\.remove\("mini"\)/,
-      "shell.js never clears .mini when the viewport becomes narrow");
+      "shell.js never clears the legacy mini rail state");
   });
 
   test("Escape closes the drawer", () => {
