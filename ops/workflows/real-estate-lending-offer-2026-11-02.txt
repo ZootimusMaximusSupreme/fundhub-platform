@@ -3,9 +3,9 @@ Date: 2026-11-02
 Owner lane: marketing
 Branch: codex/real-estate-lending-offer-20261102
 
-NOVEMBER 4 OWNER-REVIEW UPDATE
+NOVEMBER 5 OWNER-APPROVAL UPDATE
 
-Current integration branch: codex/offersiq-integration-20261104, existing PR405. The November 2 package below remains the historical marketing delivery. The commercial offer is now an owner-review proposal, not a newly activated fee, product, contract, campaign, or lender relationship.
+PR405 delivered the November 4 commercial draft and enrichment dashboard; production deployment containing that change was verified on November 5. The November 2 package below remains the historical marketing delivery. The owner approved the commercial model on November 5; this record does not activate a fee, product, contract, campaign, or lender relationship.
 
 Workflow split: the qualification owner handles OffersIQ and release; the Plaid owner handles bank/account and dashboard files; this real-estate lane owns only the seven named marketing text files and this board. Offer and factual-copy edits can run beside the bank build. Publication waits for the release owner's independent review and required checks.
 
@@ -13,7 +13,9 @@ Applied proposal: homeowner-first free Renovation Funding Map, then a separately
 
 Copy decisions: use $75,000 / $100,000 / $175,000 / $250,000 / $500,000+ project or combined-financing markers, keeping each facility separate. The primary entrant has high income, strong financials, and good credit; the homeowner has high income and owns the property, with no universal score floor. Preserve Ready Track, valid creative examples, historical provider limits, and the existing campaign structure. Paid price is explained on the service call.
 
-Owner decision: approve the proposed homeowner free-map-to-paid-service model with written coverage for the selected facility before collection. The $40,000 available budget is a resource, not an initial-spend requirement or a recorded campaign change. Validate collected contribution, service deadlines, and handling capacity before scaling.
+Owner decision received November 5: use the proposed homeowner free-map-to-paid-service model, with the $3,000 deposit credited once toward the 10% total fee and written coverage for the selected facility before collection. The $40,000 available budget is a resource, not an initial-spend requirement or a recorded campaign change. Validate collected contribution, service deadlines, and handling capacity before scaling.
+
+Live review follow-up: the six main evidence values in the new enrichment panel measured 15px at actual 1440px and 390px widths. The qualification lane owns a scoped 16px minimum in public/app/client-control-panel.html; other values and 13px captions keep their existing rules. The live owner/empty-state read and four draft cards work; populated provider states and other roles remain separate proof. This correction waits for its own checks, ordered publication, and independent live review.
 
 File handoff: offer ecosystem, copy master, ad strategy, homeowner and borrower-partner VSLs, and homeowner and borrower-partner avatars. No live account, lender application, contract, payment catalog, or bank/app file is changed by this lane.
 
@@ -44,7 +46,7 @@ Mastering VSLs (Video Sales Letters) SOP.docx
 https://docs.google.com/document/d/1b2DExaxWn7zHp61hMiU3IHGfNkJO0nn0/edit?usp=drivesdk
 
 Status
-November 2 marketing package complete. November 4 commercial proposal and factual-copy update awaiting owner/release review; not activated or published by this lane.
+November 2 marketing package complete. November 4 commercial model approved by the owner on November 5 and saved with PR405. Facility-specific agreement and actual lender route remain prerequisites before collection; no campaign, fee, or product was activated by this lane. The small live typography follow-up remains in the qualification release workflow.
 
 Delivered
 - Market and lender research with 16 ranked providers and originator deduplication.

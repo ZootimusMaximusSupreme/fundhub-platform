@@ -617,7 +617,11 @@
         if (isPortal) loadPortalThread();
         else if (!document.getElementById("fh-chat-body").children.length) paintBodyWelcome();
         var precallInput = document.getElementById("fh-chat-input");
-        if (precallInput) precallInput.focus();
+        // This welcome is non-modal; leave an active form or control in focus.
+        var active = document.activeElement;
+        if (precallInput && (!active || active === document.body || active === document.documentElement)) {
+          precallInput.focus();
+        }
         syncPoll();
       }, popMs);
     }
