@@ -188,6 +188,12 @@ for (const target of [PAGE, FRAME]) {
       await rejectForm.locator('[data-act="reject-send"]').click();
       await waitFor(() => posts.length === 3);
       assert.deepEqual(last(), { action: "reject", document_id: sepStatement.id, reason: "Page 2 is missing", client_id: CLIENT_ID });
+      // The request is logged before its response redraws the vault. Wait for
+      // the saved result before opening Change on a different document.
+      await page.waitForFunction((slot) =>
+        document.querySelector(`.vt-msg[data-msg="${slot}"]`)?.textContent.includes(
+          "Rejected. The client sees: Page 2 is missing"
+        ), statements.slot);
     };
     if (frame) await reject();
     else await proof.check(/^Staff: Reject \(opens the reject form\)/, reject, surface);
