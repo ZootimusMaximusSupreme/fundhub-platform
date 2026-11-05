@@ -10,6 +10,7 @@ const BOOKING = {
   org_id: "123e4567-e89b-12d3-a456-426614174001",
   provider_uid: "75827",
   qualification_bucket: "funding_unqualified",
+  has_completed_survey: true,
   created_at: "2026-10-29T20:00:00Z",
   attendee_name: "Buyer Person",
   attendee_email: "buyer@otherdomain.com",
@@ -63,6 +64,26 @@ test("Cortana receives the saved booking bucket without changing its conversion"
   assert.ok(seen.every((body) => body.available_capital_band === "$0"));
   assert.ok(seen.every((body) => body.event_name === "funding_call_booked"));
   assert.ok(seen.every((body) => body.event_id === `fundhub_booking_${BOOKING.id}`));
+});
+
+test("a calendar email without its own completed survey carries no qualified attribution", async () => {
+  let body;
+  await sendCortanaBooking({ ...BOOKING, has_completed_survey: false,
+    qualification_bucket: "funding_qualified",
+    custom_fields: { cf_svy_self_reported_fico: "760-850", cf_svy_available_capital: "$50k+" }
+  }, { env: ENV, fetchImpl: async (_url, init) => {
+    body = JSON.parse(init.body);
+    return { ok: true, status: 200, headers: new Headers(), text: async () => "{}" };
+  } });
+  assert.equal(body.qualification_bucket, null);
+  assert.equal(body.offer_financing_screen, "score_unconfirmed");
+  assert.equal(body.available_capital_band, null);
+  const conn = fakeDb(BOOKING);
+  await sweepCortanaBookingFeed(conn, { env: ENV, send: async () => ({ ok: true }) });
+  const sql = conn.queries.find(({ sql }) => sql.includes("FROM bookings b")).sql;
+  assert.match(sql, /e\.org_id = b\.org_id AND e\.client_id = b\.client_id/);
+  assert.match(sql, /lower\(btrim\(e\.payload->>'email'\)\) = lower\(btrim\(b\.attendee_email\)\)/);
+  assert.match(sql, /e\.created_at <= b\.created_at/);
 });
 
 test("provider refuses a different destination and an unopened adapter fence", async () => {

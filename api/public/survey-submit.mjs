@@ -5,8 +5,11 @@
 import { db } from "../../src/db.mjs";
 import { emit } from "../../src/events/bus.mjs";
 import { ensureRegistered } from "../../src/register-all.mjs";
-import { classifySurvey } from "../../src/config/survey-qualification.mjs";
+import { classifySurvey, PASS } from "../../src/config/survey-qualification.mjs";
 import { SURVEY_REDIRECTS } from "../../src/config/homepage-survey-steps.mjs";
+import { RESUME_BASE_URL } from "../../src/survey/resume-link.mjs";
+import { mintBookingTicket } from "../../src/survey/booking-ticket.mjs";
+import { nextSurveyKey, savedSurveyAnswers } from "../../src/survey/resume-state.mjs";
 import {
   CF_SURVEY_QUESTIONS,
   answersByPayloadKey,
@@ -114,15 +117,22 @@ async function resolveSurveyClient(database, parsed, deps = {}) {
   }
 }
 
+async function hasSavedCompleteSurvey(database, clientId) {
+  const { rows } = await database.query(
+    "SELECT custom_fields FROM clients WHERE id = $1 LIMIT 1", [clientId]
+  );
+  return !!rows[0] && nextSurveyKey(savedSurveyAnswers(rows[0].custom_fields)) === null;
+}
+
 /** Emit + classify. `deps.emit` injectable for tests. */
 export async function runSurveySubmit(parsed, deps = {}) {
   const emitFn = deps.emit || emit;
   const database = deps.db || db;
   const ensure = deps.ensureRegistered || ensureRegistered;
 
-  // Classify first so redirect is ready even if capture work is slow.
+  // Classify first; only a saved completion may reach the top-level calendar.
   const qualification = classifySurvey(parsed.answers);
-  const redirect = SURVEY_REDIRECTS[qualification] || SURVEY_REDIRECTS.MANUAL_REVIEW;
+  let redirect = SURVEY_REDIRECTS[qualification] || SURVEY_REDIRECTS.MANUAL_REVIEW;
 
   ensure();
 
@@ -159,11 +169,10 @@ export async function runSurveySubmit(parsed, deps = {}) {
     },
     { idempotencyKey: `${idemBase}:survey`, clientId }
   );
-  // The whole survey arrives in one post here. Finished means the last answer is
-  // in it (surveyIsComplete); that is what starts the no-booking chase. A partial
-  // post (the climate page sends two answers) stays unfinished, so S-02 sends the
-  // person back to finish it.
-  const completed = surveyIsComplete(parsed.answers)
+  // The homepage sends the full survey in one post. A last answer alone is not
+  // completion: the lead must have every visible question on their branch.
+  // Partial posts stay in S-02 instead of starting the no-booking chase.
+  const completed = surveyIsComplete(parsed.answers) && nextSurveyKey(parsed.answers) === null
     ? await emitFn(
       database,
       "survey.completed",
@@ -178,6 +187,26 @@ export async function runSurveySubmit(parsed, deps = {}) {
       { idempotencyKey: `${idemBase}:completed`, clientId }
     )
     : null;
+
+  if (qualification === PASS) {
+    // The normal /apply flow frames the calendar after its saved completion
+    // receipt. A homepage survey has no /apply frame, so its completed receipt
+    // gets a ten-minute, no-PII calendar ticket. A partial survey or missing
+    // signing key goes back to /apply; it never receives a direct booking door.
+    redirect = RESUME_BASE_URL;
+    if (completed && clientId) {
+      try {
+        const saved = await (deps.hasSavedCompleteSurvey || hasSavedCompleteSurvey)(database, clientId);
+        if (saved) {
+          redirect = `${SURVEY_REDIRECTS.PASS}#fh_survey_ticket=${mintBookingTicket({
+            now: deps.now, secret: deps.secret, env: deps.env
+          })}`;
+        }
+      } catch (err) {
+        console.warn(`[survey-submit] saved completion not verified (${safeError(err)})`);
+      }
+    }
+  }
 
   return {
     ok: true,

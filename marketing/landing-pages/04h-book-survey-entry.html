@@ -12,7 +12,28 @@
     returnToSurvey();
     return;
   }
-  returnToSurvey();
+  /* A completed homepage survey arrives here with a short-lived ticket in the
+     fragment. The public check reveals no saved contact or answers. A direct
+     visit without that saved-completion proof still goes back to /apply. */
+  var ticket = '';
+  try { ticket = new URLSearchParams(window.location.hash.slice(1)).get('fh_survey_ticket') || ''; } catch (e) {}
+  if (!ticket || !window.fetch) { returnToSurvey(); return; }
+  var priorVisibility = document.documentElement.style.visibility;
+  document.documentElement.style.visibility = 'hidden';
+  var settled = false;
+  function finish(ok) {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    if (ok) document.documentElement.style.visibility = priorVisibility;
+    else returnToSurvey();
+  }
+  var timer = setTimeout(function () { finish(false); }, 4000);
+  fetch('https://fundhub.ai/api/public/survey-resume?booking_ticket=' + encodeURIComponent(ticket),
+    { credentials: 'omit', cache: 'no-store' })
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (body) { finish(!!(body && body.ok)); })
+    ['catch'](function () { finish(false); });
 })();
 </script>
 <!-- fh-book-survey-entry:end -->
