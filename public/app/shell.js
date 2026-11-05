@@ -929,10 +929,9 @@
     if (!existing && document.querySelector) existing = document.querySelector('link[href$="crm-sidebar.css"]');
     if (existing) {
       existing.id = "fh-crm-sidebar-css";
-      if (existing.getAttribute("href") !== "/app/crm-sidebar.css?v=workspace-20261018") existing.href = "/app/crm-sidebar.css?v=workspace-20261018";
     }
-    var brandSheet = document.querySelector && document.querySelector('link[rel="stylesheet"][href*="fundhub-brand.css"]');
-    if (brandSheet && brandSheet.getAttribute("href") !== "/app/fundhub-brand.css?v=workspace-20261018") brandSheet.href = "/app/fundhub-brand.css?v=workspace-20261018";
+    // Keep linked stylesheets in place. Rewriting their href after first paint
+    // briefly removes the sidebar rules on every full-page navigation.
     if (!existing) {
       var link = document.createElement("link");
       link.id = "fh-crm-sidebar-css";
