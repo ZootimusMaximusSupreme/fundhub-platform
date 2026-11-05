@@ -1,0 +1,42 @@
+# LithosAI, Kimi K3 and portable execution — checked 2026-11-05
+
+## Is the exact platform/model publicly documented?
+
+### Takeaway
+Yes. LithosAI publicly documents a hosted OpenAI-compatible inference API and explicitly serves Kimi K3. It supplies fast model inference; the reviewed sources do not establish a turnkey company operating system.
+
+### Cited Findings
+- Correct vendor: LithosAI Inc., https://www.lithosai.com/ . Its site describes hosted inference and optional on-prem deployment, accepting existing agent harnesses. Speed comparisons are vendor measurements, not this team's benchmark. [Source](https://www.lithosai.com/)
+- Official developer documentation specifies https://api.lithosai.cloud/v1, API-key authentication and OpenAI client libraries. [Source](https://docs.lithosai.com/)
+- Official FAQ gives exact request model moonshotai/Kimi-K3 and /chat/completions. [Source](https://www.lithosai.com/zh/faq)
+- Moonshot's own model list documents kimi-k3: native visual understanding and a 1M-token context; K3.1 Pro is now its newer flagship. Thus do not confuse Lithos's namespaced ID with Moonshot's direct ID. [Source](https://platform.kimi.ai/docs/models)
+- Lithos lists streaming and tool calling, pricing by input/output/cached tokens, dashboard usage, caps and alerts. Current K3 Base: $2.40/M input, $12/M output, $0.24/M cached; Fast $4/$20/$0.40; Ultra $5.60/$28/$0.56. These are advertised early-access rates. [Source](https://www.lithosai.com/pricing)
+
+### Inferences
+- Use Base initially. Buy faster tiers only when measured end-to-end business-task latency justifies their higher cost. Inference speed does not accelerate bank reviews, DNS propagation, ad review, external API operations, or human decisions.
+- Keep K3 as an interchangeable model backend; do not build workflow state around a provider chat session.
+
+### Gaps
+- No authenticated API request, account availability, paid call, reliability test, measured Fundhub accuracy, concurrency entitlement, or actual account quota verified in this research.
+- No durable business-task queue, company-role scheduler, approval engine, customer connector set, or business-memory guarantees established by reviewed Lithos documentation.
+- No independent speed comparison performed. Do not promise vendor tokens/second as whole-company throughput.
+
+## What should own durable execution?
+
+### Takeaway
+Recommendation: reuse Fundhub's Inngest execution and Postgres business state (repo lane verifies the actual existing implementation), with Lithos/K3 behind a small model adapter. Do not migrate the business into an unverified vendor agent runtime.
+
+### Cited Findings
+- Inngest documents durable waitForEvent: pause without retaining a running function process; useful for external service responses and human approvals. Match stable request IDs and explicitly handle timeout; events published before a wait starts do not resume it. [Source](https://www.inngest.com/docs/durable-execution/primitives/step-waitforevent)
+- Inngest retries failed work and reuses completed step results. Its documentation warns that an external call can succeed before its response is lost, so retries still need stable idempotency keys. [Source](https://www.inngest.com/docs/durable-execution/guides-and-advanced/error-handling/retries)
+
+### Inferences
+- Proposed company kernel: versioned company template + role definitions + tool permissions; Postgres task/dependency/approval/evidence/budget records; Inngest trigger, dispatch, durable wait, bounded retry and failure handling; service connectors hold actual credentials and enforce authority; model adapter returns validated structured proposals.
+- State progression: queued -> ready -> running -> awaiting_external / awaiting_owner -> succeeded or failed. Pending approval is a persisted task state with a named owner, next check and deadline, not an agent spinning or declaring completion.
+- Store company_id on every task/artifact/access check. Use unique operation IDs, bounded attempts, token/time/spend ceilings, per-company concurrency, and receipts for external side effects. A model proposes a write; an authorized connector executes it; a separate checker verifies its stored/live effect.
+- Route only relevant context to each specialist; share artifact references instead of whole chat transcripts. Start a small worker pool and invoke dozens of role definitions only when there is work. A full company roster does not require dozens of continuously running agents.
+- Provider interface should make model/base URL configurable and record prompt/model/tool versions, token cost and latency. Evaluate K3 on actual sales/fulfillment tasks with a fixed case set, then compare provider/tier changes before rollout. Fail over only after confirming no external write is being duplicated.
+- 30-minute launch is credible only AFTER the reusable kernel/templates/connectors exist, for provisioning a configured workspace, draft assets, task graph and smoke checks from supplied inputs and connected approved accounts. The first dependable kernel is a separate build; external approvals stay pending with receipts.
+
+### Gaps
+- Exact Fundhub reusable files, live provider status, deployment state, and existing table capabilities are owned by the repo research lane; not independently verified here.

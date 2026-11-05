@@ -1,0 +1,30 @@
+Fundhub finish list — November 5, 2026
+Scope: current cross-chat closeout. This is a source-backed handoff, not a new production audit.
+Goal: close existing Fundhub gaps and extract proven systems toward a 30-minute company launch. Reuse existing work.
+
+SAVED
+- Private recovery checkpoint: credentials/work-saves/2026-11-05-closeout/.
+- Five dirty worktrees snapshotted; 243 file copies verified against SHA-256 hashes (zero mismatches).
+- Registered worktree heads, local Git refs and all 21 stash heads included in history bundle; bundle verified by Git.
+- Chat index holds 1,182 source pointers, including archived Codex and local Claude/Cursor listings. Eleven recent lanes reviewed. Original chats remain intact. This is not a full transcript export or an off-device backup.
+
+CLOSED / DO NOT REBUILD
+- Portal named four-tab jump: owning chat reports live proof for #407/#413.
+- Bank-decision tracking: owning chat reports #416 deployed and verified; real outcome entry remains an operating task.
+- 60-minute phone-call offer copy: fresh GitHub read confirms #415 merged on 2026-11-05 at 22:23:29Z, commit a942bc8b968cc65dfd5490b6ee05d3f6926049f4. This confirms merge only; the file is a draft offer page and this is not a live funnel publication receipt.
+
+NEXT TECHNICAL WORK — COMPLETE EXISTING APPROVED WORK
+1. Preserve and reconcile shared rule edits so the tested quiet-startup change can pass preflight. Existing source: .claude/worktrees/quiet-session-reminders, branch claude/quiet-split-model-line, commit c2c24aea8. Root shared rule edits are saved privately and remain in place. No source was discarded or deployed during this save pass.
+2. Prove return from a valid signed-email booking-resume link; inspect current owning code/evidence first. Do not send new messages or use another customer's link just to manufacture proof.
+3. Check actual current Twilio billing/delivery receipt. Last owning chat reports suspended billing; code tests are not delivery proof. This preservation pass made no provider changes or spend.
+4. Capture real lender outcomes through the already shipped decision-tracking flow; do not call model learning or provider imports complete.
+5. Verify signed-in Dock feed and current bank-link initiation only where the owner lanes still lack receipts. Preserve ownership; do not reopen completed portal/navigation repairs.
+
+NEXT OWNER WORK — BANK-DATA OUTREACH HIRING
+Existing hiring research and role pitch are saved in chat 01a1ad48-cd54-77a3-a276-ef6e7292f631. The next concrete business deliverable is a ready-to-post bank-outreach job and screening questions. Role pay and advertising cap remain undecided; setter compensation is not automatically this role's compensation. Do not publish or spend as part of this save request.
+
+NOT A CURRENT FAILURE WITHOUT FRESH PROOF
+Claude's older survey/OffersIQ/setter-pay blocker list; pending status from already merged PRs; failure claims copied from old memory.
+
+SEPARATE RESEARCH, NOT LAUNCH BLOCKERS
+Quiz funnel, challenge funnel, company-launch orchestration platform selection, hosted 24/7 Apple signing. Keep recorded; do not expand the Fundhub closeout scope automatically.

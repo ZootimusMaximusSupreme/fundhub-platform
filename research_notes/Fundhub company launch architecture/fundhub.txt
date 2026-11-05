@@ -1,0 +1,44 @@
+# Fundhub launch architecture baseline
+
+## What should be reused?
+### Takeaway
+Reuse the existing operating platform before creating a second CRM, agent runtime, or credit engine. Source inspection supports a Postgres/event/Inngest platform; it does not establish today's live result.
+### Cited Findings
+- Package metadata identifies Node22, Postgres pg, Inngest, Netlify Blobs, pdf-lib and Playwright, and describes replacing the old CRM/spreadsheet. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/package.json)
+- The existing bus appends versioned org/client-scoped events, deduplicates org/idempotency key, dispatches handlers, and offers replay. Inngest fan-out is best-effort, so acceptance must inspect saved effects rather than assume emitted means delivered. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/src/events/bus.mjs)
+- UnderwriteIQ already has an adapter, engine, vendored underwriting/document tools, letter-pack and stored-report generation. The adapter documents missing/duplicated bureau fields; do not replace this with an LLM's credit judgement. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/src/underwrite/adapter.mjs); [Source](/Users/chrisstanbridge/Developer/fundhub-platform/docs/journeys/deliverables-flow.md)
+- Blueprint source describes saved messages/calls/notes/tasks/contracts/payment/access, shared closer/Present context, bound AI actions, proof-required steps and CSM exception queue. This is the candidate reusable customer-service runtime. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/docs/journeys/capital-blueprint-actual.md)
+### Inferences
+- A future company should be configuration plus offer-specific journeys over shared identity, CRM, events, billing inboxes, storage, communications and observability. Company branding alone does not prove tenant isolation or provisioning.
+### Gaps
+- No current production reads or runtime tests were performed. Package/code availability is not live availability.
+
+## What order establishes a working Fundhub?
+### Takeaway
+Accept one complete revenue/fulfillment path first, then its failure/recovery paths, then extend offers. Keep the other chat's TU Qualifier lane independent.
+### Cited Findings
+- The diagnostic intended chain is sales page -> $297 Commas checkout -> consent/identity form -> CRS pull -> diagnostic documents -> booking. The original first slice explicitly excluded later fulfillment steps, so that file cannot establish complete delivery. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/docs/journeys/slo-offer-intended.md)
+- Document flow separates authorization/payment/queued/processing/saved-result states; stored CRS result feeds underwriting and documents, client library and source-report email. It expressly says local tests do not prove provider response, PDF storage, delivery or portal visibility. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/docs/journeys/deliverables-flow.md)
+- Blueprint intended contract requires exact selected price -> frozen agreement -> matching checkout -> verified receipt -> one canonical payment/transaction/entitlement -> shared customer context -> coaching/checklist/proof -> team exceptions -> eligible monthly refresh -> delivery checks. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/docs/journeys/capital-blueprint-intended.md)
+- Funding round requirements tie funded status and fees to confirmed per-bank approvals; corrected bills carry payments, refresh payable links, preserve overpayments for owner decision and distinguish round closure from engagement completion. The doc flags live invoice/provider proof separately. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/docs/journeys/funding-round-flow.md)
+- Money-helper collections stop automated reminders at escalation and put exceptions in the CSM queue; an invoice-linked plan belongs to existing AR collections. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/docs/journeys/clarity-payments-flow.md)
+### Inferences
+- Acceptance sequence: (1) lead/application attribution and durable CRM identity, human setter/booking/closer handoff; (2) exact offer/agreement/checkout/payment settlement; (3) entitlement, portal, consented report and visible deliverables; (4) next-action coaching/support and completed human exceptions; (5) funding approvals, success fee, collections and closeout; (6) refund/dispute/reconciliation and missed-webhook recovery; (7) tripwire proves detection and actual alert delivery. Run focused evidence for each, then connect the entire customer trace under one org/client/payment identity.
+- Revenue and fulfillment verification must join at the same canonical client; independent screen passes cannot establish this chain.
+### Gaps
+- These are proposed acceptance steps, not tests executed here. Current Twilio/provider/booking/customer behavior was not rechecked.
+
+## When can it become a reusable company-launch skill?
+### Takeaway
+Extract a system only after it passes a real trace plus controlled failure/recovery; keep domain finance operations separate from generic company setup.
+### Cited Findings
+- Journeys README warns that many intended documents were generated from actual code and matching them does not prove correctness; role-route reachability and CRM automation trees were not fully reconciled in that document. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/docs/journeys/README.md)
+- Whop reconciliation uses GET provider reads and the shared inbox for payments/refunds/disputes; it creates no charge or refund. Commas reconciliation also enters the existing inbox processing path. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/src/payments/whop-billing-reconcile.mjs); [Source](/Users/chrisstanbridge/Developer/fundhub-platform/src/payments/commas-api.mjs)
+- Refund handling has distinct accounting scopes: partner accrual reversal code exists, while comments separately flag staff commission policy and entitlement reversal; a refund receipt is not proof that all access/accounting outcomes are settled. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/src/handlers/money-chain.mjs)
+- Existing reusable work instructions already include builder/fixer/auditor/orchestrator, ad writer/editor/overlay, agent tester, ClickFunnels push, version control and system map. [Source](/Users/chrisstanbridge/Developer/fundhub-platform/.agents/skills/)
+### Inferences
+- Extract in this order: company manifest and provisioning contract; lead-to-handoff; contract-to-settlement with recovery; paid-to-delivered; support-to-resolution; finance/reconciliation; monitoring/release. Each package needs inputs, secrets references, bounded allowed actions, outputs, storage/events, exceptions, proof receipt and rollback procedure.
+- Skills should wrap tested tools/modules rather than copy the entire repo or replace deterministic money/access decisions with prompts. Reuse current skills by removing Fundhub-specific bindings only after those bindings are explicit.
+- A 30-minute target can mean provisioning a preapproved company shell from a proven template. It cannot honestly mean independently proven offer demand, bank/payment underwriting, new regulated provider approval, or a completed live customer journey in every new industry.
+### Gaps
+- No reusable company manifest/provisioning contract, cross-company isolation acceptance or timed 30-minute launch drill was validated in this narrow read. Treat these as work to prove, not proven missing from all repository paths.

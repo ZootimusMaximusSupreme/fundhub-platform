@@ -1,0 +1,99 @@
+# Functional roster and launch architecture
+
+## Which roles should exist, and which need running agents?
+
+### Takeaway
+Recommendation, not a vendor capability claim: build 32 reusable role skills, served by one coordinator and four on-demand worker types. No department needs a permanently thinking agent; scheduled checks and incoming events wake workers when work exists.
+
+### Cited Findings
+- Twilio supports explicit messaging delivery status tracking; an API send response and final delivery are separate evidence stages. [Twilio documentation](https://www.twilio.com/docs/messaging/compliance/a2p-10dlc/quickstart) links its status-callback and delivery-tracking guides.
+
+### Inferences
+PROPOSED ROLE SKILLS: one responsibility and deliverable each, not 32 employees or daemons.
+01 Strategy / portfolio: chooses customer, business model, launch objective and stop criteria for owner decision.
+02 Customer / market research: maintains evidence-backed buyer problems, alternatives and positioning inputs.
+03 Offer / economics: defines deliverable, price, unit economics, capacity and refund terms for owner approval.
+04 Product / journey design: writes the actual customer journey and measurable completion criteria.
+05 Brand / interface design: produces reusable brand tokens, page patterns and accessible interaction specifications.
+06 Application engineering: implements website, customer portal and internal tools from approved specifications.
+07 Data / integration engineering: implements schemas, tenant boundaries, provider adapters, events and migrations.
+08 Automation / skill engineering: turns proven repeat work into versioned skills with input/output contracts and tests.
+09 Independent quality assurance: checks full user journeys, negative paths, persisted effects and provider receipts.
+10 Security / privacy engineering: reviews access, sensitive data, secrets, retention and risky changes.
+11 Release / reliability: ships approved changes, monitors journeys, runs rollback and repairs incidents.
+12 Measurement / experimentation: defines events, attribution, funnel reporting and controlled experiments.
+13 Messaging / copy: produces offer pages, scripts, email and campaign copy from approved claims and voice.
+14 Creative production: produces, edits and packages visual and video assets with usage rights recorded.
+15 Acquisition / media buying: configures campaigns and adjusts spend within an approved account-specific budget.
+16 Lifecycle / retention: operates approved nurture, reactivation, referral and retention sequences.
+17 Partnerships / distribution: prepares partner targeting, proposals and channel reporting; communications follow granted scope.
+18 Lead intake / qualification: captures consent and facts, routes leads and records why each route was selected.
+19 Appointment setting / follow-up: schedules qualified prospects, handles reminders and documents closer handoffs.
+20 Closing / proposals: prepares call briefs, offers and contracts; owner or authorized human makes binding decisions.
+21 Sales operations: owns CRM state, handoff quality, deduplication, pipeline and forecast accuracy.
+22 Onboarding / document collection: collects required client inputs, tracks outstanding items and verifies readiness.
+23 Underwriting / fulfillment planning: uses authorized UnderwriteIQ results to prepare a reviewable client action plan.
+24 Fulfillment case management: tracks real work, deadlines, provider responses, exceptions and completion evidence.
+25 Customer success: explains progress, checks client understanding and identifies preventable cancellations.
+26 Support / complaints: handles routine help from approved knowledge and escalates disputes or account exceptions.
+27 Billing / receivables: prepares invoices, tracks collection and reconciles payment/refund states within delegated limits.
+28 Finance / bookkeeping: reconciles cash and expenses, forecasts runway and produces accountant-ready records.
+29 Legal / contracts / compliance coordination: prepares documents and issue lists from counsel-approved templates; routes legal judgments to counsel.
+30 Business operations / procurement: maintains providers, access inventory, renewals, approval queues and continuity runbooks.
+31 Hiring / people operations: drafts roles, screens against rubrics, schedules interviews and prepares onboarding; humans approve employment and pay.
+32 Knowledge / training: curates verified operating knowledge, skill versions, training examples and failure lessons.
+
+MINIMUM RUNTIME
+- Coordinator: dispatches a persisted queue; owns priorities, dependencies, budgets and escalation, not all business decisions.
+- Builder worker: engineering, integrations, automation, design implementation and releases.
+- Growth worker: research, offers, copy, creative, acquisition and lifecycle.
+- Operator worker: sales preparation, client operations, fulfillment, support, finance and administration.
+- Verifier worker: independent review and proof; never approves its own implementation. Specialist counsel/accountant/humans remain outside the runtime.
+Workers are reusable execution slots; scale concurrency from measured backlog and service levels, not an org chart. Start with a concurrency cap of four including coordinator when platform capacity is four; verifier runs after a producer finishes. Keep deterministic monitors outside model loops.
+
+### Gaps
+- Role performance, staffing ratios, launch completion time and costs require measurement on Fundhub; these are architecture recommendations, not established results.
+- UnderwriteIQ entitlement, outputs, limitations and reusable licensing need separate owning-source verification.
+
+## How should ownership, approval and the 30-minute launch target work?
+
+### Takeaway
+Recommendation: prove Fundhub's complete operating journey first, then package its verified capabilities as a company template. Thirty minutes can be a template deployment target after prerequisites are ready; it cannot promise a new legal entity, vendor approvals, customers, revenue or native-app approval.
+
+### Cited Findings
+- Stripe explicitly lists credit repair and counseling under prohibited lending/credit businesses, with credit monitoring supportable in the United States. Its restricted-business approval is specific to each service offer and can be modified/revoked. Do not assume a generic Stripe connector is suitable for Fundhub or a new company's offer. [Stripe prohibited and restricted businesses](https://stripe.com/legal/restricted-businesses)
+- Twilio requires US A2P 10DLC registration for application traffic from US 10DLC numbers to US recipients, registration needs a paid account, and sending follows campaign verification. Preparation and approval are distinct. No approval-time guarantee is appropriate. [Twilio A2P quickstart](https://www.twilio.com/docs/messaging/compliance/a2p-10dlc/quickstart)
+- Apple maintains a separate App Review process and support channel. An app-store distribution receipt is an external launch dependency, not a website-deployment receipt. [Apple App Review help](https://developer.apple.com/help/app-review/)
+
+### Inferences
+BOUNDARIES
+- Owner decides business model, offer, claims, material spend limits, hiring and binding commitments once; store those decisions as scoped standing authorizations.
+- Agents execute reversible work inside those limits without repeated permission. Production release follows the existing release controller, required checks and independent review.
+- Deterministic tools enforce company ID, credentials scope, allowed operations, idempotency, spend caps, consent and action audit trails. A prompt is not an access-control boundary.
+- Sensitive actions use prepare -> validate -> authorize when needed -> execute -> collect receipt -> reconcile. Replays never duplicate charges, submissions or messages.
+- One owner per workflow or code path; every task has inputs, output, dependency, acceptance evidence, timeout, retry limit and escalation owner.
+- Approval queue records provider, application ID, requested documents, submission receipt, current status, next action and owner. Trigger on callbacks or bounded polling; notify only on meaningful change. Never fabricate approval or silently route around a denial.
+- Keep company-specific data/configuration separate from reusable skills. Give each company separate provider identities and tenant-scoped secrets; no customer data copied into templates.
+- Skills contain explicit preconditions, repeatable steps, tool permissions, success receipts, failure handling and versioned tests. Promote only after demonstrated execution, including failure/retry paths.
+
+REALISTIC 30-MINUTE DEFINITION
+Preconditions: owner-approved offer and company details; reusable template; supported, approved providers; domain/DNS access; budgets; counsel-reviewed documents where needed; permitted data access; deployment account ready.
+Proposed timer: 0-5 minutes load approved manifest and check prerequisites; 5-15 provision isolated deployment and configure offer/site/CRM; 15-25 run automated journey and delivery proofs; 25-30 publish eligible channels and issue launch receipt. These are target allocations to benchmark, not promised durations.
+Deliverable: working web presence, valid intake, CRM route, onboarding/fulfillment queue, analytics, support entry point and monitored operating flow. Enable payments, SMS, credit-data access and native distribution only when the corresponding provider approvals and proofs exist. Otherwise publish a clearly limited intake/waitlist launch with pending capabilities identified.
+Do not call intake-only launch a fully operational company. A ready-to-operate launch needs the core offer's real payment and fulfillment path verified; customer acquisition and business viability require subsequent evidence.
+
+RISKS AND PREVENTION
+- Skillizing broken Fundhub behavior: baseline the intended journey and record real end-to-end receipts before extracting skills.
+- Management overhead/token waste: persist task state outside prompts, wake on events, cap retries/concurrency and load only the active role's context.
+- Self-reported false success: independent verifier checks stored changes and external delivery receipts; keep failed proof red.
+- Cross-company leakage: company-scoped credentials, data access and logs; test tenant separation.
+- Duplicate real-world actions: idempotency keys, event deduplication, append-only action receipts and reconciliation.
+- Provider mismatch: inspect actual offer eligibility before choosing processor or messaging route; do not assume a renamed offer changes its classification.
+- Unowned work: one accountable owner for each customer stage and an explicit handoff acceptance.
+- Expensive wrong autonomy: hard tool-enforced action budgets and timeouts, not vague instructions to use judgment.
+- Brittle vendor lock-in: standard task/skill manifests and provider adapters; preserve exportable task state and receipts.
+
+### Gaps
+- Exact 30-minute scope is unproven until timed rehearsals succeed on the selected hosting/model platform.
+- Processor eligibility depends on the actual offers and country; no determination of Fundhub's current processor/account approval was attempted.
+- No current Fundhub implementation audit was performed in this research task; the architecture must not be described as already installed or verified.

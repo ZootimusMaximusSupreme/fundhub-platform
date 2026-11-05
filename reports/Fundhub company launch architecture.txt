@@ -1,0 +1,98 @@
+Build Fundhub into the first proven operating template, then reuse it to launch companies in supported business categories. **Use 32 role skills on a small worker pool, with Postgres holding the business state and Inngest moving work forward.** LithosAI supplies model inference; it does not replace that operating system.
+
+“Fundhub works perfectly” creates an infinite project. Define completion as the named customer journeys working, their failure paths recovering, and their results independently verified. Likewise, replace “any new company in 30 minutes” with “a supported company configured from a proven template in 30 minutes, after prerequisites are ready.” This is a proposed plan based on source research, not a current production audit.
+
+The complete roster below describes responsibilities, not 32 agents running continuously. Use one coordinator and builder, growth, operator and independent verifier worker types. Begin with a small concurrency cap; load the appropriate role only when its task becomes ready.
+
+| Group | Role | Responsibility and output |
+|---|---|---|
+| Direction | 1. Strategy | Select customer, business model, objectives and stop criteria for your decision. |
+| Direction | 2. Market research | Gather evidence about demand, competitors and buyer problems. |
+| Direction | 3. Offer and economics | Define deliverables, pricing, capacity, margins and refund terms. |
+| Direction | 4. Product and journeys | Specify customer steps, handoffs and acceptance criteria. |
+| Product | 5. Brand and design | Produce brand assets, page patterns and usable interfaces. |
+| Product | 6. Application engineering | Build websites, portals and internal tools. |
+| Product | 7. Data and integrations | Own schemas, tenant separation, events and provider adapters. |
+| Product | 8. Automation engineering | Turn proven repeat work into versioned skills and tested tools. |
+| Assurance | 9. Independent QA | Verify journeys, negative cases, saved results and provider receipts. |
+| Assurance | 10. Security and privacy | Check access, secrets, sensitive data and risky changes. |
+| Assurance | 11. Release and reliability | Ship through existing controls, monitor failures and recover service. |
+| Assurance | 12. Measurement | Maintain attribution, funnel metrics and controlled experiments. |
+| Growth | 13. Copy | Write pages, ads, scripts and emails from approved claims. |
+| Growth | 14. Creative | Produce and package graphics, video and other campaign assets. |
+| Growth | 15. Acquisition | Operate campaigns within approved account and spend limits. |
+| Growth | 16. Lifecycle | Run approved nurture, reactivation, retention and referral flows. |
+| Growth | 17. Partnerships | Prepare partner targeting, proposals and distribution plans. |
+| Sales | 18. Intake and qualification | Capture facts and permissions, route leads and record routing reasons. |
+| Sales | 19. Setting and follow-up | Book calls, send permitted reminders and prepare closer handoffs. |
+| Sales | 20. Closing and proposals | Prepare call briefs, offers and agreements; route binding decisions appropriately. |
+| Sales | 21. Sales operations | Maintain CRM accuracy, deduplication, pipeline and handoff quality. |
+| Delivery | 22. Onboarding | Collect documents and inputs, and verify client readiness. |
+| Delivery | 23. Underwriting and planning | Turn authorized UnderwriteIQ results into reviewable action plans. |
+| Delivery | 24. Case management | Track fulfillment work, deadlines, provider responses and completion proof. |
+| Delivery | 25. Customer success | Explain progress, guide next actions and prevent avoidable cancellations. |
+| Delivery | 26. Support and complaints | Resolve routine help and route account exceptions or disputes. |
+| Administration | 27. Billing and receivables | Track invoices, collections, payments and authorized refund actions. |
+| Administration | 28. Finance and bookkeeping | Reconcile cash, forecast runway and prepare accountant-ready records. |
+| Administration | 29. Legal coordination | Prepare approved templates and route legal judgments to counsel. |
+| Administration | 30. Business operations | Manage providers, access, renewals, procurement and approval queues. |
+| Administration | 31. People operations | Prepare hiring, screening and onboarding; humans approve employment and pay. |
+| Administration | 32. Knowledge and training | Maintain verified knowledge, skill versions and lessons from failures. |
+
+Your decisions become scoped standing instructions: offer, claims, budgets, binding commitments and exceptions. Workers execute within those limits without repeatedly asking. Counsel, accountants, providers and authorized humans remain accountable where their judgment or approval is required.
+
+The architecture should have one authoritative business record:
+
+`Approved company brief → Postgres tasks and dependencies → Inngest dispatcher → role worker → authorized tool → stored result and provider receipt → independent verification → completed task`
+
+Postgres holds company configuration, customers, tasks, permissions, approvals, budgets and evidence references. Store files in the existing artifact storage and reference them from that record. Chat is an interface, not the memory or task database. Inngest schedules work, resumes waits and handles bounded retries. Its documented event waits support human or service responses without leaving a process running. [Inngest durable waits](https://www.inngest.com/docs/durable-execution/primitives/step-waitforevent)
+
+Every task needs an owner, company ID, inputs, dependencies, allowed tools, expected stored effect, evidence requirement, deadline and budget. Use explicit states: queued, ready, running, awaiting owner, awaiting provider, failed and verified complete. “Submitted,” “paid,” “delivered” and “approved” remain separate facts.
+
+**Verified complete requires deterministic checks plus an independent verifier.** Check the saved record and external result, not the producing agent’s summary. Keep UnderwriteIQ calculations, eligibility rules, money arithmetic and access decisions in deterministic code; the LLM explains results and proposes actions. Existing Fundhub sources provide a candidate foundation, including its [event bus](/Users/chrisstanbridge/Developer/fundhub-platform/src/events/bus.mjs) and [deliverables journey](/Users/chrisstanbridge/Developer/fundhub-platform/docs/journeys/deliverables-flow.md); their existence does not prove today’s live behavior.
+
+Use Kimi K3 Base through a configurable Lithos adapter initially. The official API is OpenAI-compatible, and its FAQ explicitly documents `moonshotai/Kimi-K3`. [Lithos developer docs](https://docs.lithosai.com/), [official K3 example](https://www.lithosai.com/zh/faq)
+
+The cost rule is **the cheapest model that passes the task’s evaluation**. Give each task token, time and tool-call budgets; pass artifact references and relevant context rather than entire conversations. Cache stable context where supported, wake workers on events, and use deterministic monitors instead of endless model loops. Move to a faster tier only after measuring whole-task latency. Use Astra only for a specific escalation that cheaper passing options cannot resolve, with a bounded budget and recorded reason.
+
+Thirty minutes becomes a deployment target after this machinery exists. It does not describe the first build. A timed rehearsal could allocate five minutes to validate inputs, ten to provision the site and operating workspace, ten to run journey checks, and five to publish eligible channels and collect receipts. Those allocations must be measured before they become a promise.
+
+Prerequisites include approved company details and offer, domain access, suitable hosting, provider access, budgets and required documents. **An existing approved account must actually permit the new entity and business activity before reuse.** Branding changes do not transfer approval. Messaging registration can require campaign verification; native apps have a separate review process. [Twilio registration](https://www.twilio.com/docs/messaging/compliance/a2p-10dlc/quickstart), [Apple App Review](https://developer.apple.com/help/app-review/)
+
+Manage outside approvals as durable work: provider, application ID, submission receipt, missing documents, current status, next check and accountable owner. Use callbacks or bounded polling; notify you when something changes or needs action. Continue independent work while waiting. An intake page can launch with payments or messaging pending, but label it an intake launch—not a fully operational company. No timer guarantees approval, demand or revenue.
+
+The 30-minute deliverable is a site, intake linked to CRM, booking, onboarding and fulfillment queue, support entry point, analytics and monitoring; real payments are enabled only when a valid provider is ready.
+
+| Outside dependency | Agent work and completion boundary |
+|---|---|
+| Entity, bank and KYC | Prepare required information and submit within authorization; persist the application receipt and pending verification. |
+| Payment processor | Confirm business approval and live enablement for the actual offer; store provider approval and payment proof. |
+| Advertising | Prepare account, business verification and ads; persist submissions and wait for required reviews before activation. |
+| SMS and email | Prepare SMS registration and domain/email configuration; require registration and delivery evidence before declaring ready. |
+| Native app distribution | Prepare signing and store submission within authorization; track signing, review and release receipts separately. |
+
+Agents prepare and submit only within their authorization, preserve pending evidence, and resume when the external decision arrives.
+
+Build Fundhub in this order:
+
+1. **Set the acceptance contract.** Name the offers and customer journeys being completed, their owners, required proof and exclusions. Keep unrelated improvements outside the launch gate.
+2. **Prove lead to human handoff.** Join attribution, durable client identity, qualification, booking, setter notes and closer context into one customer trace.
+3. **Prove agreement to payment.** Verify the selected offer and price, frozen agreement, actual payment receipt, canonical transaction and correct access. Include missed-webhook recovery and reconciliation.
+4. **Prove paid to delivered.** Follow onboarding and authorized report collection through UnderwriteIQ, stored documents, portal visibility, delivery and the client’s next action.
+5. **Finish service and money exceptions.** Verify support handoffs, funding approvals, fees, collections, refunds, disputes and closeout for the included offers.
+6. **Prove recovery and monitoring.** Exercise controlled failures, duplicate events, provider timeouts, permissions and actual alert delivery. Preserve evidence for the whole customer trace.
+7. **Extract and rehearse.** Package those proven capabilities as company configuration plus reusable skills. Add isolated provisioning, then time a second supported company deployment. Each skill package declares inputs and outputs, permissions, versioned tools and tests, recovery steps and required proof.
+
+The biggest risks and their prevention are:
+
+1. **Automating broken work:** extract skills only after successful execution and failure recovery; keep failing evidence visible.
+2. **False completion:** require tool receipts, stored effects, deterministic tests and independent verification.
+3. **Duplicate charges or messages:** use stable operation IDs, provider idempotency, deduplication and reconciliation; workflow retries alone cannot prevent duplicate external writes. [Inngest retry guidance](https://www.inngest.com/docs/durable-execution/guides-and-advanced/error-handling/retries)
+4. **Company data crossing boundaries:** enforce company scope in tools, credentials, queries and logs; test isolation before reuse.
+5. **Runaway cost or management chatter:** cap concurrency, retries and spend; dispatch a finite task graph instead of agents continually talking.
+6. **Provider or business mismatch:** validate each actual offer, entity and channel before enabling the connector; keep denied or pending capabilities disabled.
+7. **Prompt injection:** treat emails, documents and web content as untrusted input; keep their content separate from instructions and enforce tool scopes outside the model.
+8. **Commercial failure:** validate real demand, conversion, fulfillment capacity and margins; a working system does not establish a viable business.
+9. **An endless perfection project:** freeze the first acceptance contract, complete it, then expand from measured failures and business value.
+
+The first build should be the Fundhub task-and-evidence layer around one complete customer journey. Once that works, expand its coverage and extract the company template. That produces a reusable operating system grounded in real work.
