@@ -10,12 +10,15 @@ const CONSENT_KEYS = new Set([
   "accepted", "termsUrl", "ipAddress", "userAgent", "consentVersion", "consentTimestamp"
 ]);
 
-// These names and addresses are from the vendor's published OpenAPI examples.
+// These names and addresses are from the vendor's published examples and guide.
 // Only these exact synthetic consumers may reach the sandbox from this client.
 export const OFFERSIQ_SANDBOX_IDENTITIES = Object.freeze([
   Object.freeze({ fname: "YXHVVO", lname: "IMAEIF", streetName: "SYMFO", city: "HUNTSVILLE", state: "AL", zip: "35692" }),
   Object.freeze({ fname: "PAMQLOH", mname: "G", lname: "ADJNXZ", houseNumber: "791", streetName: "GIGUZQTTQSA", streetType: "PNES", city: "BIRMINGHAM", state: "AL", zip: "35107" }),
-  Object.freeze({ fname: "SLRRZJ", mname: "G", lname: "RXSXYEX", houseNumber: "2388", streetName: "MPGXKHWWXTG", streetType: "VL", city: "MOBILE", state: "AL", zip: "36677" })
+  Object.freeze({ fname: "SLRRZJ", mname: "G", lname: "RXSXYEX", houseNumber: "2388", streetName: "MPGXKHWWXTG", streetType: "VL", city: "MOBILE", state: "AL", zip: "36677" }),
+  // OffersIQ API Guide v1.1, section 9, profile 2 (AAJKITH/PDNSX).
+  // This exact no-SSN/no-DOB variant is allowed; a provider match is not assumed.
+  Object.freeze({ fname: "AAJKITH", mname: "Z", lname: "PDNSX", suffix: "6", houseNumber: "856", streetName: "BPOJVAB", streetType: "XRD", city: "HUNTSVILLE", state: "AL", zip: "35659" })
 ]);
 
 export class OffersIqContractError extends Error {
