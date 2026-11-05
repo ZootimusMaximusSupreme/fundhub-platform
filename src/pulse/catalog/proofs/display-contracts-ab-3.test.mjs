@@ -72,7 +72,7 @@ test("Display AB 3 exports only disjoint exact red catalog rows", () => {
   }
 });
 
-test("Display AB 3 observes the sidebar collapse action in rendered Chromium", async (t) => {
+test("Display AB 3 observes the compact website menu in rendered Chromium", async (t) => {
   const { server, origin } = await startServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => {
@@ -98,13 +98,16 @@ test("Display AB 3 observes the sidebar collapse action in rendered Chromium", a
   });
   await page.goto(`${origin}/app/consent-capture.html`, { waitUntil: "domcontentloaded" });
   const side = page.locator("#side");
-  await side.waitFor({ state: "visible" });
+  await side.waitFor({ state: "attached" });
   await t.test(DISPLAY_CONTRACT_KEYS_AB_3[0], async () => {
+    const menu = page.locator("#fh-menu-btn");
+    assert.equal(await side.isVisible(), false);
+    await menu.click();
+    assert.equal(await side.isVisible(), true);
+    assert.equal(await menu.getAttribute("aria-expanded"), "true");
     await page.locator("#burger").click();
-    assert.equal(await side.evaluate((node) => node.classList.contains("mini")), true);
-    assert.equal(await page.locator("html").evaluate((node) => node.classList.contains("fh-side-mini")), true);
-    await page.locator("#burger").click();
+    assert.equal(await side.isVisible(), false);
+    assert.equal(await menu.getAttribute("aria-expanded"), "false");
     assert.equal(await side.evaluate((node) => node.classList.contains("mini")), false);
-    assert.equal(await page.locator("html").evaluate((node) => node.classList.contains("fh-side-mini")), false);
   });
 });

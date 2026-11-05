@@ -132,6 +132,7 @@ test("section heads: with the hidden menu rows shown, all seven heads are there 
   await unhidden(owner);
   await owner.goto(`${lab.origin}/app/pipeline.html`, { waitUntil: "domcontentloaded" });
   await settle(owner);
+  await owner.locator("#fh-menu-btn").click();
   const ownerHeads = await visibleHeads(owner);
   assert.deepEqual(ownerHeads, ["relationships", "work", "clients", "insights", "marketing", "automation", "settings"],
     "all seven current groups are present once the deliberately hidden rows are shown");
@@ -142,6 +143,7 @@ test("section heads: with the hidden menu rows shown, all seven heads are there 
   await unhidden(partner);
   await partner.goto(`${lab.origin}/app/brand-studio.html`, { waitUntil: "domcontentloaded" });
   await settle(partner);
+  await partner.locator("#fh-menu-btn").click();
   const partnerHeads = await visibleHeads(partner);
   assert.deepEqual(partnerHeads, ["insights", "marketing", "settings"], "a partner's Home, marketing tools and Brand Studio stay in their current groups");
   for (const key of partnerHeads) { await foldAndUnfold(partner, key, `partner ${key}`); seen.add(key); }
