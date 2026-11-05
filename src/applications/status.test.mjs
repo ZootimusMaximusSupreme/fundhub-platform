@@ -306,7 +306,7 @@ test("Doesn't count and Count again keep the application, the person, the time a
     await setApprovalExclusion(db, { orgId: ORG, applicationId: "app-1", excluded, reason: "  client never used it  ", staff: STAFF });
     const decision = db.calls.find((c) => /INSERT INTO application_decisions/i.test(c.sql));
     assert.match(decision.sql, /decided_at/);
-    assert.match(decision.sql, /now\(\)/);
+    assert.match(decision.sql, /statement_timestamp\(\)/);
     assert.equal(decision.params[1], "app-1");
     assert.equal(decision.params[2], excluded ? "approval_excluded" : "approval_reinstated");
     assert.equal(decision.params[4], "Advisor");
@@ -336,3 +336,71 @@ test("Doesn't count with no signed-in staff member changes nothing", async () =>
   );
   assert.equal(db.calls.length, 0);
 });
+
+// A real pool must commit the application and its decision together, then
+// release that connection before billing starts its own transaction.
+for (const [name, write] of [
+  ["status", (db) => setApplicationStatus(db, {
+    orgId: ORG, applicationId: CLIENT, status: "Approved", staff: STAFF
+  })],
+  ["bank answer", (db) => logBankDecision(db, {
+    orgId: ORG, applicationId: CLIENT, status: "Approved", staff: STAFF,
+    approvedAmount: "7500"
+  })],
+  ["approval exclusion", (db) => setApprovalExclusion(db, {
+    orgId: ORG, applicationId: CLIENT, excluded: true,
+    reason: "Client did not use the approval", staff: STAFF
+  })]
+]) {
+  function transactionPool(failAudit = false) {
+    const calls = [];
+    const row = { id: CLIENT, status: "Approved", lender_table: null,
+      funding_round_id: ROUND_NOW, approval_excluded_at: null };
+    const client = {
+      release() { calls.push("release"); },
+      async query(sql) {
+        calls.push(sql);
+        if (/INSERT INTO application_decisions/.test(sql) && failAudit) {
+          throw new Error("audit refused");
+        }
+        if (/UPDATE applications/.test(sql) || /SELECT id, status, approval_excluded_at/.test(sql)) {
+          return { rows: [row] };
+        }
+        return { rows: [] };
+      }
+    };
+    return {
+      calls,
+      async connect() { return client; },
+      async query() {
+        assert.ok(calls.indexOf("COMMIT") >= 0, "billing must follow commit");
+        assert.ok(calls.indexOf("release") > calls.indexOf("COMMIT"));
+        calls.push("billing read");
+        return { rows: [] };
+      }
+    };
+  }
+
+  test(`${name}: application and audit commit before the billing read`, async () => {
+    const db = transactionPool();
+    await write(db);
+    assert.equal(db.calls[0], "BEGIN");
+    const audit = db.calls.findIndex((sql) => /INSERT INTO application_decisions/.test(sql));
+    assert.ok(audit > 0 && audit < db.calls.indexOf("COMMIT"));
+    assert.ok(db.calls.indexOf("billing read") > db.calls.indexOf("release"));
+    // With no existing bill, billing may open its own second transaction.
+    // Its first read must still happen after this decision has committed.
+    const secondBegin = db.calls.indexOf("BEGIN", 1);
+    assert.ok(secondBegin === -1 || secondBegin > db.calls.indexOf("COMMIT"));
+    assert.ok(!db.calls.includes("ROLLBACK"));
+  });
+
+  test(`${name}: a failed audit rolls back instead of starting billing`, async () => {
+    const db = transactionPool(true);
+    await assert.rejects(write(db), /audit refused/);
+    assert.ok(db.calls.some((sql) => /UPDATE applications/.test(sql)));
+    assert.deepEqual(db.calls.slice(-2), ["ROLLBACK", "release"]);
+    assert.ok(!db.calls.includes("COMMIT"));
+    assert.ok(!db.calls.includes("billing read"));
+  });
+}

@@ -3,6 +3,7 @@
 import { APPLICATION_STATUS_SET } from "../lenders/tables.mjs";
 import { toCents, fromCents } from "../commissions/money.mjs";
 import { flagBilledFeeDrift } from "../funding/billed-fee-check.mjs";
+import { withTransaction } from "../db/with-transaction.mjs";
 
 export class ApplicationStatusError extends Error {
   constructor(message, { code = "application_status_error", status = 400 } = {}) {
@@ -98,7 +99,15 @@ export function normalizeApprovedAmount(value) {
   return fromCents(cents);
 }
 
-export async function setApplicationStatus(db, {
+export async function setApplicationStatus(db, options = {}) {
+  const row = await withTransaction(db, (writer) => writeApplicationStatus(writer, options));
+  // Billing owns its own transaction. Save the bank answer and its evidence
+  // together first; never hold the application's lock while correcting a bill.
+  await flagBilledFeeDrift(db, { orgId: options.orgId, application: row });
+  return row;
+}
+
+async function writeApplicationStatus(db, {
   orgId,
   applicationId,
   status,
@@ -174,7 +183,7 @@ export async function setApplicationStatus(db, {
     `INSERT INTO application_decisions (
        org_id, application_id, event_type, status, lender_table, decided_at, created_by, notes, play_name, staff_id
      ) VALUES (
-       $1::uuid, $2::uuid, $3, $4, $5::lender_table, now(), $6, $7, $8, $9::uuid
+       $1::uuid, $2::uuid, $3, $4, $5::lender_table, statement_timestamp(), $6, $7, $8, $9::uuid
      )`,
     [
       orgId,
@@ -189,15 +198,17 @@ export async function setApplicationStatus(db, {
     ]
   );
 
-  // A bank answer that changes after the round was billed can leave the bill
-  // disagreeing with the fee rule. Saved first, then a person is told (N7).
-  await flagBilledFeeDrift(db, { orgId, application: row });
-
   return row;
 }
 
 /** Find or mint the application row for this client + lender, then stamp yes/no. */
-export async function logBankDecision(db, {
+export async function logBankDecision(db, options = {}) {
+  const row = await withTransaction(db, (writer) => writeBankDecision(writer, options));
+  await flagBilledFeeDrift(db, { orgId: options.orgId, application: row });
+  return row;
+}
+
+async function writeBankDecision(db, {
   orgId,
   applicationId = null,
   clientId = null,
@@ -288,7 +299,7 @@ export async function logBankDecision(db, {
     }
   }
 
-  return setApplicationStatus(db, {
+  return writeApplicationStatus(db, {
     orgId,
     applicationId: appId,
     status,
@@ -331,7 +342,13 @@ export async function logBankDecision(db, {
  * billing for this" is not a claim that the bank approved nothing — that claim
  * is a zero, and it is refused on the way in (normalizeApprovedAmount).
  */
-export async function setApprovalExclusion(db, {
+export async function setApprovalExclusion(db, options = {}) {
+  const row = await withTransaction(db, (writer) => writeApprovalExclusion(writer, options));
+  await flagBilledFeeDrift(db, { orgId: options.orgId, application: row });
+  return row;
+}
+
+async function writeApprovalExclusion(db, {
   orgId,
   applicationId,
   excluded = true,
@@ -358,7 +375,7 @@ export async function setApprovalExclusion(db, {
   const current = await db.query(
     `SELECT id, status, approval_excluded_at
        FROM applications
-      WHERE org_id = $1::uuid AND id = $2::uuid`,
+      WHERE org_id = $1::uuid AND id = $2::uuid FOR UPDATE`,
     [orgId, applicationId]
   );
   const app = current.rows[0];
@@ -403,7 +420,7 @@ export async function setApprovalExclusion(db, {
     `INSERT INTO application_decisions (
        org_id, application_id, event_type, status, lender_table, decided_at, created_by, notes, staff_id
      ) VALUES (
-       $1::uuid, $2::uuid, $3, NULL, $4::lender_table, now(), $5, $6, $7::uuid
+       $1::uuid, $2::uuid, $3, NULL, $4::lender_table, statement_timestamp(), $5, $6, $7::uuid
      )`,
     [
       orgId,
@@ -415,9 +432,6 @@ export async function setApprovalExclusion(db, {
       staffIdOf(staff)
     ]
   );
-
-  // Excluding or putting back an approval moves the fee basis too (N7).
-  await flagBilledFeeDrift(db, { orgId, application: row });
 
   return row;
 }
