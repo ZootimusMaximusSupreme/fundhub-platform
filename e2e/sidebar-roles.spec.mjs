@@ -149,6 +149,30 @@ test.describe("sidebar role visibility", () => {
 });
 
 test.describe("sidebar fixed geometry", () => {
+  test("every staff dashboard loads shared CSS before the shell", () => {
+    const staffPages = [...SCREENS].filter((file) => {
+      if (file.endsWith(".fragment.html")) return false;
+      const html = fs.readFileSync(path.join(APP, file), "utf8").replace(/<!--[\s\S]*?-->/g, "");
+      const hasSidebar = /<[^>]+\bid\s*=\s*["']side["']/i.test(html)
+        || /<aside\b[^>]*\bclass\s*=\s*["'][^"']*\bside\b/i.test(html);
+      return hasSidebar && /<script\b[^>]*\bsrc=["'][^"']*shell\.js["']/i.test(html);
+    });
+    expect(staffPages.length).toBeGreaterThan(30);
+    for (const file of staffPages) {
+      const html = fs.readFileSync(path.join(APP, file), "utf8");
+      const head = html.replace(/<!--[\s\S]*?-->/g, "").split(/<\/head>/i)[0];
+      const shell = head.search(/<script\b[^>]*\bsrc=["'][^"']*shell\.js["']/i);
+      expect(shell, file).toBeGreaterThan(-1);
+      const links = [...head.matchAll(/<link\b[^>]*>/gi)].map((match) => match[0]);
+      for (const css of ["fundhub-brand.css", "crm-sidebar.css"]) {
+        const link = links.find((tag) => /\brel\s*=\s*["']stylesheet["']/i.test(tag)
+          && tag.match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1]?.includes(css));
+        expect(link, `${file} needs ${css} in the head`).toBeTruthy();
+        expect(head.indexOf(link), `${file} must load ${css} before shell.js`).toBeLessThan(shell);
+      }
+    }
+  });
+
   test("rail stays fixed and identical across page navigation", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", OWNER);
     const a = await sideBox(page);
@@ -182,6 +206,57 @@ test.describe("sidebar fixed geometry", () => {
     expect(d.left).toBe(0);
     expect(d.top).toBe(0);
     expect(d.width).toBe(a.width);
+  });
+
+  test("sidebar icons stay styled in every frame while switching dashboards", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__sidebarFrames = [];
+      function sample() {
+        const side = document.querySelector("aside.side#side");
+        const icon = document.querySelector('aside.side#side .navitem[href="pipeline.html"] .ico svg');
+        if (icon) {
+          const rect = icon.getBoundingClientRect();
+          const sideRect = side.getBoundingClientRect();
+          if (rect.width && rect.height) window.__sidebarFrames.push({
+            width: rect.width,
+            height: rect.height,
+            sideWidth: sideRect.width,
+            sideLeft: sideRect.left,
+            sidePosition: getComputedStyle(side).position
+          });
+        }
+        requestAnimationFrame(sample);
+      }
+      requestAnimationFrame(sample);
+    });
+    await openScreen(page, "/app/pipeline.html", OWNER);
+    await waitForGate(page);
+    const sharedCssRequests = [];
+    await page.route(/\/app\/(?:crm-sidebar|fundhub-brand)\.css(?:\?.*)?$/, async (route) => {
+      const pathname = new URL(route.request().url()).pathname;
+      sharedCssRequests.push(pathname);
+      if (pathname.endsWith("crm-sidebar.css")) await new Promise((resolve) => setTimeout(resolve, 600));
+      await route.continue();
+    });
+
+    for (const screen of ["setter-dashboard.html", "closer-dashboard.html", "calendar.html"]) {
+      sharedCssRequests.length = 0;
+      await page.locator(`aside.side a.navitem[href="${screen}"]`).click();
+      await page.waitForURL(new RegExp(screen.replace(".", "\\.")));
+      await page.waitForTimeout(750);
+      const frames = await page.evaluate(() => window.__sidebarFrames || []);
+      expect(frames.length, `${screen} should record painted frames`).toBeGreaterThan(0);
+      expect(Math.max(...frames.map((frame) => frame.width)), screen).toBeLessThanOrEqual(24);
+      expect(Math.max(...frames.map((frame) => frame.height)), screen).toBeLessThanOrEqual(24);
+      for (const frame of frames) {
+        expect(frame.sidePosition, screen).toBe("fixed");
+        expect(frame.sideLeft, screen).toBe(0);
+        expect(frame.sideWidth, screen).toBeGreaterThanOrEqual(220);
+        expect(frame.sideWidth, screen).toBeLessThanOrEqual(250);
+      }
+      expect(sharedCssRequests.filter((path) => path.endsWith("crm-sidebar.css")), screen).toHaveLength(1);
+      expect(sharedCssRequests.filter((path) => path.endsWith("fundhub-brand.css")), screen).toHaveLength(1);
+    }
   });
 
   test("section order matches the simplified shell structure", async ({ page }) => {

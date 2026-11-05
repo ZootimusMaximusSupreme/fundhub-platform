@@ -1,0 +1,28 @@
+Portal tab-switch jump — 2026-11-04
+
+Parallel work
+- Root: record the current live staff portal, review each frame, fix shared sidebar style loading, run browser and release checks.
+- Read-only agent: map client/staff navigation, existing tests, and overlapping PR files. Complete; no edits.
+- Release checks and live proof wait for the shared shell fix and frame test.
+
+Copy-paste prompts
+- Visual lane: "On fundhub.ai, click Pipeline > Setter dashboard > Sales workspace > Calendar > Pipeline. Save a redacted screencast and mark the exact jump frame. Do not change customer records."
+- Code lane: "Inspect public/app/shell.js stylesheet handling and e2e/sidebar-roles.spec.mjs. Fix the observed flash only; assert sidebar icon dimensions in animation frames across staff dashboard navigation."
+
+Finding
+- Four live tab switches were captured. Frames 24, 37-40 and 48 show oversized, unstyled sidebar icons. The marked frame is ops/workflows/portal-tab-jump-2026-11-04/jump-marked.png; the redacted recording is tab-switches-redacted.webm in that folder.
+- After the local fix, a second recording with fictional test data is saved as ops/workflows/portal-tab-jump-2026-11-04/after-local-fictional.webm. All 183 recorded frames were inspected; no frame showed the blue/purple oversized sidebar icon seen in the live before recording.
+- Each staff page loads crm-sidebar.css in its head. shell.js then changed that link's href to a query-string URL, fetched it again, and briefly dropped its rules. The live network trace showed both CSS URLs on navigation.
+- The new Playwright frame check failed before the fix with a 224px sidebar icon (expected <=24px). After the href rewrite was removed, it passed across Setter dashboard, Sales workspace, and Calendar with slow CSS loading. It also checks sidebar width/position and one request per shared stylesheet. A separate guard checks that all 35 staff dashboard pages link their shared CSS before shell.js. Existing final-state geometry checks remain.
+
+Scope
+- Owner lane: front-house
+- Affected path: staff sidebar navigation between existing dashboards.
+- Stored effect: none; style load only.
+- No customer data, credentials, or raw customer frames are in the saved recording.
+
+Delivery
+- Local checks: sidebar browser suite 10/10 passed; the focused frame check also passed in WebKit; UI source tests 12/12 passed; lint parsed 4,682 files; TypeScript passed; git diff --check passed. The frame check was red at 224px before the code change and green across three destinations after it.
+- The other branch's obsolete payout MFA shell copy was archived and removed by its release owner. Preflight now passes with no shared files. The fix was rebased on the latest main, committed as f53630ad3 through ship-change, and pushed to codex/portal-tab-jump-20261104.
+- ship-change stopped before PR creation because the current ordered queue tail (#406) predates merged main changes. Its automatic rebase tried to replay unrelated Finance commits and conflicted. The rebase was aborted; the portal branch is clean and preserved on GitHub. Wait for the release controller to restack the tail, then rerun ship-change to create the ordered PR.
+- Pending: ordered PR, GitHub CI, deployment, and authenticated live replay by a different tester. No live fix is claimed yet.
