@@ -183,6 +183,32 @@ flowchart TD
   person taps the figure beside the right bank and presses Bank yes. No Zoho mail link exists in the
   code (Zoho appears only in hiring).
 
+### The evidence retained with each answer (2026-11-05)
+
+Each new `application_decisions` row retains an immutable `decision_context`:
+the client, lender, application and round references, application status, exclusion
+state, and requested/approved amounts as recorded then. An unknown amount stays
+`NULL`; recording the amount later appends a new decision rather than changing the
+earlier context.
+
+The context also references the latest completed production OffersIQ request for
+that same company and client at or before the decision timestamp. A later request,
+sandbox result, another client's result, or a request still in flight is excluded.
+A latest no-hit or error is retained as such rather than replaced by an older match.
+Missing evidence stays `NULL`. The reference describes what was on file then; it
+does not claim the lender used that screen, identify a ruleset revision, or assert
+an approval probability. No raw credit report or contact information is copied.
+
+The application update and audit insert share one transaction; the existing billing
+check runs after that commit. An audit failure rolls back the application change.
+Excluding an approval still records a `NULL` decision status so it cannot become a
+second bank approval. Older decisions are not backfilled from today's profile.
+
+Files: `src/applications/status.mjs`,
+`db/migrations/554_application_decision_context.sql`,
+`src/applications/decision-context.pg.test.mjs`. These capture records for later
+analysis; they do not train or change the qualification models.
+
 ## Closing a round is one round done (2026-10-20)
 
 `round.closeout` from the Closed column carries `stage: "closed"` and `engagementComplete: false`.
