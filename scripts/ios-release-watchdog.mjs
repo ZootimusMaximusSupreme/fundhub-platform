@@ -38,6 +38,21 @@ function logLine(home, key, line) {
   fs.appendFileSync(path.join(directory, `${key}.log`), `${new Date().toISOString()} ${line}\n`, { mode: 0o600 });
 }
 
+export function writeWatchdogStatus(home, result, reason = "") {
+  fs.mkdirSync(home, { recursive: true, mode: 0o700 });
+  const file = path.join(home, "watchdog-status.json");
+  const temp = `${file}.${process.pid}.${Date.now()}.tmp`;
+  const blocked = result.auto === "blocked-by-pending" || result.auto === "blocked-by-error" ||
+    result.auto === "failed";
+  const status = { schema: 1, checkedAt: new Date().toISOString(), ...result,
+    blockedReason: blocked ? reason || "An earlier exact release is still pending" : null,
+    next: blocked ? "Inspect the private iOS release log and resolve the exact pending release" : null };
+  fs.writeFileSync(temp, JSON.stringify(status) + "\n", { flag: "wx", mode: 0o600 });
+  try { fs.renameSync(temp, file); }
+  finally { fs.rmSync(temp, { force: true }); }
+  return file;
+}
+
 async function alertOnce(home, key, reason, command = execFileAsync) {
   const hash = crypto.createHash("sha256").update(reason).digest("hex");
   const file = path.join(home, "logs", `${key}.last-error`);
@@ -54,12 +69,14 @@ async function alertOnce(home, key, reason, command = execFileAsync) {
 export async function runWatchdog({ home = releaseHome(), root = ROOT,
   command = execFileAsync, notify = alertOnce, autoStart = startShippedRelease } = {}) {
   const result = { pending: 0, resumed: 0, busy: 0, failed: 0, auto: "idle" };
+  let blockingReason = "";
   for (const file of listPending(home)) {
     let intent;
     try { intent = readIntent(file); }
     catch (error) {
       const key = path.basename(file, ".json").replace(/[^a-zA-Z0-9._-]/g, "_");
       const reason = `Invalid release intent: ${error.message}`;
+      blockingReason = reason;
       logLine(home, key, `FAILED ${reason}`);
       await notify(home, key, reason, command);
       result.failed++;
@@ -84,12 +101,17 @@ export async function runWatchdog({ home = releaseHome(), root = ROOT,
     } catch (error) {
       const reason = String(error.stderr || error.message || "unknown release error").trim().slice(0, 1200)
         .replace(/[\r\n]+/g, " ");
+      blockingReason = reason;
       logLine(home, key, `FAILED ${reason}`);
       await notify(home, key, reason, command);
       result.failed++;
     }
   }
-  if (!result.pending && !result.failed) {
+  if (result.pending) {
+    result.auto = "blocked-by-pending";
+  } else if (result.failed) {
+    result.auto = "blocked-by-error";
+  } else {
     try {
       const started = await autoStart({ home, root, command, checkout: pinnedCheckout });
       result.auto = started.status;
@@ -99,12 +121,14 @@ export async function runWatchdog({ home = releaseHome(), root = ROOT,
     } catch (error) {
       const reason = String(error.stderr || error.message || "unknown auto-start error").trim().slice(0, 1200)
         .replace(/[\r\n]+/g, " ");
+      blockingReason = reason;
       logLine(home, "auto-start", `FAILED ${reason}`);
       await notify(home, "auto-start", reason, command);
       result.failed++;
       result.auto = "failed";
     }
   }
+  writeWatchdogStatus(home, result, blockingReason);
   return result;
 }
 
