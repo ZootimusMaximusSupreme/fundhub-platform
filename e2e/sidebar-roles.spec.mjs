@@ -306,7 +306,8 @@ test.describe("website menu without a sidebar", () => {
       requestAnimationFrame(sample);
     });
 
-    for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    const movements = [];
+    for (const viewport of [1440, 860, 640, 440, 390, 350, 320].map((width) => ({ width, height: 900 }))) {
       await page.setViewportSize(viewport);
       for (const screen of ["pipeline.html", "setter-dashboard.html", "closer-dashboard.html", "calendar.html"]) {
         await openScreen(page, `/app/${screen}`, OWNER, {
@@ -321,9 +322,10 @@ test.describe("website menu without a sidebar", () => {
         expect(frames.some((frame) => frame.reserved && !frame.header), `${screen} needs a reserved first frame`).toBe(true);
         expect(frames.some((frame) => frame.header), `${screen} needs a mounted header frame`).toBe(true);
         const tops = frames.map((frame) => frame.top);
-        expect(Math.max(...tops) - Math.min(...tops), `${screen} moved at ${viewport.width}px`).toBeLessThanOrEqual(2);
+        if (Math.max(...tops) - Math.min(...tops) > 2) movements.push(`${screen} at ${viewport.width}px: ${Math.min(...tops)}-${Math.max(...tops)}`);
       }
     }
+    expect(movements).toEqual([]);
   });
 
   test("section order matches the simplified shell structure", async ({ page }) => {
