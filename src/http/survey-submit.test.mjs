@@ -168,6 +168,18 @@ test("the default ticket gate reads the saved client answers after event dispatc
   assert.match(result.redirect, /#fh_survey_ticket=/);
 });
 
+test("an old complete survey cannot approve a new PASS post whose answers failed to save", async () => {
+  const oldAnswers = { ...FULL_PASS_ANSWERS, cf_svy_planned_use: "Debt consolidation" };
+  const result = await runSurveySubmit(
+    { name: "Ada", email: "ada@example.com", phone: "555", source: "website:home",
+      answers: FULL_PASS_ANSWERS },
+    { emit: async () => ({ id: "evt", deduped: false }), ensureRegistered: () => {},
+      db: { async query() { return { rows: [{ custom_fields: oldAnswers }] }; } },
+      secret: SECRET, now: NOW, orgId: "org-ada", resolveClient: async () => "client-ada" }
+  );
+  assert.equal(result.redirect, "https://apply.fundhub.ai/apply");
+});
+
 test("a last answer without the earlier branch answers does not emit completion or get a ticket", async () => {
   const names = [];
   const result = await runSurveySubmit(
