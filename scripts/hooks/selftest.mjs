@@ -419,7 +419,7 @@ function testEnvMasks(proj) {
 function testWire() {
   const empty = mergeHookSet({});
   const emptyText = JSON.stringify(empty);
-  if (!emptyText.includes("session-rules.mjs")) fail("wire: adds session-rules", emptyText);
+  if (emptyText.includes("session-rules.mjs")) fail("wire: leaves the start-of-chat reminder off (owner call 2026-11-04)", emptyText);
   if (!emptyText.includes("guard-rule-edits.mjs")) fail("wire: adds guard-rule-edits", emptyText);
   if (!emptyText.includes("check-ad-script.mjs")) fail("wire: adds check-ad-script", emptyText);
   if (!emptyText.includes("guard-env-masks.mjs")) fail("wire: adds guard-env-masks", emptyText);
@@ -429,7 +429,7 @@ function testWire() {
   const twice = mergeHookSet(empty);
   if ((JSON.stringify(twice).split("guard-env-masks.mjs").length - 1) !== 1) fail("wire: running twice does not duplicate", JSON.stringify(twice));
   if ((JSON.stringify(twice).split("guard-new-markdown.mjs").length - 1) !== 1) fail("wire: running twice does not duplicate guard-new-markdown", JSON.stringify(twice));
-  if ((JSON.stringify(twice).split("session-rules.mjs").length - 1) !== 1) fail("wire: running twice does not duplicate session-rules", JSON.stringify(twice));
+  if (JSON.stringify(twice).includes("session-rules.mjs")) fail("wire: running twice still leaves the start-of-chat reminder off", JSON.stringify(twice));
   checks += 1;
 
   const withExtra = mergeHookSet({
