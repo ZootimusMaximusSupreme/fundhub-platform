@@ -23,6 +23,12 @@ body[data-expanded="true"] .peek{display:flex}
 .peek-head strong{font-size:16px;letter-spacing:-.04em}
 .peek-head span{font-size:13px;color:var(--dock-muted);margin-left:auto;text-align:right}
 .peek-head button{width:44px;height:44px;margin:-8px -10px -8px 0;border:0;background:transparent;font-size:22px;cursor:pointer;color:var(--dock-muted)}
+.role-overview{flex:none;min-width:0;padding:8px 12px;border-bottom:1px solid var(--dock-line);background:#fff;font-size:13px;line-height:1.25}
+.role-overview[hidden]{display:none}
+.role-overview strong{display:block;margin-bottom:4px}
+.role-overview-row{display:flex;align-items:baseline;gap:8px;min-height:22px}
+.role-overview-row b{flex:0 0 54px}
+.role-overview-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dock-muted)}
 .states{flex:1;min-height:0;overflow:auto;scrollbar-width:thin}
 .state{display:none;padding:13px}.state[data-active="true"]{display:block}
 .state p{font-size:14px;line-height:1.4;margin:6px 0 0;color:var(--dock-muted)}
