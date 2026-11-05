@@ -51,6 +51,7 @@
 
 import { db as sharedDb, pool } from "../db.mjs";
 import { readApr } from "../tradelines/index.mjs";
+import { PLAID_SANDBOX_LABEL } from "./plaid-link.mjs";
 
 /* -------------------------------------------------------------------------- *
  * Transaction helper
@@ -384,12 +385,28 @@ export async function replaceHoldings(db, holdings = [], { orgId, clientId, bank
 /* NEVER `SELECT *` ACROSS A JOIN TO plaid_items. That table holds
    encrypted_access_token one join away, and a read endpoint should not be one
    typo from it. api/read/banking-surface.mjs makes the same call. */
+const SCOPED_PLAID_ITEM = `a.provider = 'plaid' AND p.id IS NOT NULL
+  AND p.plaid_item_id IS NOT NULL AND p.plaid_item_id NOT LIKE 'mock:%'
+  AND p.plaid_item_id NOT LIKE 'plaid:%'
+  AND p.encrypted_access_token IS NOT NULL AND p.consent_granted_at IS NOT NULL`;
+const STAMPED_PLAID_ENVIRONMENT = `a.raw->>'plaid_environment_source' = 'server_transport'
+  AND a.raw->>'plaid_environment' IN ('sandbox', 'development', 'production')`;
+const LEGACY_SANDBOX_ITEM = `p.institution_name LIKE '%${PLAID_SANDBOX_LABEL}'`;
 const ACCOUNT_COLUMNS = `
-  id, client_id, plaid_item_id, name, official_name, mask,
-  account_type, account_subtype, currency_code,
-  available_balance_cents, current_balance_cents, credit_limit_cents,
-  balance_as_of, entity_kind, entity_kind_source, entity_kind_set_at,
-  closed_at, created_at, updated_at`;
+  a.id, a.client_id, a.plaid_item_id, a.name, a.official_name, a.mask,
+  a.account_type, a.account_subtype, a.currency_code,
+  a.available_balance_cents, a.current_balance_cents, a.credit_limit_cents,
+  a.balance_as_of, a.entity_kind, a.entity_kind_source, a.entity_kind_set_at,
+  a.closed_at, a.created_at, a.updated_at, a.provider,
+  (${SCOPED_PLAID_ITEM}) AS provider_item_scoped,
+  CASE WHEN ${SCOPED_PLAID_ITEM} AND ${LEGACY_SANDBOX_ITEM} THEN 'sandbox'
+    WHEN ${SCOPED_PLAID_ITEM} AND ${STAMPED_PLAID_ENVIRONMENT}
+    THEN a.raw->>'plaid_environment'
+    ELSE NULL END AS provider_environment,
+  CASE WHEN ${SCOPED_PLAID_ITEM} AND ${LEGACY_SANDBOX_ITEM} THEN 'legacy_sandbox_label'
+    WHEN ${SCOPED_PLAID_ITEM} AND ${STAMPED_PLAID_ENVIRONMENT}
+    THEN 'server_transport'
+    ELSE NULL END AS provider_environment_evidence`;
 
 /**
  * Every account for one client, scoped to the caller's org.
@@ -402,9 +419,11 @@ export async function listBankAccounts(db, { orgId, clientId } = {}) {
   requireUuidish(orgId, "orgId");
   requireUuidish(clientId, "clientId");
   const res = await db.query(
-    `SELECT ${ACCOUNT_COLUMNS} FROM bank_accounts
-      WHERE org_id = $1 AND client_id = $2
-      ORDER BY account_type NULLS LAST, name NULLS LAST, id`,
+    `SELECT ${ACCOUNT_COLUMNS} FROM bank_accounts a
+      LEFT JOIN plaid_items p ON p.id = a.plaid_item_id
+        AND p.org_id = a.org_id AND p.client_id = a.client_id
+      WHERE a.org_id = $1 AND a.client_id = $2
+      ORDER BY a.account_type NULLS LAST, a.name NULLS LAST, a.id`,
     [orgId, clientId]
   );
   return res.rows;

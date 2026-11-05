@@ -34,7 +34,7 @@ The homeowner has a project large enough that cash, ordinary cards and common pe
 
 4. Ideal client
 
-The center of the market is a 38-to-58-year-old homeowner or dual-income household with a stable, documentable income, a good-to-excellent credit history, manageable current debt, a defined $75,000-to-$250,000 project and a strong reason to keep the current mortgage unchanged. The project is usually an addition, full kitchen and first-floor remodel, pool and outdoor-living build, ADU, large roof/energy package, aging-in-place renovation or whole-home modernization.
+The core customer owns the project property, has high income that can be documented, manageable current obligations, and a defined $75,000 to $500,000+ project or combined financing request. Credit changes the lender route; it is not a universal entry floor for the homeowner profile. The project is usually an addition, full kitchen and first-floor remodel, pool and outdoor-living build, ADU, large roof/energy package, aging-in-place renovation or whole-home modernization.
 
 The strongest version already has at least a preliminary contractor estimate. They are not casually browsing design photos. They are deciding whether the project can start and how the payment fits.
 
@@ -60,29 +60,37 @@ The strongest version already has at least a preliminary contractor estimate. Th
 
 7. Service methodology
 
-The Renovation Funding Map:
+The free Renovation Funding Map covers the initial project/payment review, route summary and document checklist. Application preparation, authorized submission and ongoing lender coordination belong to a separately signed paid engagement.
+
+The complete service journey:
 
 1. Project Map — define property, project, amount, contractor, timing and payment schedule.
 2. Capacity Map — capture income type, housing expense, monthly debt, self-reported credit band and joint-applicant availability.
 3. Route Map — compare direct-to-homeowner, contractor point-of-sale and separate secured alternatives based on the actual project.
-4. Readiness Pack — organize identity, income, ownership and project documents before routing.
-5. Application Handoff — send the homeowner to the selected provider or qualified advisor with the same information already organized.
-6. Status Track — follow application, document, decision and funding milestones.
+4. Readiness Pack — the free map lists the required records and missing items; the paid engagement organizes the application file.
+5. Application Handoff — under the paid engagement, prepare the applications the homeowner authorizes and coordinate the selected provider's actual process.
+6. Status Track — under the paid engagement, follow application, document, decision and funding milestones.
 
 8. Key deliverables
+
+Free Funding Map:
 
 - Project and borrower intake.
 - Initial payment-capacity screen.
 - Product-route comparison.
 - Homeowner versus contractor disbursement explanation.
 - Personalized document checklist.
-- Application handoff and status follow-up.
-- Alternative product map when the first route does not fit.
+- Recommended next application step and initial alternative route.
 - Readiness track when timing, credit or documentation needs work.
+
+Separately signed paid engagement:
+- Application-file organization and authorized application preparation.
+- Provider handoff, document-request coordination and ongoing status follow-up.
+- Review of the next suitable route and reconciliation of covered funding and fees.
 
 9. Pricing model
 
-No customer price is set in the current offer. The offer should be designed so the homeowner can enter through a free or low-friction comparison and qualification experience, while commercial revenue can come from documented provider relationships, contractor relationships, advisory services or later products as each arrangement is established.
+The initial Funding Map is free. The owner-review proposal for the paid renovation engagement uses a $3,000 deposit credited once toward a 10% total success fee on covered approved funding. This proposal does not activate a charge: the owner must approve the model, and the written engagement must cover the actual renovation facility before collection. Provider or contractor compensation is recorded only when a confirmed agreement supplies it.
 
 10. Main alternatives in the customer's mind
 
@@ -354,13 +362,15 @@ Secondary emotions
 - Typical age: 38–58.
 - Household: married or partnered is common because two incomes and a shared property decision support larger projects; strong single-income owners also fit.
 - Household income screening hypothesis: $150,000–$350,000+, with the highest project amounts concentrated toward the upper end or in low-debt households.
-- Credit screening hypothesis: good to excellent, with a stronger profile expected as requested amount rises.
+- Credit routing evidence: record the actual or self-reported credit source, model and date as available. Apply each selected program's criteria without creating a universal homeowner score floor.
 - Property: owner-occupied single-family home is the cleanest starting segment; condos, second homes and other property types need provider-specific matching.
 - Geography: states served by the selected provider and contractor.
 - Employment: stable W-2, dual W-2, documented self-employment, commission, retirement or a combination that can be verified.
-- Project: $75,000–$250,000+, with $100,000–$200,000 the core initial campaign band.
+- Project or combined financing target: $75,000, $100,000, $175,000, $250,000 or $500,000+. Keep each loan or line amount and total monthly payment visible.
 
 COMMERCIAL SEGMENTS AROUND THE CORE AVATAR
+
+These tiers are examples within the broader owner profile. They do not set a universal score floor or replace the primary project-request markers.
 
 Tier A — Maximum-funding homeowner
 
@@ -560,7 +570,7 @@ Above the fold
 
 Headline: See how to fund a major renovation without automatically replacing your first mortgage.
 
-Subhead: Map the project, estimated payment, documents and financing route for home improvements from $50,000 to $250,000+.
+Subhead: Map your project, planned payments, documents and next financing route for a $75,000 to $500,000+ project or combined financing request. Each loan or line keeps its own lender limit and requirements.
 
 CTA: Build My Funding Map
 

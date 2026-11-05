@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { openScreen, json, OWNER, CLOSER, CLIENT_ID, CLIENT_ROW } from './harness.mjs';
+import { clientAssetProfile } from '../src/http/client-asset-profile.mjs';
 
 const evidence = path.resolve('ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18');
 const full = {
@@ -41,6 +42,181 @@ test('a funding file without a named advisor says so', async ({ page }) => {
   await expect(page.locator('#ccp-funding-advisor')).toContainText('Not assigned yet');
   await expect(page.locator('#ccp-funding-advisor')).toBeVisible();
 });
+
+const financialProfile = {
+  offerMatch: { outcome: 'matched', checked_at: '2026-11-04T10:00:00Z', stale: false },
+  creditScores: [
+    { bureau: 'TU', score: 782, model: 'FICO 9', source: 'CRS prequalification report', asOf: '2026-11-04T10:00:00Z' },
+    { bureau: 'EQ', score: 761, model: 'FICO 9', source: 'CRS prequalification report', asOf: '2026-11-03T10:00:00Z' }
+  ],
+  incomeModels: [
+    { bureau: 'TU', annual: null, rawCode: '47 B', model: 'CreditVision Income Estimator', verified: false, status: 'mapping_required', asOf: '2026-11-04T10:00:00Z' },
+    { bureau: 'EQ', annual: 130000, rawCode: '130', model: 'Income View', verified: false, status: 'model_estimate', asOf: '2026-11-03T10:00:00Z' }
+  ],
+  reportedIncome: { range: '$100k–$150k', verificationStated: 'Yes, pay stubs', basis: 'client_stated' },
+  reportedCapital: { range: '$10k–$25k', basis: 'client_stated' },
+  verifiedIncome: null, property: null,
+  fitModels: [
+    { model: 'blueprint', name: 'Blueprint', version: 'draft-2026-11-04', draft: true, lenderApproval: false, scoreFloor: 620, outcome: 'score_floor_met', thresholdSource: 'owner_provisional', scoreChecks: [{ bureau: 'TU', score: 782, model: 'FICO 9', status: 'meets', asOf: '2026-11-04T10:00:00Z' }], supportingChecks: [{ criterion: 'paid_off_auto', status: 'missing' }], pendingCriteria: [] },
+    { model: 'prime_funding', name: 'Prime Funding', version: 'draft-2026-11-04', draft: true, lenderApproval: false, scoreFloor: 750, outcome: 'score_floor_met', scoreChecks: [], supportingChecks: [], pendingCriteria: [] },
+    { model: 'super_prime', name: 'Super Prime Funding', version: 'draft-2026-11-04', draft: true, lenderApproval: false, scoreFloor: 800, outcome: 'below_score_floor', scoreChecks: [], supportingChecks: [], pendingCriteria: [] },
+    { model: 'real_estate', name: 'Real Estate', version: 'draft-2026-11-04', draft: true, lenderApproval: false, scoreFloor: null, outcome: 'needs_data', scoreChecks: [], supportingChecks: [], pendingCriteria: [], icpPaths: [
+      { id: 'real_estate_entrant', name: 'Deal-Ready Profile', targetProfile: 'High income, strong financials, and good credit; property ownership optional', homeownershipRequired: false, scoreFloor: 700, outcome: 'score_floor_met', scoreChecks: [{ bureau: 'TU', score: 782, model: 'FICO 9', status: 'meets', asOf: '2026-11-04T10:00:00Z' }], supportingChecks: [{ criterion: 'income_evidence', status: 'missing' }] },
+      { id: 'homeowner_capital', name: 'Renovation Funding Map', targetProfile: 'Property owner with strong income and a defined major project', homeownershipRequired: true, scoreFloor: null, outcome: 'needs_configuration', scoreChecks: [], supportingChecks: [{ criterion: 'project_or_combined_financing_target', status: 'missing', requestMarkers: [75000, 100000, 175000, 250000, 500000], facilityStackingDependsOnProgram: true }] }
+    ] }
+  ]
+};
+const assetProfile = {
+  source: 'stored_bank_records', scope: 'recorded_rows_only',
+  accounts: [
+    { name: 'Main checking', mask: '1234', included_in_cash: true, entity_kind: 'personal', entity_kind_source: 'connection_metadata', currency_code: 'USD', current_balance_cents: 200000, available_balance_cents: 0, balance_as_of: '2026-11-01T10:00:00Z', provider: 'plaid', provider_environment: 'production' },
+    { name: 'Savings', mask: '5678', included_in_cash: true, entity_kind: 'personal', entity_kind_source: 'connection_metadata', currency_code: 'USD', current_balance_cents: 100000, available_balance_cents: 0, balance_as_of: '2026-11-04T10:00:00Z', provider: 'plaid', provider_environment: 'production' },
+    { name: 'Imported cash', mask: '9876', included_in_cash: true, entity_kind: 'personal', entity_kind_source: 'client_stated', currency_code: 'USD', current_balance_cents: 50000, available_balance_cents: 0, balance_as_of: null, provider: 'import' },
+    { name: 'Business reserve', mask: '4321', included_in_cash: true, entity_kind: 'business', entity_kind_source: 'staff_reviewed', currency_code: 'USD', current_balance_cents: 400000, available_balance_cents: null, balance_as_of: '2026-11-02T10:00:00Z', provider: 'manual' }
+  ],
+  cash: [
+    { entity_kind: 'personal', currencies: [{ currency_code: 'USD', current: { value_cents: 350000, basis: { status: 'recorded', providers: ['import', 'plaid'] }, as_of: null, date_range: { oldest: '2026-11-01T10:00:00Z', newest: '2026-11-04T10:00:00Z', unknown: 1 } }, available: { value_cents: 0, basis: { status: 'recorded', providers: ['import', 'plaid'] }, as_of: null, date_range: { oldest: '2026-11-01T10:00:00Z', newest: '2026-11-04T10:00:00Z', unknown: 1 } } }] },
+    { entity_kind: 'business', currencies: [{ currency_code: 'USD', current: { value_cents: 400000, basis: { status: 'recorded', providers: ['manual'] }, as_of: '2026-11-02T10:00:00Z' }, available: { value_cents: null, basis: { status: 'unknown', providers: ['manual'] }, as_of: null } }] },
+    { entity_kind: 'unknown', currencies: [{ currency_code: 'EUR', current: { value_cents: 150000, basis: { status: 'partial', providers: ['import'] }, as_of: null }, available: { value_cents: null, basis: { status: 'unknown', providers: ['import'] }, as_of: null } }] }
+  ],
+  holdings: [{ account_name: 'Brokerage', symbol: 'TEST', entity_kind: 'personal', currency_code: 'USD', current_value_cents: 900000, as_of: '2026-11-01T10:00:00Z', account_status: 'open', source: 'manual', provider: 'manual' }],
+  truncated: { accounts: false, holdings: false }
+};
+
+test('lead enrichment shows four drafts, source-labeled model data, and saved assets without ordering', async ({ page }) => {
+  const writes = [];
+  let assetReads = 0;
+  page.on('request', request => { if (request.method() !== 'GET') writes.push(request.url()); });
+  const file = { ...full, financial_profile: financialProfile };
+  const errors = await open(page, '', {
+    '/api/dashboard/client?': file,
+    '/api/banking/accounts?': () => { assetReads++; return { ok: true, asset_profile: assetProfile }; }
+  });
+  await expect(page.locator('#ccp-name')).toHaveText('Dana Whitfield');
+  expect(assetReads).toBe(0);
+  await page.getByRole('tab', { name: 'Credit & inquiries', exact: true }).click();
+  await expect(page.locator('#ccp-enrichment-models .cp-sec')).toHaveCount(4);
+  await expect(page.locator('#ccp-enrichment-models')).toContainText('Blueprint · draft');
+  await expect(page.locator('#ccp-enrichment-models')).toContainText('Prime Funding · draft');
+  await expect(page.locator('#ccp-enrichment-models')).toContainText('Super Prime Funding · draft');
+  await expect(page.locator('#ccp-enrichment-models')).toContainText('Real Estate · draft');
+  await expect(page.locator('#ccp-enrichment-models')).toContainText('Deal-Ready Profile');
+  await expect(page.locator('#ccp-enrichment-models')).toContainText('Renovation Funding Map');
+  await expect(page.locator('#ccp-enrichment-models')).toContainText('No universal score floor');
+  await expect(page.locator('#ccp-enrichment-models')).toContainText('$75k · $100k · $175k · $250k · $500k+');
+  await expect(page.locator('#ccp-enrichment-facts')).toContainText('TU credit score');
+  await expect(page.locator('#ccp-enrichment-facts')).toContainText('47 B');
+  await expect(page.locator('#ccp-enrichment-facts')).toContainText('Annual amount unknown');
+  await expect(page.locator('#ccp-enrichment-facts')).toContainText('$130,000');
+  await expect(page.locator('#ccp-enrichment-facts')).toContainText('not verified income');
+  await expect(page.locator('#ccp-enrichment-assets')).toContainText('$0.00');
+  await expect(page.locator('#ccp-enrichment-assets')).toContainText('Personal cash · USD');
+  await expect(page.locator('#ccp-enrichment-assets')).toContainText('Business cash · USD');
+  await expect(page.locator('#ccp-enrichment-assets')).toContainText('Unknown cash · EUR');
+  await expect(page.locator('#ccp-enrichment-assets')).toContainText('Investment holdings');
+  await expect(page.locator('#ccp-enrichment-assets')).toContainText('Account sources');
+  await expect(page.locator('#ccp-enrichment-assets')).toContainText('recorded entry, not bank verified');
+  await expect(page.locator('#ccp-enrichment-assets')).toContainText('Nov 1, 2026 to Nov 4, 2026 · 1 balance date unknown');
+  await expect(page.locator('#ccp-enrichment-assets')).toContainText('manual');
+  await page.getByRole('tab', { name: 'Funding', exact: true }).click();
+  await page.getByRole('tab', { name: 'Credit & inquiries', exact: true }).click();
+  expect(assetReads).toBe(1);
+  expect(writes.filter(url => /offersiq|crs-pull|banking\/accounts/i.test(url))).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('stale match, missing scores and failed assets remain unknown on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  const empty = { ...financialProfile, offerMatch: { outcome: 'needs_review', stale: true, checked_at: null }, creditScores: [], incomeModels: [], fitModels: financialProfile.fitModels.map(model => ({ ...model, scoreChecks: [], outcome: 'needs_data' })) };
+  const errors = await open(page, '#ccp-view-credit', {
+    '/api/dashboard/client?': { ...full, financial_profile: empty },
+    '/api/banking/accounts?': route => json(route, { ok: false, error: 'read_failed' }, 503)
+  });
+  await expect(page.locator('#ccp-enrichment-offer')).toContainText('stale identity');
+  await expect(page.locator('#ccp-enrichment-facts')).toContainText('Bureau credit scores');
+  await expect(page.locator('#ccp-enrichment-assets-state')).toContainText('unavailable');
+  await expect(page.locator('#ccp-enrichment-models .cp-sec')).toHaveCount(4);
+  await noOverflow(page);
+  expect(errors).toEqual([]);
+});
+
+test('four draft profiles and recorded assets fit a 390px phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  const errors = await open(page, '#ccp-view-credit', {
+    '/api/dashboard/client?': { ...full, financial_profile: financialProfile },
+    '/api/banking/accounts?': { ok: true, asset_profile: assetProfile }
+  });
+  await expect(page.locator('#ccp-enrichment-models .cp-sec')).toHaveCount(4);
+  await expect(page.locator('#ccp-enrichment-assets')).toContainText('Investment holdings');
+  await noOverflow(page);
+  expect(errors).toEqual([]);
+});
+
+for (const width of [1440, 390]) {
+  test(`Plaid provenance keeps test and unknown records outside cash totals at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+    const account = (n, name, overrides = {}) => ({ id: id(n), name, provider: 'plaid',
+      account_type: 'depository', entity_kind: 'personal', entity_kind_source: 'client_stated',
+      currency_code: 'USD', current_balance_cents: 10000, available_balance_cents: 9000,
+      balance_as_of: '2026-11-04T10:00:00Z', provider_item_scoped: true,
+      provider_environment: 'production', provider_environment_evidence: 'server_transport', ...overrides });
+    const mixed = clientAssetProfile({ accounts: [
+      account(1, 'Production checking'),
+      account(2, 'Sandbox checking', { provider_environment: 'sandbox', current_balance_cents: 9000000 }),
+      account(3, 'Legacy checking', { provider_environment: null, provider_environment_evidence: null, current_balance_cents: 8000000 }),
+      account(4, 'Manual CAD reserve', { provider: 'manual', currency_code: 'CAD', current_balance_cents: 5000 }),
+      account(5, 'Imported cash', { provider: 'import', current_balance_cents: 20000 }),
+      account(6, 'Sandbox brokerage', { account_type: 'investment', provider_environment: 'sandbox' })
+    ], holdings: [{ id: id(100), bank_account_id: id(6), symbol: 'TEST', source: 'provider',
+      current_value_cents: 7000000, currency_code: 'USD', as_of: '2026-11-04T10:00:00Z' }] });
+    const writes = [];
+    let reads = 0;
+    page.on('request', request => { if (request.method() !== 'GET') writes.push(request.url()); });
+    const errors = await open(page, '#ccp-view-credit', {
+      '/api/dashboard/client?': { ...full, financial_profile: financialProfile },
+      '/api/banking/accounts?': () => { reads++; return { ok: true, asset_profile: mixed }; }
+    });
+    const assets = page.locator('#ccp-enrichment-assets');
+    await expect(assets).toContainText('Personal cash · USD');
+    const usd = assets.locator('.card-title', { hasText: 'Personal cash · USD' });
+    await expect(usd.locator('xpath=following-sibling::*[1]')).toContainText('$300.00');
+    await expect(usd.locator('xpath=following-sibling::*[1]')).not.toContainText('$90,000.00');
+    await expect(assets).toContainText('Personal cash · CAD');
+    await expect(assets).toContainText('production connection record');
+    await expect(assets).toContainText('Excluded account records');
+    await expect(assets).toContainText('Sandbox checking');
+    await expect(assets).toContainText('$90,000.00');
+    await expect(assets).toContainText('Test data · sandbox · excluded from cash totals');
+    await expect(assets).toContainText('Legacy checking');
+    await expect(assets).toContainText('plaid · environment unknown · excluded from cash totals');
+    await expect(assets).toContainText('Manual CAD reserve');
+    await expect(assets).toContainText('manual · recorded entry, not bank verified');
+    await expect(assets).toContainText('Sandbox brokerage');
+    await expect(assets).toContainText('excluded from investment totals · test data');
+    await expect(page.locator('#ccp-enrichment-assets-state')).toContainText('excluded from totals');
+    await noOverflow(page);
+    expect(reads).toBe(1);
+    expect(writes.filter(url => /offersiq|crs-pull|banking/i.test(url))).toEqual([]);
+    expect(errors).toEqual([]);
+    if (process.env.PLAID_PROVENANCE_EVIDENCE_DIR) {
+      fs.mkdirSync(process.env.PLAID_PROVENANCE_EVIDENCE_DIR, { recursive: true });
+      await assets.locator('.card-title', { hasText: 'Excluded account records' }).scrollIntoViewIfNeeded();
+      // Proof annotations only; do not change the product or page layout.
+      await page.evaluate(() => {
+        const target = [...document.querySelectorAll('#ccp-enrichment-assets .card-title')]
+          .find(el => el.textContent === 'Excluded account records');
+        const rect = target.getBoundingClientRect();
+        const proof = document.createElement('div');
+        proof.style.cssText = `position:absolute;pointer-events:none;z-index:10000;left:${Math.max(8, rect.left + scrollX)}px;top:${rect.top + scrollY - 48}px;background:white;color:black;font:12px sans-serif;`;
+        proof.innerHTML = '<svg width="280" height="48" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="14" r="12" fill="white" stroke="red" stroke-width="3"/><text x="10" y="18" fill="red" font-size="13">1</text><path d="M32 16 L100 40 M89 29 L100 40 L85 40" fill="none" stroke="#e6b800" stroke-width="4"/><text x="40" y="12" font-size="11">Test / unknown excluded; evidence kept</text></svg>';
+        document.body.appendChild(proof);
+      });
+      await page.screenshot({ path: path.join(process.env.PLAID_PROVENANCE_EVIDENCE_DIR,
+        `plaid-provenance-${width}.png`) });
+    }
+  });
+}
 
 for (const width of [1440, 390, 320]) {
   test(`workspace fits ${width}px and keeps every section usable`, async ({ page }) => {

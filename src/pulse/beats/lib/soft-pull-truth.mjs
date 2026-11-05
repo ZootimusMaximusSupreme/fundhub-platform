@@ -319,7 +319,8 @@ SELECT count(*) FILTER (WHERE r.status = 'in_flight'
                          AND r.created_at < $2::timestamptz - interval '${OFFERSIQ_STALE_MINUTES} minutes')::int AS stale,
        count(*) FILTER (WHERE r.status IN ('matched', 'not_matched')
                          AND NULLIF(btrim(r.provider_request_id), '') IS NULL)::int AS missing_receipt,
-       count(*) FILTER (WHERE r.status = 'error'
+       count(*) FILTER (WHERE (r.status = 'error'
+                              OR (r.status = 'needs_review' AND r.error_code = 'provider_uncertain'))
                          AND r.created_at > $2::timestamptz - interval '${FAILED_LOOKBACK_DAYS} days'
                          AND NOT EXISTS (
                            SELECT 1 FROM offersiq_requests newer

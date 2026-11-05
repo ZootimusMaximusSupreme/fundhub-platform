@@ -293,6 +293,24 @@ export function stackAncestorNumbers(openPrs, currentHead) {
   return ancestors;
 }
 
+// Before a PR exists, the declared queue parent still proves inherited work.
+// Require its exact GitHub tip and verify each ancestor commit in Git; a base
+// name or PR-body declaration alone must never waive a competing file owner.
+export function plannedStackAncestors(openPrs, expectedBase, readGit = git) {
+  const name = (expectedBase || "").replace(/^origin\//, "");
+  const parent = openPrs.find((pr) => pr.headRefName === name);
+  const order = parent && orderOf(parent);
+  if (!parent || order === null || !/^[a-f0-9]{40}$/i.test(parent.headRefOid || "")) return new Set();
+  const head = readGit(["rev-parse", "--verify", expectedBase]);
+  if (head !== parent.headRefOid || readGit(["merge-base", "--is-ancestor", head, "HEAD"]) === null) return new Set();
+  const candidates = new Set([parent.number, ...stackAncestorNumbers(openPrs, name)]);
+  return new Set(openPrs.filter((pr) => candidates.has(pr.number)
+    && orderOf(pr) !== null && orderOf(pr) <= order
+    && /^[a-f0-9]{40}$/i.test(pr.headRefOid || "")
+    && readGit(["merge-base", "--is-ancestor", pr.headRefOid, head]) !== null)
+    .map((pr) => pr.number));
+}
+
 export function isOlderOpenPr(peer, currentCreatedMs, currentNumber) {
   const peerCreated = Date.parse(peer.createdAt ?? "");
   if (!Number.isFinite(peerCreated) || !Number.isFinite(currentCreatedMs)) return true;
@@ -302,7 +320,7 @@ export function isOlderOpenPr(peer, currentCreatedMs, currentNumber) {
 }
 
 // Align local exit codes with scripts/release-control.mjs FILE_OVERLAP_CUTOVER.
-export function blockingOverlaps(withMine, sources, { currentPr = null, openPrs = [] } = {}) {
+export function blockingOverlaps(withMine, sources, { currentPr = null, openPrs = [], expectedBase = null, readGit = git } = {}) {
   const active = new Set(sources.filter((source) => source.kind !== "branch" || source.active)
     .map((source) => source.label));
   const prByLabel = new Map(sources.filter((s) => s.kind === "pr").map((s) => [s.label, s]));
@@ -310,13 +328,14 @@ export function blockingOverlaps(withMine, sources, { currentPr = null, openPrs 
   const overlapCutover = Date.parse(FILE_OVERLAP_CUTOVER);
   const overlapGateActive = Number.isFinite(currentCreated) && currentCreated >= overlapCutover;
   const legacyOverlapExempt = Number.isFinite(currentCreated) && currentCreated < overlapCutover;
-  const ancestors = currentPr ? stackAncestorNumbers(openPrs, currentPr.headRefName) : new Set();
+  const ancestors = currentPr ? stackAncestorNumbers(openPrs, currentPr.headRefName)
+    : plannedStackAncestors(openPrs, expectedBase, readGit);
 
   return withMine.filter((overlap) => {
     if (!active.has(overlap.label)) return false;
     const source = prByLabel.get(overlap.label);
     if (!source || source.kind !== "pr") return true;
-    if (!currentPr) return true;
+    if (!currentPr) return !ancestors.has(source.prNumber);
     if (legacyOverlapExempt || !overlapGateActive) return false;
     const peer = { number: source.prNumber, createdAt: source.prCreatedAt };
     if (ancestors.has(peer.number)) return false;
@@ -491,7 +510,7 @@ export function main(argv = process.argv.slice(2)) {
   }
   const { withMine, hot } = findOverlaps(mine, handoff.sources);
   const currentPr = openPrs.find((pr) => pr.headRefName === current) ?? null;
-  const blocking = blockingOverlaps(withMine, handoff.sources, { currentPr, openPrs });
+  const blocking = blockingOverlaps(withMine, handoff.sources, { currentPr, openPrs, expectedBase: args.expectedBase });
   const report = { current, behind, comparisonBase, localMain: { behindBefore: mainBehind, updated: mainUpdated, reason: mainUpdateReason }, openBranches: openNames.size, chain, myFiles: mine.length, scanned: handoff.sources.length, withMine, blocking, hot, notes };
 
   if (args.json) {

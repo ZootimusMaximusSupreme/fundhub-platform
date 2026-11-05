@@ -289,7 +289,9 @@ export async function upsertBankAccount(db, account, opts = {}) {
           "WHERE provider_account_id IS NOT NULL";
     conflict =
       ` ON CONFLICT ${target} DO UPDATE SET ` +
-      UPDATABLE.map((c) => `${c} = EXCLUDED.${c}`).join(", ") +
+      UPDATABLE.map((c) => c === "raw" && row.provider === "plaid"
+        ? "raw = COALESCE(bank_accounts.raw, '{}'::jsonb) || EXCLUDED.raw"
+        : `${c} = EXCLUDED.${c}`).join(", ") +
       ", updated_at = now()";
   }
 

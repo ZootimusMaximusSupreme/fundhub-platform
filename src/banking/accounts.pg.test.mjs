@@ -39,6 +39,10 @@ import {
   listHoldings
 } from "./accounts.mjs";
 import { importAccounts } from "./import.mjs";
+import { upsertBankAccount } from "./accounts-store.mjs";
+import { toRefreshAccount } from "./plaid-refresh.mjs";
+import { PLAID_SANDBOX_LABEL } from "./plaid-link.mjs";
+import { clientAssetProfile } from "../http/client-asset-profile.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
 
@@ -326,4 +330,128 @@ test("an unknown BANKING_PROVIDER refuses the import outright", { skip: !HAS_DB 
     () => importAccounts(db, { orgId, clientId, env: { BANKING_PROVIDER: "Plaid" } }),
     (e) => e.status === 503 && e.reason === "unknown_provider",
     "a typo must not silently write invented balances");
+});
+
+/* These cases run only in the suite's isolated PostgreSQL database. The Item
+   credentials below are inert fixture strings, never Plaid credentials. */
+async function withSourceFixture(fn) {
+  const clients = [];
+  const createClient = async (scope = orgId) => {
+    const row = (await db.query(`INSERT INTO clients (org_id, first_name, last_name)
+      VALUES ($1, 'Provenance', 'Fixture') RETURNING id`, [scope])).rows[0];
+    clients.push(row.id);
+    return row.id;
+  };
+  const own = await createClient();
+  const item = async ({ org = orgId, client = own, providerId = `fixture-${own}-${Math.random()}`,
+    name = "Fixture bank", credential = "inert-test-ciphertext", consent = "2026-11-04T10:00:00Z" } = {}) =>
+    (await db.query(`INSERT INTO plaid_items
+      (org_id, client_id, plaid_item_id, institution_name, encrypted_access_token, consent_granted_at, link_state)
+      VALUES ($1,$2,$3,$4,$5,$6,'active') RETURNING id`,
+    [org, client, providerId, name, credential, consent])).rows[0].id;
+  const save = (itemId, key, raw = {}, overrides = {}) => upsertBankAccount(db, {
+    providerAccountId: key, name: key, accountType: "depository", currencyCode: "USD",
+    currentBalanceCents: 10000, availableBalanceCents: null, balanceAsOf: "2026-11-04T10:00:00Z", raw, ...overrides
+  }, { orgId, clientId: own, provider: "plaid", plaidItemId: itemId });
+  try { return await fn({ own, item, save, createClient }); }
+  finally {
+    for (const id of clients.reverse()) await db.query(`DELETE FROM clients WHERE id = $1`, [id]);
+  }
+}
+const stamp = (environment) => ({ plaid_environment: environment, plaid_environment_source: "server_transport" });
+
+test("stored Plaid provenance separates production, sandbox and unknown without leaking raw evidence", { skip: !HAS_DB }, async () => {
+  await withSourceFixture(async ({ own, item, save }) => {
+    await save(await item(), "production", stamp("production"));
+    await save(await item(), "sandbox", stamp("sandbox"), { currentBalanceCents: 900000 });
+    await save(await item(), "development", stamp("development"), { currencyCode: "CAD" });
+    await save(await item(), "legacy-unknown", { private_evidence: "keep-stored" });
+    await save(await item({ name: `Fixture bank ${PLAID_SANDBOX_LABEL}` }), "legacy-sandbox",
+      { ...stamp("production"), private_evidence: "keep-conflict" });
+    const manual = await createManualBankAccount(db, { name: "manual-forgery", account_type: "depository",
+      currency_code: "USD", current_balance_cents: 20000, provider: "plaid", raw: stamp("production") },
+    { orgId, clientId: own });
+    await upsertBankAccount(db, { providerAccountId: "imported", name: "imported", accountType: "depository",
+      currencyCode: "CAD", currentBalanceCents: 4000, raw: stamp("production") }, { orgId, clientId: own, provider: "import" });
+    const rows = await listBankAccounts(db, { orgId, clientId: own });
+    const byName = new Map(rows.map((row) => [row.name, row]));
+    assert.equal(byName.get("production").provider_environment, "production");
+    assert.equal(byName.get("production").provider_environment_evidence, "server_transport");
+    assert.equal(byName.get("sandbox").provider_environment, "sandbox");
+    assert.equal(byName.get("development").provider_environment, "development");
+    assert.equal(byName.get("legacy-unknown").provider_environment, null);
+    assert.equal(byName.get("legacy-sandbox").provider_environment, "sandbox", "known sandbox overrides a conflicting raw stamp");
+    assert.equal(byName.get("legacy-sandbox").provider_environment_evidence, "legacy_sandbox_label");
+    assert.equal(byName.get("manual-forgery").provider, "manual");
+    assert.equal(byName.get("manual-forgery").provider_item_scoped, false);
+    assert.equal(byName.get("imported").provider_environment, null);
+    assert.ok(rows.every((row) => !("raw" in row) && !("encrypted_access_token" in row)));
+    assert.ok(!JSON.stringify(rows).includes("keep-stored"));
+    const profile = clientAssetProfile({ accounts: rows });
+    const currencies = profile.cash.find((g) => g.entity_kind === "unknown").currencies;
+    assert.equal(currencies.find((c) => c.currency_code === "USD").current.value_cents, 30000);
+    assert.equal(currencies.find((c) => c.currency_code === "CAD").current.value_cents, 4000);
+    assert.equal(profile.accounts.length, 7, "excluded records remain visible");
+    assert.equal(profile.source_summary.test_accounts, 3);
+    const kept = (await db.query(`SELECT raw FROM bank_accounts WHERE id = $1`, [manual.id])).rows[0].raw;
+    assert.deepEqual(kept, stamp("production"), "manual raw evidence remains stored without becoming trusted");
+  });
+});
+
+test("cross-org, wrong-client, synthetic and unlinked Items cannot authenticate account provenance", { skip: !HAS_DB }, async () => {
+  await withSourceFixture(async ({ own, item, save, createClient }) => {
+    const other = await createClient(otherOrgId);
+    const sibling = await createClient();
+    const cases = [
+      ["cross-org", { org: otherOrgId, client: other }],
+      ["wrong-client", { client: sibling }],
+      ["synthetic-import", { providerId: `plaid:${own}` }],
+      ["synthetic-mock", { providerId: `mock:${own}` }],
+      ["no-credential", { credential: null }],
+      ["no-consent", { consent: null }]
+    ];
+    for (const [name, options] of cases) await save(await item(options), name, stamp("production"));
+    const rows = await listBankAccounts(db, { orgId, clientId: own });
+    assert.equal(rows.length, cases.length);
+    for (const row of rows) {
+      assert.equal(row.provider_item_scoped, false, row.name);
+      assert.equal(row.provider_environment, null, row.name);
+      assert.equal(row.provider_environment_evidence, null, row.name);
+    }
+    assert.equal((await listBankAccounts(db, { orgId: otherOrgId, clientId: own })).length, 0);
+    const profile = clientAssetProfile({ accounts: rows });
+    assert.ok(profile.cash.every((g) => g.currencies.length === 0));
+    assert.ok(profile.accounts.every((a) => a.exclusion_reason === "plaid_environment_unknown"));
+  });
+});
+
+test("real Plaid upsert preserves stored raw evidence, identity, ownership and dates while stamping the new host", { skip: !HAS_DB }, async () => {
+  await withSourceFixture(async ({ own, item, save }) => {
+    const itemId = await item();
+    const first = await save(itemId, "refresh-evidence", { ...stamp("production"), legacy_receipt: { id: "original-receipt" } },
+      { currencyCode: "CAD" });
+    const originalDate = "2026-10-01T12:00:00.000Z";
+    await db.query(`UPDATE bank_accounts SET entity_kind = 'business', entity_kind_source = 'staff_reviewed',
+      entity_kind_set_at = $2, created_at = $2 WHERE id = $1`, [first.id, originalDate]);
+    const refreshed = toRefreshAccount({ plaidAccountId: "refresh-evidence", name: "Refreshed CAD", type: "depository",
+      currentBalance: 250, availableBalance: null, isoCurrencyCode: "CAD", holderCategory: "personal" },
+    { asOf: "2026-11-05T10:00:00Z", environment: "sandbox" });
+    const second = await upsertBankAccount(db, refreshed, { orgId, clientId: own, provider: "plaid", plaidItemId: itemId });
+    assert.equal(second.id, first.id);
+    assert.equal(second.entity_kind, "business");
+    assert.equal(second.entity_kind_source, "staff_reviewed");
+    assert.equal(new Date(second.created_at).toISOString(), originalDate);
+    assert.equal(second.currency_code, "CAD");
+    assert.equal(second.available_balance_cents, null);
+    assert.equal(second.current_balance_cents, "25000");
+    assert.equal(new Date(second.balance_as_of).toISOString(), "2026-11-05T10:00:00.000Z");
+    const stored = (await db.query(`SELECT raw FROM bank_accounts WHERE id = $1`, [first.id])).rows[0].raw;
+    assert.deepEqual(stored.legacy_receipt, { id: "original-receipt" });
+    assert.equal(stored.plaid_environment, "sandbox");
+    assert.equal(stored.plaid_environment_source, "server_transport");
+    assert.equal(stored.holder_category, "personal");
+    const rows = await listBankAccounts(db, { orgId, clientId: own });
+    assert.equal(rows[0].provider_environment, "sandbox");
+    assert.equal(clientAssetProfile({ accounts: rows }).cash.find((g) => g.entity_kind === "business").currencies.length, 0);
+  });
 });

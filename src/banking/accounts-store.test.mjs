@@ -216,6 +216,20 @@ describe("upsertBankAccount — a sync is a re-read, not an append", () => {
     );
   });
 
+  test("Plaid refresh preserves unrelated raw evidence while the latest server stamp wins", async () => {
+    const db = makeDb();
+    const raw = { plaid_environment: "sandbox", plaid_environment_source: "server_transport", holder_category: "personal" };
+    await upsertBankAccount(db, acct({ providerAccountId: "plaid-abc", raw }),
+      { ...OPTS, provider: "plaid", plaidItemId: "item-1" });
+    assert.match(db.calls[0].sql, /raw = COALESCE\(bank_accounts.raw, '\{\}'::jsonb\) \|\| EXCLUDED.raw/);
+    const cols = db.calls[0].sql.match(/INSERT INTO bank_accounts \(([^)]+)\)/)[1].split(",").map((v) => v.trim());
+    assert.deepEqual(db.calls[0].params[cols.indexOf("raw")], raw);
+    const manual = makeDb();
+    await upsertBankAccount(manual, acct({ raw }), OPTS);
+    assert.doesNotMatch(manual.calls[0].sql, /COALESCE\(bank_accounts.raw/,
+      "mock/import/manual evidence is not silently upgraded by the Plaid storage path");
+  });
+
   /* Two accounts a person typed are two accounts. Deduplicating them on a name
      would silently merge a client's two chequing accounts at the same bank. */
   test("a hand-entered row with no key is inserted plainly, not deduplicated", async () => {

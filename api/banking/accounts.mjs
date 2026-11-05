@@ -69,6 +69,7 @@ import { importAccounts, BankImportError } from "../../src/banking/import.mjs";
 import { bankingProviderName } from "../../src/banking/provider.mjs";
 import { nextDueDate, nextStatementClose } from "../../src/banking/statement-cycles.mjs";
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
+import { clientAssetProfile } from "../../src/http/client-asset-profile.mjs";
 
 /**
  * Dollars from a form → integer cents, PRESERVING UNKNOWN.
@@ -140,6 +141,7 @@ async function handleGet(req, res, staff) {
       next_close: nextStatementClose(c, { today })
     })),
     holdings,
+    asset_profile: clientAssetProfile({ accounts, holdings, asOf: today }),
     as_of: today
   });
 }

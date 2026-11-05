@@ -7,11 +7,12 @@
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/app/fundhub-font.css">
-<link rel="stylesheet" href="/app/fundhub-brand.css">
-<link rel="stylesheet" href="/app/crm-sidebar.css">
+<link rel="stylesheet" href="/app/fundhub-brand.css?v=workspace-20261018">
+<link id="fh-crm-sidebar-css" rel="stylesheet" href="/app/crm-sidebar.css?v=workspace-20261018">
 <link rel="stylesheet" href="/app/setter-dashboard.css">
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-staff.css">
+<link id="fh-workspace-css" rel="stylesheet" href="/app/workspace-ui.css">
 <script defer src="/app/fundhub-font.js"></script>
 <script src="/app/phone-format.js"></script>
 <script defer src="/app/shell.js"></script>
@@ -307,8 +308,8 @@ function setterSorted(items) {
     var checked = result && !result.stale;
     if (offersIqAvailable && !checked && address.confirmed_at) {
       html += '<p>Ask: “May Fundhub use your name and current home address with CRS to match you with suitable offers under our offer-matching terms?”</p>' +
-        '<p><a href="/terms/#offer-matching" target="_blank" rel="noopener">Read the offer-matching terms ↗</a></p>' +
-        '<div class="setter-checks"><label><input id="setter-offersiq-consent" type="checkbox"><span>The lead agreed to offer matching under these terms</span></label></div>' +
+        '<p><a class="setter-link" href="/terms/#offer-matching" target="_blank" rel="noopener">Read the offer-matching terms ↗</a></p>' +
+        '<div class="setter-checks"><label class="setter-check"><input id="setter-offersiq-consent" type="checkbox"><span>The lead agreed to offer matching under these terms</span></label></div>' +
         '<button type="button" class="fh-astra-action" data-action="evaluate-offersiq">Check offer match</button>';
     } else if (offersIqAvailable && !checked) html += '<p>Confirm and save the current home address above first.</p>';
     return html + '<div class="setter-status" id="setter-offersiq-status" role="status" aria-live="polite"></div>';

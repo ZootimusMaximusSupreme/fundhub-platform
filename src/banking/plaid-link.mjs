@@ -17,14 +17,14 @@ import { toCents } from "../commissions/money.mjs";
 import { plaidConfigFromEnv, linkAccount, getAccounts, SEAM_REASONS } from "./plaid.mjs";
 import { saveAccounts, ACCOUNT_TYPES } from "./accounts-store.mjs";
 
-const SANDBOX_LABEL = "(Plaid sandbox — test data)";
+export const PLAID_SANDBOX_LABEL = "(Plaid sandbox — test data)";
 
 /* Plaid balances are dollars; the store wants integer cents. null stays null —
    money.mjs's toCents turns null into 0, which would read as a real zero. */
 const cents = (v) => (v === null || v === undefined ? null : toCents(v));
 
 /** One /accounts/get row → the shape accounts-store.mjs writes. */
-export function toStoreAccount(a, { asOf }) {
+export function toStoreAccount(a, { asOf, environment = null }) {
   return {
     providerAccountId: a.plaidAccountId,
     name: a.name,
@@ -39,6 +39,10 @@ export function toStoreAccount(a, { asOf }) {
     balanceAsOf: asOf,
     raw: {
       source: "plaid",
+      ...(["sandbox", "development", "production"].includes(environment) ? {
+        plaid_environment: environment,
+        plaid_environment_source: "server_transport"
+      } : {}),
       plaid_type: a.type ?? null,
       plaid_subtype: a.subtype ?? null,
       holder_category: a.holderCategory ?? null
@@ -93,7 +97,7 @@ export async function completeLink(db, {
   const { plaidItemId, encryptedAccessToken, environment } = linked.item;
   const baseName = institution?.name ? String(institution.name).slice(0, 200) : null;
   const institutionName = environment === "sandbox"
-    ? `${baseName || "Plaid bank"} ${SANDBOX_LABEL}`
+    ? `${baseName || "Plaid bank"} ${PLAID_SANDBOX_LABEL}`
     : baseName;
 
   const item = await db.query(
@@ -124,7 +128,7 @@ export async function completeLink(db, {
     return { ok: false, reason: got.reason, itemRowId, environment, error: got.error ?? null, missing: got.missing ?? [] };
   }
 
-  const saved = await saveAccounts(db, got.accounts.map((a) => toStoreAccount(a, { asOf })), {
+  const saved = await saveAccounts(db, got.accounts.map((a) => toStoreAccount(a, { asOf, environment })), {
     orgId, clientId, provider: "plaid", plaidItemId: itemRowId
   });
 

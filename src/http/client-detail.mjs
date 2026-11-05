@@ -11,6 +11,7 @@
 import {
   byNewest, isSampleResult, num, safeObject, triMerge, UTILISATION_BANDS, utilisation
 } from "../pulse/beats/lib/lenders-credit.mjs";
+import { clientFinancialProfile } from "./client-financial-profile.mjs";
 
 export { isSampleResult, triMerge, UTILISATION_BANDS, utilisation };
 
@@ -298,11 +299,13 @@ export function latestBooking({ client = {}, tasks = [] } = {}) {
 }
 
 export function clientDetailExtras({ client, crsResults, tasks, fundingRounds, invoices, businesses } = {}) {
+  const income = incomeEstimates(crsResults);
   return {
     tier_reasoning: tierReasoning(client, crsResults),
     tri_merge: triMerge(crsResults),
     utilisation: utilisation(crsResults, client),
-    income_estimates: incomeEstimates(crsResults),
+    income_estimates: income,
+    financial_profile: clientFinancialProfile({ client, crsResults, incomeEstimates: income }),
     business_credit: businessCredit({ client, businesses }),
     latest_booking: latestBooking({ client, tasks }),
     open_blockers: openBlockers({ client, tasks, fundingRounds, invoices, crsResults })
