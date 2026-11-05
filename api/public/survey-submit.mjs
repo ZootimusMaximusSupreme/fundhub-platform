@@ -117,11 +117,15 @@ async function resolveSurveyClient(database, parsed, deps = {}) {
   }
 }
 
-async function hasSavedCompleteSurvey(database, clientId) {
+async function hasSavedCompleteSurvey(database, clientId, submittedAnswers) {
   const { rows } = await database.query(
     "SELECT custom_fields FROM clients WHERE id = $1 LIMIT 1", [clientId]
   );
-  return !!rows[0] && nextSurveyKey(savedSurveyAnswers(rows[0].custom_fields)) === null;
+  if (!rows[0]) return false;
+  const saved = savedSurveyAnswers(rows[0].custom_fields);
+  const submitted = savedSurveyAnswers(submittedAnswers);
+  return nextSurveyKey(saved) === null && nextSurveyKey(submitted) === null &&
+    Object.entries(submitted).every(([key, value]) => JSON.stringify(saved[key]) === JSON.stringify(value));
 }
 
 /** Emit + classify. `deps.emit` injectable for tests. */
@@ -196,7 +200,7 @@ export async function runSurveySubmit(parsed, deps = {}) {
     redirect = RESUME_BASE_URL;
     if (completed && clientId) {
       try {
-        const saved = await (deps.hasSavedCompleteSurvey || hasSavedCompleteSurvey)(database, clientId);
+        const saved = await (deps.hasSavedCompleteSurvey || hasSavedCompleteSurvey)(database, clientId, parsed.answers);
         if (saved) {
           redirect = `${SURVEY_REDIRECTS.PASS}#fh_survey_ticket=${mintBookingTicket({
             now: deps.now, secret: deps.secret, env: deps.env
