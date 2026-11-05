@@ -1054,23 +1054,30 @@ document.addEventListener("DOMContentLoaded", function () {
       cur.esc = setSelectOrFirst("a_esc", cur.esc);
     }
   }
-  FHData.wire(FHData.staff({ limit: 200 }), "agent owners", function (data) {
+  var peopleReady = FHData.wire(FHData.staff({ limit: 200 }), "agent owners", function (data) {
     var rows = data.items || [];
     fillPeople(rows);
     return rows.length ? ("live staff · " + rows.length) : "no staff rows · Pick a person";
   });
 
-  FHData.read("agents", { limit: 200 }).then(function (res) {
+  // Read both at once, but do not select saved people before their options exist.
+  Promise.all([peopleReady, FHData.read("agents", { limit: 200 })]).then(function (results) {
+    var res = results[1];
     if (res && res.ok) {
       var rows = (res.data && res.data.items) || [];
-      AGENTS = rows.map(agentFromRow);
-      AGENTS.forEach(rememberSaved);
+      // A New agent may already be selected and edited while these reads wait.
+      var loaded = rows.filter(function (row) {
+        return !AGENTS.some(function (a) { return a.id === row.code; });
+      }).map(agentFromRow);
+      loaded.forEach(rememberSaved);
+      AGENTS = AGENTS.concat(loaded);
       if (!AGENTS.length) {
         showEmpty("No agents in the registry yet.");
         FHData.banner("sample", "no agent registry rows yet", "agents");
       } else {
         hideEmpty();
-        select(AGENTS[0].id);
+        if (!cur) select(AGENTS[0].id);
+        else renderList();
         var live = AGENTS.filter(function (a) { return a.mode === "live"; }).length;
         var undefined_ = AGENTS.filter(function (a) {
           return (a.mode === "live" || a.mode === "shadow") &&
@@ -1079,8 +1086,10 @@ document.addEventListener("DOMContentLoaded", function () {
           (undefined_ ? " · " + undefined_ + " running with no stored prompt/guardrails" : ""), "agents");
       }
     } else {
-      AGENTS = [];
-      showEmpty("Could not load the agent registry.");
+      if (!cur) {
+        AGENTS = [];
+        showEmpty("Could not load the agent registry.");
+      }
       FHData.explain(res, "agents");
     }
     renderStats();

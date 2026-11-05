@@ -148,6 +148,145 @@ test("the shard exports exact proof metadata and an honest freshly compiled zero
   assert.deepEqual({ wired, stillRed }, { wired: 12, stillRed: 0 });
 });
 
+test("agent editor waits for both reads and preserves saved people and active drafts", async (t) => {
+  const { server, origin } = await startServer();
+  const browser = await chromium.launch({ headless: true });
+  t.after(async () => {
+    await browser.close();
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  });
+  const staff = [
+    { id: "staff-owner", name: "Alice Owner", role: "owner", status: "active" },
+    { id: "staff-sales", name: "Sam Manager", role: "sales_manager", status: "active" },
+  ];
+  const agent = {
+    code: "AG-PROOF", name: "Proof Follow-up", owner_label: "Alice Owner", status: "draft",
+    prompt: "x".repeat(85), guardrails: {
+      block: "x".repeat(61), triggers: ["lead.created"],
+      escalation: { path: "Sam Manager · Sales Manager", after: "1 hour" },
+    },
+  };
+
+  async function openHeld({ people = staff, registry = [agent], fail = null } = {}) {
+    const gates = {};
+    for (const name of ["staff", "agents"]) {
+      let release;
+      const promise = new Promise((resolve) => { release = resolve; });
+      gates[name] = { promise, release };
+    }
+    const opened = await renderedPage(browser, { routes: [
+      ...["staff", "agents"].map((name) => ({
+        pathname: `/api/read/${name}`, status: fail === name ? 500 : 200,
+        body: async () => {
+          await gates[name].promise;
+          return fail === name ? { ok: false, message: `Proof ${name} unavailable.` }
+            : { ok: true, items: name === "staff" ? people : registry };
+        },
+      })),
+      { pathname: "/api/agents", method: "POST", body: { ok: true, agent: {
+        code: "AG-NEW", name: "New draft", status: "draft", guardrails: {},
+      } } },
+    ] });
+    const { page } = opened;
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    const requested = ["staff", "agents"].map((name) => page.waitForRequest((request) => (
+      new URL(request.url()).pathname === `/api/read/${name}`
+    )));
+    await page.goto(`${origin}/app/agent-editor.html`, { waitUntil: "domcontentloaded" });
+    // Both requests must start before either response is released.
+    await Promise.all(requested);
+    return {
+      ...opened, errors,
+      async release(name) {
+        const response = page.waitForResponse((reply) => new URL(reply.url()).pathname === `/api/read/${name}`);
+        gates[name].release();
+        await (await response).finished();
+        // Let the delivered response finish its browser tasks, without a timed sleep.
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+      },
+      async close() {
+        Object.values(gates).forEach((gate) => gate.release());
+        await opened.context.close();
+      },
+    };
+  }
+
+  for (const first of ["staff", "agents"]) {
+    await t.test(`${first} response first keeps the stored owner and escalation`, async () => {
+      const opened = await openHeld();
+      const { page } = opened;
+      try {
+        await opened.release(first);
+        assert.equal(await page.locator("#a_name").inputValue(), "", "selection waits for both reads");
+        await opened.release(first === "staff" ? "agents" : "staff");
+        await page.waitForFunction(() => document.querySelector("#a_name")?.value === "Proof Follow-up");
+        assert.deepEqual(await page.locator("#a_owner option").allTextContents(), ["Pick a person", "Alice Owner", "Sam Manager"]);
+        assert.equal(await page.locator("#a_owner").inputValue(), "Alice Owner");
+        assert.deepEqual(await page.locator("#a_esc option").allTextContents(), ["Pick a person", "Alice Owner · Owner", "Sam Manager · Sales Manager"]);
+        assert.equal(await page.locator("#a_esc").inputValue(), "Sam Manager · Sales Manager");
+        assert.match(await page.locator("#gateBox").innerText(), /Escalation path is set\s+Sam Manager · Sales Manager/);
+        assert.equal(opened.apiCalls.every((call) => call.method === "GET"), true);
+        assert.deepEqual(opened.errors, []);
+      } finally { await opened.close(); }
+    });
+  }
+
+  for (const state of ["staff empty", "staff failed", "agents empty", "agents failed"]) {
+    await t.test(`${state} settles into the existing empty or error state`, async () => {
+      const opened = await openHeld({
+        people: state === "staff empty" ? [] : staff,
+        registry: state === "agents empty" ? [] : [agent],
+        fail: state.endsWith("failed") ? state.split(" ")[0] : null,
+      });
+      const { page } = opened;
+      try {
+        await opened.release("agents");
+        await opened.release("staff");
+        if (state.startsWith("staff")) {
+          await page.waitForFunction(() => document.querySelector("#a_name")?.value === "Proof Follow-up");
+          assert.deepEqual(await page.locator("#a_owner option").allTextContents(), ["Pick a person"]);
+          if (state.endsWith("failed")) assert.match(await page.locator("#fh-data-banner").innerText(), /Proof staff unavailable/);
+          else assert.equal(await page.locator("#fh-data-banner").isVisible(), false);
+        } else {
+          assert.equal(await page.locator("#emptyStateMsg").innerText(), state.endsWith("failed")
+            ? "Could not load the agent registry." : "No agents in the registry yet.");
+          assert.equal(await page.locator("#layoutRoot").isVisible(), false);
+        }
+        assert.equal(opened.apiCalls.every((call) => call.method === "GET"), true);
+        assert.deepEqual(opened.errors, []);
+      } finally { await opened.close(); }
+    });
+  }
+
+  for (const state of ["staff first", "agents first", "empty registry", "failed registry"]) {
+    await t.test(`New agent and unsaved edits survive delayed initialization: ${state}`, async () => {
+      const opened = await openHeld({ registry: state === "empty registry" ? [] : [agent], fail: state === "failed registry" ? "agents" : null });
+      const { page } = opened;
+      try {
+        if (state === "staff first") await opened.release("staff");
+        page.once("dialog", (dialog) => dialog.accept("New draft"));
+        await page.locator("#newBtn").click();
+        await page.waitForFunction(() => document.querySelector("#a_code")?.value === "AG-NEW");
+        await page.locator("#a_name").fill("My unsaved draft");
+        if (state === "staff first") await page.locator("#a_owner").selectOption("Sam Manager");
+        await opened.release("agents");
+        if (state !== "staff first") await opened.release("staff");
+        assert.equal(await page.locator("#a_code").inputValue(), "AG-NEW");
+        assert.equal(await page.locator("#a_name").inputValue(), "My unsaved draft");
+        assert.equal(await page.locator("#saveNote").innerText(), "UNSAVED CHANGES");
+        assert.equal(await page.locator("#layoutRoot").isVisible(), true);
+        assert.equal(await page.locator(".aitem").count(), state.endsWith("registry") ? 1 : 2);
+        if (state === "staff first") assert.equal(await page.locator("#a_owner").inputValue(), "Sam Manager");
+        await page.locator("#revertBtn").click();
+        assert.equal(await page.locator("#a_name").inputValue(), "New draft", "the initial read does not replace the saved baseline");
+        assert.deepEqual(opened.apiCalls.filter((call) => call.method !== "GET"), [{ pathname: "/api/agents", method: "POST" }]);
+        assert.deepEqual(opened.errors, []);
+      } finally { await opened.close(); }
+    });
+  }
+});
+
 test("every exported proof key is exercised by its real rendered page", async (t) => {
   const { server, origin } = await startServer();
   const browser = await chromium.launch({ headless: true });

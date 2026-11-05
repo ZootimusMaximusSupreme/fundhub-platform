@@ -14,6 +14,75 @@ async function mount(page, portal) {
 const reply = (route, body, status = 200) =>
   route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
 
+async function mountWelcome(page, control) {
+  const methods = [];
+  await page.route("**/api/chat/portal-message", (route) => {
+    methods.push(route.request().method());
+    return reply(route, { ok: true, messages: [] });
+  });
+  await page.goto("/404.html");
+  await page.clock.install({ time: new Date("2026-11-05T12:00:00Z") });
+  await page.clock.pauseAt(new Date("2026-11-05T12:00:01Z"));
+  await page.evaluate((html) => {
+    document.body.innerHTML = '<form aria-label="Synthetic bank plan">' + html + '</form>';
+  }, control);
+  await page.addScriptTag({ url: "/app/chat-widget.js" });
+  await page.evaluate(() => {
+    window.FHChat.mount({ portal: true, hadCall: false, popAfterMs: 1400 });
+  });
+  await expect(page.locator("#fh-chat-panel")).toBeHidden();
+  return methods;
+}
+
+test("delayed welcome keeps the first bank-name entry in its form", async ({ page }) => {
+  const methods = await mountWelcome(page,
+    '<label>Bank or credit union name<input name="bankName" required></label>');
+  const bankName = page.getByRole("textbox", { name: "Bank or credit union name" });
+  await bankName.focus();
+  // Run the widget's real delayed callback between focus and text entry.
+  await page.clock.runFor(1400);
+  await page.keyboard.type("Fixture Neighborhood CU");
+  await expect(bankName).toHaveValue("Fixture Neighborhood CU");
+  await expect(bankName).toBeFocused();
+  await expect(page.locator("#fh-chat-panel")).toBeVisible();
+  await expect(page.locator("#fh-chat-panel")).not.toHaveAttribute("aria-modal", "true");
+  await expect(page.locator("#fh-chat-input")).toHaveValue("");
+  await expect.poll(() => methods.filter((method) => method === "GET").length).toBeGreaterThan(0);
+  expect(methods).not.toContain("POST");
+});
+
+for (const [kind, control] of [
+  ["textarea", '<textarea data-active aria-label="Notes"></textarea>'],
+  ["select", '<select data-active aria-label="Account type"><option>Checking</option></select>'],
+  ["button", '<button data-active type="button">Review bank terms</button>'],
+  ["link", '<a data-active href="#terms">Bank terms</a>'],
+  ["editable text", '<div data-active contenteditable="true" role="textbox" aria-label="Draft"></div>']
+]) {
+  test(`delayed welcome preserves an active ${kind}`, async ({ page }) => {
+    await mountWelcome(page, control);
+    const active = page.locator("[data-active]");
+    await active.focus();
+    await page.clock.runFor(1400);
+    await expect(active).toBeFocused();
+    await expect(page.locator("#fh-chat-panel")).toBeVisible();
+  });
+}
+
+test("idle welcome and explicit mouse or keyboard opening still focus chat", async ({ page }) => {
+  await mountWelcome(page, '<input aria-label="Another form field">');
+  await page.clock.runFor(1400);
+  const input = page.locator("#fh-chat-input");
+  await expect(input).toBeFocused();
+  await page.locator("#fh-chat-close").click();
+  await page.getByRole("textbox", { name: "Another form field" }).focus();
+  await page.locator("#fh-chat-fab").click();
+  await expect(input).toBeFocused();
+  await page.locator("#fh-chat-close").click();
+  await page.locator("#fh-chat-fab").focus();
+  await page.keyboard.press("Enter");
+  await expect(input).toBeFocused();
+});
+
 test("portal send on HTTP failure preserves draft and never paints a false sent bubble", async ({ page }) => {
   let sends = 0;
   let saved = false;
