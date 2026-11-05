@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Resume only explicit Fundhub iOS release intents. This never discovers or submits unmarked uploads.
+// Resume exact intents and start a newly shipped, versioned native release.
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -7,6 +7,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { intentKey, listPending, lockActive, readIntent, releaseHome } from "./ios-release-intent.mjs";
+import { startShippedRelease } from "./ios-release-auto.mjs";
 
 const execFileAsync = promisify(execFile);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -51,8 +52,8 @@ async function alertOnce(home, key, reason, command = execFileAsync) {
 }
 
 export async function runWatchdog({ home = releaseHome(), root = ROOT,
-  command = execFileAsync, notify = alertOnce } = {}) {
-  const result = { pending: 0, resumed: 0, busy: 0, failed: 0 };
+  command = execFileAsync, notify = alertOnce, autoStart = startShippedRelease } = {}) {
+  const result = { pending: 0, resumed: 0, busy: 0, failed: 0, auto: "idle" };
   for (const file of listPending(home)) {
     let intent;
     try { intent = readIntent(file); }
@@ -86,6 +87,22 @@ export async function runWatchdog({ home = releaseHome(), root = ROOT,
       logLine(home, key, `FAILED ${reason}`);
       await notify(home, key, reason, command);
       result.failed++;
+    }
+  }
+  if (!result.pending && !result.failed) {
+    try {
+      const started = await autoStart({ home, root, command, checkout: pinnedCheckout });
+      result.auto = started.status;
+      if (!["idle", "native-unchanged"].includes(started.status)) {
+        logLine(home, "auto-start", JSON.stringify(started));
+      }
+    } catch (error) {
+      const reason = String(error.stderr || error.message || "unknown auto-start error").trim().slice(0, 1200)
+        .replace(/[\r\n]+/g, " ");
+      logLine(home, "auto-start", `FAILED ${reason}`);
+      await notify(home, "auto-start", reason, command);
+      result.failed++;
+      result.auto = "failed";
     }
   }
   return result;

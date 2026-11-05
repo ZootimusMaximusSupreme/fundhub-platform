@@ -9,10 +9,12 @@ import { completeIntent, intentKey, intentPath, listPending, lockActive, lockPat
   readIntent, withIntentLock, writeIntent } from "./ios-release-intent.mjs";
 import { pinnedCheckout, runWatchdog } from "./ios-release-watchdog.mjs";
 import { installWatchdog, makePlist } from "./ios-release-watchdog-install.mjs";
+import { readAutoState } from "./ios-release-auto.mjs";
 import { executeReleaseIntent } from "./ios-upload-and-submit.mjs";
 
 const sha = "a".repeat(40);
 const args = { sha, version: "1.0.4", build: "10" };
+const project = `${"MARKETING_VERSION = 1.0.3; CURRENT_PROJECT_VERSION = 9;\n".repeat(4)}PRODUCT_BUNDLE_IDENTIFIER = ai.fundhub.app;`;
 
 function fixture(callback) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-ios-watchdog-test-"));
@@ -82,12 +84,14 @@ test("watchdog starts only a stored exact release from a clean pinned checkout",
       }
       throw new Error(`Unexpected command ${name}`);
     };
-    const result = await runWatchdog({ home, root, command, notify: async () => {} });
-    assert.deepEqual(result, { pending: 1, resumed: 1, busy: 0, failed: 0 });
+    const result = await runWatchdog({ home, root, command, notify: async () => {},
+      autoStart: async () => ({ status: "idle" }) });
+    assert.deepEqual(result, { pending: 1, resumed: 1, busy: 0, failed: 0, auto: "idle" });
     assert.equal(calls.filter((call) => call.name === process.execPath).length, 1);
     assert.equal(readIntent(file).status, "done");
-    assert.deepEqual(await runWatchdog({ home, root, command, notify: async () => {} }),
-      { pending: 0, resumed: 0, busy: 0, failed: 0 });
+    assert.deepEqual(await runWatchdog({ home, root, command, notify: async () => {},
+      autoStart: async () => ({ status: "idle" }) }),
+      { pending: 0, resumed: 0, busy: 0, failed: 0, auto: "idle" });
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 });
 
@@ -114,9 +118,32 @@ test("one malformed intent alerts and does not stall a valid release", async () 
       throw new Error(name);
     };
     const result = await runWatchdog({ home, root, command,
-      notify: async (_home, key) => alerted.push(key) });
-    assert.deepEqual(result, { pending: 1, resumed: 1, busy: 0, failed: 1 });
+      notify: async (_home, key) => alerted.push(key),
+      autoStart: async () => ({ status: "idle" }) });
+    assert.deepEqual(result, { pending: 1, resumed: 1, busy: 0, failed: 1, auto: "idle" });
     assert.deepEqual(alerted, ["000-bad"]);
+  } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+});
+
+test("watchdog starts a new shipped release only when the intent queue is empty", async () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-ios-auto-watchdog-test-"));
+  try {
+    const home = path.join(temp, "home");
+    const root = path.join(temp, "repo");
+    fs.mkdirSync(root);
+    let called = 0;
+    const result = await runWatchdog({ home, root, command: async () => { throw new Error("no command"); },
+      notify: async () => { throw new Error("no alert"); },
+      autoStart: async ({ home: actualHome, root: actualRoot }) => {
+        called++;
+        assert.equal(actualHome, home);
+        assert.equal(actualRoot, root);
+        return { status: "submitted", reviewSubmissionId: "review-42" };
+      } });
+    assert.equal(result.auto, "submitted");
+    assert.equal(result.failed, 0);
+    assert.equal(called, 1);
+    assert.match(fs.readFileSync(path.join(home, "logs", "auto-start.log"), "utf8"), /review-42/);
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 });
 
@@ -182,6 +209,7 @@ test("installer points launchd at a stable published runner and local credential
     const command = async (name, argv) => {
       calls.push([name, argv]);
       if (name === "git" && argv.includes("rev-parse")) return { stdout: `${sha}\n` };
+      if (name === "git" && argv.includes("show")) return { stdout: project };
       if (name === "git" && argv.includes("worktree")) {
         fs.mkdirSync(path.join(home, "runner"), { recursive: true });
       }
@@ -193,7 +221,37 @@ test("installer points launchd at a stable published runner and local credential
     assert.match(plist, /StartInterval<\/key><integer>120/);
     assert.ok(plist.includes(path.join(home, "runner", "scripts", "ios-release-watchdog.mjs")));
     assert.ok(plist.includes(root));
+    assert.equal(readAutoState(home).sha, sha);
     assert.equal(calls.filter(([name]) => name === "launchctl").length, 3);
+  } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+});
+
+test("installer upgrade keeps the old signed runner as the auto-start baseline", async () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-ios-installer-upgrade-test-"));
+  try {
+    const home = path.join(temp, "home");
+    const root = path.join(temp, "repo");
+    const runner = path.join(home, "runner");
+    fs.mkdirSync(root);
+    fs.mkdirSync(runner, { recursive: true });
+    fs.writeFileSync(path.join(root, ".env"), "");
+    const newer = "b".repeat(40);
+    const command = async (name, argv) => {
+      if (name === "git" && argv.includes("rev-parse") && argv.includes("--show-toplevel")) {
+        return { stdout: runner };
+      }
+      if (name === "git" && argv.includes("rev-parse") && argv.includes("HEAD")) {
+        return { stdout: sha };
+      }
+      if (name === "git" && argv.includes("rev-parse")) return { stdout: newer };
+      if (name === "git" && argv.includes("show")) return { stdout: project };
+      return { stdout: "" };
+    };
+    const result = await installWatchdog({ sourceRoot: root, mainRepo: root, home,
+      command, launchAgents: path.join(temp, "agents") });
+    assert.equal(result.sha, newer);
+    assert.equal(readAutoState(home).sha, sha);
+    assert.equal(readAutoState(home).version, "1.0.3");
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 });
 
