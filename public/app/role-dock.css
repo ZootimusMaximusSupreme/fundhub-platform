@@ -4,12 +4,12 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent
 button,a{font:inherit}
 button:focus-visible,a:focus-visible{outline:3px solid var(--dock-ink);outline-offset:2px}
 .dock{position:relative;width:100%;height:100%}
-.rail{position:absolute;right:0;top:0;width:var(--dock-width);height:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 7px 12px;background:var(--dock-paper);border:1px solid var(--dock-line);border-right:0;border-radius:14px 0 0 14px;overflow:hidden}
+.rail{position:absolute;right:0;top:0;width:var(--dock-width);height:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 7px 12px;background:var(--dock-paper);border:1px solid var(--dock-line);border-radius:14px;overflow:hidden}
 .rail::after,.peek::after{content:"";position:absolute;bottom:0;left:0;right:0;height:4px;background:var(--dock-spectrum)}
 .rail button{position:relative;width:44px;height:44px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--dock-ink);display:grid;place-items:center;cursor:pointer}
 .rail button[hidden]{display:none}
 .rail button[aria-pressed="true"]{background:#fff;border-color:var(--dock-line)}
-.meta-mark{font-size:28px;line-height:1;font-weight:900;letter-spacing:-.08em}
+.rail .meta-mark{width:30px;height:21px;border-radius:0;object-fit:contain}
 .rail img{width:42px;height:42px;border-radius:10px}
 .dock-mark{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;background:var(--dock-ink);color:#fff;font-size:24px;font-weight:900;letter-spacing:-.08em}
 .peek-head .dock-mark{width:28px;height:28px;border-radius:7px;font-size:16px;flex:none}
@@ -54,7 +54,7 @@ body[data-expanded="true"] .peek{display:flex}
 .peek-foot{border-top:1px solid var(--dock-line);padding:5px 12px 9px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .peek-foot small{font-size:12px;color:var(--dock-muted)}
 .peek-foot a{color:var(--dock-muted);font-size:13px;min-height:44px;display:flex;align-items:center;text-decoration:none}
-body[data-side="left"] .rail{left:0;right:auto;border-left:0;border-right:1px solid var(--dock-line);border-radius:0 14px 14px 0}
+body[data-side="left"] .rail{left:0;right:auto}
 body[data-side="left"] .peek{left:calc(var(--dock-width) + 8px);right:auto}
 
 /* The compact companion retains the shared 16px body / 13px caption floors. */
