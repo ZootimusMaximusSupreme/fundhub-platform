@@ -663,6 +663,29 @@ describe("funding calendar survey entry", () => {
     vm.runInNewContext(script, win);
     return redirects;
   }
+  async function openWithTicket(accepted) {
+    const redirects = [];
+    const requests = [];
+    const style = { visibility: "visible" };
+    const location = {
+      hash: "#fh_survey_ticket=receipt123",
+      replace(url) { redirects.push(url); }
+    };
+    const win = {
+      location, URLSearchParams, document: { documentElement: { style } },
+      setTimeout() { return 1; }, clearTimeout() {},
+      fetch(url, options) {
+        requests.push({ url, options });
+        return Promise.resolve({ ok: accepted, json: () => Promise.resolve({ ok: accepted }) });
+      }
+    };
+    win.window = win;
+    win.self = win;
+    win.top = win;
+    vm.runInNewContext(script, win);
+    await new Promise((resolve) => setImmediate(resolve));
+    return { redirects, requests, visibility: style.visibility };
+  }
 
   test("both native calendars receive the same head block without replacing the scheduler", () => {
     assert.equal(rows["apply-book-survey-entry"].pageId, "25062844");
@@ -683,6 +706,19 @@ describe("funding calendar survey entry", () => {
       assert.deepEqual(open({ path, search: "?fh_tier=q" }), ["https://apply.fundhub.ai/apply"]);
       assert.deepEqual(open({ path, search: "?fh_tier=u" }), ["https://apply.fundhub.ai/apply"]);
     }
+  });
+
+  test("a saved homepage completion opens the calendar only after the public ticket check", async () => {
+    const allowed = await openWithTicket(true);
+    assert.deepEqual(allowed.redirects, []);
+    assert.equal(allowed.visibility, "visible");
+    assert.equal(allowed.requests.length, 1);
+    assert.match(allowed.requests[0].url, /\/api\/public\/survey-resume\?booking_ticket=receipt123$/);
+    assert.equal(allowed.requests[0].options.credentials, "omit");
+
+    const refused = await openWithTicket(false);
+    assert.deepEqual(refused.redirects, ["https://apply.fundhub.ai/apply"]);
+    assert.equal(refused.visibility, "hidden", "the scheduler never appears before proof");
   });
 
   test("the completed /apply frame and paid roadmap frame keep the native calendar", () => {

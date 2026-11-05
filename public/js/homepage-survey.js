@@ -475,14 +475,9 @@
             );
             return;
           }
-          if (res.body.deduped) {
-            btn.disabled = false;
-            btn.textContent = "Submit application";
-            setErr(
-              "We already have this one. Your advisor will reach out shortly."
-            );
-            return;
-          }
+          // A retry after a lost response may repeat an event that is already
+          // saved. The server returns a fresh completion ticket only when the
+          // whole survey is stored, so that retry can still reach the calendar.
           btn.textContent = "Received";
           window.location.assign(res.body.redirect);
         })

@@ -7,6 +7,21 @@ import handler, {
   runSurveySubmit,
 } from "../../api/public/survey-submit.mjs";
 import { PASS, DOWNSELL, MANUAL_REVIEW } from "../config/survey-qualification.mjs";
+import { validBookingTicket } from "../survey/booking-ticket.mjs";
+
+const SECRET = "unit-test-booking-ticket-secret-0123456789abcdef";
+const NOW = Date.parse("2026-11-05T08:00:00Z");
+const FULL_PASS_ANSWERS = {
+  cf_svy_funding_target_amount: "$50k - $100k",
+  cf_svy_planned_use: "Growth (marketing, inventory, hiring)",
+  cf_svy_money_change_now: ["Grow faster (more customers / more reach)"],
+  cf_svy_self_reported_fico: "700-759",
+  cf_svy_has_negatives: "No",
+  cf_svy_has_business: "Yes, 1-2 years",
+  cf_svy_business_revenue: "$100k - $249k",
+  cf_svy_revenue_verifiable: "Yes, bank statements",
+  cf_svy_available_capital: "$5k - $9,999",
+};
 
 function mockRes() {
   const out = { statusCode: 200, headers: {}, body: null };
@@ -62,7 +77,7 @@ test("parseSurveySubmitBody requires name and email; phone and SMS are optional"
   });
 });
 
-test("runSurveySubmit emits entry + survey and returns PASS redirect", async () => {
+test("a partial PASS survey is saved but cannot open the top-level calendar", async () => {
   const names = [];
   const fakeEmit = async (_db, name, payload) => {
     names.push({ name, payload });
@@ -86,7 +101,7 @@ test("runSurveySubmit emits entry + survey and returns PASS redirect", async () 
   );
   assert.equal(result.ok, true);
   assert.equal(result.qualification, PASS);
-  assert.match(result.redirect, /funding-book-call/);
+  assert.equal(result.redirect, "https://apply.fundhub.ai/apply");
   assert.deepEqual(
     names.map((n) => n.name),
     ["entry.captured", "survey.submitted"]
@@ -97,14 +112,73 @@ test("runSurveySubmit emits entry + survey and returns PASS redirect", async () 
 test("runSurveySubmit: a homepage survey with the last answer also emits survey.completed", async () => {
   const seen = [];
   const emit = async (_db, name, payload, opts) => { seen.push({ name, payload, opts }); return { id: name, deduped: false }; };
-  await runSurveySubmit(
+  const result = await runSurveySubmit(
     { name: "Ada", email: "ada@example.com", phone: "555", source: "website:home",
-      answers: { cf_svy_self_reported_fico: "700-759", cf_svy_available_capital: "$5k - $25k" } },
-    { emit, ensureRegistered: () => {}, db: {} }
+      answers: FULL_PASS_ANSWERS },
+    { emit, ensureRegistered: () => {}, db: {}, secret: SECRET, now: NOW,
+      orgId: "org-ada", resolveClient: async () => "client-ada",
+      hasSavedCompleteSurvey: async () => true }
   );
   assert.deepEqual(seen.map((e) => e.name), ["entry.captured", "survey.submitted", "survey.completed"]);
-  assert.equal(seen[2].payload.answers.cf_svy_available_capital, "$5k - $25k");
+  assert.equal(seen[2].payload.answers.cf_svy_available_capital, "$5k - $9,999");
   assert.match(seen[2].opts.idempotencyKey, /:completed$/);
+  assert.equal(seen[2].opts.clientId, "client-ada");
+  assert.equal(result.qualification, PASS);
+  const redirect = new URL(result.redirect);
+  assert.equal(redirect.origin + redirect.pathname, "https://apply.fundhub.ai/funding-book-call");
+  const ticket = new URLSearchParams(redirect.hash.slice(1)).get("fh_survey_ticket");
+  assert.equal(validBookingTicket(ticket, { secret: SECRET, now: NOW }), true);
+  assert.equal(result.redirect.includes("ada@example.com"), false, "the URL contains no contact data");
+});
+
+test("a saved completion without a resolved client cannot get a booking ticket", async () => {
+  const result = await runSurveySubmit(
+    { name: "Ada", email: "ada@example.com", phone: "555", source: "website:home",
+      answers: FULL_PASS_ANSWERS },
+    { emit: async () => ({ id: "evt", deduped: false }), ensureRegistered: () => {},
+      db: {}, secret: SECRET, now: NOW, resolveClient: async () => null }
+  );
+  assert.equal(result.redirect, "https://apply.fundhub.ai/apply");
+});
+
+test("a completed event without persisted answers cannot get a booking ticket", async () => {
+  const result = await runSurveySubmit(
+    { name: "Ada", email: "ada@example.com", phone: "555", source: "website:home",
+      answers: FULL_PASS_ANSWERS },
+    { emit: async () => ({ id: "evt", deduped: false }), ensureRegistered: () => {},
+      db: {}, secret: SECRET, now: NOW, orgId: "org-ada",
+      resolveClient: async () => "client-ada", hasSavedCompleteSurvey: async () => false }
+  );
+  assert.equal(result.redirect, "https://apply.fundhub.ai/apply");
+});
+
+test("the default ticket gate reads the saved client answers after event dispatch", async () => {
+  const queries = [];
+  const result = await runSurveySubmit(
+    { name: "Ada", email: "ada@example.com", phone: "555", source: "website:home",
+      answers: FULL_PASS_ANSWERS },
+    { emit: async () => ({ id: "evt", deduped: false }), ensureRegistered: () => {},
+      db: { async query(sql, params) {
+        queries.push({ sql, params });
+        return { rows: [{ custom_fields: FULL_PASS_ANSWERS }] };
+      } }, secret: SECRET, now: NOW, orgId: "org-ada",
+      resolveClient: async () => "client-ada" }
+  );
+  assert.deepEqual(queries.map((q) => q.params), [["client-ada"]]);
+  assert.match(result.redirect, /#fh_survey_ticket=/);
+});
+
+test("a last answer without the earlier branch answers does not emit completion or get a ticket", async () => {
+  const names = [];
+  const result = await runSurveySubmit(
+    { name: "Ada", email: "ada@example.com", phone: "555", source: "website:home",
+      answers: { cf_svy_self_reported_fico: "700-759", cf_svy_has_negatives: "No",
+        cf_svy_available_capital: "$5k - $9,999" } },
+    { emit: async (_db, name) => { names.push(name); return { id: name, deduped: false }; },
+      ensureRegistered: () => {}, db: {}, secret: SECRET, now: NOW }
+  );
+  assert.deepEqual(names, ["entry.captured", "survey.submitted"]);
+  assert.equal(result.redirect, "https://apply.fundhub.ai/apply");
 });
 
 test("runSurveySubmit score without negatives → MANUAL_REVIEW", async () => {
