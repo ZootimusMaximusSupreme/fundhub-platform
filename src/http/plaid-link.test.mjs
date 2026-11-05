@@ -264,6 +264,22 @@ describe("toStoreAccount", () => {
     const row = toStoreAccount({ plaidAccountId: "a", type: "brokerage" }, { asOf: "2026-10-06T00:00:00Z" });
     assert.equal(row.accountType, "other");
   });
+
+  test("only the server transport option stamps account environment, never provider payload flags", () => {
+    const input = { plaidAccountId: "a", type: "depository", environment: "production",
+      plaid_environment: "production", raw: { plaid_environment: "production", plaid_environment_source: "server_transport" } };
+    for (const environment of ["sandbox", "development", "production"]) {
+      const row = toStoreAccount(input, { asOf: "2026-11-04T00:00:00Z", environment });
+      assert.equal(row.raw.plaid_environment, environment);
+      assert.equal(row.raw.plaid_environment_source, "server_transport");
+      assert.equal(row.raw.raw, undefined);
+    }
+    for (const environment of [undefined, null, "PRODUCTION", "anything"]) {
+      const row = toStoreAccount(input, { asOf: "2026-11-04T00:00:00Z", environment });
+      assert.equal(row.raw.plaid_environment, undefined);
+      assert.equal(row.raw.plaid_environment_source, undefined);
+    }
+  });
 });
 
 describe("plaid-http additions", () => {

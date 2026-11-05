@@ -2,6 +2,7 @@
 .setter-page{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans)}
 .setter-page .app{display:flex;min-height:100vh}
 .setter-page .main{display:flex;flex:1;min-width:0;flex-direction:column}
+.setter-page .main:not(:has(> #fh-workspace-header))::before{content:"";flex:0 0 88px}
 .setter-page .content{flex:1;min-width:0;box-sizing:border-box}
 .setter-page .content *{box-sizing:border-box}
 .setter-page .content :is(h1,h2,h3,p){margin:0}

@@ -20,6 +20,7 @@ const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const ACCOUNT = "a1000000-0000-4000-8000-0000000000a1";
 const inOrg = [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, [{ "?column?": 1 }]];
 const notInOrg = [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, []];
+const scopedAccountRead = /FROM bank_accounts a\s+LEFT JOIN plaid_items p ON p.id = a.plaid_item_id\s+AND p.org_id = a.org_id AND p.client_id = a.client_id\s+WHERE a.org_id = \$1 AND a.client_id = \$2/;
 
 /** Column name -> value for an INSERT whose column list is in the SQL text. */
 function byColumn(call) {
@@ -31,7 +32,7 @@ describe("GET /api/banking/accounts", () => {
   test("lists this client's accounts, cycles and holdings with the due date worked out on the server", async () => {
     const { res, fake } = await callShared(accountsHandler, req("GET", { query: { client_id: CLIENT } }), [
       staffSession({ role: "closer" }), inOrg,
-      [/FROM bank_accounts\s+WHERE org_id = \$1 AND client_id = \$2/, [{ id: ACCOUNT, name: "Chase Ink", account_type: "credit", mask: "4242" }]],
+      [scopedAccountRead, [{ id: ACCOUNT, name: "Chase Ink", account_type: "credit", mask: "4242" }]],
       [/FROM account_statement_cycles c/, [{ bank_account_id: ACCOUNT, statement_close_day: 15, payment_due_day: 10, minimum_payment_cents: 3500 }]],
       [/FROM investment_holdings h/, []]
     ]);
@@ -42,8 +43,12 @@ describe("GET /api/banking/accounts", () => {
     assert.match(res.body.cycles[0].next_due.dueOn, /^\d{4}-\d{2}-10$/);
     assert.equal(res.body.cycles[0].next_due.unknownReason, null);
     assert.deepEqual(res.body.holdings, []);
-    assert.deepEqual(fake.find(/FROM bank_accounts\s+WHERE org_id/)[0].params, [ORG_ID, CLIENT]);
+    assert.deepEqual(fake.find(scopedAccountRead)[0].params, [ORG_ID, CLIENT]);
     const sqlOf = (re) => fake.find(re)[0].sql;
+    assertSqlHas(sqlOf(scopedAccountRead), {
+      "only this account's Item in the same company and client": "LEFT JOIN plaid_items p ON p.id = a.plaid_item_id AND p.org_id = a.org_id AND p.client_id = a.client_id",
+      "only this company's client accounts": "WHERE a.org_id = $1 AND a.client_id = $2"
+    });
     assertSqlHas(sqlOf(/FROM account_statement_cycles c/), {
       "the card named by its account": "SELECT c.*, a.name AS account_name, a.mask AS account_mask, a.credit_limit_cents, a.current_balance_cents FROM account_statement_cycles c JOIN bank_accounts a ON a.id = c.bank_account_id",
       "this company and client, soonest due day first": "WHERE c.org_id = $1 AND c.client_id = $2 ORDER BY c.payment_due_day NULLS LAST, a.name NULLS LAST"

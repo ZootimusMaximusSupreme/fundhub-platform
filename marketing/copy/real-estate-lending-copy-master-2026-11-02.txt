@@ -24,7 +24,7 @@ Primary headline:
 See how to fund a major renovation without automatically replacing your first mortgage.
 
 Primary subhead:
-Build a Renovation Funding Map for a $50,000 to $250,000+ project. Compare the payment, documents, funding method, and best next route before you start applying.
+Build a Renovation Funding Map for a $75,000 to $500,000+ project or combined financing request. Compare the planned payments, documents, funding method and next route before you start applying. Each loan or line is reviewed under its own lender limits and requirements.
 
 Primary CTA:
 Build My Funding Map
@@ -130,9 +130,9 @@ Get the route.
 Fundhub returns the product lane, document checklist, and next best step.
 
 Step 4:
-Prepare and move.
+Choose your next step.
 
-Organize the file, choose the handoff, and track the application through the decision and funding.
+Review your route summary and document checklist. If you choose application preparation and ongoing lender coordination, Fundhub explains the paid service on your call. That work starts under a separate signed engagement.
 
 SECTION: WHAT YOU RECEIVE
 
@@ -146,8 +146,10 @@ Your Renovation Funding Map includes:
 - W-2, self-employed, commission, retirement, or joint-applicant checklist;
 - property and project document checklist;
 - missing-item plan;
-- application handoff;
-- second-route review when the first path changes.
+- recommended next application step;
+- an initial alternative-route recommendation.
+
+Application preparation, authorized submission and ongoing lender coordination belong to the separately signed paid engagement. They are not included in the free Funding Map.
 
 SECTION: PROJECTS
 
@@ -183,7 +185,7 @@ This is built for a real project and a household ready to discuss the payment.
 Best fit:
 
 - you own the project property;
-- the project is roughly $50,000 or more;
+- your project or combined financing request is $75,000 or more, including $100,000, $175,000, $250,000 and $500,000+;
 - you have a contractor, estimate, or serious timeline;
 - your household income can be documented;
 - you can estimate your housing payment and current monthly debt;
@@ -229,7 +231,7 @@ Question:
 How much does the Funding Map cost?
 
 Answer:
-The initial Funding Map starts at $0.
+The initial Funding Map is free. If you choose Fundhub to prepare applications and coordinate the funding work, we explain the paid service and its terms on your call. You choose that service under a separate agreement.
 
 Question:
 How fast do I receive the route?
@@ -476,7 +478,7 @@ SECTION: WHO THIS IS FOR
 
 Best fit:
 
-- strong documented income, good credit, or both;
+- high, documented income, strong financials and good credit for the primary real estate entrant profile;
 - manageable current obligations;
 - serious desire to enter real estate;
 - willingness to organize documents;

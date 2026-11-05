@@ -121,6 +121,8 @@ test("closer sees the saved OffersIQ match without implying a full credit pull",
   await expect(box).toBeVisible();
   await expect(box).toContainText("Matched the saved offer rules");
   await expect(box).toContainText("Sandbox test");
+  await expect(box.getByRole("link", { name: "Open lead enrichment" })).toHaveAttribute("href",
+    `client-control-panel.html?client_id=${CLIENT_ID}#ccp-view-credit`);
   await box.getByText("Returned match details", { exact: true }).click();
   await expect(box).toContainText("721");
   await expect(box).toContainText("24");

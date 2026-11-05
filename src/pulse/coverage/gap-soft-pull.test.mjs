@@ -616,6 +616,8 @@ test("ledger: a healthy ledger passes and says how many rows it read", async () 
 });
 
 test("OffersIQ ledger: stale in-flight, missing receipt, and errors stay red", async () => {
+  assert.match(OFFERSIQ_LEDGER_SQL,
+    /\(r\.status = 'error'\s+OR \(r\.status = 'needs_review' AND r\.error_code = 'provider_uncertain'\)\)/);
   const cases = [
     [{ stale: 1, missing_receipt: 0, errors: 0 }, /1 OffersIQ requests in flight over 15 minutes/],
     [{ stale: 0, missing_receipt: 1, errors: 0 }, /1 completed without a provider receipt/],
@@ -1248,7 +1250,7 @@ const SQL_SHAPES = [
     tail: ""
   }],
   ["OFFERSIQ_LEDGER_SQL", OFFERSIQ_LEDGER_SQL, {
-    select: `count(*) FILTER (WHERE r.status = 'in_flight' AND r.created_at < $2::timestamptz - interval '${OFFERSIQ_STALE_MINUTES} minutes')::int AS stale, count(*) FILTER (WHERE r.status IN ('matched', 'not_matched') AND NULLIF(btrim(r.provider_request_id), '') IS NULL)::int AS missing_receipt, count(*) FILTER (WHERE r.status = 'error' AND r.created_at > $2::timestamptz - interval '${FAILED_LOOKBACK_DAYS} days' AND NOT EXISTS (SELECT 1 FROM offersiq_requests newer WHERE newer.org_id = r.org_id AND newer.client_id = r.client_id AND newer.identity_fingerprint = r.identity_fingerprint AND newer.rule_set_id = r.rule_set_id AND newer.environment = r.environment AND newer.created_at > r.created_at AND newer.status IN ('matched', 'not_matched') AND NULLIF(btrim(newer.provider_request_id), '') IS NOT NULL))::int AS errors`,
+    select: `count(*) FILTER (WHERE r.status = 'in_flight' AND r.created_at < $2::timestamptz - interval '${OFFERSIQ_STALE_MINUTES} minutes')::int AS stale, count(*) FILTER (WHERE r.status IN ('matched', 'not_matched') AND NULLIF(btrim(r.provider_request_id), '') IS NULL)::int AS missing_receipt, count(*) FILTER (WHERE (r.status = 'error' OR (r.status = 'needs_review' AND r.error_code = 'provider_uncertain')) AND r.created_at > $2::timestamptz - interval '${FAILED_LOOKBACK_DAYS} days' AND NOT EXISTS (SELECT 1 FROM offersiq_requests newer WHERE newer.org_id = r.org_id AND newer.client_id = r.client_id AND newer.identity_fingerprint = r.identity_fingerprint AND newer.rule_set_id = r.rule_set_id AND newer.environment = r.environment AND newer.created_at > r.created_at AND newer.status IN ('matched', 'not_matched') AND NULLIF(btrim(newer.provider_request_id), '') IS NOT NULL))::int AS errors`,
     from: "offersiq_requests r JOIN clients c ON c.id = r.client_id AND c.org_id = r.org_id",
     where: ["r.org_id = $1::uuid", NOT_A_TEST_CLIENT],
     tail: ""
