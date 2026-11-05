@@ -15,6 +15,7 @@ import {
   scoreFromPlaywrightJson
 } from "../src/pulse/live-playwright-check.mjs";
 import { defaultOrgId } from "../src/pulse/daily-pulse.mjs";
+import { inspectLiveAuthFixtures } from "./live-playwright-auth-fixtures.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..");
@@ -60,34 +61,63 @@ function collectFailedTitles(report) {
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
-  if (!process.env.STAFF_E2E_PASSWORD && !process.env.STAFF_INITIAL_PASSWORD) {
-    console.error("STAFF_E2E_PASSWORD missing in .env — cannot log into live desks.");
+  const password = process.env.STAFF_E2E_PASSWORD || process.env.STAFF_INITIAL_PASSWORD;
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString && !dryRun) {
+    console.error("DATABASE_URL missing — cannot record sweep (use --dry-run to skip DB).");
     process.exit(1);
   }
-
-  fs.mkdirSync(path.dirname(REPORT_PATH), { recursive: true });
-  const run = spawnSync("npm", ["run", "test:e2e:live"], {
-    cwd: ROOT,
-    stdio: "inherit",
-    env: process.env
-  });
-
-  let report = null;
-  if (fs.existsSync(REPORT_PATH)) {
+  let client = null;
+  let fixtureProblems = password ? [] : ["live test password is missing"];
+  if (connectionString) {
+    const { default: pg } = await import("pg");
+    const local = /@(localhost|127\.0\.0\.1)[:/]/.test(connectionString);
+    client = new pg.Client({ connectionString, ssl: local ? undefined : { rejectUnauthorized: false } });
     try {
-      report = JSON.parse(fs.readFileSync(REPORT_PATH, "utf8"));
-    } catch {
-      report = null;
+      await client.connect();
+      await client.query("BEGIN READ ONLY");
+      try {
+        fixtureProblems = await inspectLiveAuthFixtures(client, password);
+      } finally {
+        await client.query("ROLLBACK");
+      }
+    } catch (error) {
+      await client.end().catch(() => {});
+      throw error;
     }
   }
-  const stats = scoreFromPlaywrightJson(report);
-  const failedTitles = collectFailedTitles(report);
+
+  let run = { status: 1 };
+  let stats = { score: 0, passed: 0, failed: 1, total: 1 };
+  let failedTitles = [];
+  if (fixtureProblems.length) {
+    failedTitles = [`Live browser tests not run: ${fixtureProblems.join("; ")}`];
+    console.error(failedTitles[0]);
+  } else {
+    fs.mkdirSync(path.dirname(REPORT_PATH), { recursive: true });
+    run = spawnSync("npm", ["run", "test:e2e:live"], {
+      cwd: ROOT,
+      stdio: "inherit",
+      env: process.env
+    });
+    let report = null;
+    if (fs.existsSync(REPORT_PATH)) {
+      try {
+        report = JSON.parse(fs.readFileSync(REPORT_PATH, "utf8"));
+      } catch {
+        report = null;
+      }
+    }
+    stats = scoreFromPlaywrightJson(report);
+    failedTitles = collectFailedTitles(report);
+  }
   const payload = {
     score: stats.score,
     passed: stats.passed,
     failed: stats.failed,
     total: stats.total,
     failedTitles,
+    suiteNotRun: fixtureProblems.length > 0,
     exitCode: run.status ?? 1,
     at: new Date().toISOString()
   };
@@ -97,21 +127,9 @@ async function main() {
   console.log(`\nLive Playwright: ${stats.score}/100 (${stats.passed}/${stats.total} passed, exit ${run.status})`);
 
   if (dryRun) {
+    if (client) await client.end();
     process.exit(outcome === "pass" ? 0 : 1);
   }
-
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    console.error("DATABASE_URL missing — cannot record sweep (use --dry-run to skip DB).");
-    process.exit(1);
-  }
-  const { default: pg } = await import("pg");
-  const local = /@(localhost|127\.0\.0\.1)[:/]/.test(connectionString);
-  const client = new pg.Client({
-    connectionString,
-    ssl: local ? undefined : { rejectUnauthorized: false }
-  });
-  await client.connect();
   try {
     const orgId = await defaultOrgId(client);
     if (!orgId) throw new Error("no default org");
