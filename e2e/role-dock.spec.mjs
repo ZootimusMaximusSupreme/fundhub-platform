@@ -57,7 +57,7 @@ test("Dock keeps Owner, Setter, and Closer responsibilities in view above scroll
   ]);
   roles.sections[2].calendar.nextCallId = null;
   await page.locator("#refresh").click();
-  await expect(page.locator(".role-overview-row").nth(2)).toHaveText("Closer1 calls today");
+  await expect(page.locator(".role-overview-row").nth(2)).toHaveText("Closer1 call today");
   const state = await page.locator(".states").evaluate(el => ({ clientHeight: el.clientHeight, scrollHeight: el.scrollHeight, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
   expect(state.scrollHeight).toBeGreaterThan(state.clientHeight);
   expect(state.scrollWidth).toBe(state.clientWidth);

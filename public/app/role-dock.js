@@ -272,7 +272,7 @@
         const summary = nextCall ? `Next call: ${nextCall.name || dateLabel(nextCall.startsAt, calendar.timeZone) || 'scheduled'}`
           : items.length ? items[0].title || 'Update'
           : calendar && !calls ? 'Calendar unavailable'
-          : calls ? `${calls.length} calls today`
+          : calls ? `${calls.length} ${calls.length === 1 ? 'call' : 'calls'} today`
           : `${items.length} updates`;
         row.append(text('b', label), text('span', summary));
         row.title = `${label}: ${summary}`;
