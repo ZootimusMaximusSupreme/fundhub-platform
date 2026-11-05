@@ -69,6 +69,9 @@ final class FundhubDock: NSObject, WKNavigationDelegate, WKScriptMessageHandler 
         config.userContentController = controller
         let web = WKWebView(frame: .zero, configuration: config)
         web.underPageBackgroundColor = .clear
+        web.wantsLayer = true
+        web.layer?.cornerRadius = 14
+        web.layer?.masksToBounds = true
         web.navigationDelegate = self
         dockWebView = web
 

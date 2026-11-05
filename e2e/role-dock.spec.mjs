@@ -38,6 +38,31 @@ test("Dock immediately erases the previous account when its token changes", asyn
   await page.route("**/api/read/dock", route => route.fulfill({ status: 401, contentType: "application/json", body: '{"ok":false}' }));
   await page.evaluate(() => { localStorage.removeItem("fh_token"); window.dispatchEvent(new StorageEvent("storage", { key: "fh_token" })); });
   await expect(page.locator(".section")).toHaveCount(0);
+  await expect(page.locator("#role-overview")).toBeHidden();
   await expect(page.locator("#badge")).toBeHidden();
   await expect(page.locator("#error")).toHaveAttribute("data-active", "true");
+});
+test("Dock keeps Owner, Setter, and Closer responsibilities in view above scrolling detail", async ({ page }) => {
+  await page.setViewportSize({ width: 346, height: 510 });
+  const roles = { ...feed, identity: { kind: "staff", roles: ["owner", "setter", "closer"] }, sections: [
+    { role: "owner", metrics: [{ label: "Needs review", value: 1 }], items: [{ id: "owner-next", title: "Review payment exception", detail: "Owner task", urgency: "urgent" }] },
+    { role: "setter", metrics: [{ label: "Calls", value: 2 }], items: [{ id: "setter-next", title: "Call new lead", detail: "Setter task" }] },
+    { role: "closer", calendar: { status: "available", asOf: new Date().toISOString(), viewer: { orgId: "org-1", staffId: "staff-1" }, nextCallId: "call-1", calls: [{ taskId: "call-1", name: "Sample Client", startsAt: new Date(Date.now() + 3_600_000).toISOString() }] }, metrics: [], items: [] }
+  ] };
+  await wireApi(page, { session: OWNER, handlers: { "/api/read/dock": () => roles } });
+  await gotoScreen(page, "role-dock.html");
+  await page.locator("#toggle").click();
+  await expect(page.locator(".role-overview-row")).toHaveText([
+    "OwnerReview payment exception", "SetterCall new lead", "CloserNext call: Sample Client"
+  ]);
+  roles.sections[2].calendar.nextCallId = null;
+  await page.locator("#refresh").click();
+  await expect(page.locator(".role-overview-row").nth(2)).toHaveText("Closer1 call today");
+  const state = await page.locator(".states").evaluate(el => ({ clientHeight: el.clientHeight, scrollHeight: el.scrollHeight, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
+  expect(state.scrollHeight).toBeGreaterThan(state.clientHeight);
+  expect(state.scrollWidth).toBe(state.clientWidth);
+  await page.locator(".section h2").nth(2).scrollIntoViewIfNeeded();
+  await expect(page.locator(".section h2").nth(2)).toBeInViewport();
+  await expect(page.locator(".rail")).toHaveCSS("border-radius", "14px");
+  await expect(page.locator(".meta-mark")).toHaveAttribute("src", "/app/meta-symbol.svg");
 });

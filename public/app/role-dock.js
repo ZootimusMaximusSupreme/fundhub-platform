@@ -28,6 +28,7 @@
   function state(name) {
     for (const id of ['loading', 'empty', 'error']) $(id).dataset.active = String(id === name);
     sections.hidden = Boolean(name);
+    if (name) { $('role-overview').replaceChildren(); $('role-overview').hidden = true; }
   }
   function safeHref(href) {
     try {
@@ -256,6 +257,28 @@
     let urgent = 0;
     let itemIndex = 0;
     const groups = Array.isArray(payload.sections) ? payload.sections : [];
+    const overview = $('role-overview');
+    overview.replaceChildren();
+    overview.hidden = groups.length < 2;
+    if (groups.length > 1) {
+      overview.append(text('strong', 'At a glance'));
+      for (const group of groups) {
+        const row = text('div', '', 'role-overview-row');
+        const label = group.role === 'owner' ? 'Owner' : group.label || roleLabels[group.role] || group.role || 'Role';
+        const items = Array.isArray(group.items) ? group.items : [];
+        const calendar = group.role === 'closer' ? group.calendar : null;
+        const calls = calendar?.status === 'available' && Array.isArray(calendar.calls) ? calendar.calls : null;
+        const nextCall = calendar?.nextCallId && calls?.find(call => call.taskId === calendar.nextCallId);
+        const summary = nextCall ? `Next call: ${nextCall.name || dateLabel(nextCall.startsAt, calendar.timeZone) || 'scheduled'}`
+          : items.length ? items[0].title || 'Update'
+          : calendar && !calls ? 'Calendar unavailable'
+          : calls ? `${calls.length} ${calls.length === 1 ? 'call' : 'calls'} today`
+          : `${items.length} updates`;
+        row.append(text('b', label), text('span', summary));
+        row.title = `${label}: ${summary}`;
+        overview.append(row);
+      }
+    }
     $('meta-campaigns').hidden = payload.identity?.kind !== 'staff' || !groups.some(group => group.role === 'owner');
     for (const group of groups) {
       const section = text('section', '', 'section');
