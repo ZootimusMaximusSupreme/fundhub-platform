@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { requestCrsSandbox } from "../messaging/providers/crs-softview.mjs";
 import {
   assertOffersIqWireBody,
   buildOffersIqRequest,
@@ -15,6 +16,10 @@ const identity = {
   ssn: "never-send", dob: "never-send",
   address: { line1: "123 Main St", line2: "", city: "Phoenix", state: "az", zip: "85001" }
 };
+const loadedProfile = Object.freeze({
+  fname: "AAJKITH", mname: "Z", lname: "PDNSX", suffix: "6", houseNumber: "856",
+  streetName: "BPOJVAB", streetType: "XRD", city: "HUNTSVILLE", state: "AL", zip: "35659"
+});
 
 test("OffersIQ request selects only no-SSN fields and keeps a numbered street intact", () => {
   const body = buildOffersIqRequest({ ruleSetId: 752, identity, consent });
@@ -67,6 +72,45 @@ test("OffersIQ last-point guard refuses forbidden wire fields and wrong sandbox 
     } }, consent });
   assert.equal(isOffersIqSandboxIdentity(freeformFixture.consumerData), false);
   assert.equal(isOffersIqProductionFixtureIdentity(freeformFixture.consumerData), true);
+});
+
+test("OffersIQ permits only the exact guide profile 2 no-SSN sandbox variant", () => {
+  const body = buildOffersIqRequest({ ruleSetId: 1232, identity: loadedProfile, consent });
+  assert.deepEqual(body.consumerData, loadedProfile);
+  assert.equal(Object.hasOwn(body.consumerData, "ssn"), false);
+  assert.equal(Object.hasOwn(body.consumerData, "dob"), false);
+  assert.deepEqual(assertOffersIqWireBody(body, { sandbox: true }), body);
+  for (const consumerData of [
+    { ...body.consumerData, houseNumber: "857" },
+    { ...body.consumerData, phone: "6025550123" },
+    { ...body.consumerData, fname: "Pat", lname: "Smith" }
+  ]) {
+    assert.equal(isOffersIqSandboxIdentity(consumerData), false);
+    assert.throws(() => assertOffersIqWireBody({ ...body, consumerData }, { sandbox: true }),
+      error => error.code === "identity_not_allowed_on_sandbox");
+  }
+});
+
+test("OffersIQ production transport blocks guide profile 2 including normalized and optional variants", async () => {
+  let transmitted = 0;
+  for (const consumerData of [
+    { ...loadedProfile },
+    { ...loadedProfile, fname: " aajkith ", lname: " pdnsx ", streetName: " bpojvab ",
+      streetType: "xrd", city: " huntsville " },
+    { ...loadedProfile, mname: "Q", suffix: "JR", phone: "6025550123" }
+  ]) {
+    assert.equal(isOffersIqProductionFixtureIdentity(consumerData), true);
+    const result = await requestCrsSandbox({
+      url: "https://mware.crscreditapi.com/api/offersiq/evaluate",
+      method: "POST",
+      body: JSON.stringify({ ruleSetId: 1677, consumerData, userConsent: consent }),
+      env: { CRS_ALLOW_LIVE: "on", ADAPTERS_DRY_RUN: "off" },
+      fetchImpl: async () => { transmitted++; throw new Error("fixture must not reach production"); }
+    });
+    assert.equal(result.blocked, true);
+    assert.match(result.error, /sandbox identity on production/);
+  }
+  assert.equal(transmitted, 0);
 });
 
 test("OffersIQ decisions distinguish pass, fail, no-hit and provider error", () => {
