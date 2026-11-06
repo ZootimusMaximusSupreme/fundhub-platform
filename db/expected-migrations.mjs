@@ -405,6 +405,7 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "migrations/565_whop_checkout_metadata_version.sql",
   "migrations/566_contract_affiliate_actors.sql",
   "migrations/567_whop_existing_plan_identity.sql",
+  "migrations/568_passkey_bank_stepup.sql",
   "seed/002_pipelines.sql",
   "seed/006_message_templates_source_doc.sql",
   "seed/007_contract_templates.sql",

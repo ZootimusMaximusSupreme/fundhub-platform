@@ -29,6 +29,8 @@ The `blueprint-bank-evidence` job runs at minute 17 each hour. Its regular job r
 
 ## Kinds of check
 
+The authenticated POST-only `auth/passkey` route is pinged with GET (expected 405, no challenge or enrollment). The existing hourly/morning `gap:auth-plaid-consent-integrity` read joins November6 consent-version grants to the exact durable passkey assertion, account, company, surviving session, target and 15-minute window; missing, expired, previously revoked or foreign evidence stays red. Normal session cleanup preserves the assertion identity. Earlier consent-only version receipts retain their original meaning, including in-flight requests during deployment; unknown versions stay red. Company bank actions also retain `company-cash:integrity`. These checks and isolated signed WebAuthn tests prove stored scope and enforcement; they do not prove a customer's Face ID, native app signing, or a real bank/provider outcome.
+
 | Kind | What it proves | Where it lives | Example |
 |---|---|---|---|
 | Ping | The door answers. Blind to wrong data. | `src/pulse/registry.mjs`, `src/pulse/heartbeats.mjs` | `reg:portal-login.html` answers 200 |
