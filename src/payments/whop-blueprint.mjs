@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { generateLinkRef, resolveLinkContext } from '../payment-links/index.mjs';
-import { whopRequest } from '../messaging/providers/whop-payments.mjs';
+import { whopRequest, WHOP_CHECKOUT_TITLE, whopCheckoutHostname } from '../messaging/providers/whop-payments.mjs';
 import { assertBlueprintAgreementPrice } from '../contracts/blueprint-price.mjs';
 import { getOffer } from '../config/offers.mjs';
 
 export const WHOP_BLUEPRINT_PRODUCT = 'consulting-package';
-export const WHOP_BLUEPRINT_TITLE = 'Consulting Services Package';
+export const WHOP_BLUEPRINT_TITLE = WHOP_CHECKOUT_TITLE;
 export const WHOP_BLUEPRINT_OFFER = 'UWIQ_DELIVERABLES';
 export const WHOP_FULL_BLUEPRINT_PRODUCT = 'blueprint-self-funding';
 export function isWhopBlueprintProduct(code) {
@@ -49,7 +49,18 @@ export function whopMoneyCents(money) {
   return out;
 }
 
+export function matchesWhopMetadata(actual, expected) {
+  return !!actual && typeof actual === 'object' && !Array.isArray(actual)
+    && Object.keys(actual).length === Object.keys(expected).length
+    && Object.entries(expected).every(([key, value]) => Object.hasOwn(actual, key) && actual[key] === value);
+}
+
 export function whopBlueprintMetadata(link) {
+  if (link.whop_metadata_version === 2) {
+    return { fh_schema: '2', fh_payment_link_id: link.id, fh_org_id: link.org_id, fh_client_id: link.client_id,
+      fh_amount_cents: String(link.amount_cents), fh_currency: 'USD' };
+  }
+  if (link.whop_metadata_version != null && link.whop_metadata_version !== 1) throw new TypeError('Unknown Whop package metadata version');
   return { fh_schema: '1', fh_payment_link_id: link.id, fh_link_ref: link.link_ref,
     fh_org_id: link.org_id, fh_client_id: link.client_id, offer_key: whopBlueprintOfferKey(link.product_code || WHOP_BLUEPRINT_PRODUCT),
     product_code: link.product_code || WHOP_BLUEPRINT_PRODUCT, fh_amount_cents: String(link.amount_cents),
@@ -57,6 +68,7 @@ export function whopBlueprintMetadata(link) {
 }
 
 export function buildWhopBlueprintCheckout(link, cfg) {
+  if (link.whop_metadata_version !== 2) throw new TypeError('An existing Whop checkout can only be recovered via GET');
   const amount = blueprintAmountCents(Number(link.amount_cents), link.product_code || WHOP_BLUEPRINT_PRODUCT);
   return { account_id: cfg.accountId, mode: 'payment', metadata: whopBlueprintMetadata(link),
     plan: { product_id: cfg.productId, plan_type: 'one_time', release_method: 'buy_now',
@@ -64,18 +76,24 @@ export function buildWhopBlueprintCheckout(link, cfg) {
       description: WHOP_BLUEPRINT_TITLE, visibility: 'hidden', adaptive_pricing_enabled: false } };
 }
 
-export function validateWhopCheckout(out, cfg, link) {
-  const url = new URL(out.purchase_url || 'invalid', 'https://invalid.local');
+export function isWhopCheckoutUrl(value, checkoutId, env) {
+  const host = whopCheckoutHostname(env);
+  try {
+    const url = new URL(value);
+    return url.origin === 'https://' + host && !url.username && !url.password && url.pathname === `/checkout/${checkoutId}/`;
+  } catch { return false; }
+}
+
+export function validateWhopCheckout(out, cfg, link, env = process.env) {
   if (out.account_id !== cfg.accountId || out.mode !== 'payment' || !/^ch_[a-zA-Z0-9]+$/.test(out.id || '')
-    || !/^plan_[a-zA-Z0-9]+$/.test(out.plan?.id || '') || url.protocol !== 'https:'
-    || url.hostname !== 'whop.com' || url.pathname !== `/checkout/${out.id}/`) {
+    || !/^plan_[a-zA-Z0-9]+$/.test(out.plan?.id || '') || !isWhopCheckoutUrl(out.purchase_url, out.id, env)) {
     throw Object.assign(new Error('Whop checkout response does not match the requested checkout'),
       { code: 'whop_checkout_failed', status: 502 });
   }
   if (link) {
     if (out.plan.currency !== 'usd' || out.plan.plan_type !== 'one_time'
       || whopMoneyCents({ amount: String(out.plan.initial_price), currency: 'usd', decimals: 2 }) !== Number(link.amount_cents)
-      || Object.entries(whopBlueprintMetadata(link)).some(([key, value]) => out.metadata?.[key] !== value)) {
+      || !matchesWhopMetadata(out.metadata, whopBlueprintMetadata(link))) {
       throw Object.assign(new Error('Whop checkout price, currency or metadata does not match its order'),
         { code: 'whop_checkout_failed', status: 502 });
     }
@@ -84,7 +102,7 @@ export function validateWhopCheckout(out, cfg, link) {
 }
 
 export async function verifyWhopCheckout(out, cfg, link, { env = process.env, fetchImpl = fetch } = {}) {
-  validateWhopCheckout(out, cfg, link);
+  validateWhopCheckout(out, cfg, link, env);
   // The checkout response's embedded plan omits product/account identity.
   // Read the documented variant resource before exposing or recovering its URL.
   // https://docs.whop.com/api-reference/beta/variants/retrieve-variant
@@ -126,15 +144,15 @@ export async function createWhopBlueprintPaymentLink(db, {
   const saved = (await db.query(
     `INSERT INTO payment_links (id, org_id, client_id, purpose, description, amount_cents,
        currency, link_ref, checkout_url, provider, product_id, sale_id, sale_motion,
-       created_by_staff_id, closer_staff_id, sales_manager_staff_id)
-     VALUES ($1,$2,$3,'custom',$4,$5,'USD',$6,'','whop',$7,$8,$9,$10,$11,$12) RETURNING *`,
+       created_by_staff_id, closer_staff_id, sales_manager_staff_id, whop_metadata_version)
+     VALUES ($1,$2,$3,'custom',$4,$5,'USD',$6,'','whop',$7,$8,$9,$10,$11,$12,2) RETURNING *`,
     [id, orgId, clientId, WHOP_BLUEPRINT_TITLE, amountCents, linkRef, context.productId,
       context.saleId, saleMotion, createdByStaffId, context.closerStaffId, context.salesManagerStaffId]
   )).rows[0];
   saved.product_code = context.productCode;
   const out = await verifyWhopCheckout(await whopRequest('/checkout_configurations', {
     apiKey: cfg.apiKey, method: 'POST', body: buildWhopBlueprintCheckout(saved, cfg),
-    idempotencyKey: `whop-blueprint:${id}`, env, fetchImpl
+    idempotencyKey: `fh-order:${id}`, env, fetchImpl
   }), cfg, saved, { env, fetchImpl });
   const result = await db.query(
     `UPDATE payment_links SET checkout_url = $2, whop_checkout_configuration_id = $3,

@@ -1,6 +1,6 @@
 import { verifyWhopSignature } from '../merchant/normalize.mjs';
 import { emit, dispatch } from '../events/bus.mjs';
-import { whopConfig, whopBlueprintMetadata, whopMoneyCents, blueprintAmountCents,
+import { whopConfig, whopBlueprintMetadata, matchesWhopMetadata, whopMoneyCents, blueprintAmountCents,
   WHOP_BLUEPRINT_PRODUCT, WHOP_BLUEPRINT_TITLE, isWhopBlueprintProduct } from '../payments/whop-blueprint.mjs';
 import { enqueueWhopBilling } from '../payments/whop-billing-inbox.mjs';
 import { findWhopServiceReceipt, processWhopServiceReceipt } from '../blueprint/service-whop.mjs';
@@ -63,9 +63,7 @@ export function validateWhopBlueprintPayment(data, link, cfg) {
     || data.checkout_configuration_id !== link.whop_checkout_configuration_id
     || data.plan_id !== link.whop_plan_id || data.product_id !== cfg.productId
     || data.currency !== 'usd') throw new Error('Whop payment identity mismatch');
-  for (const [key, value] of Object.entries(whopBlueprintMetadata(link))) {
-    if (data.metadata?.[key] !== value) throw new Error(`Whop payment metadata mismatch: ${key}`);
-  }
+  if (!matchesWhopMetadata(data.metadata, whopBlueprintMetadata(link))) throw new Error('Whop payment metadata mismatch');
   const items = data.line_items;
   if (!Array.isArray(items) || items.length !== 1 || items[0].quantity !== 1
     || items[0].plan_id !== link.whop_plan_id || items[0].product_id !== cfg.productId) {

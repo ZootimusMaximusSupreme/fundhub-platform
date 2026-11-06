@@ -1,0 +1,65 @@
+{
+  "checkedAt": "2026-11-06T18:02:00.842Z",
+  "transport": "injected recorder only; global external fetch rejected",
+  "cases": [
+    {
+      "path": "/checkout_configurations",
+      "method": "POST",
+      "rejected": true,
+      "errorCode": "whop_unsafe_checkout"
+    },
+    {
+      "path": "/checkout_configurations/",
+      "method": "POST",
+      "rejected": true,
+      "errorCode": "whop_unsafe_checkout"
+    },
+    {
+      "path": "/checkout_configurations/nested",
+      "method": "POST",
+      "rejected": true,
+      "errorCode": "whop_unsafe_checkout"
+    },
+    {
+      "path": "/checkout_configurations?x=1",
+      "method": "POST",
+      "rejected": true,
+      "errorCode": "whop_unsafe_checkout"
+    },
+    {
+      "path": "/variants/plan_test",
+      "method": "POST",
+      "rejected": true,
+      "errorCode": "whop_unsafe_checkout"
+    },
+    {
+      "path": "/payments",
+      "method": "POST",
+      "rejected": true,
+      "errorCode": "whop_unsafe_checkout"
+    },
+    {
+      "path": "/refunds",
+      "method": "POST",
+      "rejected": true,
+      "errorCode": "whop_unsafe_checkout"
+    },
+    {
+      "path": "/checkout_configurations",
+      "method": "PATCH",
+      "rejected": true,
+      "errorCode": "whop_unsafe_checkout"
+    },
+    {
+      "path": "/checkout_configurations",
+      "method": "DELETE",
+      "rejected": true,
+      "errorCode": "whop_unsafe_checkout"
+    }
+  ],
+  "recordedCalls": 0,
+  "providerCalls": 0,
+  "productionWrites": 0,
+  "providerSourceSha256": "e6e9fb60777c296a9cebe0b9761f8971ac26ad02ee58a557071625624e9d2c11",
+  "allRejected": true
+}

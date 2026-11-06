@@ -1,0 +1,74 @@
+{
+  "source": "c4d3d615c",
+  "checkedAt": "2026-11-06T16:39:54.454Z",
+  "status": "ready",
+  "kind": "local interactive walkthrough",
+  "host": "127.0.0.1 only; two browser origins keep buyer and staff sessions separate",
+  "database": "dedicated local scratch fundhub_sandbox_walkthrough_20261106_test; normal router uses the restricted fundhub_app role",
+  "buyer": {
+    "login": "http://127.0.0.1:8905/login.html?next=%2Fapp%2Fclient-portal.html",
+    "workspace": "http://127.0.0.1:8905/app/client-portal.html#blueprint-fulfillment",
+    "startingCase": "Taylor Full Blueprint; synthetic $30,000 full package; active and client-operated, no preloaded credit report",
+    "nextStep": "Reports and help \u2192 Set up my included report"
+  },
+  "csm": {
+    "login": "http://127.0.0.1:8907/login.html?next=%2Fapp%2Fclient-control-panel.html%3Fid%3D1cbb8cfe-624a-431d-8d4c-a36376ca48eb",
+    "workspace": "http://127.0.0.1:8907/app/client-control-panel.html?id=1cbb8cfe-624a-431d-8d4c-a36376ca48eb",
+    "startingCase": "Taylor Full Blueprint, available in CSM oversight and the normal client control panel"
+  },
+  "verified": {
+    "normalPasswordSignInAndApi": [
+      {
+        "role": "buyer",
+        "url": "http://127.0.0.1:8905/app/client-portal.html#blueprint-fulfillment",
+        "signInHttp": 200,
+        "ownWorkspaceHttp": 200,
+        "purchasedProduct": "blueprint-self-funding",
+        "route": "needs_file",
+        "reportSetupRequired": true
+      },
+      {
+        "role": "csm",
+        "url": "http://127.0.0.1:8907/app/client-control-panel.html?id=1cbb8cfe-624a-431d-8d4c-a36376ca48eb",
+        "signInHttp": 200,
+        "oversightHttp": 200,
+        "scopedCaseHttp": 200
+      }
+    ],
+    "isolatedHeadlessBrowser": [
+      {
+        "role": "buyer",
+        "page": "/app/client-portal.html",
+        "authenticatedUi": true
+      },
+      {
+        "role": "csm",
+        "page": "/app/client-control-panel.html",
+        "authenticatedUi": true
+      }
+    ],
+    "ownerChrome": {
+      "checkedAt": "2026-11-06T17:20:47.478843+00:00",
+      "normalSavedBrowserSession": true,
+      "buyer": {
+        "page": "/app/client-portal.html#blueprint-fulfillment",
+        "heading": "My funding workspace",
+        "nextStep": "Your report is needed"
+      },
+      "csm": {
+        "page": "/app/csm-queue.html",
+        "client": "Taylor Full Blueprint",
+        "reviewClientOpened": true,
+        "quoteFormVisible": true
+      },
+      "actions": "Read-only page navigation after ordinary synthetic sign-in; no report, quote or provider action submitted."
+    }
+  },
+  "boundaries": [
+    "Existing e2e/blueprint-real-server.mjs serves the production web pages and API router locally.",
+    "No live customer data, bureau orders, bank applications, payment provider transactions, email, SMS, or production settings.",
+    "No external provider callback or background provider job is running for this manual case. Checkout transport is synthetic, provider fetch is blocked, and stored documents are in-memory.",
+    "This case starts before first report authorization. Its pending report does not become a live report; the separate signed HTTP proof records fenced worker processing.",
+    "Use synthetic details only. Both walkthrough servers and their local database must be running for these URLs to work."
+  ]
+}

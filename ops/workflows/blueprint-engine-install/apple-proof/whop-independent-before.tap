@@ -1,0 +1,340 @@
+TAP version 13
+# (node:10873) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# [client-lifecycle] client f71a3bcf-380b-4b77-a398-c979ec5c1d7b: ADAPTERS_DRY_RUN fence is up — stamped placeholder dry-ghl-f71a3bcf380b and did not call the CRM
+# [purchase-routing] no route: no_product_path (event=payment.received org=d8071a26-bc9e-4c3d-aaff-adea0829be3f client=f71a3bcf-380b-4b77-a398-c979ec5c1d7b categories=none). Money was recorded; no card was placed.
+# Subtest: signed Whop financing callback activates only the existing exact help/round and replay grants nothing else
+ok 1 - signed Whop financing callback activates only the existing exact help/round and replay grants nothing else
+  ---
+  duration_ms: 227.281625
+  type: 'test'
+  ...
+# Subtest: concurrent provider claims reserve one checkout and an unknown result cannot be retried on another rail
+ok 2 - concurrent provider claims reserve one checkout and an unknown result cannot be retried on another rail
+  ---
+  duration_ms: 51.239459
+  type: 'test'
+  ...
+# [client-lifecycle] client a09a922a-bd29-41a5-a046-8fb65f17b92f: ADAPTERS_DRY_RUN fence is up — stamped placeholder dry-ghl-a09a922abd29 and did not call the CRM
+# Subtest: Whop service reversal binds its exact original receipt and never restarts work on a late success replay
+ok 3 - Whop service reversal binds its exact original receipt and never restarts work on a late success replay
+  ---
+  duration_ms: 66.754167
+  type: 'test'
+  ...
+# [client-lifecycle] client 44a8862e-283b-43df-abad-f96e7ab836b7: ADAPTERS_DRY_RUN fence is up — stamped placeholder dry-ghl-44a8862e283b and did not call the CRM
+# Subtest: signed paid callback recovers checkout_pending checkout using independently verified GETs only
+ok 4 - signed paid callback recovers checkout_pending checkout using independently verified GETs only
+  ---
+  duration_ms: 46.584167
+  type: 'test'
+  ...
+# [client-lifecycle] client 08bcefce-e973-4d2e-be32-262df981aebd: ADAPTERS_DRY_RUN fence is up — stamped placeholder dry-ghl-08bcefcee973 and did not call the CRM
+# Subtest: signed paid callback recovers needs_review checkout using independently verified GETs only
+ok 5 - signed paid callback recovers needs_review checkout using independently verified GETs only
+  ---
+  duration_ms: 45.282292
+  type: 'test'
+  ...
+# [client-lifecycle] client 65cf324b-314d-4d24-be8c-c440b22d8b27: ADAPTERS_DRY_RUN fence is up — stamped placeholder dry-ghl-65cf324b314d and did not call the CRM
+# Subtest: GET reconciliation recovers a dropped help payment and refund through the same durable inbox exactly once
+ok 6 - GET reconciliation recovers a dropped help payment and refund through the same durable inbox exactly once
+  ---
+  duration_ms: 75.841917
+  type: 'test'
+  ...
+# Subtest: normal Commas inbox rejects a Whop-reserved service before any canonical receipt or money write
+ok 7 - normal Commas inbox rejects a Whop-reserved service before any canonical receipt or money write
+  ---
+  duration_ms: 37.7165
+  type: 'test'
+  ...
+# [client-lifecycle] client 87d5e8ef-6f4e-4ad7-929c-2486593aeac3: ADAPTERS_DRY_RUN fence is up — stamped placeholder dry-ghl-87d5e8ef6f4e and did not call the CRM
+# Subtest: a valid settled Whop payment after local checkout expiry records one receipt and review task without activating help
+ok 8 - a valid settled Whop payment after local checkout expiry records one receipt and review task without activating help
+  ---
+  duration_ms: 46.852875
+  type: 'test'
+  ...
+# [client-lifecycle] client 01cf854c-8d2a-4ab3-9c5d-b8f76fe6c0a9: ADAPTERS_DRY_RUN fence is up — stamped placeholder dry-ghl-01cf854c8d2a and did not call the CRM
+# Subtest: a reserved v1 service recovers by GET, settles once and refunds the original payment after the metadata upgrade
+ok 9 - a reserved v1 service recovers by GET, settles once and refunds the original payment after the metadata upgrade
+  ---
+  duration_ms: 50.74575
+  type: 'test'
+  ...
+# Subtest: service financing availability depends on the existing complete Whop configuration
+ok 10 - service financing availability depends on the existing complete Whop configuration
+  ---
+  duration_ms: 0.802334
+  type: 'test'
+  ...
+# Subtest: a quoted help amount uses the configured generic product without a package entitlement SKU
+ok 11 - a quoted help amount uses the configured generic product without a package entitlement SKU
+  ---
+  duration_ms: 0.248875
+  type: 'test'
+  ...
+# Subtest: Whop service creation verifies the exact checkout and retrieved variant before returning its URL
+ok 12 - Whop service creation verifies the exact checkout and retrieved variant before returning its URL
+  ---
+  duration_ms: 18.819458
+  type: 'test'
+  ...
+# Subtest: Whop service payment refuses every altered identity, amount, item, metadata, currency and second payment ID
+ok 13 - Whop service payment refuses every altered identity, amount, item, metadata, currency and second payment ID
+  ---
+  duration_ms: 2.455917
+  type: 'test'
+  ...
+# Subtest: every help kind sends only opaque order metadata; legacy receipts cannot mint or change versions
+ok 14 - every help kind sends only opaque order metadata; legacy receipts cannot mint or change versions
+  ---
+  duration_ms: 0.811833
+  type: 'test'
+  ...
+# Subtest: sandbox service checkout requires its exact sandbox URL and verifies the variant on the sandbox API
+ok 15 - sandbox service checkout requires its exact sandbox URL and verifies the variant on the sandbox API
+  ---
+  duration_ms: 2.682209
+  type: 'test'
+  ...
+# [fence] held Whop billing request — ADAPTERS_DRY_RUN is not set. The dry-run fence defaults to BLOCKED, so nothing transmits until it is set to an explicit off value (0, false, no, or off).
+# Subtest: Whop selects only explicit documented production and sandbox hosts
+ok 16 - Whop selects only explicit documented production and sandbox hosts
+  ---
+  duration_ms: 3.178458
+  type: 'test'
+  ...
+# Subtest: Whop serialized package checkout preserves neutral refs on production
+ok 17 - Whop serialized package checkout preserves neutral refs on production
+  ---
+  duration_ms: 21.055709
+  type: 'test'
+  ...
+# Subtest: Whop serialized service checkout preserves neutral refs on production
+ok 18 - Whop serialized service checkout preserves neutral refs on production
+  ---
+  duration_ms: 0.452875
+  type: 'test'
+  ...
+# Subtest: Whop serialized package checkout preserves neutral refs on sandbox
+ok 19 - Whop serialized package checkout preserves neutral refs on sandbox
+  ---
+  duration_ms: 0.319208
+  type: 'test'
+  ...
+# Subtest: Whop serialized service checkout preserves neutral refs on sandbox
+ok 20 - Whop serialized service checkout preserves neutral refs on sandbox
+  ---
+  duration_ms: 0.239291
+  type: 'test'
+  ...
+# Subtest: Whop refuses descriptive copy, metadata additions and mismatched refs before network
+ok 21 - Whop refuses descriptive copy, metadata additions and mismatched refs before network
+  ---
+  duration_ms: 1.220709
+  type: 'test'
+  ...
+# Subtest: Whop validates serialized values and preserves the existing adapter fence
+ok 22 - Whop validates serialized values and preserves the existing adapter fence
+  ---
+  duration_ms: 0.552291
+  type: 'test'
+  ...
+# Subtest: Whop rejects invalid environment and resource traversal before network
+ok 23 - Whop rejects invalid environment and resource traversal before network
+  ---
+  duration_ms: 0.240792
+  type: 'test'
+  ...
+# [client-lifecycle] client a948569f-67fc-44fe-9ec0-25087390a4a2: ADAPTERS_DRY_RUN fence is up — stamped placeholder dry-ghl-a948569f67fc and did not call the CRM
+# Subtest: Whop v1 $5000 receipt reaches real canonical transaction, sale payment and entitlement exactly once
+ok 24 - Whop v1 $5000 receipt reaches real canonical transaction, sale payment and entitlement exactly once
+  ---
+  duration_ms: 111.867125
+  type: 'test'
+  ...
+# [client-lifecycle] client 9bc2c2ea-09cb-44a2-a179-34b60e5fead9: ADAPTERS_DRY_RUN fence is up — stamped placeholder dry-ghl-9bc2c2ea09cb and did not call the CRM
+# Subtest: Whop v1 $7500 receipt reaches real canonical transaction, sale payment and entitlement exactly once
+ok 25 - Whop v1 $7500 receipt reaches real canonical transaction, sale payment and entitlement exactly once
+  ---
+  duration_ms: 40.213083
+  type: 'test'
+  ...
+# [client-lifecycle] client 6f5815d5-6da7-4d27-bd64-ad1bae7073e1: ADAPTERS_DRY_RUN fence is up — stamped placeholder dry-ghl-6f5815d56da7 and did not call the CRM
+# Subtest: Whop v2 $10000 receipt reaches real canonical transaction, sale payment and entitlement exactly once
+ok 26 - Whop v2 $10000 receipt reaches real canonical transaction, sale payment and entitlement exactly once
+  ---
+  duration_ms: 39.735958
+  type: 'test'
+  ...
+# [client-lifecycle] client da95c0a6-741d-4600-b799-161a59e49e6f: ADAPTERS_DRY_RUN fence is up — stamped placeholder dry-ghl-da95c0a6741d and did not call the CRM
+# Subtest: Whop v2 $25000 receipt reaches real canonical transaction, sale payment and entitlement exactly once
+ok 27 - Whop v2 $25000 receipt reaches real canonical transaction, sale payment and entitlement exactly once
+  ---
+  duration_ms: 47.552542
+  type: 'test'
+  ...
+# Subtest: real Whop inbox unique constraint absorbs redelivery and claims never repeat the active row
+ok 28 - real Whop inbox unique constraint absorbs redelivery and claims never repeat the active row
+  ---
+  duration_ms: 11.97075
+  type: 'test'
+  ...
+# [fence] held Whop billing request — ADAPTERS_DRY_RUN is not set. The dry-run fence defaults to BLOCKED, so nothing transmits until it is set to an explicit off value (0, false, no, or off).
+# [fence] held Whop billing request — ADAPTERS_DRY_RUN is set to "1", which is not an explicit off value (0, false, no, off). Treating it as fence UP and holding.
+# [fence] held Whop billing request — ADAPTERS_DRY_RUN is set to "unknown", which is not an explicit off value (0, false, no, off). Treating it as fence UP and holding.
+# Subtest: Whop configuration requires each exact Fundhub billing variable; merchant keys do not count
+ok 29 - Whop configuration requires each exact Fundhub billing variable; merchant keys do not count
+  ---
+  duration_ms: 1.184875
+  type: 'test'
+  ...
+# Subtest: exact price range and Money parsing preserve cents without rounding
+ok 30 - exact price range and Money parsing preserve cents without rounding
+  ---
+  duration_ms: 0.416375
+  type: 'test'
+  ...
+# Subtest: full-package Whop receipt preserves the actual SKU, agreed price and package metadata
+ok 31 - full-package Whop receipt preserves the actual SKU, agreed price and package metadata
+  ---
+  duration_ms: 0.810333
+  type: 'test'
+  ...
+# Subtest: checkout uses only the canonical product/title, exact amount and server order metadata
+ok 32 - checkout uses only the canonical product/title, exact amount and server order metadata
+  ---
+  duration_ms: 0.15375
+  type: 'test'
+  ...
+# Subtest: legacy package metadata remains exact and read-only while new orders cannot downgrade
+ok 33 - legacy package metadata remains exact and read-only while new orders cannot downgrade
+  ---
+  duration_ms: 0.923791
+  type: 'test'
+  ...
+# Subtest: package checkout verification binds the selected Whop origin before reading a variant
+ok 34 - package checkout verification binds the selected Whop origin before reading a variant
+  ---
+  duration_ms: 0.886166
+  type: 'test'
+  ...
+# Subtest: checkout reserves local identity and validates agreement before posting to provider
+ok 35 - checkout reserves local identity and validates agreement before posting to provider
+  ---
+  duration_ms: 38.932209
+  type: 'test'
+  ...
+# Subtest: provider checkout response and variant must match exact amount, product and currency before URL is returned
+ok 36 - provider checkout response and variant must match exact amount, product and currency before URL is returned
+  ---
+  duration_ms: 1.202875
+  type: 'test'
+  ...
+# Subtest: signed receiver stores raw receipt once and never emits/grants in HTTP request
+ok 37 - signed receiver stores raw receipt once and never emits/grants in HTTP request
+  ---
+  duration_ms: 0.819541
+  type: 'test'
+  ...
+# Subtest: receiver rejects unsigned, altered, stale/future, wrong-account and GET requests
+ok 38 - receiver rejects unsigned, altered, stale/future, wrong-account and GET requests
+  ---
+  duration_ms: 1.003292
+  type: 'test'
+  ...
+# Subtest: unknown-order reversal asks Whop to retry without assigning another tenant
+ok 39 - unknown-order reversal asks Whop to retry without assigning another tenant
+  ---
+  duration_ms: 0.279958
+  type: 'test'
+  ...
+# Subtest: strict receipt validation rejects every identity/amount/quantity/metadata mismatch
+ok 40 - strict receipt validation rejects every identity/amount/quantity/metadata mismatch
+  ---
+  duration_ms: 0.213667
+  type: 'test'
+  ...
+# Subtest: settled receipt emits ordinary money-chain event once and stores Whop ID only
+ok 41 - settled receipt emits ordinary money-chain event once and stores Whop ID only
+  ---
+  duration_ms: 0.167834
+  type: 'test'
+  ...
+# Subtest: a duplicate event retries failed handlers against its stored canonical event
+ok 42 - a duplicate event retries failed handlers against its stored canonical event
+  ---
+  duration_ms: 0.211917
+  type: 'test'
+  ...
+# Subtest: failed and canceled payments never mark paid; later success has its own transaction ref
+ok 43 - failed and canceled payments never mark paid; later success has its own transaction ref
+  ---
+  duration_ms: 0.139542
+  type: 'test'
+  ...
+# Subtest: a delayed failure cannot chase a buyer whose exact payment is already settled
+ok 44 - a delayed failure cannot chase a buyer whose exact payment is already settled
+  ---
+  duration_ms: 0.216
+  type: 'test'
+  ...
+# Subtest: unpaid or mismatched receipts and a second payment ID cannot emit a purchase
+ok 45 - unpaid or mismatched receipts and a second payment ID cannot emit a purchase
+  ---
+  duration_ms: 0.463375
+  type: 'test'
+  ...
+# Subtest: refund and current-API dispute shapes preserve original reference and wait for original sale
+ok 46 - refund and current-API dispute shapes preserve original reference and wait for original sale
+  ---
+  duration_ms: 0.226625
+  type: 'test'
+  ...
+# Subtest: reconciliation recovers a missing callback via GET only and the shared durable inbox
+ok 47 - reconciliation recovers a missing callback via GET only and the shared durable inbox
+  ---
+  duration_ms: 3.2415
+  type: 'test'
+  ...
+# Subtest: v1 GET reconciliation heals a provider checkout after interrupted local save
+ok 48 - v1 GET reconciliation heals a provider checkout after interrupted local save
+  ---
+  duration_ms: 0.790541
+  type: 'test'
+  ...
+# Subtest: v2 GET reconciliation heals a provider checkout after interrupted local save
+ok 49 - v2 GET reconciliation heals a provider checkout after interrupted local save
+  ---
+  duration_ms: 0.518084
+  type: 'test'
+  ...
+# Subtest: provider errors are redacted and repeated pagination cursor fails visibly
+ok 50 - provider errors are redacted and repeated pagination cursor fails visibly
+  ---
+  duration_ms: 0.523041
+  type: 'test'
+  ...
+# Subtest: Whop checkout cannot bypass the adapter fence even with an injected transport
+ok 51 - Whop checkout cannot bypass the adapter fence even with an injected transport
+  ---
+  duration_ms: 0.693541
+  type: 'test'
+  ...
+# Subtest: inbox claims use atomic skip-locked recovery and bounded attempts
+ok 52 - inbox claims use atomic skip-locked recovery and bounded attempts
+  ---
+  duration_ms: 0.251458
+  type: 'test'
+  ...
+1..52
+# tests 52
+# suites 0
+# pass 52
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1337.581959

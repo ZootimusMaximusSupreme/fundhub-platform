@@ -1,0 +1,41 @@
+{
+  "checkedAt": "2026-11-06T18:21:41.403609+00:00",
+  "provider": "Whop",
+  "host": "sandbox.whop.com",
+  "status": "sandbox_business_ready_key_creation_approval_pending",
+  "login": "existing owner account, normal email and requested one-time sign-in code",
+  "sessionCopiedFromProduction": false,
+  "termsAccepted": true,
+  "approval": "Owner conditioned acceptance on the Commas naming rule; the repair and independent verification completed before sandbox terms acceptance. A separate action-time approval for creating the prepared narrow key is pending.",
+  "gate": [
+    "Terms of Service",
+    "Seller Terms",
+    "Spend Card Terms",
+    "Wallet Terms"
+  ],
+  "sandboxKeysCreated": 0,
+  "sandboxCheckouts": 0,
+  "providerDeliveredWebhooks": 0,
+  "productionRecordsChanged": false,
+  "credentialsOrCodesInReceipt": false,
+  "earlierSignedCallbacks": "local fixture transport only, recorded separately in result.json",
+  "originalCheckedAt": "2026-11-06T17:19:25Z",
+  "sandboxBusinessCreated": true,
+  "sandboxAccountId": "biz_HJLxYsZFdxSfkV",
+  "preparedKey": {
+    "name": "Consulting Services Sandbox",
+    "expiresAt": "2026-11-07T00:00:00Z",
+    "scopes": [
+      "checkout_configuration:basic:read",
+      "checkout_configuration:create",
+      "plan:basic:read",
+      "payment:basic:read"
+    ],
+    "created": false
+  },
+  "automaticReview": {
+    "action": "Select Create plans permission",
+    "outcome": "rejected as broader access without specific approval",
+    "alternative": "Not selected; prepared only checkout create/read and read-only plan/payment access."
+  }
+}

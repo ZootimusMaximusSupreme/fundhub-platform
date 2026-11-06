@@ -1,5 +1,5 @@
 import { listWhopResource } from '../messaging/providers/whop-payments.mjs';
-import { whopConfig, whopBlueprintMetadata, verifyWhopCheckout } from './whop-blueprint.mjs';
+import { whopConfig, whopBlueprintMetadata, matchesWhopMetadata, verifyWhopCheckout } from './whop-blueprint.mjs';
 import { enqueueWhopBilling } from './whop-billing-inbox.mjs';
 import { readWhopServiceOrders } from '../blueprint/service-whop.mjs';
 
@@ -19,8 +19,7 @@ export async function reconcileWhopBilling(db, { env = process.env, fetchImpl = 
       accountId: cfg.accountId, apiKey: cfg.apiKey, env, fetchImpl });
     for (const link of links.filter((item) => !item.whop_checkout_configuration_id)) {
       const expected = whopBlueprintMetadata(link);
-      const out = checkouts.find((item) => Object.entries(expected)
-        .every(([key, value]) => item.metadata?.[key] === value));
+      const out = checkouts.find((item) => matchesWhopMetadata(item.metadata, expected));
       if (!out) continue;
       await verifyWhopCheckout(out, cfg, link, { env, fetchImpl });
       await db.query(`UPDATE payment_links SET checkout_url = $2,

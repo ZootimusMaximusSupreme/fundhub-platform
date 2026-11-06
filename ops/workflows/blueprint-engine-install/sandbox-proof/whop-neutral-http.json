@@ -1,0 +1,128 @@
+{
+  "startedAt": "2026-11-06T18:02:32.755Z",
+  "databaseRole": "fundhub_app",
+  "externalProviderRequests": 0,
+  "liveCustomerActions": 0,
+  "providerSandboxDelivery": "This HTTP rehearsal used fixture transports. See crs-vendor-three-bureau.json for the separate external TransUnion, Experian and Equifax sandbox run.",
+  "transport": {
+    "http": "real loopback HTTP to production Netlify router",
+    "payments": "synthetic signed event bytes and simulated Whop checkout responses",
+    "reports": "real CRS sandbox client, published per-bureau identities, synthetic HTTP response bytes; no actual vendor network"
+  },
+  "checks": [
+    {
+      "label": "bad signature refused; signed incorrect amount retained as failed, zero grants"
+    },
+    {
+      "label": "signed full $30,000 receipt, durable inbox replay, one active workspace",
+      "amountCents": 3000000
+    },
+    {
+      "label": "included report saved through actual CRS sandbox client with three fixture responses",
+      "ledger": {
+        "status": "fulfilled",
+        "blueprint_report_kind": "included",
+        "environment": "sandbox"
+      },
+      "aftercare": {
+        "ok": true,
+        "staged": 0,
+        "fulfilled": 1,
+        "waiting": 0,
+        "errors": [],
+        "completedServices": 0
+      }
+    },
+    {
+      "label": "separate paid-extra report receipt and report stored",
+      "amountCents": 3200,
+      "ledger": {
+        "status": "fulfilled",
+        "produced_kind": "crs_result",
+        "report_status": "fulfilled",
+        "environment": "sandbox"
+      },
+      "aftercare": {
+        "ok": true,
+        "staged": 0,
+        "fulfilled": 1,
+        "waiting": 0,
+        "errors": [],
+        "completedServices": 0
+      }
+    },
+    {
+      "label": "CSM negotiated funding help, stale price refused, exact financed receipt activates one managed round",
+      "amountCents": 120000
+    },
+    {
+      "label": "refund replay preserved single engagement and round",
+      "originalReceiptRetained": true
+    },
+    {
+      "label": "Commas signed paid-extra receipt, duplicate, drain, exact report and stored scoped completion",
+      "ledger": {
+        "status": "fulfilled",
+        "produced_kind": "crs_result",
+        "environment": "sandbox"
+      },
+      "amountCents": 3200
+    }
+  ],
+  "orders": {
+    "TU": 3,
+    "EX": 3,
+    "EQ": 3
+  },
+  "wire": [
+    {
+      "provider": "whopFixture",
+      "method": "POST",
+      "resource": "checkout_configurations",
+      "outboundSchema": "2",
+      "metadataKeys": [
+        "fh_amount_cents",
+        "fh_client_id",
+        "fh_currency",
+        "fh_engagement_id",
+        "fh_org_id",
+        "fh_schema",
+        "fh_service_request_id",
+        "fh_target_id"
+      ]
+    },
+    {
+      "provider": "whopFixture",
+      "method": "GET",
+      "resource": "variants"
+    },
+    {
+      "provider": "whopFixture",
+      "method": "POST",
+      "resource": "checkout_configurations",
+      "outboundSchema": "2",
+      "metadataKeys": [
+        "fh_amount_cents",
+        "fh_client_id",
+        "fh_currency",
+        "fh_engagement_id",
+        "fh_org_id",
+        "fh_schema",
+        "fh_service_request_id",
+        "fh_target_id"
+      ]
+    },
+    {
+      "provider": "whopFixture",
+      "method": "GET",
+      "resource": "variants"
+    },
+    {
+      "provider": "commasFixture",
+      "method": "POST",
+      "resource": "checkout-sessions"
+    }
+  ],
+  "completedAt": "2026-11-06T18:02:34.414Z",
+  "status": "passed"
+}
