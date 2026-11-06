@@ -77,3 +77,11 @@ diff between the two files — CLAUDE.md §4 describes intended vs. actual as a 
 comparison, and this repository has never built a machine check for it. Read both,
 side by side, and treat any difference between them as a finding to report, not
 something to silently fix in either file.
+
+## Scoped full Blueprint sale handoff — owner GO 2026-11-06
+
+Only an explicitly enabled active affiliate account may save its buyer for the full Blueprint at exactly $30,000. The company and affiliate come from the session, never the request. Canonical client identity and immutable first-touch ownership stay in place. Conflicting request ids, another referrer's client and incompatible staff/partner/affiliate login emails are refused before an order.
+
+A buyer without a real staff-issued exact-price full Blueprint agreement reads `needs_contract`; no handoff or financing checkout is returned. Automatic affiliate contract issuance requires the separately requested audit-actor approval; the build must not name an owner or fabricated employee as the affiliate's action. Once the real matching agreement exists, the permanent Fundhub handoff pins one company, buyer, seller, agreement and preallocated order. Retries preserve that order and Whop idempotency key. The provider must confirm explicit ClarityPay configuration; this is not customer financing approval.
+
+The permanent outer URL renews the inner signing door without sending an expiring link. After the whole agreement is signed it opens the same verified checkout. Only a matched paid provider transaction with full Blueprint entitlement opens the normal portal sign-in. No self-reported payment grants access. Attribution and sales stay recorded while the seller commission remains uncalculated; this change sets no rate and pays nobody. Saved handoff integrity and paid-access checks run in the existing Whop heartbeat.

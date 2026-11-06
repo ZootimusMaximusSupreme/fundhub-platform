@@ -1,0 +1,183 @@
+REVIEW ONLY — NOT APPLIED — OWNER APPROVAL REQUIRED
+
+Automatic approval review rejected changing the core contract audit model because
+it changes persistent creator/sender identity beyond staff. This inert proposal
+shows the exact database/helper change for review. No migration or runtime file
+is written by preparing this artifact. No data or credentials are included.
+
+Effect: retain every staff-authored record and allow the actual affiliate account
+as one exclusive creator/sender. Same-company affiliate checks remain enforced.
+No fabricated employee, no owner stand-in, no broad staff permission. The seller
+API would bind accountId from its authenticated allowed affiliate, never request
+body input. Existing staff flows omit accountId and preserve current behavior.
+
+After approval: add the named migration to db/expected-migrations.mjs, apply through
+the protected release, wire the scoped seller action to these helpers, share only
+the permanent outer handoff and add staff/default + affiliate actor regression
+proof. This proposal does not activate automatic issue or send any agreement.
+
+--- /dev/null
++++ b/db/migrations/566_contract_affiliate_actors.sql
+@@ -0,0 +1,27 @@
++-- REVIEW ONLY: not an applied migration. Preserve each actual contract actor.
++ALTER TABLE contracts ALTER COLUMN created_by DROP NOT NULL;
++ALTER TABLE contracts ADD COLUMN IF NOT EXISTS created_by_account_id uuid REFERENCES accounts(id) ON DELETE RESTRICT;
++ALTER TABLE contracts ADD COLUMN IF NOT EXISTS sent_by_account_id uuid REFERENCES accounts(id) ON DELETE RESTRICT;
++DO $$ BEGIN
++ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='contracts_creator_subject_ck') THEN
++  ALTER TABLE contracts ADD CONSTRAINT contracts_creator_subject_ck CHECK (num_nonnulls(created_by,created_by_account_id)=1);
++ END IF;
++ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='contracts_sender_subject_ck') THEN
++  ALTER TABLE contracts ADD CONSTRAINT contracts_sender_subject_ck CHECK (num_nonnulls(sent_by,sent_by_account_id)<=1);
++ END IF;
++END $$;
++CREATE OR REPLACE FUNCTION guard_contract_account_actor() RETURNS trigger LANGUAGE plpgsql AS $$
++BEGIN
++ IF NEW.created_by_account_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM accounts a
++  WHERE a.id=NEW.created_by_account_id AND a.org_id=NEW.org_id AND a.kind='affiliate') THEN
++  RAISE EXCEPTION 'Contract creator must be an affiliate in the same company';
++ END IF;
++ IF NEW.sent_by_account_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM accounts a
++  WHERE a.id=NEW.sent_by_account_id AND a.org_id=NEW.org_id AND a.kind='affiliate') THEN
++  RAISE EXCEPTION 'Contract sender must be an affiliate in the same company';
++ END IF;
++ RETURN NEW;
++END $$;
++DROP TRIGGER IF EXISTS trg_contract_account_actor ON contracts;
++CREATE TRIGGER trg_contract_account_actor BEFORE INSERT OR UPDATE OF org_id,created_by_account_id,sent_by_account_id
++ ON contracts FOR EACH ROW EXECUTE FUNCTION guard_contract_account_actor();
+
+--- a/src/contracts/send.mjs
++++ b/src/contracts/send.mjs
+@@ -60,7 +60,7 @@
+   source_kind, fields, source_document_id, source_document_version_id,
+   signed_document_id, signed_document_version_id, signed_body_sha,
+   signing_order, completed_at,
+-  created_by, created_at, updated_at`;
++  created_by, created_by_account_id, sent_by_account_id, created_at, updated_at`;
+ 
+ /** 'sha256:<hex>' — the same algorithm-prefixed shape documents.checksum uses. */
+ /* THE "DO NOT SEND THIS" TEMPLATES REFUSE TO SEND (walkthrough-4 defect 2,
+@@ -228,11 +228,14 @@
+  * ever be shown by accident.
+  */
+ export async function createDraft(db, {
+-  orgId, staffId, clientId, templateId, values = {}, title = null,
++  orgId, staffId = null, accountId = null, clientId, templateId, values = {}, title = null,
+   signers = null, signingOrder = "sequential", subjectStaffId = null, amountCents = undefined
+ } = {}) {
+   if (!orgId) throw badRequest("A contract needs to belong to a company.", "org_required");
+-  if (!staffId) throw badRequest("A contract has to record who created it.", "staff_required");
++  if ((!staffId && !accountId) || (staffId && accountId)) throw badRequest("Record one actual contract creator.", "actor_required");
++  if (accountId && !(await db.query(`SELECT id FROM accounts WHERE id=$1 AND org_id=$2 AND kind='affiliate' AND status='active'`, [accountId, orgId])).rows[0]) {
++    throw forbidden("That affiliate cannot issue this agreement.", "account_actor_forbidden");
++  }
+   if (!clientId) throw badRequest("Pick the client this contract is for.", "client_required");
+   if (subjectStaffId) {
+     const ownsStaff = await db.query(
+@@ -268,7 +271,7 @@
+     `INSERT INTO contracts
+        (org_id, client_id, staff_id, template_id, template_key, title, kind, subtype,
+         merge_values, signature_required, created_by,
+-        source_kind, fields, signing_order, is_demo)
++        source_kind, fields, signing_order, is_demo, created_by_account_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13::jsonb,$14,
+      /* A contract for a demo client is a demo contract. Read off the client
+         rather than passed in, because every caller that creates a fixture
+@@ -276,7 +279,7 @@
+         2026-08-27 all 44 contracts in the production database were test
+         artifacts signed by "Sim Repair", "Mock CloserSign" and the like, none
+         flagged, all of them showing to the operator as real signed agreements. */
+-     COALESCE((SELECT c.is_demo FROM clients c WHERE c.id = $2), false))
++     COALESCE((SELECT c.is_demo FROM clients c WHERE c.id = $2), false),$15)
+      RETURNING ${CONTRACT_COLUMNS}`,
+     [orgId, clientId, subjectStaffId || null, template.id, template.template_key,
+      (title && String(title).trim()) || template.name,
+@@ -288,7 +291,7 @@
+         adjusting it must not reach back and edit the template every other
+         contract is generated from. */
+      JSON.stringify(template.fields || []),
+-     signingOrder === "parallel" ? "parallel" : "sequential"]
++     signingOrder === "parallel" ? "parallel" : "sequential", accountId]
+   );
+   const contract = rows[0];
+ 
+@@ -390,10 +393,13 @@
+  * storeFromEnv(), which is the in-memory provider unless one is configured.
+  */
+ export async function send(db, {
+-  orgId, staffId, id, store = null, ttlSeconds = DEFAULT_TTL_SECONDS,
++  orgId, staffId = null, accountId = null, id, store = null, ttlSeconds = DEFAULT_TTL_SECONDS,
+   baseUrl = null, secret = undefined, at = new Date(), now = Date.now, amountCents = undefined
+ } = {}) {
+-  if (!staffId) throw badRequest("A send has to record who sent it.", "staff_required");
++  if ((!staffId && !accountId) || (staffId && accountId)) throw badRequest("Record one actual contract sender.", "actor_required");
++  if (accountId && !(await db.query(`SELECT id FROM accounts WHERE id=$1 AND org_id=$2 AND kind='affiliate' AND status='active'`, [accountId, orgId])).rows[0]) {
++    throw forbidden("That affiliate cannot send this agreement.", "account_actor_forbidden");
++  }
+ 
+   const current = await getContract(db, { orgId, id });
+   if (!current) throw notFound();
+@@ -457,7 +463,7 @@
+   if (current.source_kind === "pdf") {
+     return sendPdf(db, {
+       orgId, staffId, contract: current, template, signers,
+-      store, ttlSeconds, baseUrl, secret, at, now
++      store, ttlSeconds, baseUrl, secret, at, now, accountId
+     });
+   }
+ 
+@@ -523,7 +529,7 @@
+             document_id = $5, document_version_id = $6,
+             signature_statement = $7, signature_required = $8,
+             merge_values = $11::jsonb,
+-            sent_at = $9, sent_by = $10::uuid, updated_at = now()
++            sent_at = $9, sent_by = $10::uuid, sent_by_account_id = $12::uuid, updated_at = now()
+       WHERE id = $1::uuid AND org_id = $2::uuid AND status = 'draft'
+       RETURNING ${CONTRACT_COLUMNS}`,
+     [current.id, orgId, body, sha,
+@@ -534,7 +540,7 @@
+         Still a 'draft' row at this instant, so trg_contracts_frozen permits it —
+         the same reason rendered_body and signature_statement can be written
+         here. Every later change is refused. */
+-     JSON.stringify(values)]
++     JSON.stringify(values), accountId]
+   );
+ 
+   if (!rows[0]) {
+@@ -638,7 +644,9 @@
+     status: contract.status,
+     document_id: contract.document_id,
+     document_version_id: contract.document_version_id,
+-    body_sha: contract.body_sha
++    body_sha: contract.body_sha,
++    created_by_account_id: contract.created_by_account_id || null,
++    sent_by_account_id: contract.sent_by_account_id || null
+   };
+   try {
+     return await emit(db, name, payload, {
+@@ -772,7 +780,7 @@
+  * Both go through documents/document_versions, so both are immutable by trigger.
+  */
+ async function sendPdf(db, {
+-  orgId, staffId, contract, template, signers, store, ttlSeconds, baseUrl, secret, at, now
++  orgId, staffId, contract, template, signers, store, ttlSeconds, baseUrl, secret, at, now, accountId = null
+ }) {
+   const fields = normaliseFields(contract.fields, {
+     pageCount: template.page_count,
+@@ -862,13 +870,13 @@
+             source_document_id = $7, source_document_version_id = $8,
+             fields = $9::jsonb,
+             signature_statement = $10, signature_required = true,
+-            sent_at = $11, sent_by = $12::uuid, updated_at = now()
++            sent_at = $11, sent_by = $12::uuid, sent_by_account_id = $13::uuid, updated_at = now()
+       WHERE id = $1::uuid AND org_id = $2::uuid AND status = 'draft'
+       RETURNING ${CONTRACT_COLUMNS}`,
+     [contract.id, orgId, manifest, sha,
+      registered.document?.id || null, registered.version?.id || null,
+      source.document?.id || null, source.version?.id || null,
+-     JSON.stringify(filled), template.signature_statement, at, staffId]);
++     JSON.stringify(filled), template.signature_statement, at, staffId, accountId]);
+ 
+   if (!rows[0]) {
+     const out = await mintLinks(db, { orgId, contract, ttlSeconds, baseUrl, secret, now });

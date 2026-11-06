@@ -6,10 +6,10 @@ export const kind = 'infra';
 // webhook:whop-billing is the router's provider for these receipts (src/http/router.mjs). The Inngest
 // clock job:whop-billing-inbox-drain was retired on 2026-10-20 (the free plan ran out); the Netlify
 // whop-billing-inbox-sweeper, read below, is the only clock, every 5 minutes.
-export const covers = ['webhook:whop-billing'];
+export const covers = ['webhook:whop-billing','route:affiliates/blueprint-sale','route:public/blueprint-handoff'];
 export const box = false;
 export const reads = [];
-export const steps = ['configured', 'clock-alive', 'inbox-clear', 'paid-access'];
+export const steps = ['configured', 'clock-alive', 'inbox-clear', 'paid-access', 'seller-handoffs'];
 export const deadlineMs = 9000;
 export const damp = 1;
 export const CLOCK_STALE_MS = 3 * 5 * 60000;
@@ -24,7 +24,7 @@ export const ACCESS_SQL = `SELECT count(DISTINCT l.id)::integer AS n
   FROM payment_links l JOIN products p ON p.id = l.product_id AND p.org_id = l.org_id
   LEFT JOIN transactions t ON t.org_id = l.org_id AND t.client_id = l.client_id
     AND t.provider = 'whop' AND t.provider_ref = l.whop_payment_id AND t.status = 'succeeded'
-  WHERE l.provider = 'whop' AND l.status = 'paid' AND p.code = 'consulting-package'
+  WHERE l.provider = 'whop' AND l.status = 'paid' AND p.code IN ('consulting-package','blueprint-self-funding')
     AND l.paid_at < now() - interval '10 minutes'
     AND (t.id IS NULL OR NOT EXISTS (SELECT 1 FROM product_entitlements pe
        WHERE pe.org_id = l.org_id AND pe.product_code = p.code)
@@ -32,6 +32,23 @@ export const ACCESS_SQL = `SELECT count(DISTINCT l.id)::integer AS n
         AND pe.product_code = p.code AND NOT EXISTS (SELECT 1 FROM entitlements e
           WHERE e.org_id = l.org_id AND e.client_id = l.client_id
             AND e.source_transaction_id = t.id AND e.entitlement_code = pe.entitlement_code)))`;
+
+
+// A pending human agreement is a truthful wait. Once a contract is pinned,
+// the same-company buyer, first-touch seller and exact order must all agree.
+export const SELLER_SQL = `SELECT count(*)::integer AS n FROM clients c
+  CROSS JOIN LATERAL (SELECT c.custom_fields->'blueprint_seller_sale' AS s) handoff
+  LEFT JOIN affiliates a ON a.id=(s->>'affiliate_id')::uuid AND a.org_id=c.org_id
+  LEFT JOIN accounts ac ON ac.id=(s->>'account_id')::uuid AND ac.org_id=c.org_id AND ac.affiliate_id=a.id AND ac.kind='affiliate'
+  LEFT JOIN affiliate_referrals r ON r.client_id=c.id AND r.org_id=c.org_id AND r.tier='direct' AND r.affiliate_id=a.id
+  LEFT JOIN contracts k ON k.id=(s->>'contract_id')::uuid AND k.client_id=c.id AND k.org_id=c.org_id
+  LEFT JOIN payment_links l ON l.id=(s->>'payment_link_id')::uuid AND l.client_id=c.id AND l.org_id=c.org_id
+  LEFT JOIN products p ON p.id=l.product_id AND p.org_id=l.org_id
+  WHERE s IS NOT NULL AND c.is_demo IS NOT TRUE AND (a.id IS NULL OR ac.id IS NULL OR r.id IS NULL
+    OR s->>'org_id'<>c.org_id::text OR s->>'client_id'<>c.id::text
+    OR (s->>'contract_id' IS NOT NULL AND ((s->>'created_at')::timestamptz < now()-interval '15 minutes')
+      AND (k.id IS NULL OR k.template_key<>'BLUEPRINT-SELF-FUNDING-AGREEMENT'
+        OR l.id IS NULL OR l.provider<>'whop' OR l.amount_cents<>3000000 OR p.code<>'blueprint-self-funding'))) `;
 
 export const fixGuide = `A Whop payment clock, receipt or Blueprint access grant needs attention.
 
@@ -62,7 +79,8 @@ export async function run(ctx) {
   });
   for (const [step, sql, description] of [
     ['inbox-clear', INBOX_SQL, 'Whop receipts are overdue, abandoned or stuck in recovery'],
-    ['paid-access', ACCESS_SQL, 'paid Whop Blueprint orders lack their exact transaction or access grant']
+    ['paid-access', ACCESS_SQL, 'paid Whop Blueprint orders lack their exact transaction or access grant'],
+    ['seller-handoffs', SELLER_SQL, 'seller handoffs have mismatched buyer, first-touch owner, agreement or checkout']
   ]) {
     await ctx.step(step, async () => {
       const row = (await ctx.read(sql)).rows[0];
@@ -79,7 +97,8 @@ const world = () => ({ env: { NETLIFY: 'true', WHOP_API_KEY: 'selftest-key', WHO
 read: [
   { match: /FROM job_heartbeats/, rows: [{ last_at: new Date('2026-10-09T19:06:30Z'), last_outcome: 'ok' }] },
   { match: /FROM whop_billing_inbox/, rows: [{ n: 0 }] },
-  { match: /FROM payment_links/, rows: [{ n: 0 }] }
+  { match: /FROM payment_links/, rows: [{ n: 0 }] },
+  { match: /FROM clients c/, rows: [{ n: 0 }] }
 ] });
 export const selfTest = { pass: world, fail: () => ({ ...world(), read: [
   { match: /FROM job_heartbeats/, rows: [{ last_at: null, last_outcome: null }] }
