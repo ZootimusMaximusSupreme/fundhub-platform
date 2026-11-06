@@ -72,7 +72,7 @@ Fill prompt `{{placeholders}}` from the sim’s survey / file only. Skip empty. 
 
 Two seats. Do not mix them.
 
-**Agent seat.** System = the live prompt, word for word. Same model path the product uses (`src/agents/model.mjs` `callModel`). No extra coaching. No “remember to hit every beat.”
+**Agent seat.** Use the active prompt and the actual provider, model and runtime path selected by this agent, including any runtime instructions and tools. `src/agents/model.mjs` `callModel` applies only where the product calls it. If the actual voice path cannot be exercised safely, record it as UNVERIFIED. A substitute model is exploratory evidence only. No extra coaching.
 
 **Client seat.** A second model (or a second `callModel` with a **client** system). The client walks the intended event list, one event at a time. Answers like a real person. Does not remind the agent what to say.
 
@@ -94,19 +94,20 @@ Per turn:
 
 - **Prompt PASS** = this turn did what the live prompt said (job, order, guardrails). Quote the prompt line you checked.
 - **Sequence PASS** = this event is the next one in the intended file. Skip, swap, or invent = FAIL.
+- Verify actual actions and stored events in their intended order using isolated fixtures. A transcript or proposed action alone does not prove an effect. Record provider, model, prompt hash, config and source version. If effects cannot be observed, mark action order UNVERIFIED.
 - A greeting-only run with later beats missing = FAIL.
 - Agent quotes a pre-approval, pulled credit, or a dollar the prompt forbids = FAIL.
 - Agent asks Chris to listen, or you score a hang-up as a full call = FAIL.
 
-Overall **PASS** only if every required turn is Prompt PASS **and** Sequence PASS.
+Overall **PASS** only if every required turn is Prompt PASS, Sequence PASS, and the required actions and event order are verified.
 
-Otherwise overall **FAIL**. Partial greens do not become done.
+An observed breach is FAIL. Missing proof is UNVERIFIED. Partial greens do not become done.
 
 After a **named fix**: run this whole roleplay **twice**. One run is not enough.
 
 ## Board
 
-Write `ops/workflows/agent-tester-YYYY-MM-DD.md` (add `-2` if the date file exists).
+Write to the assigned board or an existing board. If a new board is needed, use a `.txt` file under `ops/workflows/`; do not create new Markdown without an explicit request.
 
 Must include:
 
@@ -116,7 +117,7 @@ Must include:
 - Sim email (plus-tag) and agent phone
 - Per-turn PASS/FAIL table
 - One line: did the sequence match the intended journey? yes / no / UNVERIFIED
-- Overall PASS or FAIL
+- Overall PASS, FAIL, UNVERIFIED or NOT EXERCISED, with reason
 - Left undone
 
 Do not claim done in chat if the board is overall FAIL.

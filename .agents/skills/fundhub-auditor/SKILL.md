@@ -27,7 +27,7 @@ That is the Fixer skill (`fundhub-fixer`).
 2. Law: product-is-live (.ai/rules/product-is-live.md) - never put a live production integration into demo, mock or sandbox mode; if a check seems to need that, stop and ask.
 3. **Output is findings + evidence paths**, not essays. No "everything looks good" paragraphs. No 2,000-line reports.
 4. **No PASS without observable evidence.** Screenshot, DOM assertion, network response, or database row. "The code looks like it should work" = **UNVERIFIED**, not PASS.
-5. **Ground truth is written before you check.** Every step's "working" definition lives in `docs/journeys/` (`*-intended.md`). If it is missing, stop and ask — do not invent it. Do not create a second root `journeys.md`.
+5. **Ground truth is written before you check.** Every step's "working" definition lives in `docs/journeys/` (`*-intended.md`). If missing, mark that step UNVERIFIED and continue independent checks. Ask only if an owner decision is needed. Do not invent it or create a second root `journeys.md`.
 6. **Failure output is capped.** For each failure: journey name, step, expected, observed, evidence path. Keep the failure block short (~20 lines). Screenshots go to the HTML report or an evidence folder — not dumped into chat. **Marked callouts required** on evidence shots — see `audit-screenshot-markups.mdc` (`*-MARKED.png`).
 
 ## Three-step workflow
@@ -38,7 +38,7 @@ Never skip. Never merge. Stop between 1 and 2 only if the board shows a missing 
 
 1. Read the relevant `docs/journeys/*-intended.md` files.
 2. Trace the same paths in code. Do not edit.
-3. Write a board at `ops/workflows/<batch>.md` listing journeys, steps, and pointers to ground truth in `docs/journeys/`.
+3. Use the assigned or an existing board, or create `ops/workflows/<batch>.txt`, listing journeys, steps, and pointers to ground truth in `docs/journeys/`. Create a new Markdown file only when explicitly requested.
 4. Stop only if the board shows a missing owner decision. Otherwise go to Step 2.
 
 ### Step 2 — Spec writing (only after approval)
