@@ -6,6 +6,7 @@ import * as keyTruth from "./lib/credit-pull-key-truth.mjs";
 import * as consentBeat from "./beat-consent-capture.mjs";
 import * as lane from "../coverage/gap-soft-pull.mjs";
 import * as keysLane from "../coverage/gap-keys.mjs";
+import * as sortLane from "../coverage/gap-offersiq-lead-sort.mjs";
 import * as crs from "../../finance/crs-identities.mjs";
 import { classifyVisitor } from "../../slo/visitor.mjs";
 import { checkBeatSelfTest, runBeat, validateBeat } from "./contract.mjs";
@@ -27,7 +28,7 @@ test("soft-pull is valid, green on a healthy ledger and a live setup, red when a
   assert.deepEqual(await checkBeatSelfTest(beat), []);
   const passed = await runBeat(beat, makeFakeCtx(beat, beat.selfTest.pass()));
   assert.equal(passed.ok, true, passed.detail);
-  assert.equal(passed.detail, "7 soft pull checks passed");
+  assert.equal(passed.detail, "7 soft pull checks passed; 1 had nothing safe to judge");
   const failed = await runBeat(beat, makeFakeCtx(beat, beat.selfTest.fail()));
   assert.equal(failed.ok, false);
   assert.equal(failed.step, "softpull-request-failed-or-stuck");
@@ -45,6 +46,14 @@ test("soft-pull: OffersIQ ledger failures are red at the hourly ledger step", as
     assert.equal(result.step, "softpull-offersiq-ledger");
     assert.match(result.detail, words);
   }
+});
+
+test("soft-pull: an unjudgeable saved OffersIQ sort is red at the same hourly judge", async () => {
+  const spec = withRows([[sortLane.FINISHED_RECEIPTS_SQL, [{}]]]);
+  const result = await runBeat(beat, makeFakeCtx(beat, spec));
+  assert.equal(result.ok, false);
+  assert.equal(result.step, "offersiq-lead-sort-integrity");
+  assert.match(result.detail, /rule list mismatch/);
 });
 
 test("soft-pull: a paid buyer past 2 hours with no form and no reminder is red at the paid-form step", async () => {
@@ -138,7 +147,7 @@ test("soft-pull: the daily lanes and the hourly beat share one SQL and one judge
   assert.equal(keysLane.creditPullLiveAllowed, keyTruth.creditPullLiveAllowed);
   assert.equal(keysLane.keyState, keyTruth.keyState);
   for (const checkId of beat.HOURLY_CHECK_IDS.filter((c) => c !== "keys:credit-pull-live-allowed")) {
-    assert.ok(lane.ALL_CHECK_IDS.includes(checkId), checkId);
+    assert.ok([...lane.ALL_CHECK_IDS, ...sortLane.CHECK_IDS].includes(checkId), checkId);
   }
   assert.ok(keysLane.CHECK_IDS.includes("keys:credit-pull-live-allowed"));
 });

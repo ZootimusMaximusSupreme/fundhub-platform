@@ -497,6 +497,23 @@ export const NA_CONDITIONS = Object.freeze({
     verify: "lane"
   }),
 
+  // The OffersIQ lane re-reads this org's finished checks and proves either
+  // no rows or only the exact published CRS starter list on every audit.
+  "offersiq-sort-not-ready": Object.freeze({
+    say() {
+      return "OffersIQ has no finished sort-rule receipt to judge yet.";
+    },
+    claim() {
+      return "OffersIQ has no finished sort-rule receipt to judge.";
+    },
+    problem(args) {
+      return isText(args.orgId) && isText(args.version) && args.check === "offersiq-lead-sort:integrity"
+        && ["starter_only", "no_finished_receipts"].includes(args.why)
+        ? null : "the OffersIQ sort wait proof is incomplete";
+    },
+    verify: "lane"
+  }),
+
   "low-traffic": Object.freeze({
     say(args = {}) {
       const count = num(args.count);

@@ -11,6 +11,10 @@ import { withTransaction } from "../db/with-transaction.mjs";
 import { CRS_PRODUCTION_HOST, CRS_SANDBOX_HOST, normalizeHost } from "./crs-identities.mjs";
 import { createCrsClient } from "./crs-client.mjs";
 import { assertOffersIqWireBody, buildOffersIqRequest, parseOffersIqResponse } from "./offersiq-contract.mjs";
+import { classifyOffersIqReceipt } from "./offersiq-lead-sort.mjs";
+
+// Bounded well above the current draft. A truncated list fails scorer matching.
+const MAX_OFFER_CONDITIONS = 1000;
 
 const FINISHED = new Set(["matched", "not_matched", "needs_review", "error"]);
 const SAFE_REASONS = new Set(["identity_changed", "request_id_missing", "invalid_response",
@@ -225,6 +229,12 @@ function safeCondition(input) {
     if (typeof value[key] === "boolean") condition[key] = value[key];
   }
   if (safeCount(value.position) !== undefined) condition.position = value.position;
+  if (typeof value.expectedValue === "number" && Number.isFinite(value.expectedValue)) {
+    condition.expectedValue = value.expectedValue;
+  } else if (Array.isArray(value.expectedValue) && value.expectedValue.length === 2
+      && value.expectedValue.every(edge => typeof edge === "number" && Number.isFinite(edge))) {
+    condition.expectedValue = [...value.expectedValue];
+  }
   return condition;
 }
 
@@ -241,7 +251,7 @@ function safeGroup(input, depth = 0) {
   for (const key of ["totalConditions", "passedConditions", "failedConditions", "unverifiableConditions", "position"]) {
     if (safeCount(value[key]) !== undefined) group[key] = value[key];
   }
-  if (Array.isArray(value.conditions)) group.conditions = value.conditions.slice(0, 100).map(safeCondition);
+  if (Array.isArray(value.conditions)) group.conditions = value.conditions.slice(0, MAX_OFFER_CONDITIONS).map(safeCondition);
   if (Array.isArray(value.groups)) group.groups = value.groups.slice(0, 30).map(child => safeGroup(child, depth + 1)).filter(Boolean);
   return group;
 }
@@ -284,7 +294,7 @@ function sanitizeStoredSummary(input) {
   }
   if (Object.keys(counts).length) summary.condition_counts = counts;
   if (Array.isArray(value.individual_results)) {
-    summary.individual_results = value.individual_results.slice(0, 100).map(safeCondition);
+    summary.individual_results = value.individual_results.slice(0, MAX_OFFER_CONDITIONS).map(safeCondition);
   }
   const rootGroup = safeGroup(value.root_group);
   if (rootGroup) summary.root_group = rootGroup;
@@ -294,7 +304,7 @@ function sanitizeStoredSummary(input) {
   return summary;
 }
 
-function safeSummary(decision, { ruleSetId, environment, fingerprint, checkedAt }) {
+export function safeOffersIqSummary(decision, { ruleSetId, environment, fingerprint, checkedAt }) {
   const value = object(decision);
   const evaluation = object(value.ruleEvaluation);
   const summary = {
@@ -316,7 +326,7 @@ function safeSummary(decision, { ruleSetId, environment, fingerprint, checkedAt 
   if (Object.keys(counts).length) summary.condition_counts = counts;
   if (typeof evaluation.decisionMode === "string") summary.decision_mode = evaluation.decisionMode.slice(0, 40);
   if (Array.isArray(evaluation.individualResults)) {
-    summary.individual_results = evaluation.individualResults.slice(0, 100).map(safeCondition);
+    summary.individual_results = evaluation.individualResults.slice(0, MAX_OFFER_CONDITIONS).map(safeCondition);
   }
   const rootGroup = safeGroup(evaluation.rootGroup);
   if (rootGroup) summary.root_group = rootGroup;
@@ -508,7 +518,7 @@ export async function evaluateLeadOffersIq(db, staff,
   const outcome = FINISHED.has(result.decision?.outcome)
     ? result.decision.outcome
     : result.blocked || (result.status >= 400 && result.status < 500) ? "error" : "needs_review";
-  const evaluated = safeSummary(result.decision || { outcome }, {
+  const evaluated = safeOffersIqSummary(result.decision || { outcome }, {
     ruleSetId: config.ruleSetId, environment: config.environment,
     fingerprint: claim.fingerprint, checkedAt
   });
@@ -516,6 +526,7 @@ export async function evaluateLeadOffersIq(db, staff,
     : outcome === "needs_review" ? "provider_uncertain" : `provider_http_${Number(result.status) || 0}`;
   if (!evaluated.request_id && isUuid(result.requestId)) evaluated.request_id = result.requestId;
   const summary = sanitizeStoredSummary(evaluated);
+  const leadSort = classifyOffersIqReceipt(evaluated);
 
   const published = await withTransaction(db, async writer => {
     const currentClient = (await writer.query(
@@ -528,11 +539,16 @@ export async function evaluateLeadOffersIq(db, staff,
     ) === claim.fingerprint;
     const saved = (await writer.query(
       `UPDATE offersiq_requests SET status = $4, provider_request_id = $5,
-         normalized_response = $6::jsonb, error_code = $7, finished_at = $8, updated_at = now()
+         normalized_response = $6::jsonb, error_code = $7, finished_at = $8, updated_at = now(),
+         lead_sort_bucket=$9, lead_sort_points=$10, lead_sort_version=$11,
+         lead_sort_reasons=$12::jsonb, lead_sort_result=$13::jsonb,
+         lead_sort_receipt=$14::jsonb, lead_sort_updated_at=now()
        WHERE id = $1 AND org_id = $2 AND client_id = $3 AND status = 'in_flight'
        RETURNING id`,
       [claim.claimed.id, staff.org_id, clientId, summary.outcome, summary.request_id,
-        JSON.stringify(summary), summary.reason || null, checkedAt]
+        JSON.stringify(summary), summary.reason || null, checkedAt,
+        leadSort.bucket, leadSort.points, leadSort.version, JSON.stringify(leadSort.reasons),
+        JSON.stringify(leadSort), JSON.stringify(evaluated)]
     )).rows[0];
     if (!saved) throw new Error("offersiq_claim_finalization_failed");
     if (stillCurrent) {

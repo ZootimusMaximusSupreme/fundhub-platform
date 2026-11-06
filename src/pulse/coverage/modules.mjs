@@ -100,6 +100,7 @@ export const GAP_FILES = Object.freeze([
   ["gap-msg.mjs", () => import("./gap-msg.mjs")],
   ["gap-native-push.mjs", () => import("./gap-native-push.mjs")],
   ["gap-nurture.mjs", () => import("./gap-nurture.mjs")],
+  ["gap-offersiq-lead-sort.mjs", () => import("./gap-offersiq-lead-sort.mjs")],
   ["gap-opt-out.mjs", () => import("./gap-opt-out.mjs")],
   ["gap-outside-inngest.mjs", () => import("./gap-outside-inngest.mjs")],
   ["gap-owner-tools.mjs", () => import("./gap-owner-tools.mjs")],

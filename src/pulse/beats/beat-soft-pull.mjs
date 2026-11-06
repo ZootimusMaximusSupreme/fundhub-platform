@@ -31,6 +31,7 @@ import {
 } from "./lib/soft-pull-truth.mjs";
 import { creditPullLiveAllowed } from "./lib/credit-pull-key-truth.mjs";
 import { webFromHttp } from "./lib/web-reader.mjs";
+import { CHECK_IDS as SORT_CHECK_IDS, checkOffersIqLeadSort } from "./lib/offersiq-lead-sort-truth.mjs";
 
 export const HOURLY_CHECK_IDS = Object.freeze([
   "soft-pull:approve-page",
@@ -39,6 +40,7 @@ export const HOURLY_CHECK_IDS = Object.freeze([
   "softpull:paid-form-not-filled-2h",
   "softpull:approve-click-no-pull",
   "softpull:offersiq-ledger",
+  ...SORT_CHECK_IDS,
   "keys:credit-pull-live-allowed"
 ]);
 
@@ -69,7 +71,8 @@ export const LANE = Object.freeze({
       checkRequestFailedOrStuck(reader),
       checkPaidFormNotFilled(reader),
       checkApproveClickNoPull(reader),
-      checkOffersIqLedger(reader)
+      checkOffersIqLedger(reader),
+      checkOffersIqLeadSort({ read: io.read, orgId: io.orgId })
     ]);
     return [...rows, creditPullLiveAllowed(io.env)];
   },
@@ -126,12 +129,14 @@ export const fixGuide = [
   "- C-00 stopped with no pull row: the client has no portal account, or no live soft-pull consent.",
   "- The credit vendor refused or timed out, so the pull row is failed or stuck in processing.",
   "- OffersIQ left a request in flight, failed recently, or completed without a provider receipt.",
+  "- A saved OffersIQ check lost its bucket, points or version, or CRS changed the expected rule list.",
   "- CRS_ALLOW_LIVE, CRS_API_HOST or the CRS login on Netlify changed, so the pull refuses the real host.",
   "",
   "Steps:",
   "- Run node scripts/pulse/run-beat.mjs soft-pull and read the red step: it names the count, the age and short client ids.",
   "- Read soft_pull_requests and the C-00 run for that payment; for a paid buyer with an empty form, read the slo-paid-form-nudge run.",
   "- Read offersiq_requests for a red OffersIQ ledger step. Resolve the recorded cause; the beat makes no provider request.",
+  "- For a sort failure, compare the saved rule list with the versioned config and rescore saved receipts; wait for CRS before free reevaluation.",
   "- Fix the cause, then use the staff pull button. Never pull credit or send bureau mail from the pulse.",
   "Files: src/pulse/beats/lib/soft-pull-truth.mjs, src/workflows/c-00-crs-soft-pull-request.mjs, api/soft-pull-approve.mjs, src/finance/crs-identities.mjs"
 ].join("\n");
