@@ -6,6 +6,8 @@ import pg from "pg";
 import plaidConsentRoute from "../../api/auth/plaid-mfa.mjs";
 import { createAccountSession } from "./account-session.mjs";
 import { advanceAccountPlaidLink, CONSENT_VERSION, CONSENT_TEXT, PRIVACY_URL } from "./account-plaid-mfa.mjs";
+import { passkeyAction, bankPasskeyAssurance } from "./passkey-stepup.mjs";
+import { syntheticPasskey } from "./passkey-test-support.mjs";
 import { hashToken } from "./session.mjs";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
@@ -60,14 +62,27 @@ describe("account Plaid consent stored SQL and app-role proof", {
       }
       const identity = who => ({ accountId: who.accountId, orgId: who.orgId,
         sessionId: who.sessionId, targetKind: "client_bank", targetId: who.clientId });
+      async function enrollAndVerify(who = a) {
+        const scope = identity(who);
+        if (await bankPasskeyAssurance(db, scope)) return;
+        const key = syntheticPasskey();
+        const setup = await passkeyAction(db, scope, { action: "register_options" });
+        assert.equal(setup.ok, true);
+        assert.equal((await passkeyAction(db, scope, { action: "register_verify", challenge_token: setup.challenge_token,
+          response: key.registration(setup.options) })).ok, true);
+        const auth = await passkeyAction(db, scope, { action: "authenticate_options" });
+        assert.equal((await passkeyAction(db, scope, { action: "authenticate_verify", challenge_token: auth.challenge_token,
+          response: key.assertion(auth.options) })).ok, true);
+      }
       async function mint(who = a) {
+        await enrollAndVerify(who);
         const result = await invoke(who, { action: "authorize", target_kind: "client_bank", consent: true });
         assert.equal(result.status, 200);
         return result.body;
       }
       const receipt = async grant => (await db.query("SELECT * FROM account_plaid_link_grants WHERE id=$1",
         [grant.grant_id])).rows[0];
-      return await run({ db, a, a2, b, c, invoke, identity, mint, receipt });
+      return await run({ db, a, a2, b, c, invoke, identity, mint, receipt, enrollAndVerify });
     } finally {
       try {
         await db.query("ROLLBACK");
@@ -80,8 +95,8 @@ describe("account Plaid consent stored SQL and app-role proof", {
     }
   }
 
-  test("signed-in client gives consent without an email or authenticator challenge", async () => {
-    await fixture(async ({ db, a, b, c, invoke, receipt }) => {
+  test("signed-in client needs a verified passkey assertion before consent can authorize Plaid", async () => {
+    await fixture(async ({ db, a, b, c, invoke, receipt, enrollAndVerify }) => {
       assert.equal((await invoke(null, { action: "consent_details", target_kind: "client_bank" })).status, 401);
       const details = await invoke(a, { action: "consent_details", target_kind: "client_bank" });
       assert.equal(details.body.consent_text, CONSENT_TEXT.client_bank);
@@ -89,6 +104,9 @@ describe("account Plaid consent stored SQL and app-role proof", {
         "consent_required");
       assert.equal((await db.query("SELECT count(*)::int AS n FROM account_plaid_link_grants WHERE account_id=$1",
         [a.accountId])).rows[0].n, 0);
+      assert.equal((await invoke(a, { action: "authorize", target_kind: "client_bank", consent: true })).body.error,
+        "passkey_required");
+      await enrollAndVerify(a);
       const authorized = await invoke(a, { action: "authorize", target_kind: "client_bank",
         consent: true, account_id: b.accountId, org_id: c.orgId, target_id: b.clientId });
       assert.equal(authorized.status, 200);
@@ -103,7 +121,7 @@ describe("account Plaid consent stored SQL and app-role proof", {
       assert.equal(row.privacy_url, PRIVACY_URL);
       assert.deepEqual(row.consent_scope, ["accounts", "balances", "transactions"]);
       assert.ok(row.consent_granted_at && row.expires_at);
-      assert.equal(row.mfa_verified_at, null, "consent alone is not MFA verification");
+      assert.ok(row.mfa_verified_at, "verified passkey assertion supplies the timestamp, never consent alone");
       assert.equal((await db.query("SELECT count(*)::int AS n FROM account_plaid_mfa_credentials WHERE account_id=$1",
         [a.accountId])).rows[0].n, 0);
       assert.equal((await db.query("SELECT count(*)::int AS n FROM account_plaid_mfa_email_challenges WHERE account_id=$1",

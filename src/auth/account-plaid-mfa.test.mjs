@@ -5,17 +5,21 @@ import { authorizeAccountPlaidLink, advanceAccountPlaidLink,
   CONSENT_TEXT, CONSENT_VERSION, PRIVACY_URL } from "./account-plaid-mfa.mjs";
 import plaidConsentRoute from "../../api/auth/plaid-mfa.mjs";
 
-const identity = { accountId: "account-1", orgId: "org-1", sessionId: "session-1",
-  targetKind: "client_bank", targetId: "client-1" };
+const identity = { accountId: "00000000-0000-4000-8000-000000000001", orgId: "00000000-0000-4000-8000-000000000002", sessionId: "00000000-0000-4000-8000-000000000003",
+  targetKind: "client_bank", targetId: "00000000-0000-4000-8000-000000000004" };
 
-function fakeDb() {
+function fakeDb({ assured = true } = {}) {
   const grants = [];
   return { grants, async query(sql, params = []) {
+    if (sql.includes("FROM auth_passkey_subjects")) return { rows: [{ id: "subject-1" }] };
+    if (sql.includes("SELECT a.email,a.name")) return { rows: [{ email: "e2e+passkey@example.test", fresh_primary: true }] };
+    if (sql.includes("FROM auth_passkey_assurances")) return { rows: assured
+      ? [{ id: "proof-1", verified_at: "2026-11-06T20:00:00Z", expires_at: "2026-11-06T20:15:00Z" }] : [] };
     if (sql.includes("INSERT INTO account_plaid_link_grants")) {
       const grant = { id: `grant-${grants.length + 1}`, token_hash: params[0],
         org_id: params[1], account_id: params[2], account_session_id: params[3],
         target_kind: params[4], target_id: params[5], consent_scope: JSON.parse(params[6]),
-        consent_version: params[7], consent_text: params[8], privacy_url: params[9],
+        consent_version: params[7], consent_text: params[8], privacy_url: params[9], mfa_verified_at: params[10],
         consent_granted_at: new Date().toISOString(), expires_at: new Date(Date.now() + 600000).toISOString(),
         link_opened_at: null, consumed_at: null };
       grants.push(grant);
@@ -25,7 +29,7 @@ function fakeDb() {
       const grant = grants.find(g => g.token_hash === params[0] && g.org_id === params[1] &&
         g.account_id === params[2] && g.account_session_id === params[3] &&
         g.target_kind === params[4] && g.target_id === params[5]);
-      if (!grant) return { rows: [] };
+      if (!grant || !grant.mfa_verified_at) return { rows: [] };
       if (sql.includes("SET link_opened_at")) {
         if (grant.link_opened_at || grant.consumed_at) return { rows: [] };
         grant.link_opened_at = new Date().toISOString();
@@ -46,7 +50,7 @@ function response() {
     json(v) { this.body = v; return this; } };
 }
 
-test("explicit consent creates a scoped, single-use grant without a second factor", async () => {
+test("explicit consent with passkey assurance creates a scoped, single-use grant", async () => {
   const db = fakeDb();
   assert.equal((await authorizeAccountPlaidLink(db, { ...identity, consent: false })).error, "consent_required");
   assert.equal(db.grants.length, 0);
@@ -56,6 +60,7 @@ test("explicit consent creates a scoped, single-use grant without a second facto
   assert.equal(db.grants[0].consent_version, CONSENT_VERSION);
   assert.equal(db.grants[0].consent_text, CONSENT_TEXT.client_bank);
   assert.equal(db.grants[0].privacy_url, PRIVACY_URL);
+  assert.equal(db.grants[0].mfa_verified_at, "2026-11-06T20:00:00Z");
   assert.deepEqual(db.grants[0].consent_scope, ["accounts", "balances", "transactions"]);
   assert.equal(await advanceAccountPlaidLink(db, { ...identity, sessionId: "other-session",
     token: approved.grant_token, stage: "open" }), null);
@@ -76,7 +81,7 @@ test("explicit consent creates a scoped, single-use grant without a second facto
 test("affiliate payout consent has its own scope and text", async () => {
   const db = fakeDb();
   const approved = await authorizeAccountPlaidLink(db, { ...identity,
-    targetKind: "affiliate_payout", targetId: "affiliate-1", consent: true });
+    targetKind: "affiliate_payout", targetId: "00000000-0000-4000-8000-000000000005", consent: true });
   assert.equal(approved.ok, true);
   assert.deepEqual(db.grants[0].consent_scope, ["payout_account"]);
   assert.equal(db.grants[0].consent_text, CONSENT_TEXT.affiliate_payout);
@@ -108,4 +113,12 @@ test("consent route pins target to the signed-in principal and exposes current w
   await plaidConsentRoute({ method: "POST", body: { action: "setup",
     target_kind: "client_bank" } }, oldSetup, deps);
   assert.equal(oldSetup.statusCode, 400);
+});
+
+test("consent and historical MFA timestamps never substitute for current passkey assurance", async () => {
+  const db = fakeDb({ assured: false });
+  assert.equal((await authorizeAccountPlaidLink(db, { ...identity, consent: true })).error, "passkey_required");
+  assert.equal(db.grants.length, 0);
+  assert.equal(await advanceAccountPlaidLink(db, { ...identity, token: "A".repeat(43), stage: "open" }), null);
+  assert.equal(await advanceAccountPlaidLink(db, { ...identity, token: "A".repeat(43), stage: "exchange" }), null);
 });
