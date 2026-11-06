@@ -525,7 +525,13 @@ if (!window.__fhBlueprintFullDemoRoute) document.write('<script defer src="shell
 </head>
 <body class="no-funding no-docs no-own no-funding-door no-inquiry-door no-bureau-door no-upload-doors no-dispute-consent fh-astra fh-astra-client fh-astra-portal" data-client-page="client-portal" data-portal-state="loading">
 <script>
-if (window.__fhBlueprintFullDemoRoute) { document.body.dataset.blueprintDemo = 'full'; document.body.dataset.clientPublic = 'true'; }
+if (window.__fhBlueprintFullDemoRoute) {
+  document.body.dataset.blueprintDemo = 'full';
+  document.body.dataset.clientPublic = 'true';
+  // The public frame can show its existing plan skeleton while the local
+  // sample adapter loads; private-account loading rules must not hide it.
+  document.body.dataset.portalState = 'ready';
+}
 </script>
 <script>
 /* Portal presentation uses the same file-first order for clients and staff

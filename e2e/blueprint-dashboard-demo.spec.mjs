@@ -48,6 +48,25 @@ async function open(page,context,{existing=false}={}){
   await expect.poll(()=>page.evaluate(()=>window.FHBlueprintDemo?.active===true)).toBe(true);
   return seen;
 }
+async function loadingTransition(context){
+  const delayed=await context.newPage();
+  let release;const held=new Promise(resolve=>{release=resolve;});
+  await delayed.route('**/app/blueprint-demo.js',async route=>{await held;await route.continue();});
+  try{
+    // Delay only the actual adapter asset; never replace its contents or mock a workspace read.
+    await delayed.goto(url(ROUTE),{waitUntil:'commit'});
+    await delayed.locator('#blueprint-plan').waitFor({state:'attached'});
+    await expect(delayed.getByRole('status',{name:'Loading your plan',exact:true}), 'Slow adapter load must show a visible loading state').toBeVisible();
+    await expect(delayed.locator('#blueprint-plan .bp-skeleton').first()).toBeVisible();
+    expect(await delayed.evaluate(()=>typeof window.FHBlueprintDemo)).toBe('undefined');
+    await noOverflow(delayed);
+    release();
+    await delayed.waitForLoadState('domcontentloaded');
+    await expect(banner(delayed)).toBeVisible();
+    await expect(full(delayed).locator('.bf-tabs')).toBeVisible();
+    await expect(delayed.getByRole('status',{name:'Loading your plan',exact:true})).toHaveCount(0);
+  }finally{release();await delayed.close();}
+}
 async function tab(page,name){await full(page).getByRole('button',{name,exact:true}).click();}
 async function preparation(page){await tab(page,'Preparation steps');await expect(prep(page)).toBeVisible();return prep(page);}
 async function stage(page,value){
@@ -117,6 +136,7 @@ for(const width of [1440,390])test.describe(`Full Blueprint demo ${width}px`,()=
     expect((await read(page,'/api/blueprint/funding')).engagement.status).toBe('active');
     await expect(full(page).locator('nav[aria-label="Funding workspace"] button')).toHaveCount(6);
     await noOverflow(page);
+    await loadingTransition(context);
   });
 
   test('DEMO02 all actual full-workspace tabs and preparation navigation work',async({page,context})=>{
