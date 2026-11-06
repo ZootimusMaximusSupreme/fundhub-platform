@@ -57,7 +57,7 @@ test("paid help only releases its customer when the exact inquiry case or repair
     const metadata={bureau_response_validation:{schema:1,validator:"bureau-response-reader",document_id:doc,version_id:version,status:"accepted",quality:"pass",
       document_type:"bureau_response",client_match:"match",authenticity:"clear",bureau:"EX",recipient_name:"Scoped service",reviewed_at:new Date().toISOString()}};
     await db.query(`INSERT INTO documents(id,org_id,client_id,document_key,kind,subtype,title,storage_key,mime_type,byte_size,metadata)
-       VALUES($1,$2,$3,$4,'client_upload','bureau_response','Synthetic bureau reply','synthetic/reply.pdf','application/pdf',321,$5)`,[doc,orgId,clientId,doc,metadata]);
+       VALUES($1,$2,$3,$4,'bureau_response','bureau_letter','Synthetic bureau reply','synthetic/reply.pdf','application/pdf',321,$5)`,[doc,orgId,clientId,doc,metadata]);
     await db.query("INSERT INTO document_versions(id,org_id,document_id,version,storage_key,mime_type,byte_size) VALUES($1,$2,$3,1,'synthetic/reply.pdf','application/pdf',321)",[version,orgId,doc]);
     await db.query("UPDATE documents SET current_version_id=$2 WHERE id=$1",[doc,version]);
     const parse={document_validation:{document_id:doc,version_id:version},source_item_rounds:[{id:repairItem,caseId:repairCase,round:"R2"}],

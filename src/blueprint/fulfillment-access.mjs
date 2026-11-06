@@ -11,12 +11,14 @@ export async function getBlueprintFulfillmentAccess(db, { orgId, clientId, now =
     `SELECT g.id, g.org_id AS "orgId", g.client_id AS "clientId",
             g.funding_round_id AS "roundId", g.opens_at AS "opensAt",g.submissions_closed_at AS "submissionsClosed", g.status, g.execution_owner AS "executionOwner",
             g.source_transaction_id AS "transactionId", g.source_entitlement_id AS "entitlementId",
-            p.code AS "productCode", sp.sale_id AS "saleId"
+            p.code AS "productCode", sp.sale_id AS "saleId",fr.status AS "roundStatus",
+            fr.approved_amount AS "roundApprovedAmount",fr.funded_amount AS "roundFundedAmount"
        FROM blueprint_fulfillment_engagements g
        JOIN entitlements e ON e.id=g.source_entitlement_id AND e.org_id=g.org_id AND e.client_id=g.client_id
        JOIN transactions t ON t.id=g.source_transaction_id AND t.id=e.source_transaction_id
           AND t.org_id=g.org_id AND t.client_id=g.client_id
        JOIN products p ON p.id=resolve_product_id(t.org_id,t.product_name) AND p.org_id=g.org_id
+       LEFT JOIN funding_rounds fr ON fr.id=g.funding_round_id AND fr.org_id=g.org_id AND fr.client_id=g.client_id
        LEFT JOIN sale_payments sp ON sp.org_id=g.org_id AND sp.transaction_id=t.id
       WHERE g.org_id=$1 AND g.client_id=$2 AND p.code=$3 AND e.entitlement_code=$4
         AND ((g.status='active' AND e.revoked_at IS NULL AND (e.expires_at IS NULL OR e.expires_at>$5))

@@ -45,23 +45,31 @@ function businessState(b) {
 }
 
 async function readApplications(db, { orgId, clientId, engagement }) {
-  const {rows} = await db.query(
-    `SELECT a.id, h.id AS "handoffId",h.lender_id AS "lenderId",h.business_id AS "businessId",
-            a.lender_name AS "lenderName",l.bureaus_pulled AS "bureausPulled",a.status,a.approved_amount AS "approvedAmount",
-            h.opened_at AS "openedAt",a.updated_at AS "decisionUpdatedAt",
-            r.report_status AS "reportedStatus",r.created_at AS "reportedAt",
+  const {rows}=await db.query(
+    `SELECT a.id,h.id AS "handoffId",a.lender_id AS "lenderId",h.business_id AS "businessId",
+            COALESCE(a.lender_name,a.bank,l.name) AS "lenderName",l.bureaus_pulled AS "bureausPulled",
+            a.status,a.approved_amount AS "approvedAmount",COALESCE(h.opened_at,a.created_at) AS "openedAt",
+            a.updated_at AS "decisionUpdatedAt",r.report_status AS "reportedStatus",r.created_at AS "reportedAt",
             (SELECT actual_funded_amount FROM blueprint_application_proof WHERE handoff_id=h.id) AS "fundedAmount",
+            (EXISTS(SELECT 1 FROM blueprint_bank_evidence proof WHERE proof.handoff_id=h.id AND
+               ((a.status='Denied' AND proof.decision='declined') OR (a.status='Approved' AND proof.decision IN ('approved','funded'))))
+             OR (g.execution_owner='fundhub' AND a.status IN ('Denied','Approved') AND EXISTS(
+               SELECT 1 FROM application_decisions d WHERE d.org_id=a.org_id AND d.application_id=a.id
+                 AND d.staff_id IS NOT NULL AND d.status=a.status AND d.event_type='bank_decision'))) AS "outcomeVerified",
             COALESCE((SELECT jsonb_agg(jsonb_build_object('id',doc.id,'reference',rep.reference)) FROM blueprint_application_reports rep
-              JOIN documents doc ON doc.id=rep.evidence_document_id AND doc.org_id=h.org_id AND doc.client_id=h.client_id
+              JOIN documents doc ON doc.id=rep.evidence_document_id AND doc.org_id=g.org_id AND doc.client_id=g.client_id
               WHERE rep.handoff_id=h.id),'[]'::jsonb) AS "evidenceDocuments"
-       FROM blueprint_funding_handoffs h
-       JOIN applications a ON a.id=h.application_id AND a.org_id=h.org_id AND a.client_id=h.client_id
-          AND a.lender_id=h.lender_id AND a.funding_round_id=$4
-       JOIN lenders l ON l.id=h.lender_id AND l.org_id=h.org_id
+       FROM blueprint_fulfillment_engagements g
+       JOIN funding_rounds fr ON fr.id=g.funding_round_id AND fr.org_id=g.org_id AND fr.client_id=g.client_id
+       JOIN applications a ON a.funding_round_id=fr.id AND a.org_id=fr.org_id AND a.client_id=fr.client_id
+       LEFT JOIN blueprint_funding_handoffs h ON h.engagement_id=g.id AND h.org_id=a.org_id AND h.client_id=a.client_id
+         AND h.application_id=a.id AND h.lender_id=a.lender_id
+       LEFT JOIN lenders l ON l.id=a.lender_id AND l.org_id=a.org_id
        LEFT JOIN LATERAL (SELECT report_status,created_at FROM blueprint_application_reports
          WHERE handoff_id=h.id ORDER BY created_at DESC,id DESC LIMIT 1) r ON true
-      WHERE h.engagement_id=$1 AND h.org_id=$2 AND h.client_id=$3 ORDER BY h.opened_at,h.id`,
-    [engagement.id,orgId,clientId,engagement.roundId]);
+      WHERE g.id=$1 AND g.org_id=$2 AND g.client_id=$3 AND fr.id=$4
+        AND (g.execution_owner='fundhub' OR h.id IS NOT NULL)
+      ORDER BY COALESCE(h.opened_at,a.created_at),a.id`,[engagement.id,orgId,clientId,engagement.roundId]);
   return rows;
 }
 

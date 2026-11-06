@@ -32,7 +32,8 @@ async function repairFacts(tx,row) {
     FROM dispute_responses r JOIN documents d ON d.org_id=r.org_id AND d.client_id=r.client_id
       AND d.id::text=r.parse_json->'document_validation'->>'document_id'
       AND d.current_version_id::text=r.parse_json->'document_validation'->>'version_id'
-    WHERE r.org_id=$1 AND r.client_id=$2 AND d.subtype='bureau_response' AND d.kind='client_upload'
+    WHERE r.org_id=$1 AND r.client_id=$2 AND ((d.kind='bureau_response' AND d.subtype='bureau_letter') OR
+            (d.kind='client_upload' AND d.subtype='bureau_response'))
       AND r.confirmed ORDER BY r.created_at DESC,r.id`,args)).rows;
   return {cases,items,letters,responses};
 }
