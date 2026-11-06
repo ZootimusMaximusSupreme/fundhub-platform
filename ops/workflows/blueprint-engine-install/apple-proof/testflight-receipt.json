@@ -1,0 +1,47 @@
+{
+  "checkedAt": "2026-11-06T15:57:12.184Z",
+  "appleWrites": 0,
+  "build": {
+    "id": "ed50a585-803c-4268-8055-1672b150d3f0",
+    "relationshipKeys": [
+      "preReleaseVersion",
+      "individualTesters",
+      "betaGroups",
+      "betaBuildLocalizations",
+      "appEncryptionDeclaration",
+      "betaAppReviewSubmission",
+      "app",
+      "buildBetaDetail",
+      "appStoreVersion",
+      "icons",
+      "perfPowerMetrics",
+      "diagnosticSignatures"
+    ],
+    "included": [
+      {
+        "id": "ed50a585-803c-4268-8055-1672b150d3f0",
+        "type": "buildBetaDetails",
+        "autoNotifyEnabled": true,
+        "internalBuildState": "READY_FOR_BETA_TESTING",
+        "externalBuildState": "READY_FOR_BETA_SUBMISSION"
+      }
+    ]
+  },
+  "groups": {
+    "count": 1,
+    "groups": [
+      {
+        "id": "88fc36b9-6624-4b16-8bb0-81c5d66ffd46",
+        "isInternalGroup": true,
+        "hasAccessToAllBuilds": false,
+        "buildIds": [
+          "e58759b7-dbcf-4a8c-a953-38aaedead2e9"
+        ]
+      }
+    ]
+  },
+  "betaReview": {
+    "count": 0,
+    "submissions": []
+  }
+}

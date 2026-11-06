@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-11-06T15:59:19.835Z",
+  "reads": [
+    {
+      "path": "app/client-portal.html",
+      "status": 200,
+      "sha256": "751873d40b99b879541258824c2e7fe27538ec852a9ed84e91723ef948309631",
+      "matchesCheckout": true
+    },
+    {
+      "path": "app/blueprint-fulfillment.js",
+      "status": 200,
+      "sha256": "d48d19bb2a396cf629336d74486c478a1a3f82f6207aded1109b3462ea8f1da7",
+      "matchesCheckout": true
+    },
+    {
+      "path": "app/soft-pull-approve.html",
+      "status": 200,
+      "sha256": "b76b556bf20e1ce99f1ba05b8139e264d0752926d42048cf712c8691deb611d4",
+      "matchesCheckout": true
+    },
+    {
+      "path": "app/csm-queue.html",
+      "status": 200,
+      "sha256": "3b9bd5a0814e618552fce8bc5b8af3698dffa80b8bd20a6a14bae30e742b68e1",
+      "matchesCheckout": true
+    }
+  ],
+  "serverWrites": 0
+}

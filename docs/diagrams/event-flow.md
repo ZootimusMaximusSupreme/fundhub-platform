@@ -153,7 +153,7 @@ flowchart LR
 | `round.funded` | journey spine | `onRoundFundedInsights`, `onRoundFundedMoney` | 4 |
 | `round.closeout` | journey spine | `onRoundCloseoutGate`, `closePurchasedBlueprintRound` | 1 |
 | `file.finalized` | journey spine | — | 0 |
-| `payment.received` | side events | `onPaymentReceivedForClarity`, `onPaymentReceived`, `onPaidMidCheckin`, `onMoneyEventForMeta`, `onPaymentReceivedMoney`, `onPaidServicePaymentReceived`, `onPaymentReceivedForAddOn`, `onPaymentReceivedForLink` | 3 |
+| `payment.received` | side events | `onPaymentReceivedForClarity`, `onPaymentReceived`, `onPaidMidCheckin`, `onMoneyEventForMeta`, `onPaymentReceivedMoney`, `onBlueprintPaidServicePaymentReceived`, `onPaidServicePaymentReceived`, `onPaymentReceivedForAddOn`, `onPaymentReceivedForLink` | 3 |
 | `payment.failed` | side events | `onPaymentFailed` | 0 |
 | `payment.expired` | side events | — | 0 |
 | `payment.canceled` | side events | — | 0 |

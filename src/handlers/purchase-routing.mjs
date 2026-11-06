@@ -69,6 +69,7 @@ import { addTags } from "../workflows/tags.mjs";
 import { FUNDING_PAUSED_HOLD } from "../inquiry-ops/doc-gate.mjs";
 import { PAUSED_TAG } from "../crs/snapshot-negatives.mjs";
 import { ensureRepairEnrollment } from "../workflows/repair-enrollment.mjs";
+import { registerBlueprintPaidServicePayments } from "./paid-service-payment.mjs";
 
 /** One greppable line per bail. */
 export const NO_ROUTE = "[purchase-routing] no route";
@@ -320,4 +321,5 @@ export async function onPurchaseRoute(event, db) {
 
 export function register() {
   for (const name of ROUTED_EVENTS) on(name, onPurchaseRoute);
+  registerBlueprintPaidServicePayments();
 }

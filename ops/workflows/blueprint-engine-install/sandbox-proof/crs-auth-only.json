@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-11-06T16:25:43.262Z",
+  "kind": "authentication-only",
+  "host": "api-sandbox.stitchcredit.com",
+  "attempts": 1,
+  "bureauRequests": 0,
+  "productionRequests": 0,
+  "credentialValuesLogged": false,
+  "status": 401,
+  "tokenIssued": false,
+  "outcome": "sandbox authentication not established"
+}

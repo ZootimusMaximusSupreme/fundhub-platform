@@ -1,0 +1,40 @@
+Apple delivery lane — in progress 2026-11-06
+
+Current Apple receipts
+App 6823985032 / ai.fundhub.app. Public US App Store: Fundhub Portal 1.0.3, released 2026-11-05T06:13:23Z.
+ASC version dec763b2-4d6e-4a77-b8af-00d375e078bb: READY_FOR_SALE, AFTER_APPROVAL. Attached build 9: ed50a585-803c-4268-8055-1672b150d3f0, VALID, not expired; uploaded 2026-11-04T04:43:28-08:00, expires 2027-02-02T04:43:28-08:00. Review submission e5402413-fb68-4704-8b99-b5e2c677020e COMPLETE, submitted 2026-11-04T20:59:28.106Z.
+Read-only checked 2026-11-06T15:55:19Z with existing makeAppleClient and private existing auth; no credential values or tokens saved. No Apple writes.
+TestFlight build detail: internal READY_FOR_BETA_TESTING, external READY_FOR_BETA_SUBMISSION, autoNotifyEnabled true. No beta review submission for build9. The app has one internal beta group currently associated with an older build, not build9. These states do not prove build9 tester delivery. Current public App Store delivery is independently confirmed.
+
+Architecture and source
+Client Home embeds WorkspaceWebView at /app/client-portal.html relative to FundhubAPI.base=https://fundhub.ai. CSM uses /app/csm-queue.html. HTML/JS are remote and not bundled resources.
+Current source51a57e9b has the same tools/fundhub-ios tree4e49a0cc4ee9d55960787dc3bf1d17d256bb6595 as release sourcebe7963cab. App/widget project remains1.0.3 build9. No native source/version change from Blueprint; do not force a native version bump just for web content.
+Public GET checks on client portal, Blueprint fulfillment JS, secure first-report form and CSM queue are all HTTP200 and match the current checkout. See hosted-asset-receipt.json.
+
+Actual simulator compatibility finding
+Compiled the unchanged production Models.swift, FundhubAPI.swift and WorkspaceWebView.swift with the evidence-only NativeCompatibilityProbe.swift. It runs in iOS27 simulator using the production Coordinator. External UIApplication.open calls are swizzled to record destinations without opening real apps/providers. The synthetic signed-document navigation policy is recorded then cancelled before any network request. No customer session, identity, account, charge, pull or bank application is used.
+Six cases completed. Direct target=_blank Experian dispute/supporting-upload links reach the correct external-open handler. A direct synthetic bank anchor does likewise. A direct same-origin signed document is allowed inside the authenticated WebView by the production coordinator.
+FAIL: window.open('about:blank','_blank') returns false/null before the delayed bank or document URL can be assigned. The deployed Blueprint client uses exactly this pattern, then asks the user to allow popups, so these two controls cannot finish their handoff in the current native wrapper. CSM scoped document uses the same pattern.
+Evidence: native-compatibility-before.json. This is iOS simulator WKWebView runtime proof against production coordinator source, not a physical iPhone or provider execution receipt. The first probe launch failed only because its evidence harness initially lacked the iOS27 scene lifecycle; corrected inside the evidence harness, no product code changed.
+
+Proposed smallest repair, pending parent source ownership
+Use a same-window navigation fallback after the existing server-validated result when the temporary popup is unavailable. Existing WKNavigationDelegate sends external HTTPS to Safari and preserves first-party signed docs in the authenticated WebView. This can be a hosted JS repair and avoid a new binary, provided independent browser/native regression and live deployment prove it. Files affected: public/app/blueprint-fulfillment.js; public/app/blueprint-csm-services.js; focused existing e2e proof files. This lane has not edited these files.
+No upload/submission should be claimed or forced until native compatibility is repaired/proven. Apple already publicly distributes1.0.3 build9; actual hosted Blueprint compatibility is a separate receipt.
+
+REPAIR RETEST — 2026-11-06T16:12Z
+Parent repaired the two hosted scripts only; this lane made no API, Swift, native-project, credential or product-source edit.
+Client candidate SHA256 fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81.
+CSM candidate SHA256 6ec711c17a476fe5fede8684e13973ebbc62c61733ab72c9aef0dc782e84424e.
+These hashes still matched the candidate source when the proof was saved.
+Actual handler/signature contract BEFORE: HTTP200 document.download is an object {url,path,expiresAt,expiresAtIso}; deployed client JS rejected it with “A valid destination was not returned.” document-contract-before.json preserves this failure.
+Actual handler/signature contract AFTER: canonical object accepted, scoped /api/documents/d1000000-0000-4000-8000-0000000000d1 requested with v/exp/sig, popup remains open at that exact destination, empty error notice. Final probe intercepts the whole browser context, including popup requests. Its DB/session/documents are synthetic; it is not a production/customer download. See document-contract-after.json and document-contract-probe.mjs.
+Native AFTER: loaded the exact candidate client/CSM JavaScript into an isolated WKWebView using the unchanged production Coordinator. Six actual controls passed across eight steps: bureau dispute link; bureau supporting-upload link; permitted-bank action; client packet; client repair letter; CSM selected bank evidence. Three expected external destinations reached UIApplication.open recording, three expected same-origin document destinations received production allow decisions before the probe cancelled their transport. Zero JavaScript errors. See native-compatibility-after.json and native-candidate-summary.json. Signed query values are omitted from that saved navigation receipt; all identity/token/signing fixtures are synthetic.
+The probe deliberately enables JavaScript popup attempts to exercise the production coordinator. Its about:blank popup still returns null; the actual repaired web scripts then use the validated same-window fallback correctly. External transport was recorded only, never launched. First-party document transport was cancelled before network. This proves the native handoff policy and actual candidate web actions; it does not prove a bank application, bureau result, real paid account, real PDF contents, release-signed device UI or physical iPhone.
+PDF/image source contract: api/documents/[id].mjs preserves inline PDF/image behavior; attachment+sandbox is only for stored HTML. Current new Blueprint paths are PDF/image packet/receipt/report files. No generic native download capability was added or claimed.
+
+APPLE DELIVERY DECISION
+Existing public Fundhub Portal1.0.3 build9 loads these hosted pages at runtime. Native tree/source/permissions/widget/resources are unchanged. The compatibility repair is hosted JavaScript, so rebuilding/uploading another unchanged binary would not deliver anything additional. No Apple upload/submission or TestFlight invitation was performed or required by this web-only change.
+Remaining delivery receipt: parent must ship the two repaired hosted assets through protected CI/Ship and verify their live hashes. Original hosted-asset-receipt.json describes the older deployed script, not this candidate repair. Do not call native Blueprint handoffs live until the parent records the new deployed hashes.
+App Store distribution receipt itself is already complete: public1.0.3/build9, VALID/READY_FOR_SALE, review COMPLETE. TestFlight9 is ready for internal beta testing, not shown assigned to the app's internal group, and has no external beta review submission. No tester delivery claim is made.
+Local watchdog checked16:00Z: pending0/busy0/failed0/autoidle, baseline51a57e9b, version1.0.3/build9. It intentionally ignores web-only changes. Installed LaunchAgent is present. A local active Mac watcher is not a 24/7 hosted signing service.
+Evidence lane ready for independent review. Parent owns publication and the required hosted repair release; this folder contains public-safe receipt IDs, synthetic fixtures and before/after proofs only.

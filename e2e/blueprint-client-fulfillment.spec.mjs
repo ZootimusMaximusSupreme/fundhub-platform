@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { json } from './harness.mjs';
+import { shapeDocument } from '../src/documents/retrieve.mjs';
 
 const ORG = '10000000-0000-4000-8000-000000000001';
 const CLIENT = '10000000-0000-4000-8000-000000000002';
@@ -9,16 +10,19 @@ const CASE = '10000000-0000-4000-8000-000000000005';
 const LENDER = '10000000-0000-4000-8000-000000000006';
 const DOCUMENT = '10000000-0000-4000-8000-000000000007';
 const APPLICATION = '10000000-0000-4000-8000-000000000008';
+const SIGNED_DOCUMENT = shapeDocument({id:DOCUMENT,current_version_id:null},{signing:{secret:'synthetic-browser-document-signer',ttlSeconds:120}}).download;
 
-async function open(page, { completed = false, denied = false, failInquiries = false } = {}) {
+async function open(page, { completed = false, denied = false, failInquiries = false, documentDownload = SIGNED_DOCUMENT, documentStatus = 200, onDocument = null, lenderUrl = 'https://bank.example.invalid/apply', onLender = null } = {}) {
   const writes = [];
   const engagement = {id:ENGAGEMENT,orgId:ORG,clientId:CLIENT,status:completed ? 'completed' : 'active',executionOwner:'client',roundId:null};
   const funding = {ok:true,engagement,state:completed ? 'completed' : 'held',nextAction:'Wait for Experian removal verification before opening this bank.',lenders:[{id:LENDER,name:'Fixture Community Bank',productName:'Business card',available:false,reason:'Experian is waiting for verification.',nextEligibleAt:'2026-11-09T12:00:00Z'}],applications:[]};
   const inquiries = {ok:true,cases:[{id:CASE,bureau:'Experian',status:'In progress',packet:{complete:true,missing:[]},portalUrl:'https://www.experian.com/help/dispute-credit/',documentUploadUrl:'https://www.experian.com/consumer/upload/',nextCheckAt:'2026-11-09T12:00:00Z',call:{status:'not_requested'},inquiries:[{id:'inquiry',name:'Fixture Bank inquiry',state:'pending_verification'}],documents:[],actions:{canRecordSubmission:!completed,canLaunchCall:!completed,canCheckSavedEvidence:!completed}}]};
   const repair = {ok:true,program:null,authorization:{signed:true,packetComplete:true,missing:[]},stage:'ready',cases:[{bureau:'Experian',round:'R1',status:'ready',portalUrl:inquiries.cases[0].portalUrl,documentUploadUrl:inquiries.cases[0].documentUploadUrl,items:[],letters:[]}],actions:{canGenerate:true}};
+  inquiries.cases[0].documents = [{id:DOCUMENT,title:'Open saved case letter'}];
   const services = {ok:true,engagement,allowance:{includedAvailable:!completed,nextIncludedAt:'2026-12-06T12:00:00Z',pendingRequestId:null},checkoutProviders:[{id:'commas',label:'Pay in full'},{id:'whop',label:'Financing through Whop'}],serviceTypes:[{key:'funding_round',label:'Funding takeover',priceCents:null,requiresQuote:true}],requests:[],capabilities:{requestHelp:!completed,requestReport:!completed,quote:false}};
   await page.addInitScript(() => localStorage.setItem('fh_token','full-blueprint-browser-fixture'));
   await page.context().route('https://bank.example.invalid/**',route => route.fulfill({contentType:'text/html',body:'<h1>Fixture bank application</h1>'}));
+  await page.context().route('**/api/documents/**',route=>route.fulfill({contentType:'text/html',body:'<h1>Synthetic signed case document</h1>'}));
   await page.route('**/api/**',async route => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -30,6 +34,11 @@ async function open(page, { completed = false, denied = false, failInquiries = f
     if (path === '/api/blueprint/services' && method === 'GET') return json(route,structuredClone(services));
     if (path === '/api/blueprint/repair' && method === 'GET') return json(route,structuredClone(repair));
     if (path === '/api/documents-upload') return json(route,{ok:true,documents:[{id:DOCUMENT}]});
+    if (path === '/api/documents-download') {
+      if (onDocument) await onDocument();
+      return documentStatus === 200 ? json(route,{ok:true,document:{id:DOCUMENT,download:documentDownload}}) : json(route,{ok:false,message:'The saved document is not available.'},documentStatus);
+    }
+    if (path.startsWith('/api/documents/')) return route.fulfill({contentType:'text/html',body:'<h1>Synthetic signed case document</h1>'});
     if (method === 'POST' && path.startsWith('/api/blueprint/')) {
       const body = route.request().postDataJSON();
       writes.push({path,body});
@@ -54,8 +63,9 @@ async function open(page, { completed = false, denied = false, failInquiries = f
       }
       if (body.action === 'open_lender') {
         expect(funding.state).toBe('ready');
+        if (onLender) await onLender();
         funding.applications = [{id:APPLICATION,lenderName:'Fixture Community Bank',status:'Apply',reportedStatus:null}];
-        return json(route,{ok:true,url:'https://bank.example.invalid/apply',applicationId:APPLICATION});
+        return json(route,{ok:true,url:lenderUrl,applicationId:APPLICATION});
       }
       if (body.action === 'report_application') {
         funding.applications[0].reportedStatus = body.status;
@@ -194,4 +204,101 @@ test('a failed bureau read shows its error without making banks available',async
   await expect(app.getByRole('alert')).toContainText('Bureau evidence is temporarily unavailable.');
   await app.getByRole('button',{name:'Applications',exact:true}).click();
   await expect(app.getByRole('button',{name:'Open bank application'})).toHaveCount(0);
+});
+
+for (const width of [1440,390]) test(`blocked popups use the permitted bank handoff at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:900});
+  await page.addInitScript(()=>{window.open=()=>null;});
+  const {app,writes}=await open(page);
+  await app.getByRole('button',{name:'Inquiry removal',exact:true}).click();
+  await app.getByRole('button',{name:'Check saved bureau evidence'}).click();
+  await app.getByRole('button',{name:'Applications',exact:true}).click();
+  await app.getByRole('button',{name:'Open bank application'}).click();
+  await expect(page).toHaveURL('https://bank.example.invalid/apply');
+  expect(writes.filter(w=>w.body.action==='open_lender')).toHaveLength(1);
+});
+
+test('the canonical document object opens in an available popup',async({page})=>{
+  const {app}=await open(page);
+  await app.getByRole('button',{name:'Inquiry removal',exact:true}).click();
+  const popupPromise=page.waitForEvent('popup');
+  await app.getByRole('button',{name:'Open saved case letter'}).click();
+  const popup=await popupPromise;
+  await expect(popup).toHaveURL(new URL(SIGNED_DOCUMENT.url,page.url()).href);
+  await expect(popup.getByRole('heading')).toHaveText('Synthetic signed case document');
+  await popup.close();
+});
+
+for (const width of [1440,390]) for(const shape of ['url','path']) test(`blocked document popup accepts canonical ${shape} at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:900});
+  await page.addInitScript(()=>{window.open=()=>null;});
+  const {app}=await open(page,{documentDownload:shape==='url'?SIGNED_DOCUMENT:{path:SIGNED_DOCUMENT.path}});
+  const expected=new URL(SIGNED_DOCUMENT.path,page.url()).href;
+  await app.getByRole('button',{name:'Inquiry removal',exact:true}).click();
+  await app.getByRole('button',{name:'Open saved case letter'}).click();
+  await expect(page).toHaveURL(expected);
+  await expect(page.getByRole('heading')).toHaveText('Synthetic signed case document');
+});
+
+test('blocked bank handoff still rejects an unsafe destination',async({page})=>{
+  await page.addInitScript(()=>{window.open=()=>null;});
+  const {app}=await open(page,{lenderUrl:'javascript:alert(1)'});
+  const original=page.url();
+  await app.getByRole('button',{name:'Inquiry removal',exact:true}).click();
+  await app.getByRole('button',{name:'Check saved bureau evidence'}).click();
+  await app.getByRole('button',{name:'Applications',exact:true}).click();
+  await app.getByRole('button',{name:'Open bank application'}).click();
+  await expect(app.getByRole('status').last()).toContainText('A valid destination was not returned.');
+  expect(page.url()).toBe(original);
+});
+
+for(const outcome of ['denied','unsafe','account-change']) test(`blocked client document navigation stays closed for ${outcome}`,async({page})=>{
+  await page.addInitScript(()=>{window.open=()=>null;});
+  const options=outcome==='denied'?{documentStatus:403}:outcome==='unsafe'?{documentDownload:{url:'javascript:alert(1)'}}:{onDocument:()=>page.evaluate(()=>localStorage.setItem('fh_token','different-account'))};
+  const {app}=await open(page,options);
+  const original=page.url();
+  await app.getByRole('button',{name:'Inquiry removal',exact:true}).click();
+  await app.getByRole('button',{name:'Open saved case letter'}).click();
+  if(outcome==='account-change')await expect(app.getByRole('link',{name:'Sign in',exact:true})).toBeVisible();
+  else await expect(app.getByRole('status').last()).toContainText(outcome==='denied'?'The saved document is not available.':'A valid destination was not returned.');
+  expect(page.url()).toBe(original);
+});
+
+async function openCsmDocument(page,{blocked=false,documentDownload=SIGNED_DOCUMENT,onDocument=null}={}) {
+  await page.addInitScript(({blocked})=>{localStorage.setItem('fh_token','synthetic-csm-document-session');if(blocked)window.open=()=>null;},{blocked});
+  await page.context().route('**/api/documents/**',route=>route.fulfill({contentType:'text/html',body:'<h1>Synthetic signed bank document</h1>'}));
+  await page.route('**/api/**',async route=>{
+    const url=new URL(route.request().url());
+    if(url.pathname==='/api/auth/session')return json(route,{ok:true,principal:'staff',staff:{id:ACCOUNT,org_id:ORG,role:'csm',name:'Synthetic CSM',status:'active'}});
+    if(url.pathname==='/api/blueprint/services')return url.searchParams.get('view')==='oversight'?json(route,{ok:true,clients:[{clientId:CLIENT,clientName:'Synthetic Buyer',status:'active',executionOwner:'client'}]}):json(route,{ok:true,serviceTypes:[],requests:[],capabilities:{quote:false},oversight:{openSteps:[]}});
+    if(url.pathname==='/api/blueprint/funding')return json(route,{ok:true,applications:[{id:APPLICATION,lenderName:'Synthetic Bank',status:'Apply',evidenceDocuments:[{id:DOCUMENT,reference:'SYNTHETIC-BANK-DOCUMENT'}]}]});
+    if(url.pathname==='/api/documents-download'){if(onDocument)await onDocument();return json(route,{ok:true,document:{id:DOCUMENT,download:documentDownload}});}
+    if(url.pathname.startsWith('/api/documents/'))return route.fulfill({contentType:'text/html',body:'<h1>Synthetic signed bank document</h1>'});
+    return json(route,{ok:true,items:[],rows:[],total:0,entitlements:[]});
+  });
+  await page.goto('/app/csm-queue.html');
+  const app=page.locator('#blueprint-csm-services');
+  await app.getByRole('button',{name:'Review client',exact:true}).click();
+  await expect(app.getByRole('button',{name:'Open selected bank evidence'})).toBeVisible();
+  return app;
+}
+
+for(const blocked of [false,true])test(`CSM canonical bank document opens with popup blocked=${blocked}`,async({page})=>{
+  const app=await openCsmDocument(page,{blocked});
+  const expected=new URL(SIGNED_DOCUMENT.url,page.url()).href;
+  const popupPromise=blocked?null:page.waitForEvent('popup');
+  await app.getByRole('button',{name:'Open selected bank evidence'}).click();
+  const target=blocked?page:await popupPromise;
+  await expect(target).toHaveURL(expected);
+  await expect(target.getByRole('heading')).toHaveText('Synthetic signed bank document');
+  if(!blocked)await target.close();
+});
+
+for(const outcome of ['unsafe','account-change'])test(`CSM blocked document stays closed for ${outcome}`,async({page})=>{
+  const app=await openCsmDocument(page,{blocked:true,...(outcome==='unsafe'?{documentDownload:{url:'javascript:alert(1)'}}:{onDocument:()=>page.evaluate(()=>localStorage.setItem('fh_token','different-account'))})});
+  const original=page.url();
+  await app.getByRole('button',{name:'Open selected bank evidence'}).click();
+  if(outcome==='account-change')await expect(app).toBeHidden();
+  else await expect(app.getByRole('status').last()).toContainText('The document link could not be opened.');
+  expect(page.url()).toBe(original);
 });

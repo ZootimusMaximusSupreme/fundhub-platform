@@ -102,13 +102,14 @@
         if (popup) popup.opener = null;
         try {
           const result = await api('/api/documents-download?id=' + encodeURIComponent(id));
-          let url = result.document?.download;
+          const download = result.document?.download;
+          let url = typeof download === 'string' ? download : download?.url || download?.path;
           if (typeof url === 'string' && url.startsWith('/api/documents/')) url = new URL(url,location.origin).href;
           const parsed = new URL(url);
           if (parsed.protocol !== 'https:' && !(parsed.origin === location.origin && parsed.pathname.startsWith('/api/documents/'))) throw new Error('The document link could not be opened.');
           if (!current()) { popup?.close(); return; }
           if (popup) popup.location.href = parsed.href;
-          else throw new Error('Allow popups for Fundhub, then open the document again.');
+          else location.assign(parsed.href);
         } catch (error) { popup?.close(); throw error; }
       }
       else if (action === 'back') { selected = null; detail = null; render(); }
