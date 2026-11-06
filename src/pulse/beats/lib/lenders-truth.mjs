@@ -221,7 +221,8 @@ export async function matchForClient(db, {
   });
 
   const inq = await db.query(
-    `SELECT bureau, status, created_at
+    `SELECT bureau, status, created_at, removal_verified_at,
+            removal_verified_report_id, removal_verified_document_id
        FROM inquiry_log
       WHERE org_id = $1::uuid AND client_id = $2::uuid
       ORDER BY created_at DESC

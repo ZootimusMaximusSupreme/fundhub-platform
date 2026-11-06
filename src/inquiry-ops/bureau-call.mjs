@@ -10,6 +10,7 @@ import { dirname, join } from "node:path";
 import { revealSsn } from "../pii/index.mjs";
 import { recordDispatch } from "../lib/outbound-calls.mjs";
 import { placeConfiguredCall, normalizePhone } from "../messaging/providers/bland-voice.mjs";
+import { menuSteps } from "./bureau-dial-plan.mjs";
 
 const require = createRequire(import.meta.url);
 const VENDOR = join(dirname(fileURLToPath(import.meta.url)), "../../vendor/inquiry-remover");
@@ -38,6 +39,20 @@ function firstBureau(raw) {
   return part || "EX";
 }
 
+export function clientRequestedBureauTask(existingTask) {
+  return [
+    "You are Fundhub's automated assistant calling with the client's signed authorization about their saved inquiry case.",
+    "When a person answers, disclose that you are Fundhub's automated assistant calling on behalf of the client and that the call may be recorded. Never claim to be the client.",
+    "Use only the provided client identity to identify the authorized file. Use the bureau menu steps below only to reach the appropriate representative.",
+    "Discuss only the listed inquiries and the client's existing submission. Ask what evidence or follow-up the bureau needs and obtain a reference and timeline.",
+    "Never claim identity theft, unauthorized accounts, a police/FTC report, a CFPB complaint, or the absence of a fraud alert without verified evidence. A menu option is not proof of any of those facts.",
+    "Never answer unknown security questions by guessing. Ask for the client's participation or transfer to the Fundhub representative when required.",
+    "A representative's statement is a call outcome, not proof that an inquiry disappeared from the report. Record the response for verification.",
+    "Client: {{client_first_name}} {{client_last_name}}. Address: {{client_address}}, {{client_city}}, {{client_state}} {{client_zip}}. Inquiries: {{inquiry_list}}.",
+    "Bureau menu navigation:", ...menuSteps(existingTask)
+  ].join("\n");
+}
+
 /**
  * @returns {Promise<{ ok:true, callId:string, bureau:string, caseId:string }>}
  */
@@ -45,6 +60,10 @@ export async function launchBureauCallForCase(db, {
   orgId,
   caseId,
   staffId,
+  expectedClientId = null,
+  accountId = null,
+  clientRequested = false,
+  inquiryIds = null,
   env = process.env,
   fetchImpl,
   placeCallImpl = placeConfiguredCall
@@ -63,6 +82,9 @@ export async function launchBureauCallForCase(db, {
   const caseRow = caseRows[0];
   if (!caseRow) {
     throw new BureauCallError("not_found", "That inquiry case was not found.", 404);
+  }
+  if (expectedClientId && String(caseRow.client_id) !== String(expectedClientId)) {
+    throw new BureauCallError("client_not_found", "That inquiry case is unavailable.", 404);
   }
   if (caseRow.case_status === "Canceled" || caseRow.case_status === "Completed") {
     throw new BureauCallError("case_closed", "This case is closed, so no call was placed.", 409);
@@ -114,7 +136,7 @@ export async function launchBureauCallForCase(db, {
   try {
     ({ ssn } = await revealSsn(db, {
       clientId: client.id,
-      accessedBy: staffId || "inquiry-bureau-call",
+      accessedBy: staffId || (accountId ? `account:${accountId}` : "inquiry-bureau-call"),
       reason: "bureau_dispute_call",
       env
     }));
@@ -135,9 +157,10 @@ export async function launchBureauCallForCase(db, {
           inquiry_removal_case_id = $3::uuid
           OR upper(coalesce(bureau,'')) = $4
         )
+        AND ($5::uuid[] IS NULL OR id = ANY($5::uuid[]))
       ORDER BY created_at ASC
       LIMIT 40`,
-    [orgId, client.id, caseId, bureau]
+    [orgId, client.id, caseId, bureau, inquiryIds]
   );
   const inquiries = inqRows.map((r) => ({
     creditorName: r.inquiry || "Unauthorized inquiry",
@@ -177,13 +200,14 @@ export async function launchBureauCallForCase(db, {
 
   const result = await placeCallImpl({
     phoneNumber: callConfig.phoneNumber,
-    task: callConfig.task,
+    task: clientRequested ? clientRequestedBureauTask(callConfig.task) : callConfig.task,
     requestData: callConfig.requestData,
     voice: callConfig.voice,
     waitForGreeting: callConfig.waitForGreeting,
     maxDuration: callConfig.maxDuration,
     transferNumber: transfer,
-    metadata: { ...metadata, org_id: orgId, case_id: caseId, placed_by: staffId || null },
+    metadata: { ...metadata, org_id: orgId, case_id: caseId, placed_by: staffId || null,
+      ...(accountId ? { requested_account_id: accountId } : {}) },
     webhookUrl: callConfig.webhookUrl,
     env,
     fetchImpl
