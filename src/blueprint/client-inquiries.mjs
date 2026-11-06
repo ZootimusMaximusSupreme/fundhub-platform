@@ -3,6 +3,7 @@ import { withTransaction } from "../db/with-transaction.mjs";
 import { evaluateDocGate } from "../inquiry-ops/doc-gate.mjs";
 import { launchBureauCallForCase } from "../inquiry-ops/bureau-call.mjs";
 import { addBusinessDays } from "../inquiry-ops/business-days.mjs";
+import { verifiedIdentity } from "../identity/verified.mjs";
 import { captureInquiryBaseline, genuineInquiryReport, verifyClientInquiryRemovals, reviewInquiryEvidence } from "../inquiry-ops/verify-removal.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -113,6 +114,8 @@ export async function readClientInquiries(db, scope, deps = {}) {
   )).rows;
   const services = await activeServices(db, scope, deps);
   const packet = await (deps.evaluateDocGate || evaluateDocGate)(db, { orgId: scope.orgId, clientId: scope.clientId });
+  const identity = await (deps.verifiedIdentity || verifiedIdentity)(db, scope);
+  const identityReviewed = Boolean(identity?.legalName && identity?.address && identity?.verifiedAt);
   const documents = (await db.query(
     `SELECT id, title, kind, subtype, generated_at FROM documents
       WHERE org_id = $1::uuid AND client_id = $2::uuid AND current_version_id IS NOT NULL
@@ -130,9 +133,13 @@ export async function readClientInquiries(db, scope, deps = {}) {
     const executionOwner = teamOwnsCase(services, row.id) ? "fundhub" : scope.engagement.executionOwner;
     const clientCanAct = isActive && executionOwner === "client" && !completed;
     const callState = evidence?.call_state || "idle";
-    const canLaunch = clientCanAct && packet.complete === true && ["idle", "failed"].includes(callState);
+    const canLaunch = clientCanAct && packet.complete === true && identityReviewed && ["idle", "failed"].includes(callState);
     result.push({ id: row.id, bureau: row.selected_bureaus_raw, status: row.case_status, executionOwner,
-      packet: { complete: packet.complete === true, missing: packet.missing || [] },
+      packet: { complete: packet.complete === true, identityReviewed, missing: packet.missing || [],
+        uploads: (packet.missing || []).filter(kind => kind !== "authorization").map(subtype => ({
+          label: ({ id_document: "Government photo ID", proof_of_address: "Proof of address", ssn_card: "SSN card" })[subtype] || subtype,
+          kind: "client_upload", subtype
+        })) },
       portalUrl: INQUIRY_PORTALS[row.selected_bureaus_raw] || null,
       submittedAt: evidence?.submitted_at || null, submissionReference: evidence?.submission_reference || null,
       receiptDocumentId: evidence?.receipt_document_id || null, nextCheckAt: evidence?.next_check_at || null,
@@ -186,6 +193,10 @@ export async function launchClientInquiryCall(db, scope, input, deps = {}) {
   if (input.authorization !== true) fail("call_authorization_required", "Confirm that you want the AI assistant to call this bureau for your case.");
   const services = await activeServices(db, scope, deps);
   if (teamOwnsCase(services, input.caseId)) fail("team_handles_case", "The Fundhub team is handling this case.", 409);
+  const identity = await (deps.verifiedIdentity || verifiedIdentity)(db, scope);
+  if (!identity?.legalName || !identity?.address || !identity?.verifiedAt) {
+    fail("identity_review_needed", "The Fundhub team needs to finish reviewing your identity papers before this call.", 409);
+  }
   const prepared = await withTransaction(db, async tx => {
     const row = await ownedCase(tx, scope, input.caseId, true);
     if (["Completed", "Canceled"].includes(row.case_status)) fail("case_closed", "This case is closed.", 409);

@@ -30,8 +30,9 @@ describe("hasDisputeAuthorization", () => {
   test("asks hasValidConsent for kind dispute_authorization", async () => {
     const db = fakeDb([{ rows: [] }]);
     assert.equal(await hasDisputeAuthorization(db, { orgId: "o", clientId: "c" }), false);
-    assert.equal(db.calls.length, 1);
+    assert.equal(db.calls.length, 2);
     assert.equal(db.calls[0].params[2], "dispute_authorization");
+    assert.match(db.calls[1].text, /BLUEPRINT-SELF-FUNDING-AGREEMENT/);
   });
 
   test("true when a valid consent row is on file", async () => {

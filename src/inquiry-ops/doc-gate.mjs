@@ -5,6 +5,7 @@
 
 import { KINDS } from "../documents/kinds.mjs";
 import { CONSENT_VALID_SQL } from "../consent/index.mjs";
+import { hasFullBlueprintDisputeAuthorization } from "../repair/dispute-auth.mjs";
 
 /* THE SIGNATURE IS FILED IN A DIFFERENT PLACE FROM WHERE THIS USED TO LOOK.
    Measured 2026-09-06, on the funding walkthrough client: the client signed the
@@ -191,7 +192,8 @@ export async function hasSignedAuthorization(db, { orgId, clientId } = {}) {
  */
 export async function evaluateDocGate(db, { orgId, clientId, items = [] }) {
   const docs = await loadClientDocuments(db, { orgId, clientId });
-  const signed = await hasSignedAuthorization(db, { orgId, clientId });
+  const signed = await hasSignedAuthorization(db, { orgId, clientId })
+    || await hasFullBlueprintDisputeAuthorization(db, { orgId, clientId });
   return checkDocPacket(docs, {
     requireSsn: disputeNeedsSsn(items),
     signedAuthorization: signed
