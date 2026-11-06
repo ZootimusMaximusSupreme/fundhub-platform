@@ -48,7 +48,13 @@ function unsafeCheckout() {
 // Validate the serialized body, not a hand-picked display field. Service/SKU
 // names stay on immutable Fundhub rows; the provider gets exact opaque refs.
 function assertWhopCheckoutBody(body, idempotencyKey) {
-  if (!exactKeys(body, BODY_KEYS) || !exactKeys(body.plan, PLAN_KEYS)
+  const hasMethods = Object.hasOwn(body || {}, 'payment_method_configuration');
+  const keys = hasMethods ? [...BODY_KEYS, 'payment_method_configuration'] : BODY_KEYS;
+  const methods = body?.payment_method_configuration;
+  if ((hasMethods && (!exactKeys(methods, ['enabled', 'disabled', 'include_platform_defaults'])
+    || !Array.isArray(methods.enabled) || methods.enabled.length !== 1 || methods.enabled[0] !== 'claritypay'
+    || !Array.isArray(methods.disabled) || methods.disabled.length !== 0 || methods.include_platform_defaults !== true))
+    || !exactKeys(body, keys) || !exactKeys(body.plan, PLAN_KEYS)
     || !/^biz_[A-Za-z0-9]+$/.test(body.account_id || '') || body.mode !== 'payment'
     || !/^prod_[A-Za-z0-9]+$/.test(body.plan.product_id || '')
     || body.plan.plan_type !== 'one_time' || body.plan.release_method !== 'buy_now'
@@ -59,14 +65,14 @@ function assertWhopCheckoutBody(body, idempotencyKey) {
   }
   const meta = body.metadata;
   const service = Object.hasOwn(meta || {}, 'fh_service_request_id');
-  const keys = service ? SERVICE_KEYS : ORDER_KEYS;
-  if (!exactKeys(meta, keys) || meta.fh_schema !== '2' || meta.fh_currency !== 'USD'
+  const metadataKeys = service ? SERVICE_KEYS : ORDER_KEYS;
+  if (!exactKeys(meta, metadataKeys) || meta.fh_schema !== '2' || meta.fh_currency !== 'USD'
     || !/^[1-9]\d*$/.test(meta.fh_amount_cents || '')) throw unsafeCheckout();
   const amount = Number(meta.fh_amount_cents);
   const referenceKey = service ? 'fh_service_request_id' : 'fh_payment_link_id';
   if (!Number.isSafeInteger(amount) || amount <= 0 || typeof meta.fh_amount_cents !== 'string'
     || body.plan.initial_price !== amount / 100
-    || keys.filter(key => key.endsWith('_id')).some(key => !UUID.test(meta[key] || ''))
+    || metadataKeys.filter(key => key.endsWith('_id')).some(key => !UUID.test(meta[key] || ''))
     || idempotencyKey !== `${service ? 'fh-request' : 'fh-order'}:${meta[referenceKey]}`) throw unsafeCheckout();
 }
 

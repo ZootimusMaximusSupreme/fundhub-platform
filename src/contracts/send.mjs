@@ -33,7 +33,7 @@ import { storeFromEnv } from "../documents/store.mjs";
 import { storeAndRegister, markDelivered } from "../documents/register.mjs";
 import { buildDocumentKey } from "../documents/kinds.mjs";
 import { emit } from "../events/bus.mjs";
-import { badRequest, notFound, conflict } from "./errors.mjs";
+import { badRequest, notFound, conflict, forbidden } from "./errors.mjs";
 import { getTemplate } from "./templates.mjs";
 import {
   clientContext, mergeContext, renderContract, missingTags, missingRequired,
@@ -60,7 +60,7 @@ export const CONTRACT_COLUMNS = `
   source_kind, fields, source_document_id, source_document_version_id,
   signed_document_id, signed_document_version_id, signed_body_sha,
   signing_order, completed_at,
-  created_by, created_at, updated_at`;
+  created_by, created_by_account_id, sent_by_account_id, created_at, updated_at`;
 
 /** 'sha256:<hex>' — the same algorithm-prefixed shape documents.checksum uses. */
 /* THE "DO NOT SEND THIS" TEMPLATES REFUSE TO SEND (walkthrough-4 defect 2,
@@ -228,11 +228,14 @@ function assertBlueprintPriceTemplate(template, values) {
  * ever be shown by accident.
  */
 export async function createDraft(db, {
-  orgId, staffId, clientId, templateId, values = {}, title = null,
+  orgId, staffId = null, accountId = null, clientId, templateId, values = {}, title = null,
   signers = null, signingOrder = "sequential", subjectStaffId = null, amountCents = undefined
 } = {}) {
   if (!orgId) throw badRequest("A contract needs to belong to a company.", "org_required");
-  if (!staffId) throw badRequest("A contract has to record who created it.", "staff_required");
+  if ((!staffId && !accountId) || (staffId && accountId)) throw badRequest("Record one actual contract creator.", "actor_required");
+  if (accountId && !(await db.query(`SELECT id FROM accounts WHERE id=$1 AND org_id=$2 AND kind='affiliate' AND status='active'`, [accountId, orgId])).rows[0]) {
+    throw forbidden("That affiliate cannot issue this agreement.", "account_actor_forbidden");
+  }
   if (!clientId) throw badRequest("Pick the client this contract is for.", "client_required");
   if (subjectStaffId) {
     const ownsStaff = await db.query(
@@ -268,8 +271,8 @@ export async function createDraft(db, {
     `INSERT INTO contracts
        (org_id, client_id, staff_id, template_id, template_key, title, kind, subtype,
         merge_values, signature_required, created_by,
-        source_kind, fields, signing_order, is_demo)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13::jsonb,$14,
+        source_kind, fields, signing_order, created_by_account_id, is_demo)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13::jsonb,$14,$15,
      /* A contract for a demo client is a demo contract. Read off the client
         rather than passed in, because every caller that creates a fixture
         contract would otherwise have to remember, and none of them did: on
@@ -288,7 +291,7 @@ export async function createDraft(db, {
         adjusting it must not reach back and edit the template every other
         contract is generated from. */
      JSON.stringify(template.fields || []),
-     signingOrder === "parallel" ? "parallel" : "sequential"]
+     signingOrder === "parallel" ? "parallel" : "sequential", accountId]
   );
   const contract = rows[0];
 
@@ -390,10 +393,13 @@ export async function preview(db, {
  * storeFromEnv(), which is the in-memory provider unless one is configured.
  */
 export async function send(db, {
-  orgId, staffId, id, store = null, ttlSeconds = DEFAULT_TTL_SECONDS,
-  baseUrl = null, secret = undefined, at = new Date(), now = Date.now, amountCents = undefined
+  orgId, staffId = null, accountId = null, id, store = null, ttlSeconds = DEFAULT_TTL_SECONDS,
+  baseUrl = null, secret = undefined, at = new Date(), now = Date.now, amountCents = undefined, resend = true
 } = {}) {
-  if (!staffId) throw badRequest("A send has to record who sent it.", "staff_required");
+  if ((!staffId && !accountId) || (staffId && accountId)) throw badRequest("Record one actual contract sender.", "actor_required");
+  if (accountId && !(await db.query(`SELECT id FROM accounts WHERE id=$1 AND org_id=$2 AND kind='affiliate' AND status='active'`, [accountId, orgId])).rows[0]) {
+    throw forbidden("That affiliate cannot send this agreement.", "account_actor_forbidden");
+  }
 
   const current = await getContract(db, { orgId, id });
   if (!current) throw notFound();
@@ -423,13 +429,22 @@ export async function send(db, {
        on (org_id, provider_ref) lets a deliberate second email through while
        still refusing an accidental duplicate of the same one. The commonest
        reason somebody presses Send twice is that the client lost the first. */
+    if (!resend) {
+      // Recover a crash after the sent row committed but before its initial
+      // notice queued. The existing purpose key makes this the same send.
+      const notified = await notifySigners(db, {
+        orgId, contract: current, signers: await listSigners(db,current.id), links: out.links,
+        secret, purpose: 'send', staffName: await staffNameOf(db,staffId)
+      }).catch(() => null);
+      return { contract: await getContract(db, {orgId,id}), ...out, resent: true, notified };
+    }
     const already = (await db.query(
       `SELECT count(*)::int AS n FROM messages
         WHERE org_id = $1::uuid AND provider_ref LIKE $2`,
       [orgId, `contract:${current.id}:%:resend%`])).rows[0].n;
     const notified = await notifySigners(db, {
       orgId, contract: current, signers: await listSigners(db, current.id), links: out.links,
-      purpose: `resend${already + 1}`, staffName: await staffNameOf(db, staffId)
+      secret, purpose: `resend${already + 1}`, staffName: await staffNameOf(db, staffId)
     }).catch(() => null);
     return { contract: await getContract(db, { orgId, id }), ...out, notified, resent: true };
   }
@@ -457,7 +472,7 @@ export async function send(db, {
   if (current.source_kind === "pdf") {
     return sendPdf(db, {
       orgId, staffId, contract: current, template, signers,
-      store, ttlSeconds, baseUrl, secret, at, now
+      store, ttlSeconds, baseUrl, secret, at, now, accountId
     });
   }
 
@@ -523,7 +538,7 @@ export async function send(db, {
             document_id = $5, document_version_id = $6,
             signature_statement = $7, signature_required = $8,
             merge_values = $11::jsonb,
-            sent_at = $9, sent_by = $10::uuid, updated_at = now()
+            sent_at = $9, sent_by = $10::uuid, sent_by_account_id = $12::uuid, updated_at = now()
       WHERE id = $1::uuid AND org_id = $2::uuid AND status = 'draft'
       RETURNING ${CONTRACT_COLUMNS}`,
     [current.id, orgId, body, sha,
@@ -534,7 +549,7 @@ export async function send(db, {
         Still a 'draft' row at this instant, so trg_contracts_frozen permits it —
         the same reason rendered_body and signature_statement can be written
         here. Every later change is refused. */
-     JSON.stringify(values)]
+     JSON.stringify(values), accountId]
   );
 
   if (!rows[0]) {
@@ -558,7 +573,7 @@ export async function send(db, {
 
   const notified = await notifySigners(db, {
     orgId, contract, signers: await listSigners(db, contract.id), links,
-    purpose: "send", staffName: await staffNameOf(db, staffId)
+    secret, purpose: "send", staffName: await staffNameOf(db, staffId)
   }).catch((err) => {
     // A contract that is legally sent must never be reported as failed because
     // an email did not go. The link is in the response either way.
@@ -638,7 +653,9 @@ export async function emitContractEvent(db, name, contract) {
     status: contract.status,
     document_id: contract.document_id,
     document_version_id: contract.document_version_id,
-    body_sha: contract.body_sha
+    body_sha: contract.body_sha,
+    ...(contract.created_by_account_id ? {created_by_account_id:contract.created_by_account_id} : {}),
+    ...(contract.sent_by_account_id ? {sent_by_account_id:contract.sent_by_account_id} : {})
   };
   try {
     return await emit(db, name, payload, {
@@ -772,7 +789,7 @@ export function agreementManifest({ contract, template, fields, pdfChecksum, sig
  * Both go through documents/document_versions, so both are immutable by trigger.
  */
 async function sendPdf(db, {
-  orgId, staffId, contract, template, signers, store, ttlSeconds, baseUrl, secret, at, now
+  orgId, staffId, contract, template, signers, store, ttlSeconds, baseUrl, secret, at, now, accountId = null
 }) {
   const fields = normaliseFields(contract.fields, {
     pageCount: template.page_count,
@@ -862,13 +879,13 @@ async function sendPdf(db, {
             source_document_id = $7, source_document_version_id = $8,
             fields = $9::jsonb,
             signature_statement = $10, signature_required = true,
-            sent_at = $11, sent_by = $12::uuid, updated_at = now()
+            sent_at = $11, sent_by = $12::uuid, sent_by_account_id = $13::uuid, updated_at = now()
       WHERE id = $1::uuid AND org_id = $2::uuid AND status = 'draft'
       RETURNING ${CONTRACT_COLUMNS}`,
     [contract.id, orgId, manifest, sha,
      registered.document?.id || null, registered.version?.id || null,
      source.document?.id || null, source.version?.id || null,
-     JSON.stringify(filled), template.signature_statement, at, staffId]);
+     JSON.stringify(filled), template.signature_statement, at, staffId, accountId]);
 
   if (!rows[0]) {
     const out = await mintLinks(db, { orgId, contract, ttlSeconds, baseUrl, secret, now });
@@ -887,7 +904,7 @@ async function sendPdf(db, {
 
   const notified = await notifySigners(db, {
     orgId, contract: sent, signers: await listSigners(db, sent.id), links,
-    purpose: "send", staffName: await staffNameOf(db, staffId)
+    secret, purpose: "send", staffName: await staffNameOf(db, staffId)
   }).catch((err) => {
     console.warn(`[contracts] could not notify signers of ${sent.id}: ${err.message}`);
     return null;

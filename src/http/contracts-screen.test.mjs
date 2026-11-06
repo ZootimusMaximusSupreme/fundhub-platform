@@ -193,10 +193,11 @@ describe("the client signing page (public/contract.html)", () => {
 
   /* ── it does the job ────────────────────────────────────────────────────── */
 
-  test("it talks to exactly one endpoint, and that endpoint is routed", () => {
-    const called = apiPaths(CLIENT);
-    assert.deepEqual(called, ["/api/contracts/sign"]);
-    assert.ok(Object.prototype.hasOwnProperty.call(ROUTES, "contracts/sign"));
+  test("its signing endpoint and bound financing handoff are both routed public doors", () => {
+    assert.deepEqual(apiPaths(CLIENT).sort(), ["/api/contracts/sign", "/api/public/blueprint-handoff"]);
+    for (const key of ["contracts/sign","public/blueprint-handoff"]) {
+      assert.ok(Object.prototype.hasOwnProperty.call(ROUTES,key));
+    }
   });
 
   /* Came from the Contracts screen on 2026-08-17. The staff-side detail card

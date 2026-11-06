@@ -1,4 +1,6 @@
-export const CHECK_IDS = Object.freeze(['payments:whop-inbox-waiting', 'payments:whop-paid-no-access']);
+import { sellerHandoffsSql } from '../beats/beat-whop-billing.mjs';
+export const CHECK_IDS = Object.freeze(['payments:whop-inbox-waiting', 'payments:whop-paid-no-access', 'payments:whop-seller-handoffs']);
+export const WHOP_SELLER_SQL = sellerHandoffsSql(true);
 export const WHOP_INBOX_SQL = `SELECT count(*)::integer AS n FROM whop_billing_inbox
   WHERE org_id = $1 AND ((status IN ('pending','failed') AND received_at < $2::timestamptz)
     OR (status = 'processing' AND claimed_at < $3::timestamptz))`;
@@ -7,7 +9,7 @@ export const WHOP_ACCESS_SQL = `SELECT count(DISTINCT l.id)::integer AS n
   LEFT JOIN transactions t ON t.org_id = l.org_id AND t.client_id = l.client_id
     AND t.provider = 'whop' AND t.provider_ref = l.whop_payment_id AND t.status = 'succeeded'
   WHERE l.org_id = $1 AND l.provider = 'whop' AND l.status = 'paid'
-    AND p.code = 'consulting-package' AND l.paid_at < $2::timestamptz
+    AND p.code IN ('consulting-package','blueprint-self-funding') AND l.paid_at < $2::timestamptz
     AND (t.id IS NULL OR NOT EXISTS (SELECT 1 FROM product_entitlements pe
        WHERE pe.org_id = l.org_id AND pe.product_code = p.code)
       OR EXISTS (SELECT 1 FROM product_entitlements pe WHERE pe.org_id = l.org_id
@@ -24,7 +26,10 @@ export async function gapChecks(ctx = {}) {
       'Whop payment receipts waiting for recovery', 'Run the Whop inbox drain; inspect its failed rows and last heartbeat.'],
     [CHECK_IDS[1], WHOP_ACCESS_SQL, [ctx.orgId, fiveMinutesAgo],
       'paid Whop Blueprint orders missing their payment record or access grant',
-      'Replay the stored Whop receipt and inspect the product entitlement mapping. Do not charge the buyer again.']
+      'Replay the stored Whop receipt and inspect the product entitlement mapping. Do not charge the buyer again.'],
+    [CHECK_IDS[2], WHOP_SELLER_SQL, [ctx.orgId, staleClaim],
+      'seller handoffs with mismatched buyer, actor, agreement price or unverified financing',
+      'Inspect the pinned buyer, agreement and existing checkout. Recover that same order; do not create another charge.']
   ];
   const out = [];
   for (const [id, sql, params, description, suggestedFix] of definitions) {

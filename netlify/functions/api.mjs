@@ -82,6 +82,8 @@ import blueprintRepair from "../../api/blueprint/repair.mjs";
 import readFundingRounds from "../../api/read/funding-rounds.mjs";
 import readAffiliates from "../../api/read/affiliates.mjs";
 import readAffiliatePortal from "../../api/read/affiliate-portal.mjs";
+import affiliateBlueprintSale from "../../api/affiliates/blueprint-sale.mjs";
+import blueprintHandoff from "../../api/public/blueprint-handoff.mjs";
 import affiliatesRefer from "../../api/affiliates/refer.mjs";
 import affiliatesPayouts from "../../api/affiliates/payouts.mjs";
 import affiliatesPayoutAccount from "../../api/affiliates/payout-account.mjs";
@@ -532,6 +534,8 @@ export const ROUTES = {
      the affiliate — or a client who has become a light affiliate — with their
      own rows, and pins a non-staff caller to themselves. */
   "read/affiliate-portal": readAffiliatePortal,
+  "affiliates/blueprint-sale": affiliateBlueprintSale,
+  "public/blueprint-handoff": blueprintHandoff,
 
   /* "Refer a friend". Turns a client into a light affiliate and hands back
      their share link (ops/workflows/portal-rebuild-plan.md §4, owner-set).
