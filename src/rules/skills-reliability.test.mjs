@@ -28,6 +28,7 @@ test("agent proof requires the actual model and observed actions", () => {
   assert.match(instructions, /actual provider, model and runtime path/);
   assert.match(instructions, /action order UNVERIFIED/);
   assert.match(instructions, /prompt hash/);
+  assert.match(instructions, /source-owned assistants/);
   assert.doesNotMatch(instructions, /Same model path the product uses \(`src\/agents\/model.mjs` `callModel`\)/);
 });
 
