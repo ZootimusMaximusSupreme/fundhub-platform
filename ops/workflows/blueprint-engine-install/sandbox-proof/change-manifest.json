@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "kind": "sandbox-discovered-repairs-and-proof",
+  "ownerLane": "blueprint",
+  "baseline": "51a57e9b61642a13cc1983ff1cefe790622f40f4",
+  "files": [
+    "docs/diagrams/README.md",
+    "docs/diagrams/event-flow.md",
+    "docs/journeys/capital-blueprint-actual.md",
+    "docs/journeys/heartbeat-flow.md",
+    "e2e/blueprint-client-fulfillment.spec.mjs",
+    "ops/workflows/blueprint-engine-install/BOARD.txt",
+    "ops/workflows/blueprint-engine-install/apple-proof/AUDIT.txt",
+    "ops/workflows/blueprint-engine-install/apple-proof/NativeCandidateProbe.swift",
+    "ops/workflows/blueprint-engine-install/apple-proof/NativeCompatibilityProbe.swift",
+    "ops/workflows/blueprint-engine-install/apple-proof/apple-receipt.json",
+    "ops/workflows/blueprint-engine-install/apple-proof/document-contract-after.json",
+    "ops/workflows/blueprint-engine-install/apple-proof/document-contract-before.json",
+    "ops/workflows/blueprint-engine-install/apple-proof/document-contract-probe.mjs",
+    "ops/workflows/blueprint-engine-install/apple-proof/generate-native-candidate.mjs",
+    "ops/workflows/blueprint-engine-install/apple-proof/hosted-asset-receipt.json",
+    "ops/workflows/blueprint-engine-install/apple-proof/native-candidate-fixture.html",
+    "ops/workflows/blueprint-engine-install/apple-proof/native-candidate-sources.json",
+    "ops/workflows/blueprint-engine-install/apple-proof/native-candidate-summary.json",
+    "ops/workflows/blueprint-engine-install/apple-proof/native-compatibility-after.json",
+    "ops/workflows/blueprint-engine-install/apple-proof/native-compatibility-before.json",
+    "ops/workflows/blueprint-engine-install/apple-proof/testflight-receipt.json",
+    "ops/workflows/blueprint-engine-install/apple-proof/verify-apple.mjs",
+    "ops/workflows/blueprint-engine-install/live-ui-proof/ui-audit.mjs",
+    "ops/workflows/blueprint-engine-install/owner-followup.txt",
+    "ops/workflows/blueprint-engine-install/sandbox-proof/before-fix.json",
+    "ops/workflows/blueprint-engine-install/sandbox-proof/change-manifest.json",
+    "ops/workflows/blueprint-engine-install/sandbox-proof/crs-auth-only.json",
+    "ops/workflows/blueprint-engine-install/sandbox-proof/proof.txt",
+    "ops/workflows/blueprint-engine-install/sandbox-proof/result.json",
+    "ops/workflows/blueprint-engine-install/sandbox-proof/run.mjs",
+    "public/app/blueprint-csm-services.js",
+    "public/app/blueprint-fulfillment.js",
+    "src/handlers/blueprint-paid-service-registration.test.mjs",
+    "src/handlers/paid-service-payment.mjs",
+    "src/handlers/purchase-routing.mjs",
+    "src/pulse/beats/beat-blueprint-client-fulfillment.mjs",
+    "src/pulse/beats/beat-blueprint-client-fulfillment.test.mjs"
+  ],
+  "productionFiles": [
+    {
+      "path": "public/app/blueprint-csm-services.js",
+      "sha256": "6ec711c17a476fe5fede8684e13973ebbc62c61733ab72c9aef0dc782e84424e"
+    },
+    {
+      "path": "public/app/blueprint-fulfillment.js",
+      "sha256": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81"
+    },
+    {
+      "path": "src/handlers/paid-service-payment.mjs",
+      "sha256": "6ce4b559fe4e6c0d7a876f07aff1c3140c3b0d1d603cd518dbf607efc613369e"
+    },
+    {
+      "path": "src/handlers/purchase-routing.mjs",
+      "sha256": "2626517174140cd85c90d42b557eae95be1093a6ad0b046c3d931b25dc951482"
+    },
+    {
+      "path": "src/pulse/beats/beat-blueprint-client-fulfillment.mjs",
+      "sha256": "9da8bff9bd74659bc6a0b017fbe41bb35ac5bdc1b13bae4f810c3deaaaae0ffe"
+    }
+  ],
+  "providerBoundary": "All successful payment/report rehearsal transports are synthetic; separate external CRS authentication returned401/no token/zero bureau orders.",
+  "nativeBinaryChanged": false,
+  "applePublic": {
+    "appId": "6823985032",
+    "version": "1.0.3",
+    "build": "9"
+  },
+  "focusedProof": {
+    "httpGroups": 7,
+    "componentAndCompatibility": 132,
+    "browser": 25,
+    "independentBrowser": 10,
+    "independentRegistrationHeartbeat": 33,
+    "nativeControls": 6,
+    "documentReaderUnits": 26,
+    "skipped": 0
+  },
+  "release": "Protected exact-main CI and GitHub Ship receipts belong to the owning pull request; source proof alone is not deployment."
+}

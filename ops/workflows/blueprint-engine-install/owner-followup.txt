@@ -1,0 +1,63 @@
+OWNER FOLLOW-UP — NOVEMBER 6, 2026
+Recovered from Codex history and current repository sources. No provider/customer actions or account changes performed. Only this report was written.
+
+CHRIS'S PRIORITY LIST
+
+1. Walk the customer journeys yourself and mark what feels wrong or is missing.
+   Funding, full/trial repair, Blueprint and accounts receivable: client view and the matching staff view. Include the newly deployed client-operated full Blueprint journey, not only the older preparation package. Your part is accepting the experience, instructions and handoffs; agents own the fixes and repeat tests.
+   Literal request: "we need to do manual walkthroughs ... sample clients ... repair and funding and blueprint and ar ... I need to walk through them manually"; your latest reply there was "i will work on this".
+   Four original sample cases are available locally. Verified November 6 at 16:04 UTC: all five origins returned HTTP 200; each synthetic client and staff had an unexpired saved session. Browser sign-in was not replayed. No completed owner walkthrough is recorded.
+   Funding/Jordan: http://127.0.0.1:8901/app/client-portal.html
+   Repair/Casey: http://127.0.0.1:8902/app/client-portal.html
+   Blueprint/Taylor: http://127.0.0.1:8903/app/client-portal.html
+   AR/Morgan: http://127.0.0.1:8904/app/client-portal.html
+   Start staff/Jordan alongside the funding client: http://127.0.0.1:8899/app/client-control-panel.html?id=ee82d0fa-14d9-43fd-a17f-82d401356a6d
+   These existing links serve the November 5 company-swarm-save checkout (0470d0abf), using only fundhub_walkthrough_scratch on loopback port 55488 with messaging/adapters held. Taylor is the older consulting-package case. Agents still need to supply the separate current full-Blueprint sandbox case; do not count these links as proof of the new full journey. No server restart or data writes were needed.
+   Source: Codex "Design the company-launch agent swarm", thread 01a1ade1-7f00-7ba3-b278-c9510c082bde, turns 01a1ae79-b78c-71a3-aa61-0a44d0aa0443 and 01a1af60-e983-7462-be8b-667d54e4c95f. Current new-flow scope: docs/journeys/capital-blueprint-intended.md and docs/journeys/capital-blueprint-actual.md.
+
+2. Film the remaining current ad batch.
+   You repeated this today. Claude owns the script/animation/creative completion; agents should identify the current ready scripts and preserve existing good recordings so you do not refilm finished work.
+   Source: Codex "Map the $30K self-funded offer", thread 01a1af63-416d-7a81-a29a-2d8bc627b9a8, turn 01a1b18d-e48f-7950-8478-f9493f9fd19b; "Design the company-launch agent swarm" assigns Claude the existing ad/animation lane.
+
+3. Record the 22 backend-selling lesson masters.
+   "22 backend selling systems" resolves to the 22 backend-selling slideshows/video recording sets, not 22 new software systems. Current source has 22 phone decks, 22 film boards and 22 talk tracks under marketing/slideshows/, film/ and talk/.
+   Agents should first package the current source into one easy-open recording kit and check its offer wording against the new Blueprint journey. The historical Desktop folder "Fundhub - FINAL Sales Script and 22 Recording Kit - 2026-11-01" does not exist at that exact path now. Do not send you to that stale path or assume all filming is complete; no final 22-master recording receipt was located.
+   After filming, agents/Claude own edits, captions and standalone objection clips. The saved plan calls for up to three shorts per master; that is production work, not an additional owner platform build.
+   Sources: ops/workflows/backend-selling-lanes-2026-10-30.md, "Manifest" and "Leftovers" near lines 617–624 (original PR #347, private review page https://claude.ai/artifact/XCV94LxU9ZsMxPnCVL3Vxa); newer kit/opening/filming plan in ops/workflows/sales-script-objections-2026-11-01.txt. Latest owner reminder is the November 6 turn cited above. The imported older slideshow thread could not be read through read_thread; the current on-disk source and newer recording-kit board supply its evidence.
+
+4. Restore Twilio access and billing.
+   Last provider/account receipt in the reviewed chats: low-balance suspension. A later attempt to add $10 by API did not charge anything; balance access rejected the stored credentials. Current balance/suspension has NOT been independently rechecked in this recovery pass.
+   Your part: regain the account and fund/re-enable the billing arrangement you want. Agents then verify an actual delivery receipt and review stale failed messages before any resend; restored billing alone is not delivery proof.
+   Sources: Codex "Remove Fundhub 2FA and Check Apple", thread 01a1a64d-8370-7ef3-9968-67ef17d6329b, latest turn 01a1aabf-30fc-7b23-b508-809bcae527a9; "Load 10 Twilio records via API", thread 01a1a34b-cbb8-7212-b444-02dc99e22075, turn 01a1a34b-cfde-7a90-9411-eb30a6fe241f. Your November 6 reminder confirms it is still on your own list.
+
+5. Get the latest three COMPLETE Arizona Financial business statements for FUNDHUB LLC.
+   All pages, PDF copies. The latest search found a partial September business record, not the three complete months; personal statements were not a substitute. At that November search the requested full months were August–October 2026. No later receipt of those complete PDFs was found in the reviewed chat.
+   Your part is obtaining them from the bank if the app cannot provide them. Agents can then finish the statement-backed cash/Plaid follow-up; do not turn old unverified bank-link proof into a new owner software task.
+   Source: Codex "Set Up Finance OS Automation", thread 01a19d7c-8b51-7f12-83eb-04feef07ba15; latest owner turn 01a1aa59-adfc-7872-af06-83730c24e73b says "ill get em tomorrow". Relevant search/result turns: 01a1a873-48b3-7982-a6cf-2c3694ea2476 and 01a1a2a2-5b9e-7c03-bbd6-8530cc88783d. No bank/account numbers or sign-in data are included here.
+
+OTHER REAL OWNER DECISIONS — SEPARATE FROM THE FIVE ABOVE
+
+- Optional merchant partnerships: current Blueprint R21 still records Whop partner-account setup and actual client merchant referral/onboarding destinations/terms as pending. Finish/supply those if that optional handoff is to be offered. This is separate from Fundhub's own working checkout/Whop-financing integration. Current external account status was not rechecked here.
+  Sources: docs/journeys/capital-blueprint-intended.md R20/R21/R29; capital-blueprint-actual.md R20/R21/R29 and merchant-referral leftover.
+- Egypt bank-outreach hire: choose/confirm this role's pay and total LinkedIn promotion cap; the saved post also needs the hiring owner/application destination confirmed. The researched draft was not published in the latest reviewed chat. Setter pay is a different agreement and must not be reused automatically.
+  Source: Codex "Plan bank-data outbound LinkedIn ads", thread 01a1ad48-cd54-77a3-a276-ef6e7292f631; ops/workflows/company-swarm-architecture-2026-11-05/bank-outreach-hiring-draft.txt.
+- Quiz and challenge: separate future research, not an unfinished authorized funnel build. The quiz was explicitly research-only; the challenge recommendation/review is saved. You can choose a later test when wanted. The large spend/value figures were owner estimates, not verified launch economics or current spend authorization.
+  Source: Codex "Review Instagram reel", thread 01a1aab3-2d29-7313-a616-1ac0cb110801; separate quiz-funnel-research-2026-11-05 and challenge-funnel-research-2026-11-05 boards.
+
+AGENT-OWNED — DO NOT HAND THESE BACK AS CHRIS'S TO-DOS
+
+- Finish the currently assigned safe sandbox pull/webhook proof and distinguish actual vendor sandbox receipts from fixture transports. Parent owns any justified fix, protected publication and live readback.
+- Check and complete the Apple delivery path with actual version/build/submission receipts. The Apple lane is active; do not ask Chris to deploy code or infer a new owner blocker from an old signing/watch status.
+- Restore/check the manual walkthrough environment and give Chris working direct links plus a short client/staff checklist. Record his feedback and repair/retest it.
+- Refresh/package the ad and 22-lesson recording inputs, reconcile old Blueprint wording/screenshots, then edit/caption/animate/clip the accepted takes. Do not invent a campaign launch or change spend from this report.
+- After owner account/document steps, verify Twilio delivery and finish the actual Company Cash/Plaid proof. Older signed-email booking-resume, Mac Dock and provider proofs must be checked against their owning latest receipts before being declared still open.
+- Keep the already deployed full Blueprint implementation and its production/provider proof boundaries explicit. A customer/provider action is not established by source, fixtures, or an empty staff list.
+
+ALREADY DECIDED — DO NOT ASK AGAIN
+
+- Tradeline Secrets: six useful pieces were already reviewed, approved with "okay get it all done", and integrated into the written journey. NAV, Net 30 accounts and DUNS were explicitly excluded. There is no remaining blanket course-selection approval for Chris to repeat. Source: capital-blueprint-intended.md lines 86–90 and capital-blueprint-actual.md Tradeline Secrets/exclusions entries.
+- Client-operated full Blueprint, optional separately paid help, shared report allowance and purchased-round completion were approved and deployed; owner walkthrough is different from rebuilding or reapproving that scope.
+- The prior request to remove extra app 2FA and the historical 1.0.3 public release have receipts. Today's Apple agent must establish the current update state; the old task is not automatically a fresh owner action.
+
+RECOVERY LIMIT
+Used explicit source=codex history listings (active and archived), targeted read_thread message reviews and the existing cross-chat retrieval index for older pointers. Reviewed recent owner messages in the named chats, not every message in all historical chats. No matching memory rollout was needed; no memory-only pending claim is presented as current. Provider/bank/partner statuses are labelled last-observed where no new authorized read occurred. No completed receipt was found for the five owner actions above, but absence of a receipt is not a claim that no off-chat work happened.

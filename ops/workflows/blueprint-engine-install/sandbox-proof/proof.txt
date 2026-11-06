@@ -1,0 +1,34 @@
+Blueprint payment / report rehearsal — November 6, 2026
+Source baseline 51a57e9b plus the scoped purchase-registration and paid-help heartbeat fix.
+
+Outcome: 7 normal HTTP flow groups passed. The portal/webhooks used the actual Netlify API router over loopback, real account sessions, durable PostgreSQL queues and canonical handlers. The runtime role was fundhub_app without SUPERUSER or BYPASSRLS. The runtime used no real identity, live account, payment, bureau report or external provider transmission. Whop checkout/variant responses and all three bureau response bodies were fixtures. Signatures were made locally with fresh synthetic secrets. No end-user data is retained in this evidence package.
+
+What failed before the fix (before-fix.json)
+A valid signed $32 Whop callback was accepted and its exact bytes persisted. The inbox moved to done and a canonical payment.received for the owned service was written. The service still had awaiting_payment, no payment_ref and no report. Normal startup subscribed no Blueprint paid-service listener. Tests that registered the handler by hand had bypassed that production failure.
+
+What passed after the fix (result.json)
+* Invalid webhook signature returned 401 without writing a billing receipt. A correctly signed but incorrectly priced receipt failed processing and granted no access.
+* One signed $30,000 full-package payment activated the actual buyer workspace. Duplicate HTTP deliveries and repeated inbox drains left one purchase/engagement.
+* The secure portal collected synthetic identity/consent and queued an included report. The actual CRS client checked its three separate published sandbox test identities before consuming the fixture responses. A report was saved as sandbox and fulfilled its scoped ledger.
+* A separately accepted $32 Whop payment and a separately accepted $32 Commas payment each produced their own report with the right request and buyer. Both paid-service rows ended fulfilled with produced_kind=crs_result. Ordinary monthly aftercare completed for each one.
+* A CSM quoted $1,200 for the funding round. The buyer's stale quote was refused. The matching signed Whop receipt transferred exactly that engagement to the team and bound one round. The matching refund and duplicate delivery preserved the original receipt and left one engagement/round.
+* Nine synthetic bureau requests total: TU 3, Experian 3, Equifax 3. The Whop financing rail was exercised with synthetic receipts. No external lending/BNPL approval was requested.
+* The paid-help heartbeat now detects an exact verified payment left unapplied for more than 15 minutes. Restricted PG fixtures cover grace-period, wrong buyer/rail/amount/reference, exact payment, unrelated reversal, and true refund/dispute on both rails.
+
+Execution
+Create and migrate an empty named loopback scratch database with the usual Fundhub test role. The runner rejects nonlocal connections, nonapplication roles, preexisting nondemo clients and inherited live/provider credentials. Set only the command below (or the equivalent local port/database name). Do not load the project's credential file.
+
+env -i PATH="$PATH" TZ=UTC DATABASE_URL=postgres://fundhub_app@127.0.0.1:56548/fundhub_sandbox_webhooks_1793982193522_test node ops/workflows/blueprint-engine-install/sandbox-proof/run.mjs
+
+The actual database named above was fresh for the recorded run and is intentionally refused for a second run. Use a new empty migrated fundhub_sandbox_webhooks_<id>_test for another rehearsal. The full package offer and link are installed synthetic fixture prerequisites; the receipt, operating workspace, secure form, report requests, quote/checkout, payment application, refund and results use normal handlers/routes.
+
+Component checks: 94 passed, 0 failed, 0 skipped. Set TZ=UTC, APP_DATABASE_URL and DATABASE_URL to the dedicated fundhub_app connection; MIGRATION_DATABASE_URL to that same scratch database's postgres fixture connection.
+node --test --test-concurrency=1 src/pulse/beats/beat-blueprint-client-fulfillment.test.mjs src/handlers/blueprint-paid-service-registration.test.mjs src/blueprint/service-whop.pg.test.mjs src/blueprint/service-whop.test.mjs src/payments/whop-blueprint.pg.test.mjs src/payments/whop-blueprint.test.mjs src/adapters/commas-link-identity.pg.test.mjs src/blueprint/report-requests.pg.test.mjs src/http/blueprint-report-setup.pg.test.mjs src/handlers/whop-reversals.pg.test.mjs src/handlers/paid-service-payment.pg.test.mjs src/workflows/whop-billing-inbox-drain.test.mjs
+
+Existing purchase-routing and Commas durability compatibility checks: 38 passed, 0 failed, 0 skipped. These suites use the scratch-owner fixture connection for their own cleanup; they do not replace the real app-role HTTP proof.
+node --test --test-concurrency=1 src/handlers/purchase-routing-client-ownership.test.mjs src/handlers/purchase-routing.pg.test.mjs src/payments/commas-inbox.pg.test.mjs
+
+Provider boundary
+Whop documents separate accounts, keys, IDs and API host for sandbox at https://whop.com/blog/whop-sandbox/. The project/linked preview has no confirmed Whop sandbox account/key. Fundhub's current Whop provider adapter and checkout validation target the production host shapes; this runner intercepted those shapes in memory before any request left the process.
+Commas documents separate sandbox/production keys at https://apidocs.fan/ and https://demo.embedded.fanbasis.io/docs/checkout-session-secret. No independently configured sandbox key was established; signed Commas callbacks and checkout responses here are fixtures.
+CRS documents its synthetic sandbox at https://crscreditapi.com/crs-sandbox-evaluation-credit-data-api/ and the sandbox host at https://crscreditapi.com/resources/credit-api. The linked preview does not supply a separate confirmed sandbox credential pair; the local default pair exactly matches the explicitly named live pair. This runner never loads that pair. Any separately authorized external sandbox authentication/order needs its own receipt and does not change which transport the above tests exercised.

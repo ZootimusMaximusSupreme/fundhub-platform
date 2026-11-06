@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-11-06T16:04:35.825Z",
+  "source": "51a57e9b61642a13cc1983ff1cefe790622f40f4",
+  "scriptSha256": "d48d19bb2a396cf629336d74486c478a1a3f82f6207aded1109b3462ea8f1da7",
+  "scope": "real document-download handler and signer with synthetic stand-in DB; real client JS in isolated Chromium; no production calls",
+  "apiStatus": 200,
+  "downloadType": "object",
+  "downloadKeys": [
+    "url",
+    "path",
+    "expiresAt",
+    "expiresAtIso"
+  ],
+  "serverWrites": 0,
+  "popupClosed": true,
+  "notice": "A valid destination was not returned. Please try again.",
+  "rejectedCanonicalObject": true
+}

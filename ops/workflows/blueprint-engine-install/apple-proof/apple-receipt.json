@@ -1,0 +1,178 @@
+{
+  "checkedAt": "2026-11-06T15:55:19.023Z",
+  "appId": "6823985032",
+  "appleWrites": 0,
+  "credentialsChanged": false,
+  "failures": [],
+  "exactReceipt": {
+    "versionId": "dec763b2-4d6e-4a77-b8af-00d375e078bb",
+    "version": "1.0.3",
+    "state": "READY_FOR_SALE",
+    "releaseType": "AFTER_APPROVAL",
+    "buildId": "ed50a585-803c-4268-8055-1672b150d3f0",
+    "build": "9",
+    "processingState": "VALID",
+    "expired": false,
+    "uploadedDate": "2026-11-04T04:43:28-08:00",
+    "expirationDate": "2027-02-02T04:43:28-08:00",
+    "attachedBuildId": "ed50a585-803c-4268-8055-1672b150d3f0",
+    "reviewSubmissionId": "e5402413-fb68-4704-8b99-b5e2c677020e",
+    "reviewState": "COMPLETE",
+    "submittedDate": "2026-11-04T20:59:28.106Z"
+  },
+  "appStoreVersions": [
+    {
+      "id": "b18f090f-e13c-4440-bdbd-01a6abba5c26",
+      "version": "1.0",
+      "platform": "MAC_OS",
+      "state": "IN_REVIEW",
+      "releaseType": "AFTER_APPROVAL"
+    },
+    {
+      "id": "dec763b2-4d6e-4a77-b8af-00d375e078bb",
+      "version": "1.0.3",
+      "platform": "IOS",
+      "state": "READY_FOR_SALE",
+      "releaseType": "AFTER_APPROVAL"
+    },
+    {
+      "id": "c8ee0a6e-70c0-4c0c-b2ba-2dc7a5998c70",
+      "version": "1.0.2",
+      "platform": "IOS",
+      "state": "READY_FOR_SALE",
+      "releaseType": "AFTER_APPROVAL"
+    },
+    {
+      "id": "e903b5ce-6dbe-4f7f-bb56-35a909d57042",
+      "version": "1.0.1",
+      "platform": "IOS",
+      "state": "READY_FOR_SALE",
+      "releaseType": "MANUAL"
+    },
+    {
+      "id": "a9cffec0-3267-44be-b0d0-5901f5e7469f",
+      "version": "1.0",
+      "platform": "IOS",
+      "state": "READY_FOR_SALE",
+      "releaseType": "MANUAL"
+    }
+  ],
+  "uploadedBuilds": [
+    {
+      "id": "ed50a585-803c-4268-8055-1672b150d3f0",
+      "build": "9",
+      "processingState": "VALID",
+      "expired": false,
+      "uploadedDate": "2026-11-04T04:43:28-08:00"
+    },
+    {
+      "id": "4076034b-e23c-43d4-8127-29d246e27f0d",
+      "build": "8",
+      "processingState": "VALID",
+      "expired": false,
+      "uploadedDate": "2026-11-02T13:47:22-08:00"
+    },
+    {
+      "id": "de746d8f-f12f-4e9d-b103-316c260b2ad2",
+      "build": "6",
+      "processingState": "VALID",
+      "expired": false,
+      "uploadedDate": "2026-11-02T12:55:04-08:00"
+    },
+    {
+      "id": "498e73a4-77dc-4dd2-9b62-8330105ba05b",
+      "build": "7",
+      "processingState": "VALID",
+      "expired": false,
+      "uploadedDate": "2026-10-30T14:48:42-07:00"
+    },
+    {
+      "id": "bb30d5f5-6a2e-40de-94c6-2efa17ede001",
+      "build": "6",
+      "processingState": "VALID",
+      "expired": false,
+      "uploadedDate": "2026-10-30T11:06:23-07:00"
+    },
+    {
+      "id": "90786594-f150-458e-835d-97361fd74a75",
+      "build": "5",
+      "processingState": "VALID",
+      "expired": false,
+      "uploadedDate": "2026-10-30T11:01:48-07:00"
+    },
+    {
+      "id": "857d3c66-256c-4efc-ae8b-a698896b65bc",
+      "build": "5",
+      "processingState": "VALID",
+      "expired": false,
+      "uploadedDate": "2026-10-23T14:42:26-07:00"
+    },
+    {
+      "id": "648ed2bd-efbb-4d5a-bd36-8c20ff429f4d",
+      "build": "4",
+      "processingState": "VALID",
+      "expired": false,
+      "uploadedDate": "2026-10-21T21:10:31-07:00"
+    },
+    {
+      "id": "09a6d763-5ab0-491e-8188-59a914bbde62",
+      "build": "3",
+      "processingState": "VALID",
+      "expired": false,
+      "uploadedDate": "2026-10-17T18:12:01-07:00"
+    },
+    {
+      "id": "e58759b7-dbcf-4a8c-a953-38aaedead2e9",
+      "build": "2",
+      "processingState": "VALID",
+      "expired": false,
+      "uploadedDate": "2026-10-17T12:39:11-07:00"
+    },
+    {
+      "id": "2dbc0fed-41c5-4723-81f1-f4cf0c6bbf3d",
+      "build": "1",
+      "processingState": "VALID",
+      "expired": false,
+      "uploadedDate": "2026-10-17T07:44:43-07:00"
+    }
+  ],
+  "publicStore": {
+    "version": "1.0.3",
+    "releaseDate": "2026-11-05T06:13:23Z",
+    "bundleId": "ai.fundhub.app",
+    "url": "https://apps.apple.com/us/app/fundhub-portal/id6823985032?uo=4",
+    "minimumOsVersion": "17.0"
+  },
+  "betaDetail": {
+    "id": "ed50a585-803c-4268-8055-1672b150d3f0",
+    "autoNotifyEnabled": true,
+    "internalBuildState": "READY_FOR_BETA_TESTING",
+    "externalBuildState": "READY_FOR_BETA_SUBMISSION"
+  },
+  "betaGroups": {
+    "available": false
+  },
+  "betaReview": {
+    "available": false
+  },
+  "nativeSource": {
+    "head": "51a57e9b61642a13cc1983ff1cefe790622f40f4",
+    "latestNativeCommit": "be7963cab076b6f1fd329eaaa694438948477233",
+    "headTree": "4e49a0cc4ee9d55960787dc3bf1d17d256bb6595",
+    "releaseTree": "4e49a0cc4ee9d55960787dc3bf1d17d256bb6595",
+    "unchangedSincePublicReleaseSource": true
+  },
+  "watchdog-status.json": {
+    "checkedAt": "2026-11-06T15:53:58.130Z",
+    "pending": 0,
+    "busy": 0,
+    "failed": 0,
+    "blockedReason": null
+  },
+  "auto-start.json": {
+    "sha": "51a57e9b61642a13cc1983ff1cefe790622f40f4",
+    "version": "1.0.3",
+    "build": "9",
+    "seededAt": "2026-11-05T10:38:31.224Z"
+  }
+}

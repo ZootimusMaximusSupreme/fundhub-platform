@@ -1,0 +1,63 @@
+{
+  "actualProductionCoordinator" : true,
+  "checkedAt" : "2026-11-06T16:00:22Z",
+  "events" : [
+    {
+      "kind" : "loaded_fixture",
+      "url" : "https:\/\/fundhub.ai\/app\/native-compatibility-fixture.html"
+    },
+    {
+      "kind" : "external_destination",
+      "url" : "https:\/\/www.experian.com\/help\/dispute-credit\/"
+    },
+    {
+      "case" : "direct_bureau_portal",
+      "kind" : "javascript_result",
+      "result" : "clicked"
+    },
+    {
+      "kind" : "external_destination",
+      "url" : "https:\/\/www.experian.com\/consumer\/upload\/"
+    },
+    {
+      "case" : "direct_bureau_upload",
+      "kind" : "javascript_result",
+      "result" : "clicked"
+    },
+    {
+      "case" : "blank_then_bank",
+      "kind" : "javascript_result",
+      "result" : false
+    },
+    {
+      "case" : "blank_then_document",
+      "kind" : "javascript_result",
+      "result" : false
+    },
+    {
+      "kind" : "first_party_document_policy",
+      "productionAllowed" : true,
+      "url" : "https:\/\/fundhub.ai\/api\/documents\/synthetic?exp=2000000000&sig=synthetic-fixture"
+    },
+    {
+      "case" : "direct_signed_document",
+      "kind" : "javascript_result",
+      "result" : "clicked"
+    },
+    {
+      "kind" : "external_destination",
+      "url" : "https:\/\/bank.example.invalid\/apply"
+    },
+    {
+      "case" : "direct_bank",
+      "kind" : "javascript_result",
+      "result" : "clicked"
+    },
+    {
+      "caseCount" : 6,
+      "kind" : "complete"
+    }
+  ],
+  "externalOpenTransport" : "swizzled to record only; no external app or provider request",
+  "platform" : "iOS simulator WKWebView"
+}

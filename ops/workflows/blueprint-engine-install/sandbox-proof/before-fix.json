@@ -1,0 +1,56 @@
+{
+  "startedAt": "2026-11-06T16:09:31.350Z",
+  "databaseRole": "fundhub_app",
+  "externalProviderRequests": 0,
+  "liveCustomerActions": 0,
+  "providerSandboxDelivery": "unavailable: no verified dedicated vendor sandbox credentials in local project or linked preview",
+  "transport": {
+    "http": "real loopback HTTP to production Netlify router",
+    "payments": "synthetic signed event bytes and simulated Whop checkout responses",
+    "reports": "real CRS sandbox client, published per-bureau identities, synthetic HTTP response bytes; no actual vendor network"
+  },
+  "checks": [
+    {
+      "label": "bad signature refused; signed incorrect amount retained as failed, zero grants"
+    },
+    {
+      "label": "signed full $30,000 receipt, durable inbox replay, one active workspace",
+      "amountCents": 3000000
+    },
+    {
+      "label": "included report saved through actual CRS sandbox client with three fixture responses",
+      "ledger": {
+        "status": "fulfilled",
+        "blueprint_report_kind": "included",
+        "environment": "sandbox"
+      },
+      "aftercare": {
+        "ok": true,
+        "staged": 0,
+        "fulfilled": 1,
+        "waiting": 0,
+        "errors": [],
+        "completedServices": 0
+      }
+    }
+  ],
+  "orders": {
+    "TU": 1,
+    "EX": 1,
+    "EQ": 1
+  },
+  "wire": [
+    {
+      "provider": "whopFixture",
+      "method": "POST",
+      "resource": "checkout_configurations"
+    },
+    {
+      "provider": "whopFixture",
+      "method": "GET",
+      "resource": "variants"
+    }
+  ],
+  "status": "failed",
+  "failure": "{\"ok\":true,\"staged\":0,\"fulfilled\":0,\"waiting\":0,\"errors\":[],\"completedServices\":0}\n+ actual - expected\n\n+ undefined\n- 'fulfilled'\n"
+}

@@ -324,12 +324,13 @@
         const result = action === 'open-lender'
           ? await mutate('/api/blueprint/funding', {action:'open_lender',lenderId:el.dataset.id,businessId:el.dataset.business || null})
           : await request('/api/documents-download?id=' + encodeURIComponent(el.dataset.id));
-        let url = result.url || result.document?.download;
+        const download = result.document?.download;
+        let url = result.url || (typeof download === 'string' ? download : download?.url || download?.path);
         if (action === 'document' && typeof url === 'string' && url.startsWith('/api/documents/')) url = new URL(url,location.origin).href;
         if (typeof url !== 'string' || !url.trim() || (!httpsUrl(url) && !(action === 'document' && url.startsWith(location.origin + '/api/documents/')))) throw new Error('A valid destination was not returned. Please try again.');
         if (!current()) return;
         if (popup) { popup.location.href = url; pendingWindows.delete(popup); }
-        else { notice = 'Allow popups for Fundhub, then open this step again.'; }
+        else location.assign(url);
       } else if (action === 'bureau-call') {
         await mutate('/api/blueprint/inquiries', {action:'launch_call',caseId:el.dataset.id});
         notice = 'Your bureau call request is saved. Its provider status appears on the case.';

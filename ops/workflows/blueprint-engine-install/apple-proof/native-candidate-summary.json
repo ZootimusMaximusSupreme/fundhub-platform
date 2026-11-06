@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-11-06T16:09:40.613Z",
+  "clientJsSha256": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81",
+  "csmJsSha256": "6ec711c17a476fe5fede8684e13973ebbc62c61733ab72c9aef0dc782e84424e",
+  "canonicalDownloadKeys": [
+    "url",
+    "path",
+    "expiresAt",
+    "expiresAtIso"
+  ],
+  "serverWrites": 0,
+  "stillMatchesCurrentClient": true,
+  "stillMatchesCurrentCsm": true,
+  "externalDestinationCount": 3,
+  "allowedDocumentNavigationCount": 3,
+  "javascriptErrors": [],
+  "complete": true
+}

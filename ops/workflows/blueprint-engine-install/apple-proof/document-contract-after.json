@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-11-06T16:11:46.932Z",
+  "source": "working-tree",
+  "scriptSha256": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81",
+  "scope": "real document-download handler and signer with synthetic stand-in DB; real client JS in isolated Chromium; no production calls",
+  "apiStatus": 200,
+  "downloadType": "object",
+  "downloadKeys": [
+    "url",
+    "path",
+    "expiresAt",
+    "expiresAtIso"
+  ],
+  "serverWrites": 0,
+  "canonicalDestinationRequested": true,
+  "destinationPath": "/api/documents/d1000000-0000-4000-8000-0000000000d1",
+  "destinationQueryKeys": [
+    "v",
+    "exp",
+    "sig"
+  ],
+  "popupClosed": false,
+  "notice": "",
+  "rejectedCanonicalObject": false,
+  "popupUrl": "https://fundhub.ai/api/documents/d1000000-0000-4000-8000-0000000000d1"
+}

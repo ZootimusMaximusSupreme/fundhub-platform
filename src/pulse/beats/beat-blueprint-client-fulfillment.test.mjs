@@ -225,6 +225,38 @@ test("real scratch PostgreSQL: every full Blueprint query has a healthy and brok
       await db.query("UPDATE soft_pull_requests SET status='processing',updated_at=now()-interval '16 minutes' WHERE id=$1",[r]);
       assert.equal(await count(beat.REPORT_DELIVERY_SQL),1);
     });
+    await isolated("paid-help: only an overdue exact owned successful receipt without applied service trips",async()=>{
+      for (const provider of ["whop", "commas"]) {
+        await db.query("SAVEPOINT receipt_rail");
+        const request=(await db.query(`INSERT INTO paid_service_requests(org_id,client_id,service_kind,requested_by_kind,requested_by_account_id,
+          status,price_total_cents,checkout_expires_at,price_components) VALUES($1,$2,'credit_pull','client',$3,'awaiting_payment',3200,now()+interval '7 days',
+          '[{"code":"credit_pull","quantity":1,"unit_cents":3200,"amount_cents":3200}]') RETURNING id`,[org,client,account])).rows[0].id;
+        const payment="pay_"+randomUUID().replaceAll("-","");
+        await db.query(`INSERT INTO blueprint_client_services(id,org_id,client_id,engagement_id,service_kind,scope_type,target_id,
+          state,authorized_at,authorized_account_id,checkout_provider,accepted_price_cents,checkout_currency,whop_account_id,whop_product_id,
+          whop_checkout_configuration_id,whop_plan_id,whop_payment_id)
+          VALUES($1,$2,$3,$4,'credit_pull','client',$3,'awaiting_payment',now(),$5,$6,3200,'USD',$7,$8,$9,$10,$11)`,
+          [request,org,client,engagement,account,provider,...(provider==="whop"?["biz_fixture","prod_fixture","ch_fixture","plan_fixture",payment]:[null,null,null,null,null])]);
+        const paymentEvent={paidServiceRequestId:request,ref:request,source:provider,productCode:"blueprint-help-credit_pull",
+          paymentId:payment,...(provider==="whop"?{amountCents:3200}:{amount:32})};
+        const insert=async(name,payload,minutes,person=client)=>db.query(`INSERT INTO events(org_id,client_id,name,payload,created_at)
+          VALUES ($1,$2,$3,$4,$5::timestamptz-$6::int*interval '1 minute')`,[org,person,name,payload,now,minutes]);
+        await insert("payment.received",paymentEvent,16,foreign);
+        await insert("payment.received",{...paymentEvent,paidServiceRequestId:randomUUID()},16);
+        await insert("payment.received",{...paymentEvent,source:"other"},16);
+        await insert("payment.received",{...paymentEvent,amount:31,amountCents:3100},16);
+        await insert("payment.received",paymentEvent,14);
+        assert.equal(await count(beat.PAID_HELP_SQL),0,"foreign, mismatched or still within the 15-minute application grace");
+        await insert("payment.received",paymentEvent,16);
+        assert.equal(await count(beat.PAID_HELP_SQL),1,"canonical settled receipt is not applied to the still-unpaid local request");
+        await insert("payment.refunded",{source:provider,originalProviderRef:"pay_other"},2);
+        assert.equal(await count(beat.PAID_HELP_SQL),1,"a different reversal must not clear this stuck payment");
+        await insert(provider==="whop"?"payment.refunded":"payment.disputed",{source:provider,paymentId:payment},2);
+        assert.equal(await count(beat.PAID_HELP_SQL),0,"the matching reversal releases this warning");
+        await db.query("ROLLBACK TO SAVEPOINT receipt_rail");
+        await db.query("RELEASE SAVEPOINT receipt_rail");
+      }
+    });
     await isolated("paid-help: normal requested work is green, a paid request without its handoff after 15 minutes is red",async()=>{
       const request=(await db.query("INSERT INTO paid_service_requests(org_id,client_id,service_kind,requested_by_kind,requested_by_account_id) VALUES($1,$2,'blueprint_help','client',$3) RETURNING id",[org,client,account])).rows[0].id;
       await db.query("INSERT INTO blueprint_client_services(id,org_id,client_id,engagement_id,service_kind,scope_type,target_id) VALUES($1,$2,$3,$4,'repair_full','client',$3)",[request,org,client,engagement]);

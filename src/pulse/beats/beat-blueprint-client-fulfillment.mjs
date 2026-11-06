@@ -259,6 +259,24 @@ WHERE p.id IS NULL OR g.id IS NULL
       (NULLIF(btrim(s.whop_checkout_configuration_id),'') IS NULL OR NULLIF(btrim(s.whop_plan_id),'') IS NULL))
     OR (p.status IN ('paid','staged','fulfilled') AND
       (NULLIF(btrim(s.whop_payment_id),'') IS NULL OR s.whop_payment_id IS DISTINCT FROM p.payment_ref))))
+  OR (s.state IN ('checkout_pending','awaiting_payment') AND p.status IN ('quoted','awaiting_payment')
+    AND s.authorized_at IS NOT NULL AND EXISTS (
+      SELECT 1 FROM events paid WHERE paid.org_id=s.org_id AND paid.client_id=s.client_id
+        AND paid.name='payment.received' AND paid.is_demo IS NOT TRUE
+        AND paid.created_at<${AT}-interval '15 minutes'
+        AND paid.payload->>'paidServiceRequestId'=s.id::text
+        AND paid.payload->>'ref'=s.id::text
+        AND paid.payload->>'productCode'='blueprint-help-'||s.service_kind
+        AND paid.payload->>'source'=s.checkout_provider
+        AND nullif(paid.payload->>'paymentId','') IS NOT NULL
+        AND (s.checkout_provider='commas' OR s.whop_payment_id=paid.payload->>'paymentId')
+        AND (paid.payload->'amountCents'=to_jsonb(s.accepted_price_cents) OR
+          (NOT (paid.payload ? 'amountCents') AND paid.payload->'amount'=to_jsonb(s.accepted_price_cents/100::numeric)))
+        AND NOT EXISTS (SELECT 1 FROM events reversal WHERE reversal.org_id=paid.org_id AND reversal.client_id=paid.client_id
+          AND reversal.name IN ('payment.refunded','payment.disputed') AND reversal.is_demo IS NOT TRUE
+          AND reversal.payload->>'source'=s.checkout_provider
+          AND COALESCE(reversal.payload->>'originalProviderRef',reversal.payload->>'paymentId')=paid.payload->>'paymentId')
+    ))
   OR (s.state='checkout_pending' AND (s.checkout_claimed_at IS NULL OR s.checkout_claimed_at<${AT}-interval '15 minutes'))
   OR (s.service_kind IN ('credit_pull','repair_full') AND (s.scope_type<>'client' OR s.target_id<>s.client_id))
   OR (s.service_kind='inquiry_removal' AND (s.scope_type<>'inquiry_case' OR NOT EXISTS (

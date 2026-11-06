@@ -100,11 +100,12 @@ export function paidCentsFromEvent(event) {
  * Returns `{ done, reason }` in the shape the other money handlers return, so a
  * dead-letter reader sees the same vocabulary.
  */
-export async function onPaidServicePaymentReceived(event, db) {
+export async function onPaidServicePaymentReceived(event, db, { blueprintOnly = false } = {}) {
   const requestId = requestIdFromEvent(event);
   if (!requestId) return { done: false, reason: "no_paid_service_ref" };
 
   const orgId = event?.orgId || null;
+  if (blueprintOnly && (!orgId || !event?.clientId)) return { done: false, reason: "no_blueprint_service_scope" };
   const row = (await db.query(
     `SELECT * FROM paid_service_requests
       WHERE id = $1::uuid AND ($2::uuid IS NULL OR org_id = $2::uuid)`,
@@ -119,6 +120,13 @@ export async function onPaidServicePaymentReceived(event, db) {
 
   const blueprintService = String(row.idempotency_key || "").startsWith("blueprint-help:");
   const identity = blueprintService ? await lookupBlueprintServiceReceipt(db, event) : null;
+  if (blueprintOnly) {
+    // The boot listener is for the buyer's separately purchased help. Legacy
+    // paid rounds have their own workflow and must not be staged by this listener.
+    if (!identity || row.client_id !== event.clientId) return { done: false, reason: "no_owned_blueprint_service" };
+    const lateReceipt = identity.reason === "service_not_authorized" && ["cancelled", "failed"].includes(row.status);
+    if (!identity.valid && !lateReceipt) return { done: false, reason: identity.reason };
+  }
   if (blueprintService && identity && !identity.valid && ["service_provider_mismatch", "service_provider_receipt_mismatch"].includes(identity.reason)) {
     return { done: false, reason: identity.reason };
   }
@@ -241,10 +249,15 @@ function paidAtOf(event) {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-/* register() — wired from src/register-all.mjs, which is NOT this lane's file.
-   Until that one line is added this handler is inert: it is exported, tested
-   and unreachable from the live bus. Said plainly here so nobody reads the
-   presence of this file as proof the path runs in production. */
+// Production boot subscribes the Blueprint-only entry. The legacy registration remains explicit.
+export function onBlueprintPaidServicePaymentReceived(event, db) {
+  return onPaidServicePaymentReceived(event, db, { blueprintOnly: true });
+}
+
+export function registerBlueprintPaidServicePayments() {
+  on("payment.received", onBlueprintPaidServicePaymentReceived);
+}
+
 export function register() {
   on("payment.received", onPaidServicePaymentReceived);
 }

@@ -9,12 +9,14 @@ const {buildBlueprintClientPlan}=await import(ROOT+'/src/blueprint/client-plan.m
 const {preparationGuidance,websitePrompt}=await import(ROOT+'/src/blueprint/preparation-guidance.mjs');
 const {readBlueprintLetterReadiness}=await import(ROOT+'/src/blueprint/letter-mailing.mjs');
 const BASE=process.env.AUDIT_BASE||'https://fundhub.ai';
+const SOURCE_SHA=process.env.AUDIT_SOURCE_SHA;
+if(!/^[a-f0-9]{40}$/.test(SOURCE_SHA||''))throw new Error('AUDIT_SOURCE_SHA must name the verified deployed source.');
 const OUT=process.env.AUDIT_OUT||ROOT+'/ops/workflows/blueprint-engine-install/live-ui-proof';
 const EXE='/Users/chrisstanbridge/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
 const ids=Object.fromEntries(['org','client','account','engagement','case','lender','document','application','request','letter'].map((k,i)=>[k,'10000000-0000-4000-8000-'+String(i+1).padStart(12,'0')]));
 await fs.mkdir(OUT+'/shots/_raw',{recursive:true});
 const browser=await chromium.launch({headless:true,executablePath:EXE});
-const result={checkedAt:new Date().toISOString(),base:BASE,sourceSha:'f0ffcc0e0be39b807f512bc1996c555c9c1ea23f',mode:'synthetic browser-only fixture over fetched static assets; no authenticated live backend proof',serverWrites:0,scenarios:[],assets:[],failures:[]};
+const result={checkedAt:new Date().toISOString(),base:BASE,sourceSha:SOURCE_SHA,mode:'synthetic browser-only fixture over fetched static assets; no authenticated live backend proof',serverWrites:0,scenarios:[],assets:[],failures:[]};
 const pdf=Buffer.from('%PDF-1.4\n% browser-only synthetic receipt\n%%EOF');
 const actions=[];
 function fixture(){
@@ -46,7 +48,7 @@ async function install(context,state,role='client'){
   return json(role==='client'?state.services:{...state.services,capabilities:{quote:true},oversight:{openSteps:[{title:'Verify saved bureau result',status:'waiting',reason:'Experian response is pending.'}]}});
  }
  if(p==='/api/documents-upload')return json({ok:true,documents:[{id:ids.document}]});
- if(p==='/api/documents-download')return json({ok:true,document:{id:ids.document,download:'/api/documents/'+ids.document}});
+ if(p==='/api/documents-download')return json({ok:true,document:{id:ids.document,download:{url:'/api/documents/'+ids.document,path:'/api/documents/'+ids.document,expiresAt:Date.now()/1000+120}}});
  if(m!=='GET'&&p.startsWith('/api/blueprint/')){
   actions.push({role,path:p,action:body?.action||'unknown',...(body?.action==='checkout'?{provider:body.provider,expectedPriceCents:body.expectedPriceCents}:{})});
   if(body?.action==='record_submission')state.inquiries.cases[0].submissionReference=body.reference;
