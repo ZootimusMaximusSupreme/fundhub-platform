@@ -16,7 +16,7 @@ test.describe("FH Consulting pages open", () => {
   test("the home page opens at /consulting/ with its headline and the three legal links", async ({ page }) => {
     const response = await page.goto("/consulting/");
     expect(response.status()).toBe(200);
-    await expect(page.locator("h1")).toHaveText("Set up the tools the team will use.");
+    await expect(page.locator("h1")).toHaveText("AI outbound that finds the lead, writes the pitch, and sends it.");
     await expect(page).toHaveTitle(/FH Consulting/);
     for (const href of ["/consulting/terms/", "/consulting/privacy/", "/consulting/refund/"]) {
       await expect(page.locator(`footer a[href="${href}"]`)).toHaveCount(1);

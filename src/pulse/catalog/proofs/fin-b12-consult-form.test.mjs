@@ -44,9 +44,9 @@ test("Consult form: it opens an email with the typed words, takes no card, and s
     await page.waitForTimeout(250);
     assert.deepEqual(navigations.filter((u) => u.startsWith("mailto:")), []);
 
-    // A "Ask about" button fills the help box.
-    await page.locator('[data-help="Offer tools"]').first().click();
-    assert.equal(await page.locator("#help").inputValue(), "Offer tools");
+    // An "Ask about" button on a package fills the package box (owner-set 2026-11-06: four packages).
+    await page.locator('[data-help="AI Full Stack ($30,000)"]').first().click();
+    assert.equal(await page.locator("#help").inputValue(), "AI Full Stack ($30,000)");
 
     await page.locator("#name").fill("Dana Whitfield");
     await page.locator("#email").fill("dana@example.com");
@@ -61,7 +61,7 @@ test("Consult form: it opens an email with the typed words, takes no card, and s
     assert.equal(to, address, "to the support address shown on the page");
     const parsed = new URLSearchParams(query);
     assert.equal(parsed.get("subject"), "FH Consulting consult — Whitfield Media");
-    assert.equal(parsed.get("body"), "Name: Dana Whitfield\nEmail: dana@example.com\nAgency: Whitfield Media\nHelp: Offer tools\n\nWe sell through webinars.\nTeam of six.");
+    assert.equal(parsed.get("body"), "Name: Dana Whitfield\nEmail: dana@example.com\nAgency: Whitfield Media\nPackage: AI Full Stack ($30,000)\n\nWe sell through webinars.\nTeam of six.");
     await page.waitForTimeout(250);
     // The one thing it may do is hand the email address to the mail program (the mailto link). Nothing else.
     assert.deepEqual(requests.filter((r) => !/^GET document mailto:/.test(r)), [], "the page made no request of any kind, to anywhere, when the form was sent");
