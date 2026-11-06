@@ -1,0 +1,44 @@
+CRS PROPERTY ACCESS AND SETUP — 2026-11-06
+
+Owner request: Inspect newly delivered CRS property API access, set up what is available, and ask promptly if an interactive 2FA step needs Chris.
+Scope: property access, provider docs/contract, safe provider sandbox proof, and existing integration readiness. No customer report orders or unrelated OffersIQ edits.
+
+WORKFLOW 1 — root owns email, account access, setup and integration
+Prompt: Find the CRS property activation email through the connected Gmail API. Read account-specific docs, reuse existing credentials without replacing working keys, and verify documented access. Set up the property access that Chris authorized. Use vendor test fixtures only for sandbox proof. If interactive 2FA blocks access, ask Chris immediately. Save private account material only under ignored credentials/crs. Record facts and receipts here without secrets or customer data.
+
+WORKFLOW 2 — crs_property_map owns read-only code/document inventory
+Prompt: Read AGENTS.md and relevant rules. Map existing property adapter methods, env variable names, routes, intended journey, tests, and account docs in /Users/chrisstanbridge/Developer/fundhub-platform. Read-only: no edits, provider requests, paid orders, or secret output. Report what exists and what is missing. Root owns all setup and this board. Do not touch the OffersIQ lane owned by PR434.
+
+Dependency: access/docs inspection and code inventory run together; any integration change waits for the account-specific provider contract.
+
+VERIFIED RESULT — 2026-11-06 22:00 UTC
+- CRS Support's activation email says PitchPoint Property Ownership (Foreclosure) is enabled in sandbox and production. Its exact supplied Postman collection was downloaded into ignored credentials/crs/property-activation-20261106/.
+- Sandbox login and account read both returned HTTP200 with the account enabled. Exact vendor-published fixture POST /api/pp/foreclosure/data returned HTTP200 and a ForeclosureInvestigationReport. Provider RequestID b64926d9-6279-45ff-ba1d-e4fedd8bfeae.
+- The vendor sample contained eight associated addresses. Its summary identified one borrower-owned property and zero borrower-related foreclosure activity events. These are test-fixture results, not customer findings.
+- Observed fields: ownership matches, associated addresses, current owners as labeled by the provider, deed/transaction history, sale prices, lenders, original loan amounts, and foreclosure counts. Historical loan amounts do not establish current balances or current equity. No AVM proof was obtained.
+- Same vendor fixture with SSN removed, DOB retained: HTTP400 E004, TaxIdentification is required. Provider RequestID ba39f721-c464-4d6b-a82e-7ef1efed2681. The supplied request shape rejects a missing SSN; alternative matching inputs remain unverified. It is not ready as a no-SSN lead lookup. Existing no-SSN OffersIQ and lead routing remain separate.
+- Production authentication and read-only account request both returned HTTP200 for enabled FUNDHUB LLC. Zero production report orders. Production property entitlement is supported by CRS's activation email; a production property response was not exercised.
+- No 2FA was needed for these API requests. The local browser tool reported disabled in Work settings; no browser login was performed.
+
+LOCAL SETUP
+- Added dedicated CRS_PROPERTY_SANDBOX_API_HOST / USERNAME / PASSWORD and CRS_PROPERTY_API_HOST / USERNAME / PASSWORD in ignored .env and credentials/env.full.snapshot. Original credentials were preserved. No credential values are recorded on this board.
+- Sandbox identity came from the delivered collection. The existing production API identity authenticated successfully and was copied into the separate property variable names without changing the original values.
+- Private connection receipt: credentials/crs/property-activation-20261106/connection-receipt.json. Private provider bodies and the original collection remain in the same ignored directory.
+- No Netlify environment change, deployment, app-code change, live customer change, or production report purchase.
+
+INTEGRATION INVENTORY
+- Agent crs_property_map completed read-only mapping; no files changed or provider calls made by the agent.
+- Existing src/finance/crs-client.mjs and src/messaging/providers/crs-softview.mjs handle credit/prequal, Experian Business and LexisNexis Top Business, with an explicit provider path allowlist. The routed /api/finance/crs-pull handles credit reports.
+- No property adapter, route, schema, intended property journey, or property tests were found in the local checkout. Fresh origin/main 56c246e613b5688e833579277e57b46669b351a0 also has no CRS_PROPERTY, PitchPoint or pp/foreclosure references under src, api, scripts, db, docs/journeys, netlify or .env.example.
+- Open PR queue checked before edits. PR434 owns OffersIQ; no competing property PR was present. Existing unrelated dirty files were left intact.
+- Independent agent review matched this board against the activation email, connection receipt, raw no-SSN error and inventory. The board contains no credential values, fixture personal identifiers, or customer data.
+
+VALIDATION
+- Node's built-in .env reader verified all six property variables in both local secret files against their source credentials, with no duplicate entries. Connection receipt checks confirmed sandbox HTTP200, production auth HTTP200, no-SSN HTTP400 and zero production report orders.
+- Git ignore proof confirmed .env, credentials/env.full.snapshot, the supplied collection and private receipt are excluded from version control.
+- Preflight passed: one documentation-only changed file, 52 other branch/worktree/PR sources scanned, no shared files. Existing historical branch-count warning retained.
+- No application tests, browser tests or database tests were run: application source and database are unchanged. Provider HTTP requests are the access proof; this is not a Fundhub customer-path proof.
+
+NEXT
+- Account access and local credential setup are complete. Fundhub app integration is not built or deployed. The available product fits a later client property-report step using the required identity inputs; it is not proven as the planned phone/name-only residential-address source.
+- Primary provider references: https://crscreditapi.redoc.ly/openapi/reference/tag/PitchPoint/ and https://crscreditapi.redoc.ly/developer-portal/public-record/ . Account-specific collection and actual response take precedence over generic catalog capabilities.
