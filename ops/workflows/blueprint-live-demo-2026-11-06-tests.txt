@@ -1,0 +1,35 @@
+BLUEPRINT DEMO TEST LANE — 2026-11-06
+Baseline: f332f1df904a1f2771212645243a122cd43e88d6 (fresh origin/main checkout).
+Scope: read-only app/test source; existing tests against isolated local static server and mocked HTTP responses. No production DB/provider/customer writes. This is NOT live customer, real payment, bureau result, or provider-delivery proof.
+Ground truth: docs/journeys/capital-blueprint-intended.md has required event order CB-01..CB-10 and real-buyer R01..R34. Historical system map read via git show 3ba3e42f38a0e3e6db1a746ee3e3cb3e6b0db604:ops/workflows/system-map-2026-08-26.md; not current configuration proof.
+
+EXECUTED
+1. node --test src/ui/present-blueprint-demo.test.mjs src/ui/present-framework.test.mjs src/ui/present-journey.test.mjs src/ui/present-visuals.test.mjs src/ui/present-proof-wall.test.mjs
+   PASS: 98 tests, 0 failed, 0 skipped, 15 suites. Includes no-pull/hold/sample states, interactive progress, reminders, cash plan and honest source-derived amounts.
+2. E2E_PORT=49623 ./node_modules/.bin/playwright test e2e/present-blueprint-demo.spec.mjs e2e/blueprint-price-context.spec.mjs e2e/present-journey.spec.mjs --reporter=list
+   PASS: 24/24, 0 skipped, 33.9 seconds. Real Chromium, isolated fixture APIs, desktop 1440 and mobile 390. Walked interactive preview steps, responsive tap targets, redraw state, sample/no-report/hold, full/preparation exact contract + price, shared context.
+3. node --test src/http/present-blueprint-stack.test.mjs
+   PASS: 40 tests, 0 failed, 0 skipped, 7 suites. B-01..B-06 navigation, file-specific content, chosen price, sample FinanceOS links and roles.
+4. E2E_PORT=49624 ./node_modules/.bin/playwright test e2e/blueprint-client-plan.spec.mjs e2e/blueprint-client-fulfillment.spec.mjs --reporter=list
+   PASS: 91/91, 0 failed, 0 skipped, 2.0 minutes. Preparation/full-buyer controls, one-question setup, saved refresh, lessons, cash/bank planning, evidence upload/recovery, letter downloads, payment authorization, inquiry/repair/verification gates, private identity fencing, stale session scrubbing and safe signed document/bank navigation at desktop/mobile. All mocked local HTTP, no live saved state.
+Database tests executed: none. Database tests skipped: zero in the executed selections. The opt-in e2e/blueprint-fulfillment-real.spec.mjs was not selected; no guarded scratch database was provisioned in this lane.
+Prerequisite: new worktree had no node_modules; used gitignored symlink to existing installed main workspace dependencies. Unique ports prevent collision.
+
+EXACT EXISTING ROUTES / CLICKS
+- /app/client-portal.html?demo=1: existing public sample-only portal, all legacy product cards unlocked and sample documents. It does NOT initialize the new paid Blueprint workspace.
+- Signed-in Present for an appropriate report/file: /app/present.html?contact=<client-id>. For a repair-file deck, phase 6 opens B-01; ArrowRight twice opens B-03 "Your dashboard" with in-slide Blueprint interactive preview. Alternatively "Show the full Blueprint stack" opens B-01 from the offer ladder. Taps send/save/charge nothing; sample state is explicitly labelled.
+- FinanceOS sample fallback links (only if in-slide visual is unavailable): /app/financeos.html?client_id=f1cb9c27-f858-4db1-b6bb-4eddc898bb8e#<tab>. Source list in public/app/present.js:1083-1099 and 1229-1231; requires allowed authenticated staff role. These links alone do not prove current live data or new Blueprint buyer workspace.
+- Offline harness /e2e-harness/present-blueprint-demo.html is fulfilled by e2e/present-blueprint-demo.spec.mjs page.route() with fixture context. It is not a deployed production entry point.
+
+SOURCE-CONFIRMED DEMO GAP
+Expected: show the actual paid-buyer Blueprint preparation + full implementation workspace in a safe live demo.
+Observed:
+- public/app/blueprint-plan.js:6 hides/returns immediately on demo=1.
+- public/app/blueprint-fulfillment.js:5 returns immediately on demo=1; :6-7 additionally requires a non-demo fh_token.
+- blueprint-plan.js:202+ and blueprint-fulfillment.js:433+ initialize only authenticated client principal with account/client/org IDs. Staff preview cannot initialize either.
+- api/blueprint/business-plans.mjs:9-18 authenticates a real client then checks paid Blueprint scope.
+- src/demo/client-portal-sample-bundle.json contains no /api/blueprint/* reads. src/demo/client-portal-samples.mjs only decorates already-covered successful reads and blocks writes for the pinned sample account; it does not furnish a full Blueprint demo.
+- Therefore neither ?demo=1 nor the signed-in client sample switch proves the current purchased Blueprint workspace. Existing production-safe alternative is the Present B-03 interactive preview; the full workspace can be rehearsed through isolated local existing test fixtures, not represented as live paid-buyer proof.
+No app source, test, config, auth gate, live mode, provider or database changed by this lane.
+
+FINAL LANE RESULT: 138/138 source tests and 115/115 isolated Chromium tests PASS, zero skipped. New paid-workspace production demo route remains unavailable by the source-confirmed guards above. Existing tests generated temporary/historical screenshots; six historical tracked price/context images were restored to baseline after the run. Only this evidence text is this lane's retained change.
