@@ -1,0 +1,37 @@
+{
+  "checkedAt": "2026-11-06T13:05:05.348Z",
+  "clip": {
+    "height": 123.50000762939452,
+    "width": 1901.71435546875,
+    "x": 32,
+    "y": 469.1428833007813
+  },
+  "controls": [
+    {
+      "disabled": false,
+      "fontPx": "13px",
+      "height": 44.000003814697266,
+      "text": "Refresh clients"
+    }
+  ],
+  "scrollWidth": 1966,
+  "text": "Full-package clients\n\nProgress, current holds and separately priced help.\n\nRefresh clients\n\nNo active full-package clients are in this view.",
+  "url": "https://fundhub.ai/app/csm-queue.html",
+  "viewport": {
+    "height": 704,
+    "width": 1966
+  },
+  "mode": "Actual existing authenticated staff browser session; read-only list refresh; empty full-package panel only",
+  "providerActionsExecuted": false,
+  "customerWrites": false,
+  "source": "f0ffcc0e0be39b807f512bc1996c555c9c1ea23f",
+  "screenshot": "live-staff-empty-MARKED.png",
+  "screenshotScope": "Cropped to the new empty panel; the real customer call queue is excluded.",
+  "actions": [
+    "Reload deployed /app/csm-queue.html",
+    "Click Refresh clients",
+    "Read actual panel and capture screenshot"
+  ],
+  "backendResponsesIntercepted": false,
+  "liveBuyerTransactionTested": false
+}

@@ -1,0 +1,92 @@
+{
+  "sourceSha": "f0ffcc0e0be39b807f512bc1996c555c9c1ea23f",
+  "uiCheckedAt": "2026-11-06T12:56:56.526Z",
+  "mode": "synthetic browser-only fixture over fetched static assets; no authenticated live backend proof",
+  "scenarios": 36,
+  "syntheticActions": 30,
+  "failures": [],
+  "serverWrites": 0,
+  "assets": [
+    {
+      "path": "app/client-portal.html",
+      "status": 200,
+      "sha256": "751873d40b99b879541258824c2e7fe27538ec852a9ed84e91723ef948309631",
+      "bytes": 252773,
+      "expectedSourceSha256": "751873d40b99b879541258824c2e7fe27538ec852a9ed84e91723ef948309631",
+      "matchesSource": true
+    },
+    {
+      "path": "app/csm-queue.html",
+      "status": 200,
+      "sha256": "3b9bd5a0814e618552fce8bc5b8af3698dffa80b8bd20a6a14bae30e742b68e1",
+      "bytes": 42288,
+      "expectedSourceSha256": "3b9bd5a0814e618552fce8bc5b8af3698dffa80b8bd20a6a14bae30e742b68e1",
+      "matchesSource": true
+    },
+    {
+      "path": "app/csm-queue.css",
+      "status": 200,
+      "sha256": "544ed3029499810ef194d4d5e27cc3dad4e4ac32ff1a0863b16e93608af9535f",
+      "bytes": 10790,
+      "expectedSourceSha256": "544ed3029499810ef194d4d5e27cc3dad4e4ac32ff1a0863b16e93608af9535f",
+      "matchesSource": true
+    },
+    {
+      "path": "app/blueprint-fulfillment.js",
+      "status": 200,
+      "sha256": "d48d19bb2a396cf629336d74486c478a1a3f82f6207aded1109b3462ea8f1da7",
+      "bytes": 33425,
+      "expectedSourceSha256": "d48d19bb2a396cf629336d74486c478a1a3f82f6207aded1109b3462ea8f1da7",
+      "matchesSource": true
+    },
+    {
+      "path": "app/blueprint-fulfillment.css",
+      "status": 200,
+      "sha256": "e317aa0fb4677cfcb69bc581f6eeda9c87c9682a7a9d769877d4408a16fe4afd",
+      "bytes": 4566,
+      "expectedSourceSha256": "e317aa0fb4677cfcb69bc581f6eeda9c87c9682a7a9d769877d4408a16fe4afd",
+      "matchesSource": true
+    },
+    {
+      "path": "app/blueprint-csm-services.js",
+      "status": 200,
+      "sha256": "704f36c85c58246418f3d2a87768929bc16b938adc20b2180c2a49cb2e09410f",
+      "bytes": 12498,
+      "expectedSourceSha256": "704f36c85c58246418f3d2a87768929bc16b938adc20b2180c2a49cb2e09410f",
+      "matchesSource": true
+    }
+  ],
+  "overflowFailures": [],
+  "lighthouse": {
+    "client-portal-entry": {
+      "count": 3,
+      "finalUrls": [
+        "https://fundhub.ai/portal-login.html"
+      ],
+      "performance": 0.91,
+      "lcpMs": 3306.6168000000007,
+      "tbtMs": 0,
+      "cls": 0,
+      "ttfbMs": 78.083,
+      "speedIndexMs": 1875.8083000000001,
+      "totalBytes": 384157,
+      "jsBytes": 122890
+    },
+    "csm-queue-entry": {
+      "count": 3,
+      "finalUrls": [
+        "https://fundhub.ai/login.html?next=/app/csm-queue.html"
+      ],
+      "performance": 0.79,
+      "lcpMs": 3687.5909,
+      "tbtMs": 0,
+      "cls": 0.1737624578944919,
+      "ttfbMs": 118.636,
+      "speedIndexMs": 2231.7317999999996,
+      "totalBytes": 322573,
+      "jsBytes": 70932
+    }
+  },
+  "authenticatedStaffCapture": "complete: ../release-proof/live-staff-empty.json and live-staff-empty-MARKED.png; actual signed-in staff reload/list refresh, empty full-package view, no intercepted responses; no paid-buyer cohort",
+  "authenticatedPerformance": "not measured; six anonymous runs redirect to login pages"
+}

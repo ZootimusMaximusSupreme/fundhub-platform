@@ -1,0 +1,749 @@
+{
+  "checkedAt": "2026-11-06T12:56:04.018Z",
+  "lighthouseVersion": "12.8.2",
+  "mode": "LIVE unauthenticated entry; the final URL identifies redirect destination. No full authenticated page claim.",
+  "throttling": {
+    "method": "simulate",
+    "rttMs": 150,
+    "throughputKbps": 1638.4,
+    "cpuSlowdownMultiplier": 4
+  },
+  "runs": [
+    {
+      "label": "client-portal-entry",
+      "run": 1,
+      "requestedUrl": "https://fundhub.ai/app/client-portal.html",
+      "finalDisplayedUrl": "https://fundhub.ai/portal-login.html",
+      "finalUrl": "https://fundhub.ai/portal-login.html",
+      "runtimeError": null,
+      "performance": 0.81,
+      "lcpMs": 4085.169,
+      "tbtMs": 0,
+      "cls": 0,
+      "ttfbMs": 255.739,
+      "speedIndexMs": 3102.7625,
+      "totalBytes": 416307,
+      "jsBytes": 122913,
+      "byType": {
+        "Document": 74113,
+        "Font": 153329,
+        "Stylesheet": 59218,
+        "Script": 122913,
+        "Manifest": 976,
+        "Image": 0,
+        "Fetch": 652,
+        "Other": 4732,
+        "Ping": 374
+      },
+      "blockingRequests": [
+        {
+          "url": "https://fundhub.ai/app/fundhub-astra-client.css",
+          "totalBytes": 6464,
+          "wastedMs": 164
+        },
+        {
+          "url": "https://fundhub.ai/app/fundhub-font.css",
+          "totalBytes": 701,
+          "wastedMs": 164
+        }
+      ],
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-P",
+                  "path": "1,HTML,1,BODY,0,MAIN,1,DIV,8,P",
+                  "selector": "body.fh-astra > main.login-box > div.card > p#lede",
+                  "boundingRect": {
+                    "top": 542,
+                    "bottom": 619,
+                    "left": 33,
+                    "right": 357,
+                    "width": 324,
+                    "height": 77
+                  },
+                  "snippet": "<p class=\"note\" id=\"lede\">",
+                  "nodeLabel": "On Android or using a browser? Type the email address on your Fundhub file. We …"
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 654.5865,
+                "percent": "16%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 3430.5825,
+                "percent": "84%"
+              }
+            ]
+          }
+        ]
+      },
+      "thirdParty": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap",
+          "transferSize": 1331
+        },
+        {
+          "url": "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd…",
+          "transferSize": 0
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxDcwgknk-4.woff2",
+          "transferSize": 31369
+        }
+      ],
+      "report": "client-portal-entry-1"
+    },
+    {
+      "label": "client-portal-entry",
+      "run": 2,
+      "requestedUrl": "https://fundhub.ai/app/client-portal.html",
+      "finalDisplayedUrl": "https://fundhub.ai/portal-login.html",
+      "finalUrl": "https://fundhub.ai/portal-login.html",
+      "runtimeError": null,
+      "performance": 0.92,
+      "lcpMs": 3234.8136999999997,
+      "tbtMs": 0,
+      "cls": 0,
+      "ttfbMs": 78.083,
+      "speedIndexMs": 1875.8083000000001,
+      "totalBytes": 384157,
+      "jsBytes": 122890,
+      "byType": {
+        "Document": 73962,
+        "Font": 121917,
+        "Stylesheet": 58702,
+        "Script": 122890,
+        "Manifest": 832,
+        "Image": 0,
+        "Fetch": 521,
+        "Other": 4707,
+        "Ping": 626
+      },
+      "blockingRequests": [],
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-P",
+                  "path": "1,HTML,1,BODY,0,MAIN,1,DIV,8,P",
+                  "selector": "body.fh-astra > main.login-box > div.card > p#lede",
+                  "boundingRect": {
+                    "top": 542,
+                    "bottom": 619,
+                    "left": 33,
+                    "right": 357,
+                    "width": 324,
+                    "height": 77
+                  },
+                  "snippet": "<p class=\"note\" id=\"lede\">",
+                  "nodeLabel": "On Android or using a browser? Type the email address on your Fundhub file. We …"
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 675.8023000000001,
+                "percent": "21%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 2559.0113999999994,
+                "percent": "79%"
+              }
+            ]
+          }
+        ]
+      },
+      "thirdParty": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap",
+          "transferSize": 983
+        },
+        {
+          "url": "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd…",
+          "transferSize": 0
+        }
+      ],
+      "report": "client-portal-entry-2"
+    },
+    {
+      "label": "client-portal-entry",
+      "run": 3,
+      "requestedUrl": "https://fundhub.ai/app/client-portal.html",
+      "finalDisplayedUrl": "https://fundhub.ai/portal-login.html",
+      "finalUrl": "https://fundhub.ai/portal-login.html",
+      "runtimeError": null,
+      "performance": 0.91,
+      "lcpMs": 3306.6168000000007,
+      "tbtMs": 73,
+      "cls": 0,
+      "ttfbMs": 50.605,
+      "speedIndexMs": 1865.5161000000003,
+      "totalBytes": 384043,
+      "jsBytes": 122715,
+      "byType": {
+        "Document": 73946,
+        "Font": 121975,
+        "Stylesheet": 58641,
+        "Script": 122715,
+        "Manifest": 976,
+        "Image": 0,
+        "Fetch": 522,
+        "Other": 4643,
+        "Ping": 625
+      },
+      "blockingRequests": [],
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-P",
+                  "path": "1,HTML,1,BODY,0,MAIN,1,DIV,8,P",
+                  "selector": "body.fh-astra > main.login-box > div.card > p#lede",
+                  "boundingRect": {
+                    "top": 542,
+                    "bottom": 619,
+                    "left": 33,
+                    "right": 357,
+                    "width": 324,
+                    "height": 77
+                  },
+                  "snippet": "<p class=\"note\" id=\"lede\">",
+                  "nodeLabel": "On Android or using a browser? Type the email address on your Fundhub file. We …"
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 665.4100999999999,
+                "percent": "20%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 2641.2067000000006,
+                "percent": "80%"
+              }
+            ]
+          }
+        ]
+      },
+      "thirdParty": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap",
+          "transferSize": 983
+        },
+        {
+          "url": "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd…",
+          "transferSize": 0
+        }
+      ],
+      "report": "client-portal-entry-3"
+    },
+    {
+      "label": "csm-queue-entry",
+      "run": 1,
+      "requestedUrl": "https://fundhub.ai/app/csm-queue.html",
+      "finalDisplayedUrl": "https://fundhub.ai/login.html?next=/app/csm-queue.html",
+      "finalUrl": "https://fundhub.ai/login.html?next=/app/csm-queue.html",
+      "runtimeError": null,
+      "performance": 0.79,
+      "lcpMs": 3687.5909,
+      "tbtMs": 0,
+      "cls": 0.17984877087003084,
+      "ttfbMs": 137.627,
+      "speedIndexMs": 2230.1704,
+      "totalBytes": 322860,
+      "jsBytes": 70932,
+      "byType": {
+        "Document": 19575,
+        "Font": 170426,
+        "Stylesheet": 56207,
+        "Script": 70932,
+        "Fetch": 956,
+        "Image": 779,
+        "Other": 3985
+      },
+      "blockingRequests": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap",
+          "totalBytes": 1027,
+          "wastedMs": 811
+        }
+      ],
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-H1",
+                  "path": "1,HTML,1,BODY,2,MAIN,1,DIV,1,H1",
+                  "selector": "body.fh-astra > main.login-box > div.card > h1#login-title",
+                  "boundingRect": {
+                    "top": 145,
+                    "bottom": 178,
+                    "left": 33,
+                    "right": 357,
+                    "width": 324,
+                    "height": 34
+                  },
+                  "snippet": "<h1 id=\"login-title\">",
+                  "nodeLabel": "Welcome back."
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 669.0243,
+                "percent": "18%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 3018.5666,
+                "percent": "82%"
+              }
+            ]
+          }
+        ]
+      },
+      "thirdParty": [
+        {
+          "url": "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd…",
+          "transferSize": 0
+        },
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap",
+          "transferSize": 1027
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+          "transferSize": 48464
+        }
+      ],
+      "report": "csm-queue-entry-1"
+    },
+    {
+      "label": "csm-queue-entry",
+      "run": 2,
+      "requestedUrl": "https://fundhub.ai/app/csm-queue.html",
+      "finalDisplayedUrl": "https://fundhub.ai/login.html?next=/app/csm-queue.html",
+      "finalUrl": "https://fundhub.ai/login.html?next=/app/csm-queue.html",
+      "runtimeError": null,
+      "performance": 0.86,
+      "lcpMs": 2697.9897499999997,
+      "tbtMs": 0,
+      "cls": 0.17331978757035718,
+      "ttfbMs": 57.901,
+      "speedIndexMs": 2231.7317999999996,
+      "totalBytes": 274042,
+      "jsBytes": 70800,
+      "byType": {
+        "Document": 19490,
+        "Font": 121942,
+        "Stylesheet": 56243,
+        "Script": 70800,
+        "Fetch": 862,
+        "Image": 868,
+        "Other": 3837
+      },
+      "blockingRequests": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap",
+          "totalBytes": 1027,
+          "wastedMs": 809
+        },
+        {
+          "url": "https://fundhub.ai/fh.js",
+          "totalBytes": 6029,
+          "wastedMs": 150
+        }
+      ],
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-H1",
+                  "path": "1,HTML,1,BODY,2,MAIN,1,DIV,1,H1",
+                  "selector": "body.fh-astra > main.login-box > div.card > h1#login-title",
+                  "boundingRect": {
+                    "top": 145,
+                    "bottom": 178,
+                    "left": 33,
+                    "right": 357,
+                    "width": 324,
+                    "height": 34
+                  },
+                  "snippet": "<h1 id=\"login-title\">",
+                  "nodeLabel": "Welcome back."
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 672.9448,
+                "percent": "25%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 2025.0449499999997,
+                "percent": "75%"
+              }
+            ]
+          }
+        ]
+      },
+      "thirdParty": [
+        {
+          "url": "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd…",
+          "transferSize": 0
+        },
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap",
+          "transferSize": 1027
+        }
+      ],
+      "report": "csm-queue-entry-2"
+    },
+    {
+      "label": "csm-queue-entry",
+      "run": 3,
+      "requestedUrl": "https://fundhub.ai/app/csm-queue.html",
+      "finalDisplayedUrl": "https://fundhub.ai/login.html?next=/app/csm-queue.html",
+      "finalUrl": "https://fundhub.ai/login.html?next=/app/csm-queue.html",
+      "runtimeError": null,
+      "performance": 0.79,
+      "lcpMs": 3710.2526000000003,
+      "tbtMs": 0,
+      "cls": 0.1737624578944919,
+      "ttfbMs": 118.636,
+      "speedIndexMs": 2259.1027000000004,
+      "totalBytes": 322573,
+      "jsBytes": 70945,
+      "byType": {
+        "Document": 19437,
+        "Font": 170424,
+        "Stylesheet": 56067,
+        "Script": 70945,
+        "Fetch": 962,
+        "Image": 876,
+        "Other": 3862
+      },
+      "blockingRequests": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap",
+          "totalBytes": 1027,
+          "wastedMs": 808
+        }
+      ],
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-H1",
+                  "path": "1,HTML,1,BODY,2,MAIN,1,DIV,1,H1",
+                  "selector": "body.fh-astra > main.login-box > div.card > h1#login-title",
+                  "boundingRect": {
+                    "top": 145,
+                    "bottom": 178,
+                    "left": 33,
+                    "right": 357,
+                    "width": 324,
+                    "height": 34
+                  },
+                  "snippet": "<h1 id=\"login-title\">",
+                  "nodeLabel": "Welcome back."
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 700.6538,
+                "percent": "19%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 3009.5988,
+                "percent": "81%"
+              }
+            ]
+          }
+        ]
+      },
+      "thirdParty": [
+        {
+          "url": "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd…",
+          "transferSize": 0
+        },
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap",
+          "transferSize": 1027
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+          "transferSize": 48464
+        }
+      ],
+      "report": "csm-queue-entry-3"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "url": "https://fundhub.ai/portal-login.html",
+    "inlineStyleAttributes": 0,
+    "renderBlockingHeadScriptCount": 0,
+    "headScripts": [
+      {
+        "src": "https://fundhub.ai/app/fundhub-font.js",
+        "defer": true,
+        "async": false
+      },
+      {
+        "src": "https://fundhub.ai/funnel/fh-events.js",
+        "defer": true,
+        "async": false
+      }
+    ],
+    "stylesheets": [
+      "https://fundhub.ai/app/fundhub-font.css",
+      "https://fundhub.ai/fh.css",
+      "https://fundhub.ai/app/client-ios.css",
+      "https://fundhub.ai/portal-login-ios.css",
+      "https://fundhub.ai/app/fundhub-astra.css",
+      "https://fundhub.ai/app/fundhub-astra-client.css"
+    ]
+  },
+  {
+    "url": "https://fundhub.ai/login.html?next=/app/csm-queue.html",
+    "inlineStyleAttributes": 7,
+    "renderBlockingHeadScriptCount": 0,
+    "headScripts": [
+      {
+        "src": "https://fundhub.ai/app/fundhub-font.js",
+        "defer": true,
+        "async": false
+      },
+      {
+        "src": "https://fundhub.ai/pw-toggle.js",
+        "defer": true,
+        "async": false
+      },
+      {
+        "src": "https://fundhub.ai/app/client-ios.js",
+        "defer": true,
+        "async": false
+      }
+    ],
+    "stylesheets": [
+      "https://fundhub.ai/app/fundhub-font.css",
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap",
+      "https://fundhub.ai/fh.css",
+      "https://fundhub.ai/app/client-ios.css",
+      "https://fundhub.ai/login-ios.css",
+      "https://fundhub.ai/app/fundhub-astra.css",
+      "https://fundhub.ai/app/fundhub-astra-client.css"
+    ]
+  }
+]

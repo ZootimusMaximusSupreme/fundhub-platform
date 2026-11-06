@@ -1,0 +1,104 @@
+{
+  "source": "f0ffcc0e0be39b807f512bc1996c555c9c1ea23f",
+  "site": "https://fundhub.ai",
+  "checkedAt": "2026-11-06T12:36:20.083Z",
+  "readOnly": true,
+  "production": true,
+  "results": [
+    {
+      "path": "/app/my-numbers.html",
+      "ok": true,
+      "sha256": "b7c1e1b057869d7b4f64d5c097753eb14d0f47bb1a668e17e92705ba291e4172"
+    },
+    {
+      "path": "/app/my-numbers.css",
+      "ok": true,
+      "sha256": "d50b202ae1986b7a0c0d7e17ea8b097d849731211ac02b3c0e066ae047c04ac9"
+    },
+    {
+      "path": "/app/pipeline.html",
+      "ok": true,
+      "sha256": "8d56e82df433aaa720b6e45efdf09d3ca2888fb423b4d88d1a5ed5f338da3117"
+    },
+    {
+      "path": "/app/sales-floor.html",
+      "ok": true,
+      "sha256": "32c6ec3ddc916bb844b3427cab8ce1fddf6f01c8b575cdb2716ac69256c7ca9c"
+    },
+    {
+      "path": "/app/sales-floor.css",
+      "ok": true,
+      "sha256": "091fbc634a6dad8f1746c43dd931132b1931743c704e55374050cec3c924bcaa"
+    },
+    {
+      "path": "/app/finance-os.html",
+      "ok": true,
+      "sha256": "3538d3e7264491609cd51c87547b88727638b2d82079fe8581940acfa86bb274"
+    },
+    {
+      "path": "/app/csm-queue.html",
+      "ok": true,
+      "sha256": "3b9bd5a0814e618552fce8bc5b8af3698dffa80b8bd20a6a14bae30e742b68e1"
+    },
+    {
+      "path": "/app/contracts.html",
+      "ok": true,
+      "sha256": "046523128120d84123e84b90bc585d5a60c4b80f2fdc6d2096ead2c14fc4a74b"
+    },
+    {
+      "path": "/app/lenders.html",
+      "ok": true,
+      "sha256": "6c619bb2bbe5016b5910f116a6ba9f64364cf2d4fb76118da92a1d13cc31696d"
+    },
+    {
+      "path": "/app/client-portal.html",
+      "ok": true,
+      "sha256": "751873d40b99b879541258824c2e7fe27538ec852a9ed84e91723ef948309631"
+    },
+    {
+      "path": "/portal-login.html",
+      "ok": true,
+      "sha256": "23fe6e3e2b9e9f09d1a3658968d09432b75e9e91cbbb1badaa1a17ea00fd2709"
+    },
+    {
+      "path": "/app/fundhub-font.css",
+      "ok": true,
+      "sha256": "90bb6c8ddf0c7c574278a29efd43304f776887440702c2a87c2c65a6d094386d"
+    },
+    {
+      "path": "/app/fundhub-font.js",
+      "ok": true,
+      "sha256": "78e938aeff3265e835055d185b1e0ec210e7b0e10ea3054ebc5ae2747be3f746"
+    },
+    {
+      "path": "/app/client-ios.css",
+      "ok": true,
+      "sha256": "ec3bf4ed4e4bf3fb2ab54f1d9fb22bbb7caf74e79e4dce6d9e3a7439c5752967"
+    },
+    {
+      "path": "/app/client-ios.js",
+      "ok": true,
+      "sha256": "f5a4f1a66a00ac364154947f5ee806f08c4f22caac03104bb117542cfc67e173"
+    },
+    {
+      "path": "/app/shell.js",
+      "ok": true,
+      "sha256": "d16299e79e6cab5ae2ce0d3ecda44259a5f0bec28d7f23e0afb0aa18d50dfa50"
+    },
+    {
+      "path": "/app/crm-sidebar.css",
+      "ok": true,
+      "sha256": "24c138b2f3d332dedd716282a194c83841b89599825ad86ac2be053dfc40fdc5"
+    },
+    {
+      "path": "/app/workspace-ui.css",
+      "ok": true,
+      "sha256": "b5e79cad25fab232ee81edec4f85e44238d523ff134d91faaac075f9450d159a"
+    },
+    {
+      "path": "/assets/fonts/nunito-latin-variable.woff2",
+      "ok": true,
+      "sha256": "cbda958c0a0e691097be510824d4ee19ede669fafec5dfc04c2fa81838d0d663"
+    }
+  ]
+}
