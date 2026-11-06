@@ -33,11 +33,14 @@ const html = fs.readFileSync(PORTAL, "utf8");
 const ELEVEN = "029964c5-4d8e-47ed-88c9-53ac13863fd4";
 const REFUSAL = /We could not load your file/;
 
-/* The script right after data.js is the portal's main one. */
+/* The script right after the data.js bootstrap is the portal's main one.
+ * The explicit full demo skips that bootstrap; normal routes still load it.
+ * Match its opening tag so the conditional document.write wrapper does not
+ * prevent these tests from executing the unchanged main handler. */
 function mainScript() {
-  const tag = '<script defer src="data.js"></script>';
+  const tag = '<script defer src="data.js">';
   const a = html.indexOf(tag);
-  assert.ok(a !== -1, "data.js tag is gone from client-portal.html");
+  assert.ok(a !== -1, "data.js bootstrap is gone from client-portal.html");
   const open = html.indexOf("<script>", a + tag.length);
   const close = html.indexOf("</script>", open);
   const src = html.slice(open + "<script>".length, close);

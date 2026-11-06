@@ -35,9 +35,11 @@ const STAFF_PREVIEW_GREETING = "Previewing Sim Eleven-Blueprint’s portal";
 
 /* The script right after data.js is the portal's main one. */
 function mainScript() {
-  const tag = '<script defer src="data.js"></script>';
+  // Normal routes still load data.js through its conditional bootstrap. The
+  // following inline script remains the complete portal handler under test.
+  const tag = '<script defer src="data.js">';
   const a = html.indexOf(tag);
-  assert.ok(a !== -1, "data.js tag is gone from client-portal.html");
+  assert.ok(a !== -1, "data.js bootstrap is gone from client-portal.html");
   const open = html.indexOf("<script>", a + tag.length);
   const close = html.indexOf("</script>", open);
   const src = html.slice(open + "<script>".length, close);
