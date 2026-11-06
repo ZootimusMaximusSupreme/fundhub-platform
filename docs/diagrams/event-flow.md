@@ -16,12 +16,12 @@ flowchart LR
     ext_bland["Bland AI voice-call"]
     ext_clarity_export["Microsoft Clarity Data Export API"]
     ext_clickfunnels["ClickFunnels webhook"]
-    ext_commas["Commas (formerly FanBasis) payment"]
+    ext_commas["import { lookupBlueprintServiceReceipt } from '../blueprint/service-payment-identity.mjs';"]
     ext_crs["CRS engine output"]
     ext_hubstaff["Hubstaff deep-monitoring"]
     ext_inquiry_removal["Inquiry Removal AI → platform bridge webhook."]
     ext_lendflow["Lendflow alt-fin"]
-    ext_mailgun["Mailgun inbound-email"]
+    ext_mailgun["import { mailgunAuthenticatedSender } from '../blueprint/bank-evidence.mjs';"]
     ext_oxylabs["Oxylabs residential proxy adapter."]
     ext_resend_events["Resend delivery events"]
     ext_twilio_status["Twilio delivery-status callback"]
@@ -151,7 +151,7 @@ flowchart LR
 | `round.submitted` | journey spine | — | 1 |
 | `round.approved` | journey spine | — | 3 |
 | `round.funded` | journey spine | `onRoundFundedInsights`, `onRoundFundedMoney` | 4 |
-| `round.closeout` | journey spine | `onRoundCloseoutGate` | 1 |
+| `round.closeout` | journey spine | `onRoundCloseoutGate`, `closePurchasedBlueprintRound` | 1 |
 | `file.finalized` | journey spine | — | 0 |
 | `payment.received` | side events | `onPaymentReceivedForClarity`, `onPaymentReceived`, `onPaidMidCheckin`, `onMoneyEventForMeta`, `onPaymentReceivedMoney`, `onPaidServicePaymentReceived`, `onPaymentReceivedForAddOn`, `onPaymentReceivedForLink` | 3 |
 | `payment.failed` | side events | `onPaymentFailed` | 0 |

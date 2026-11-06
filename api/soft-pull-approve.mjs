@@ -31,6 +31,7 @@ import {
   consentStatus,
   ConsentError
 } from "../src/consent/index.mjs";
+import { checkFirstName, checkLastName } from "../src/slo/fields.mjs";
 import { storeIdentity, PiiError } from "../src/pii/index.mjs";
 import { getOffer, formatCents } from "../src/config/offers.mjs";
 import {
@@ -50,6 +51,10 @@ import {
 } from "../src/slo/businesses.mjs";
 import { paidDiagnosticEventForClient, resumePaidDiagnosticSoftPull } from "../src/handlers/diagnostic-soft-pull.mjs";
 import { isSampleResult } from "../src/http/client-detail.mjs";
+
+import { requireBlueprintFulfillmentScope } from "../src/blueprint/fulfillment-access.mjs";
+import { readBlueprintReportSetup, finishBlueprintReportSetup } from "../src/blueprint/report-setup.mjs";
+import { SoftPullError } from "../src/finance/soft-pulls.mjs";
 
 const KIND = "soft_pull_consent";
 const BIZ_SOURCE = "soft_pull_approve";
@@ -412,7 +417,8 @@ export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
   const env = deps.env ?? process.env;
 
-  if (req.method === "POST" && String((req.body || {}).action || "") === "stamp_incorporated") {
+  const blueprint = req.query?.blueprint === "1";
+  if (!blueprint && req.method === "POST" && String((req.body || {}).action || "") === "stamp_incorporated") {
     return stampIncorporatedAsStaff(req, res, {
       database,
       requireAuth: deps.requireAuth ?? requireAuth,
@@ -424,7 +430,21 @@ export default async function handler(req, res, deps = {}) {
     let portalPrincipal = null;
     let orgId;
     let clientId;
-    if (String(req.query?.portal || "") === "1") {
+    let blueprintScope = null;
+    if (blueprint) {
+      if (req.query?.portal !== "1") return res.status(403).json({ ok: false, error: "client_session_required" });
+      blueprintScope = await requireBlueprintFulfillmentScope(req, res, { ...deps, db: database, allowManagedWrites: true });
+      if (!blueprintScope) return;
+      if (blueprintScope.engagement.status !== "active") return res.status(403).json({ ok: false, error: "full_blueprint_required" });
+      ({ orgId, clientId } = blueprintScope);
+      for (const source of [req.query, req.body || {}]) {
+        if ([source.client, source.clientId, source.client_id].some(id => id && id !== clientId) ||
+            [source.org, source.orgId, source.org_id].some(id => id && id !== orgId)) {
+          return res.status(403).json({ ok: false, error: "client_scope_mismatch" });
+        }
+      }
+      portalPrincipal = blueprintScope;
+    } else if (String(req.query?.portal || "") === "1") {
       portalPrincipal = await (deps.requirePrincipal ?? requirePrincipal)(req, res, ["client"], { db: database, env });
       if (!portalPrincipal) return;
       orgId = portalPrincipal.orgId;
@@ -486,6 +506,14 @@ export default async function handler(req, res, deps = {}) {
     const pricing = softPullPricingPublic();
 
     if (req.method === "GET") {
+      if (blueprint) {
+        const [reportSetup, pull] = await Promise.all([
+          readBlueprintReportSetup(database, blueprintScope), clientPullProgress(database, blueprintScope)
+        ]);
+        return res.status(200).json({ ok: true, mode: "blueprint", orgId, clientId, reportSetup, pull,
+          consent: { valid: status.valid }, disclosure: { version: disclosure.version, text: disclosure.text },
+          contact: { first_name: client.first_name || null, last_name: client.last_name || null } });
+      }
       const [paidEvent, pull] = await Promise.all([paidDiagnosticEventForClient(database, {
         orgId, clientId, amountCents: softPullTotalCents(0)
       }), clientPullProgress(database, { orgId, clientId })]);
@@ -522,7 +550,16 @@ export default async function handler(req, res, deps = {}) {
     }
 
     const body = req.body || {};
-    const grantedName = String(body.granted_name || "").trim();
+    let grantedName = String(body.granted_name || "").trim();
+    let legalName = null;
+    if (blueprint) {
+      const first = checkFirstName(body.first_name);
+      const last = checkLastName(body.last_name);
+      const invalid = first.error || last.error;
+      if (invalid) return res.status(400).json({ ok: false, error: invalid.code, message: invalid.message });
+      legalName = { first: first.value, last: last.value };
+      grantedName = `${legalName.first} ${legalName.last}`;
+    }
     if (!grantedName || grantedName.length < 2) {
       return res.status(400).json({
         ok: false,
@@ -563,7 +600,7 @@ export default async function handler(req, res, deps = {}) {
 
     let businesses;
     try {
-      businesses = parseSoftPullBusinesses(body.businesses);
+      businesses = blueprint ? [] : parseSoftPullBusinesses(body.businesses);
     } catch (e) {
       if (e instanceof ConsentError) {
         return res.status(e.status || 400).json({
@@ -585,36 +622,48 @@ export default async function handler(req, res, deps = {}) {
 
     const accountId = portalPrincipal.accountId;
 
-    await storeIdentity(database, {
-      orgId,
-      clientId,
-      ssn,
-      dob,
-      addresses: [{
-        addressLine1: line1,
-        city,
-        state,
-        postalCode: postal
-      }],
-      env
-    });
+    async function saveAuthorization(writer) {
+      // loadClientIdentity and the existing SLO report form share these canonical name fields.
+      if (legalName) await writer.query("UPDATE clients SET first_name=$3,last_name=$4 WHERE org_id=$1 AND id=$2",
+        [orgId, clientId, legalName.first, legalName.last]);
+      await storeIdentity(writer, {
+        orgId,
+        clientId,
+        ssn,
+        dob,
+        addresses: [{
+          addressLine1: line1,
+          city,
+          state,
+          postalCode: postal
+        }],
+        env
+      });
 
-    await replaceSoftPullBusinesses(database, { orgId, clientId, businesses });
+      if (!blueprint) await replaceSoftPullBusinesses(writer, { orgId, clientId, businesses });
 
+      return captureConsent(writer, {
+        orgId,
+        clientId,
+        kind: KIND,
+        consentText: disclosure.text,
+        consentVersion: CURRENT_SOFT_PULL_VERSION,
+        captureMethod: "typed",
+        grantedName,
+        grantedBy: { kind: "client", id: accountId },
+        capturedIp: clientIp(req),
+        capturedUserAgent: req.headers?.["user-agent"] || null
+      });
+    }
+    if (blueprint) {
+      const requested = await finishBlueprintReportSetup(database, blueprintScope, saveAuthorization);
+      const pull = await clientPullProgress(database, blueprintScope);
+      return res.status(201).json({ ok: true, mode: "blueprint", ...requested, pull,
+        consent: { valid: true, version: CURRENT_SOFT_PULL_VERSION },
+        next: "Return to Blueprint to track your included report." });
+    }
+    const consent = await saveAuthorization(database);
     const portalLink = { sent: false, reason: "already_signed_in" };
-
-    const consent = await captureConsent(database, {
-      orgId,
-      clientId,
-      kind: KIND,
-      consentText: disclosure.text,
-      consentVersion: CURRENT_SOFT_PULL_VERSION,
-      captureMethod: "typed",
-      grantedName,
-      grantedBy: { kind: "client", id: accountId },
-      capturedIp: clientIp(req),
-      capturedUserAgent: req.headers?.["user-agent"] || null
-    });
 
     // Payment and consent can happen in either order. A payment event is only
     // accepted from the verified Commas webhook; replay its original ID so a
@@ -687,7 +736,7 @@ export default async function handler(req, res, deps = {}) {
           : `Consent saved. Ask your advisor for the ${amountDisplay} pay link.`
     });
   } catch (err) {
-    if (err instanceof ConsentError || err instanceof PiiError) {
+    if (err instanceof ConsentError || err instanceof PiiError || err instanceof SoftPullError) {
       return res.status(err.status || 400).json({
         ok: false,
         error: err.code || "bad_request",

@@ -77,7 +77,8 @@ const FEE_BLANKS = Object.freeze({
   // db/migrations/287_contract_seller_signature_and_real_text.sql — it was the
   // only client offer in the catalogue with none, so a Blueprint sale closed
   // with nothing to send and nothing anywhere said so.
-  "CAPITAL-BLUEPRINT-AGREEMENT": [{ field: "package_fee", offer: "UWIQ_DELIVERABLES" }]
+  "CAPITAL-BLUEPRINT-AGREEMENT": [{ field: "package_fee", offer: "UWIQ_DELIVERABLES" }],
+  "BLUEPRINT-SELF-FUNDING-AGREEMENT": [{ field: "package_fee", offer: "BLUEPRINT_SELF_FUNDING" }]
 });
 
 const NON_PRICE_BLANKS = Object.freeze({
@@ -184,6 +185,8 @@ function fieldsFrom(block) {
 
 /** Which template a statement is about. */
 function keyFrom(block) {
+  const clone = block.match(/SELECT org_id, '([A-Z0-9][A-Z0-9-]*)'/);
+  if (clone) return clone[1];
   const insert = block.match(/VALUES\s*\(\s*v_org\s*,\s*'([A-Z0-9][A-Z0-9-]*)'/);
   if (insert) return insert[1];
   const update = block.match(/\bWHERE\b[\s\S]*?\btemplate_key\s*=\s*'([A-Z0-9][A-Z0-9-]*)'/);
@@ -219,8 +222,15 @@ function readTemplatesFromDb({ omitMigrations = new Set() } = {}) {
       for (const block of blocks) {
         const key = keyFrom(block);
         if (!key) continue;
-        const prev = out.get(key) || { body: null, fields: null, sources: [] };
+        const clone = block.match(/SELECT org_id, '[A-Z0-9-]+'[\s\S]*?FROM contract_templates\s+WHERE template_key = '([A-Z0-9-]+)'/);
+        const prev = out.get(clone ? clone[1] : key) || { body: null, fields: null, sources: [] };
         let body = bodyFrom(block);
+        if (clone) {
+          assert.ok(prev.body,`${key}: cloned source ${clone[1]} was not found`);
+          const replacement = block.match(/replace\(body, '([^']+)', '([^']+)'\)/);
+          assert.ok(replacement,`${key}: clone replacement was not understood`);
+          body = prev.body.replaceAll(replacement[1],replacement[2]) + (body || '');
+        }
         // A later price-only migration uses replace(body, old, new), so apply
         // its literal substitutions to the previously parsed full agreement.
         if (/SET body = (?:replace\()+body,/.test(block)) {
@@ -249,6 +259,7 @@ const PATHS = Object.freeze([
   { label: "REPAIR_TRIAL", offerKey: "REPAIR_TRIAL", tier: null },
   { label: "FUNDING_MASTERY", offerKey: "FUNDING_MASTERY", tier: null },
   { label: "UWIQ_DELIVERABLES", offerKey: "UWIQ_DELIVERABLES", tier: null },
+  { label: "BLUEPRINT_SELF_FUNDING", offerKey: "BLUEPRINT_SELF_FUNDING", tier: null },
   { label: "FUNDING_PLUS_REPAIR tier", offerKey: "FUNDING_DFY", tier: "FUNDING_PLUS_REPAIR" }
 ]);
 
@@ -278,7 +289,7 @@ describe("the copy this guard reads is really there", () => {
       const asks = [...tpl.body.matchAll(/\{\{field\.([a-z0-9_]+)\}\}/gi)].map((m) => m[1]);
       const declared = new Set([
         ...tpl.fields.map((f) => f.key),
-        ...(p.templateKey === "CAPITAL-BLUEPRINT-AGREEMENT" ? ["package_fee"] : [])
+        ...(["CAPITAL-BLUEPRINT-AGREEMENT","BLUEPRINT-SELF-FUNDING-AGREEMENT"].includes(p.templateKey) ? ["package_fee"] : [])
       ]);
       for (const key of asks) {
         assert.ok(declared.has(key),
@@ -408,7 +419,7 @@ describe("a rename cannot go half way", () => {
     test(`${p.templateKey}: every blank in the words is a blank on the form`, () => {
       const declared = new Set([
         ...TEMPLATES.get(p.templateKey).fields.map((f) => f.key),
-        ...(p.templateKey === "CAPITAL-BLUEPRINT-AGREEMENT" ? ["package_fee"] : [])
+        ...(["CAPITAL-BLUEPRINT-AGREEMENT","BLUEPRINT-SELF-FUNDING-AGREEMENT"].includes(p.templateKey) ? ["package_fee"] : [])
       ]);
       for (const tag of tagsIn(TEMPLATES.get(p.templateKey).body)) {
         if (!tag.startsWith("field.")) continue;

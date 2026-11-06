@@ -30,6 +30,7 @@ function makeNode(tag) {
     _html: "",
     children: [],
     style: {},
+    dataset: {},
     onclick: null,
     onkeydown: null,
     onchange: null,

@@ -75,6 +75,10 @@ import blueprintDeclines from "../../api/blueprint/declines.mjs";
 import blueprintClientPlan from "../../api/blueprint/plan.mjs";
 import blueprintBusinessPlans from "../../api/blueprint/business-plans.mjs";
 import blueprintLetterMailing from "../../api/blueprint/letter-mailing.mjs";
+import blueprintFunding from "../../api/blueprint/funding.mjs";
+import blueprintInquiries from "../../api/blueprint/inquiries.mjs";
+import blueprintServices from "../../api/blueprint/services.mjs";
+import blueprintRepair from "../../api/blueprint/repair.mjs";
 import readFundingRounds from "../../api/read/funding-rounds.mjs";
 import readAffiliates from "../../api/read/affiliates.mjs";
 import readAffiliatePortal from "../../api/read/affiliate-portal.mjs";
@@ -638,6 +642,10 @@ export const ROUTES = {
   "blueprint/plan": blueprintClientPlan,
   "blueprint/business-plans": blueprintBusinessPlans,
   "blueprint/letter-mailing": blueprintLetterMailing,
+  "blueprint/funding": blueprintFunding,
+  "blueprint/inquiries": blueprintInquiries,
+  "blueprint/services": blueprintServices,
+  "blueprint/repair": blueprintRepair,
 
   // read/underwrite runs the vendored UnderwriteIQ Lite engine over the same
   // tradeline rows read/tradelines and read/finance-os already serve to

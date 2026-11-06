@@ -86,13 +86,15 @@ describe("entitlements", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () => {
      open. 180_product_entitlements_seed.sql adds it. This assertion moved from
      five to six on purpose. */
   test("the catalog holds a code for every deliverable tile the portal renders", async () => {
-    const rows = await catalog(db, { orgId: org });
+    const rows = await catalog(db, { orgId: org, kind: "deliverable" });
     assert.deepEqual(rows.map((r) => r.code).sort(), [
       "bank-lender-match-list", "credit-analysis-report",
       "credit-optimization-roadmap", "funding-mastery-course",
       "funding-snapshot", "metro2-letter-pack"
     ]);
     assert.ok(rows.every((r) => r.kind === "deliverable"));
+    const allKinds = await catalog(db, { orgId: org });
+    assert.equal(allKinds.find(r => r.code === "blueprint-client-fulfillment")?.kind, "service");
   });
 
   test("a client with no grants gets six locked tiles, not an empty screen", async () => {

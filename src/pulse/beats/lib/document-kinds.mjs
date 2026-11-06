@@ -68,6 +68,10 @@ export const SUBTYPES = Object.freeze({
     "tax_return",
     "additional_fraud_docs",
     "dispute_mail_receipt",
+    // Client-run fulfillment evidence. These are submissions/responses, never proof of removal.
+    "inquiry_submission_receipt",
+    "repair_submission_receipt",
+    "funding_bank_response",
     // A bank's decline letter, for decline defense (src/blueprint/decline-defense.mjs).
     "decline_letter",
     // The business half of the application document vault
@@ -97,6 +101,7 @@ export const SUBTYPES = Object.freeze({
     "id_document",
     "proof_of_address",
     "bank_statement",
+    "inquiry_submission_receipt",
     "other"
   ])
 });
@@ -137,6 +142,9 @@ export const SUBTYPE_TITLES = Object.freeze({
   business_license: "Business License",
   additional_fraud_docs: "Additional documentation — fraud / identity theft cases",
   dispute_mail_receipt: "Dispute Mailing Proof",
+  inquiry_submission_receipt: "Inquiry Submission Receipt",
+  repair_submission_receipt: "Repair Submission Receipt",
+  funding_bank_response: "Bank Application Response",
   decline_letter: "Bank Decline Letter",
   bureau_letter: "Bureau Response Letter",
   ftc_report: "FTC Identity Theft Report",

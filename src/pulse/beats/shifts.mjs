@@ -101,6 +101,7 @@ export const SHIFTS = Object.freeze({
   "pulse-hourly-c": Object.freeze({
     cron: "52 * * * *",
     beats: Object.freeze([
+      "blueprint-client-fulfillment",
       "blueprint-delivery",
       "built-funnels",
       "consent-capture",

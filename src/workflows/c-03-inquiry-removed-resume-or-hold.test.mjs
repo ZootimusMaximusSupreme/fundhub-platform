@@ -9,7 +9,7 @@ function c03Db({ client, cases = [], inquiries = [], paid = false, fraudCase = f
   base.query = async (sql, params) => {
     if (/SELECT \*\s+FROM inquiry_removal_cases/.test(sql)) return { rows: cases };
     if (/SELECT 1 FROM inquiry_removal_cases/.test(sql)) return { rows: fraudCase ? [{ exists: 1 }] : [] };
-    if (/SELECT bureau, status, created_at, is_open FROM inquiry_log/.test(sql)) return { rows: inquiries };
+    if (/SELECT bureau, status, created_at, is_open,[\s\S]*FROM inquiry_log/.test(sql)) return { rows: inquiries };
     if (/SELECT 1 FROM sales s/.test(sql)) return { rows: paid ? [{ exists: 1 }] : [] };
     if (sql.includes("LEFT JOIN staff s") && sql.includes("cf_funding_advisor_user_id")) {
       const id = client.custom_fields?.cf_funding_advisor_user_id || null;

@@ -57,7 +57,10 @@
 
 import { on } from "../events/registry.mjs";
 import { recordPayment, stageRound, SERVICE_KIND } from "../paid-services/round.mjs";
+import { fulfillPaidBlueprintHelp } from "../blueprint/client-services.mjs";
+import { createTask } from "../lib/create-task.mjs";
 import { REFUSAL } from "../paid-services/refusals.mjs";
+import { lookupBlueprintServiceReceipt } from "../blueprint/service-payment-identity.mjs";
 
 export const SKIPPED = "[paid-service] skipped";
 export const STAGED = "[paid-service] round staged, not mailed";
@@ -114,12 +117,54 @@ export async function onPaidServicePaymentReceived(event, db) {
     return { done: false, reason: "paid_service_request_not_found" };
   }
 
+  const blueprintService = String(row.idempotency_key || "").startsWith("blueprint-help:");
+  const identity = blueprintService ? await lookupBlueprintServiceReceipt(db, event) : null;
+  if (blueprintService && identity && !identity.valid && ["service_provider_mismatch", "service_provider_receipt_mismatch"].includes(identity.reason)) {
+    return { done: false, reason: identity.reason };
+  }
+  const paidClientId = event?.clientId || event?.payload?.client_id || null;
+  const currency = event?.payload?.currency;
+  if (blueprintService && (!orgId || !paymentRefOf(event) || paidCentsFromEvent(event) !== Number(row.price_total_cents)
+    || (row.payment_ref && row.payment_ref !== paymentRefOf(event))
+    || (paidClientId && String(paidClientId) !== String(row.client_id))
+    || (currency && String(currency).toUpperCase() !== "USD"))) {
+    if (orgId) {
+      await db.query(`UPDATE blueprint_client_services SET state='needs_review',updated_at=now()
+        WHERE id=$1 AND org_id=$2 AND state NOT IN ('in_progress','completed')`, [row.id, orgId]);
+      await createTask(db, { orgId, clientId: row.client_id, assigneeRole: "csm",
+        title: "Reconcile payment for a Blueprint service", sourceWorkflow: "blueprint-service-payment",
+        eventId: `blueprint-service-payment:${row.id}`, detail: `Service ${row.id}: the callback did not match the saved quote or payment receipt. Review the provider's receipt before fulfillment.` });
+    }
+    return { done: false, reason: "blueprint_service_payment_mismatch" };
+  }
+
+  // A local checkout deadline cannot undo a processor's settled receipt. Keep
+  // the original cancelled/failed work held, retain the money, and assign review.
+  if (blueprintService && ["cancelled", "failed"].includes(row.status)) {
+    await db.query(`UPDATE paid_service_requests SET payment_ref=$2,amount_paid_cents=$3,
+      paid_at=COALESCE(paid_at,$4::timestamptz,now()),state_reason='late_service_payment_needs_review',updated_at=now()
+      WHERE id=$1 AND (payment_ref IS NULL OR payment_ref=$2)`,
+    [row.id, paymentRefOf(event), paidCentsFromEvent(event), paidAtOf(event)]);
+    await db.query(`UPDATE blueprint_client_services SET state='needs_review',payment_ref=$2,updated_at=now()
+      WHERE id=$1 AND org_id=$3 AND state NOT IN ('in_progress','completed','refunded')`, [row.id, paymentRefOf(event), orgId]);
+    await createTask(db, { orgId, clientId: row.client_id, assigneeRole: "csm",
+      title: "Review a payment received after a Blueprint checkout closed", sourceWorkflow: "blueprint-service-payment",
+      eventId: `blueprint-service-payment:${row.id}`,
+      detail: `Service ${row.id}: the provider confirmed the exact saved payment after this quote closed. The receipt is saved; work is held for team review. Review the existing payment before asking the client to pay again.` });
+    return { done: true, held: true, reason: "blueprint_service_payment_needs_review" };
+  }
+
   const payment = await recordPayment(db, {
     requestId: row.id,
     paymentRef: paymentRefOf(event),
     amountCents: paidCentsFromEvent(event),
     paidAt: paidAtOf(event)
   });
+
+  if (blueprintService) {
+    const fulfillment = await fulfillPaidBlueprintHelp(db, { requestId: row.id, orgId });
+    return { done: fulfillment.ok === true, reason: fulfillment.reason || "blueprint_service_handoff", ...fulfillment };
+  }
 
   if (!payment.applied) {
     /* MONEY ARRIVED AND IT WAS SHORT. recordPayment has already closed the

@@ -318,13 +318,13 @@ export async function revoke(db, {
 
 /* catalog — the grantable things, for an admin screen and for the portal's
    locked tiles when a client has no grants at all. */
-export async function catalog(db, { orgId, includeInactive = false } = {}) {
+export async function catalog(db, { orgId, includeInactive = false, kind = null } = {}) {
   const { rows } = await db.query(
     `SELECT code, name, description, kind, sort_order, active
        FROM entitlement_catalog
-      WHERE org_id = $1 ${includeInactive ? "" : "AND active = true"}
+      WHERE org_id = $1 AND ($2::text IS NULL OR kind = $2) ${includeInactive ? "" : "AND active = true"}
       ORDER BY sort_order, code`,
-    [orgId]
+    [orgId, kind]
   );
   return rows;
 }

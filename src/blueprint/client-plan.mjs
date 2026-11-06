@@ -24,7 +24,7 @@ function assertIdentity(value, { orgId, clientId }, { required = false } = {}) {
   }
 }
 
-const CREDIT_SQL = `SELECT id, org_id, client_id, provider, created_at, result
+export const BLUEPRINT_GENUINE_CREDIT_SQL = `SELECT id, org_id, client_id, provider, created_at, result
   FROM crs_results
   WHERE client_id = $1::uuid AND org_id = $2::uuid
     AND is_demo IS NOT TRUE
@@ -106,7 +106,7 @@ export async function buildBlueprintClientPlan(db, { orgId, clientId, now = new 
       if (error?.code === "blueprint_plan_scope_mismatch") throw error;
       warn("bank_plan_unavailable", "bank_strategy"); return null;
     }),
-    db.query(CREDIT_SQL, [clientId, orgId]).then((value) => {
+    db.query(BLUEPRINT_GENUINE_CREDIT_SQL, [clientId, orgId]).then((value) => {
       const row = value.rows[0];
       if (!row) return unknownCredit();
       assertIdentity(row, scope, { required: true });

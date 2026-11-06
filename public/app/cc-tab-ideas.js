@@ -102,6 +102,7 @@
      this list and OFFER_KEYS drift apart. */
   var FLYWHEEL_OFFERS = Object.freeze([
     ["UWIQ_DELIVERABLES", "Capital Blueprint"],
+    ["BLUEPRINT_SELF_FUNDING", "Capital Blueprint — full implementation"],
     ["FUNDING_DFY", "Funding, done-for-you"],
     ["FUNDING_MASTERY", "Capital Academy"],
     ["REPAIR_DFY", "Credit repair, done-for-you"],

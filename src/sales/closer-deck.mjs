@@ -737,7 +737,7 @@ export async function sendDeckPayLink(db, {
   } catch (err) {
     throw new CloserDeckError(err.message, { status: 400, code: "invalid_offer_amount" });
   }
-  if (!new Set(["commas", "whop"]).has(provider) || (provider === "whop" && offer.key !== "UWIQ_DELIVERABLES")) {
+  if (!new Set(["commas", "whop"]).has(provider) || (provider === "whop" && !["UWIQ_DELIVERABLES", "BLUEPRINT_SELF_FUNDING"].includes(offer.key))) {
     throw new CloserDeckError("Choose a supported payment provider for this offer.", { status: 400, code: "invalid_offer_provider" });
   }
   if (provider === "commas" && !checkoutBaseUrl && !checkoutConfig(env).ok) {
@@ -750,7 +750,7 @@ export async function sendDeckPayLink(db, {
   const description = offer.name;
   /* Primary DFY / mastery offers are the main close — not downsell/upsell.
      Only alternate ladders need an explicit sale motion. */
-  const primaryPayOffers = new Set(["SOFT_PULL", "FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY"]);
+  const primaryPayOffers = new Set(["SOFT_PULL", "FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY", "BLUEPRINT_SELF_FUNDING"]);
   const isPrimaryPay = primaryPayOffers.has(offer.key);
   if (!isPrimaryPay && saleMotion !== "downsell" && saleMotion !== "upsell") {
     throw new CloserDeckError(

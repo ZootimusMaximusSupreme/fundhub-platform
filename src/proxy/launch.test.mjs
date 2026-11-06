@@ -10,7 +10,7 @@ function fakeDb({ client, lender, application, businesses = [], cases = [], inqu
       if (/SELECT tags FROM clients/.test(sql)) return { rows: [{ tags: client?.tags || [] }] };
       if (/SELECT 1 FROM inquiry_removal_cases/.test(sql)) return { rows: fraudCase ? [{ exists: 1 }] : [] };
       if (/SELECT \*\s+FROM inquiry_removal_cases/.test(sql)) return { rows: cases };
-      if (/SELECT bureau, status, created_at FROM inquiry_log/.test(sql)) return { rows: inquiries };
+      if (/SELECT bureau, status, created_at,[\s\S]*FROM inquiry_log/.test(sql)) return { rows: inquiries };
       if (/SELECT bureaus_pulled FROM lenders/.test(sql)) return { rows: lender ? [{ bureaus_pulled: lender.bureaus_pulled }] : [] };
       if (/FROM clients/.test(sql)) {
         return { rows: client ? [client] : [] };

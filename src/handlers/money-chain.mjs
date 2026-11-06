@@ -26,6 +26,7 @@
 // COMPLIANCE REVIEW REQUIRED: payment rails + fee/commission timing.
 
 import { on } from "../events/registry.mjs";
+import { lookupBlueprintServiceReceipt } from "../blueprint/service-payment-identity.mjs";
 import { emit } from "../events/bus.mjs";
 import { resolveClient } from "./client-lifecycle.mjs";
 import { findClient as findExistingPaymentClient } from "./purchase-routing.mjs";
@@ -773,6 +774,16 @@ async function grantForPurchase(db, event, { clientId, product } = {}) {
     );
   }
 
+  if (product.code === "blueprint-self-funding" && transactionId) {
+    const { getBlueprintFulfillmentAccess } = await import("../blueprint/fulfillment-access.mjs");
+    const installed = await getBlueprintFulfillmentAccess(db, { orgId: event.orgId, clientId });
+    if (installed?.status === "active" && installed.transactionId === transactionId) {
+      const { onInquiryGateTrigger } = await import("./inquiry-gate.mjs");
+      out.inquiryPreparation = await onInquiryGateTrigger({
+        ...event, id: transactionId, clientId, payload: { fundingRoundId: installed.roundId }
+      }, db);
+    }
+  }
   out.financeOs = await ensureFinanceOsForBlueprintPurchase(db, {
     orgId: event.orgId,
     clientId,
@@ -807,6 +818,8 @@ function hasInvoicePaymentContext(payload = {}) {
 }
 
 async function recordPurchase(event, db, { productBucket, paymentKind }) {
+  const help = await lookupBlueprintServiceReceipt(db,event);
+  if (help) return { done:false, reason:help.reason || "blueprint_service_payment", requestId:help.requestId };
   // Commas emits payment.received AND a semantic purchase event for one receipt.
   // Both must pass the same invoice/link ownership, status, balance and replay
   // checks before any sale, commission or paid access can be written.
@@ -981,6 +994,8 @@ export function feePaymentBalanceDecision({ amount, due, applied = 0 }) {
  * still do not invent a sale.
  */
 export async function onPaymentReceivedMoney(event, db, { allocateFeePayment = allocatePayment } = {}) {
+  const help = await lookupBlueprintServiceReceipt(db,event);
+  if (help) return { done:false, reason:help.reason || "blueprint_service_payment", requestId:help.requestId };
   const orgId = event.orgId;
   const p = event.payload || {};
   // Canonical and legacy event names must agree. A snake_case invoice/link
@@ -1443,6 +1458,10 @@ export async function onRoundStartedMoney(event, db) {
   const { round, clientId } = await ensureFundingRound(db, event, { status: "started" });
   if (!round) return { done: false, reason: "no_round" };
 
+  if (round.product==="blueprint_managed_funding") {
+    const gate=await attachGateToRound(db,{orgId:event.orgId,clientId,fundingRoundId:round.id});
+    return {done:true,fundingRoundId:round.id,clientId,saleId:null,bureauGate:gate?.status || null};
+  }
   const link = await db.query(SQL_LINK_ROUND_TO_SALE, [event.orgId, round.id]);
   const saleId = link.rows[0]?.sale_id || await ensureFundingRoundSaleLink(db, {
     orgId: event.orgId,
@@ -1584,11 +1603,22 @@ export async function onRoundFundedMoney(event, db) {
     };
   }
 
+  // Self-operated rounds carry no staff success fee. The signed bank evidence
+  // path owns actual funding for these; a board amount alone cannot close one.
+  if (round.product === "blueprint_self_funding") {
+    const { reconcileClientBankEvidence } = await import("../blueprint/bank-evidence.mjs");
+    await reconcileClientBankEvidence(db,{orgId:event.orgId,clientId:round.client_id});
+    const saved=await findRoundForFundedEvent(db,event);
+    return {done:saved?.status==="funded",round:saved,reason:"self_funding_bank_evidence"};
+  }
+
   // A supplied sale may not be borrowed from another org/client or product.
   // Also refuse an incoming sale ID that contradicts this round's frozen link.
   // Check BEFORE marking the round funded, not after the ledger changes.
   const frozenLink = await db.query(SQL_SALE_FOR_ROUND, [round.id]);
   const linkedSaleId = frozenLink.rows[0]?.sale_id || null;
+  const managed = round.product==="blueprint_managed_funding";
+  if (managed && p.saleId && !linkedSaleId) return {done:false,reason:"sale_context_conflict"};
   if (linkedSaleId && p.saleId && String(linkedSaleId) !== String(p.saleId)) {
     return { done: false, reason: "sale_context_conflict" };
   }
@@ -1636,7 +1666,7 @@ export async function onRoundFundedMoney(event, db) {
      An ALREADY-funded round is never re-blocked: replays of a delivered event
      are routine and must stay idempotent. */
   const alreadyFunded = round.status === "funded" && Number(round.funded_amount) > 0;
-  const isCardStacking = String(round.product || "") === CARD_STACKING_PRODUCT;
+  const isCardStacking = managed || String(round.product || "") === CARD_STACKING_PRODUCT;
   if (!alreadyFunded && isCardStacking) {
     const orgForRound = round.org_id || event.orgId || null;
     const confirmed = await listConfirmedApprovals(db, {
@@ -1693,6 +1723,9 @@ export async function onRoundFundedMoney(event, db) {
   // The person row says funded too, from the rounds (hole 8).
   await syncClientFunded(db, { clientId: round.client_id, orgId: round.org_id });
 
+  // The negotiated service receipt paid for this takeover. Only an explicit
+  // frozen sale can add separate back-end terms. Never borrow a prior sale.
+  if (managed && !linkedSaleId) return {done:true,round,reason:"paid_blueprint_takeover_completed"};
   let link = await db.query(SQL_SALE_FOR_ROUND, [round.id]);
   if (!link.rows[0]) {
     await db.query(SQL_LINK_ROUND_TO_SALE, [event.orgId, round.id]);
@@ -1992,6 +2025,40 @@ export async function onPaymentDisputedMoney(event, db) {
   return reversePartnerRevenue(event, db);
 }
 
+// A staff board close names one real round. For the full package this is also
+// the service boundary. Unresolved lender outcomes still belong to this round.
+export async function closePurchasedBlueprintRound(event,db) {
+  const p=event.payload || {};
+  if (p.stage!=="closed" || !event.orgId || !event.clientId ||
+      (!p.fundingRoundId && !(Number.isSafeInteger(Number(p.roundNumber)) && Number(p.roundNumber)>0))) {
+    return {done:false,reason:"not_purchased_round_close"};
+  }
+  const round=await findRoundForFundedEvent(db,event);
+  if (round?.product==="blueprint_managed_funding") {
+    const closed=await db.query(`UPDATE funding_rounds r SET status='closed',updated_at=now()
+      FROM blueprint_fulfillment_engagements g WHERE r.id=$1 AND r.org_id=$2 AND r.client_id=$3 AND r.id=g.funding_round_id
+        AND g.org_id=r.org_id AND g.client_id=r.client_id AND g.execution_owner='fundhub' AND g.status='active'
+        AND EXISTS(SELECT 1 FROM applications a WHERE a.funding_round_id=r.id)
+        AND NOT EXISTS(SELECT 1 FROM applications a WHERE a.funding_round_id=r.id AND a.status IS DISTINCT FROM 'Denied')
+      RETURNING r.id`,[round.id,event.orgId,event.clientId]);
+    return {done:closed.rowCount===1,reason:"managed_purchased_round_close"};
+  }
+  if (!round || round.product!=="blueprint_self_funding") return {done:false,reason:"not_self_funding_round"};
+  const marked=await db.query(`UPDATE blueprint_fulfillment_engagements g
+    SET submissions_closed_at=COALESCE(submissions_closed_at,now())
+    WHERE g.org_id=$1 AND g.client_id=$2 AND g.funding_round_id=$3 AND g.status='active' AND g.execution_owner='client'
+      AND EXISTS(SELECT 1 FROM blueprint_funding_handoffs h WHERE h.engagement_id=g.id)
+      AND NOT EXISTS(SELECT 1 FROM blueprint_funding_handoffs h JOIN applications a ON a.id=h.application_id
+         WHERE h.engagement_id=g.id AND a.status='Apply')
+    RETURNING id`,[event.orgId,event.clientId,round.id]);
+  if (!marked.rowCount) return {done:false,reason:"round_not_ready"};
+  const {reconcileClientBankEvidence}=await import("../blueprint/bank-evidence.mjs");
+  await reconcileClientBankEvidence(db,{orgId:event.orgId,clientId:event.clientId});
+  const saved=await findRoundForFundedEvent(db,event);
+  return {done:["closed","funded"].includes(saved?.status),reason:"purchased_round_evidence"};
+
+}
+
 export function register() {
   on("diagnostic.paid", onDiagnosticPaidMoney);
   on("deposit.paid", onDepositPaidMoney);
@@ -1999,6 +2066,7 @@ export function register() {
   on("payment.received", onPaymentReceivedMoney);
   on("round.started", onRoundStartedMoney);
   on("round.funded", onRoundFundedMoney);
+  on("round.closeout", closePurchasedBlueprintRound);
   /* Money that left again. Registered here rather than in commas-disputes.mjs so
      the partner ledger has exactly one owner module, and so a reversal that
      fails cannot stop the urgent chargeback task that handler creates — the bus

@@ -62,6 +62,7 @@ function isolatedMonthlyDb() {
         return { rows: args[0] === ORG && args[1] === CLIENT && inBlueprintYear(args[2])
           ? [{ id: BLUEPRINT_GRANT }] : [] };
       }
+      if (/FROM blueprint_fulfillment_engagements/.test(sql)) return { rows: [] };
       throw new Error("Unexpected query in read-only Blueprint collision harness");
     }
   };

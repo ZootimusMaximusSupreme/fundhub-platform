@@ -88,8 +88,8 @@ async function createTaskWithNote(db, spec, line) {
 }
 
 /** Fundable from freshest crs_results + tradelines, same path as closer cockpit. */
-export async function loadBlueprintFundable(db, { orgId, clientId }) {
-  const crs = await latestCreditFile(db, { orgId, clientId });
+export async function loadBlueprintFundable(db, { orgId, clientId, creditFile, includeMissing = false }) {
+  const crs = creditFile === undefined ? await latestCreditFile(db, { orgId, clientId }) : creditFile;
   if (!crs?.result) return { fundable: false, reason: "no_credit_file" };
 
   const [tradelines, liabilities, businesses, clientRow] = await Promise.all([
@@ -123,6 +123,10 @@ export async function loadBlueprintFundable(db, { orgId, clientId }) {
     computeUnderwrite(adapter.bureaus, adapter.businessAgeMonths),
     adapter.businessAges
   );
+  if (includeMissing && (!Object.values(adapter.bureaus).some(b=>b && Number(b.score)>0) ||
+      uw.metrics?.negative_accounts == null)) {
+    return { fundable:false,reason:"incomplete_credit_file" };
+  }
   return { fundable: uw.fundable === true, reason: uw.fundable ? "fundable" : "not_fundable" };
 }
 

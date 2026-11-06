@@ -31,13 +31,13 @@ flowchart TD
     CAN --> A_top_level[Everything else — 5 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 305 routes]
+    WHO -->|Yes| CANT[Blocked — 309 routes]
     CANT --> B_adintel[adintel — 1 blocked]
     CANT --> B_affiliates[affiliates — 2 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
     CANT --> B_auth[Signing in and out — 9 blocked]
     CANT --> B_banking[banking — 7 blocked]
-    CANT --> B_blueprint[blueprint — 5 blocked]
+    CANT --> B_blueprint[blueprint — 9 blocked]
     CANT --> B_brand[brand — 1 blocked]
     CANT --> B_campaigns[Campaigns — 10 blocked]
     CANT --> B_chat[chat — 4 blocked]
@@ -72,7 +72,7 @@ flowchart TD
 
 ## What they can reach
 
-**47 of 352 routes.**
+**47 of 356 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -131,7 +131,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**305 of 352 routes.**
+**309 of 356 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -166,8 +166,12 @@ flowchart TD
 | `/api/banking/sync-transactions` | POST | owner, admin, sales_manager, closer |
 | `/api/blueprint/business-plans` | GET, POST | client |
 | `/api/blueprint/declines` | GET, POST | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
+| `/api/blueprint/funding` | GET, POST | employees: owner, admin, csm, funding_advisor<br>plus: client |
+| `/api/blueprint/inquiries` | GET, POST | client |
 | `/api/blueprint/letter-mailing` | — | client |
 | `/api/blueprint/plan` | — | client |
+| `/api/blueprint/repair` | GET, POST | client |
+| `/api/blueprint/services` | GET, POST | employees: owner, admin, csm<br>plus: client |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET, POST | staff, client |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |

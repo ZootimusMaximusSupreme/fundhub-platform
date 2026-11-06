@@ -80,7 +80,8 @@ export async function handle({ event, db, step }) {
   const cases = await step.run("read-active-cases", () => loadActiveCasesForClient(db, { orgId, clientId }));
   const inquiries = await step.run("read-inquiry-log", async () => {
     const r = await db.query(
-      `SELECT bureau, status, created_at, is_open FROM inquiry_log
+      `SELECT bureau, status, created_at, is_open, removal_verified_at,
+              removal_verified_report_id, removal_verified_document_id FROM inquiry_log
         WHERE org_id = $1::uuid AND client_id = $2::uuid`,
       [orgId, clientId]
     );

@@ -107,10 +107,12 @@ const textLiteral = (value) => {
    Every other blank the price list fills still has to be the price list's figure.
    The patterns hold no dollar sign next to a digit (see textLiteral). */
 export const CLOSER_SET_BLANKS = Object.freeze({
+  "BLUEPRINT-SELF-FUNDING-AGREEMENT": Object.freeze(["package_fee"]),
   "FUNDING-AGREEMENT": Object.freeze(["deposit", "success_fee"]),
   "REPAIR-AND-FUNDING-AGREEMENT": Object.freeze(["deposit", "success_fee"])
 });
 const CLOSER_SET_PATTERNS = Object.freeze({
+  package_fee: "^\\$((2[0-9],[0-9]{3})|30,000)$",
   deposit: "^\\$([1-9][0-9]{0,2}(,[0-9]{3})*|[1-9][0-9]*)(\\.[0-9]{2})?$",
   success_fee: "^(100|[1-9][0-9]?)(\\.[0-9]{1,2})?%( of approved funding)?$"
 });

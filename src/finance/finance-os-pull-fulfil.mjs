@@ -81,6 +81,7 @@ export async function queuedSystemPulls(conn, { limit = 50 } = {}) {
        FROM soft_pull_requests r
       WHERE r.status = 'queued'
         AND r.requested_by_kind = 'system'
+        AND r.idempotency_key LIKE 'finance-os-monthly:%'
         AND NOT EXISTS (
           SELECT 1 FROM tasks incident
            WHERE incident.org_id = r.org_id AND incident.client_id = r.client_id

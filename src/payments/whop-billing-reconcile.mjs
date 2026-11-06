@@ -1,6 +1,7 @@
 import { listWhopResource } from '../messaging/providers/whop-payments.mjs';
 import { whopConfig, whopBlueprintMetadata, verifyWhopCheckout } from './whop-blueprint.mjs';
 import { enqueueWhopBilling } from './whop-billing-inbox.mjs';
+import { readWhopServiceOrders } from '../blueprint/service-whop.mjs';
 
 // Read-only at Whop. Recovered receipts use precisely the signed-webhook inbox
 // and processor; no checkout, application, charge, or refund is created here.
@@ -9,9 +10,10 @@ export async function reconcileWhopBilling(db, { env = process.env, fetchImpl = 
   if (!cfg.ok) return { ok: true, skipped: true, reason: 'whop_not_configured', recovered: 0 };
   const links = (await db.query(`SELECT l.*, p.code AS product_code FROM payment_links l
     JOIN products p ON p.id = l.product_id AND p.org_id = l.org_id
-    WHERE l.provider = 'whop' AND p.code = 'consulting-package'
+    WHERE l.provider = 'whop' AND p.code IN ('consulting-package', 'blueprint-self-funding')
       AND l.status IN ('created','sent','paid') ORDER BY l.created_at`)).rows;
-  if (!links.length) return { ok: true, recovered: 0, checked: 0 };
+  const services = await readWhopServiceOrders(db, cfg);
+  if (!links.length && !services.length) return { ok: true, recovered: 0, checked: 0 };
   if (links.some((link) => !link.whop_checkout_configuration_id)) {
     const checkouts = await listWhopResource('checkout_configurations', {
       accountId: cfg.accountId, apiKey: cfg.apiKey, env, fetchImpl });
@@ -35,7 +37,9 @@ export async function reconcileWhopBilling(db, { env = process.env, fetchImpl = 
   const matchedPayments = new Map();
   for (const payment of payments) {
     const link = links.find((item) => payment.metadata?.fh_payment_link_id === item.id
-      && payment.checkout_configuration_id === item.whop_checkout_configuration_id);
+      && payment.checkout_configuration_id === item.whop_checkout_configuration_id)
+      || services.find((item) => payment.metadata?.fh_service_request_id === item.id
+        && (!item.whop_checkout_configuration_id || payment.checkout_configuration_id === item.whop_checkout_configuration_id));
     if (!link || payment.account_id !== cfg.accountId) continue;
     matchedPayments.set(payment.id, link);
     const type = payment.status === 'paid' ? 'payment.succeeded'
@@ -54,7 +58,8 @@ export async function reconcileWhopBilling(db, { env = process.env, fetchImpl = 
     for (const reversal of reversals) {
       const paymentId = reversal.payment_id || reversal.payment?.id;
       const link = matchedPayments.get(paymentId)
-        || links.find((item) => item.whop_payment_id === paymentId);
+        || links.find((item) => item.whop_payment_id === paymentId)
+        || services.find((item) => item.whop_payment_id === paymentId);
       if (!link || reversal.account_id !== cfg.accountId) continue;
       if (resource === 'refunds' && reversal.status !== 'succeeded') continue;
       const out = await enqueueWhopBilling(db, { orgId: link.org_id, accountId: cfg.accountId,
@@ -63,5 +68,5 @@ export async function reconcileWhopBilling(db, { env = process.env, fetchImpl = 
       if (out.queued) recovered += 1;
     }
   }
-  return { ok: true, recovered, checked: links.length };
+  return { ok: true, recovered, checked: links.length + services.length };
 }

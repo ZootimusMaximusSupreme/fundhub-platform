@@ -11,6 +11,27 @@
 
 import { hasValidConsent, CONSENT_VALID_SQL } from "../consent/index.mjs";
 
+export const FULL_BLUEPRINT_DISPUTE_CLAUSE = "I authorize Fundhub to prepare repair and inquiry dispute letters and to make AI-assisted bureau calls on my behalf.";
+
+function signedFullBlueprintSql(orgPos = 1, clientPos = 2) {
+  return `SELECT 1 FROM contracts c
+    WHERE c.org_id = $${orgPos}::uuid AND c.client_id = $${clientPos}::uuid
+      AND c.template_key = 'BLUEPRINT-SELF-FUNDING-AGREEMENT'
+      AND c.status = 'signed' AND c.signed_at IS NOT NULL
+      AND position('${FULL_BLUEPRINT_DISPUTE_CLAUSE}' IN c.rendered_body) > 0
+      AND c.body_sha = 'sha256:' || encode(digest(c.rendered_body, 'sha256'), 'hex')
+      AND NOT EXISTS (SELECT 1 FROM client_consents cc WHERE cc.org_id = c.org_id
+        AND cc.client_id = c.client_id AND cc.kind = 'dispute_authorization'
+        AND cc.revoked_at >= c.signed_at)
+    LIMIT 1`;
+}
+
+export async function hasFullBlueprintDisputeAuthorization(db, { orgId, clientId } = {}) {
+  if (!db?.query || !orgId || !clientId) return false;
+  try { return Boolean((await db.query(signedFullBlueprintSql(), [orgId, clientId])).rows[0]); }
+  catch { return false; }
+}
+
 function signedRepairSql(orgPos = 1, clientPos = 2) {
   if (![orgPos, clientPos].every(n => Number.isInteger(n) && n >= 1 && n <= 9))
     throw new TypeError("invalid bind position");
@@ -35,6 +56,7 @@ export function currentRepairMailAuthorizationSql(orgPos = 2, clientPos = 3) {
   if (![orgPos, clientPos].every(n => Number.isInteger(n) && n >= 1 && n <= 9))
     throw new TypeError("invalid bind position");
   return `(EXISTS (${signedRepairSql(orgPos, clientPos)})
+    OR EXISTS (${signedFullBlueprintSql(orgPos, clientPos)})
     OR EXISTS (
       SELECT 1 FROM client_consents
        WHERE org_id = $${orgPos}::uuid AND client_id = $${clientPos}::uuid
@@ -53,7 +75,8 @@ export async function hasCurrentRepairMailAuthorization(db, { orgId, clientId } 
 
 
 export async function hasDisputeAuthorization(db, { orgId, clientId } = {}) {
-  return hasValidConsent(db, { orgId, clientId, kind: "dispute_authorization" });
+  return await hasValidConsent(db, { orgId, clientId, kind: "dispute_authorization" })
+    || await hasFullBlueprintDisputeAuthorization(db, { orgId, clientId });
 }
 
 /** True only when a signed repair agreement is on file. Fail-closed. */

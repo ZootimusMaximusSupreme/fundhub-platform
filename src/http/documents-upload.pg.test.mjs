@@ -34,6 +34,7 @@ describe("POST /api/documents-upload", { skip: !HAVE_DB ? "no DATABASE_URL" : fa
     form.append("file", blob, opts.filename || "test.pdf");
     if (opts.clientId !== undefined) form.append("client_id", opts.clientId);
     if (opts.subtype) form.append("subtype", opts.subtype);
+    if (opts.kind) form.append("kind", opts.kind);
     if (opts.entityId !== undefined) form.append("entity_id", opts.entityId);
     return form;
   };
@@ -224,6 +225,30 @@ describe("POST /api/documents-upload", { skip: !HAVE_DB ? "no DATABASE_URL" : fa
     const body = await r.json();
     assert.equal(r.status, 200, JSON.stringify(body));
     assert.equal(body.documents[0].subtype, "other");
+  });
+
+  test("self-run receipts, bank responses and bureau replies keep their exact classification through multipart upload", async () => {
+    for (const [kind, subtype] of [
+      ["inquiry_doc", "inquiry_submission_receipt"],
+      ["client_upload", "inquiry_submission_receipt"],
+      ["client_upload", "repair_submission_receipt"],
+      ["client_upload", "funding_bank_response"],
+      ["bureau_response", "bureau_letter"]
+    ]) {
+      const r = await post(clientToken, uploadForm(PDF_BYTES, { kind, subtype, clientId: otherClientId }));
+      const body = await r.json();
+      assert.equal(r.status, 200, JSON.stringify(body));
+      const doc = body.documents[0];
+      assert.deepEqual([doc.client_id, doc.kind, doc.subtype], [clientId, kind, subtype]);
+      assert.deepEqual(doc.metadata.label, { given: subtype, filed_as: subtype, source: "given" });
+      const saved = (await db.query("SELECT d.kind,d.subtype,d.client_id,d.current_version_id,v.checksum FROM documents d JOIN document_versions v ON v.id=d.current_version_id WHERE d.id=$1", [doc.id])).rows[0];
+      assert.deepEqual([saved.kind, saved.subtype, saved.client_id], [kind, subtype, clientId]);
+      assert.ok(saved.current_version_id);
+      assert.match(saved.checksum, /^sha256:[a-f0-9]{64}$/);
+      const event = (await db.query("SELECT payload FROM events WHERE name='docs.received' AND client_id=$1 AND payload->>'document_id'=$2", [clientId, doc.id])).rows;
+      assert.equal(event.length, 1);
+      assert.deepEqual([event[0].payload.kind, event[0].payload.subtype], [kind, subtype]);
+    }
   });
 
   // ── validation: bytes decide, not the filename or declared header ─────────

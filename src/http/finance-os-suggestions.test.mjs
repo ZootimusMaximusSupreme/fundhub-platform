@@ -80,6 +80,7 @@ function routedDb({ orgId = ORG_A, entitled = true, clientExists = true, storedC
       // This fixture has no verified Blueprint transaction; refusing to invent a grant
       // prevents the generic session fallback from impersonating paid access.
       if (/FROM entitlements e/.test(sql)) return { rows: [] };
+      if (/FROM blueprint_fulfillment_engagements/.test(sql)) return { rows: [] };
       if (/SELECT first_name.*FROM clients/s.test(sql)) {
         return { rows: [{ first_name: "Jordan", last_name: "Sample", custom_fields: {} }] };
       }

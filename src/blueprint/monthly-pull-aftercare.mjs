@@ -4,9 +4,11 @@
 // Finance OS system-request path (finance-os-pull-sweeper fulfil hook).
 
 import { isCapitalBlueprintBuyer } from "./coach-exception.mjs";
+import { isBlueprintCoachClient } from "./coach.mjs";
 import { evaluateWaypoints } from "../waypoints/verify.mjs";
 import { seedClientWaypoints } from "../waypoints/seed.mjs";
 import { buildLetterPackForClient, PACK_REASON } from "../underwrite/letter-pack.mjs";
+import { verifyClientInquiryRemovals } from "../inquiry-ops/verify-removal.mjs";
 import {
   persistFundingLetterFiles,
   storeFromEnv
@@ -21,11 +23,12 @@ export async function runBlueprintMonthlyPullAftercare(db, {
   clientId,
   crsResultId = null,
   now = new Date(),
-  isBuyer = isCapitalBlueprintBuyer,
+  isBuyer = async (conn, scope) => (await isCapitalBlueprintBuyer(conn, scope)) || isBlueprintCoachClient(conn, scope),
   verify = evaluateWaypoints,
   seed = seedClientWaypoints,
   buildPack = buildLetterPackForClient,
   persist = persistFundingLetterFiles,
+  verifyInquiries = verifyClientInquiryRemovals,
   store = null
 } = {}) {
   if (!orgId || !clientId) {
@@ -98,7 +101,12 @@ export async function runBlueprintMonthlyPullAftercare(db, {
     out.letterPack = { ...out.letterPack, ok: false, error: String(e?.message || e) };
   }
 
-  for (const phase of ["waypoints", "reseed", "letterPack"]) {
+  try {
+    out.inquiryVerification = await verifyInquiries(db, { orgId, clientId, now });
+  } catch (error) {
+    out.inquiryVerification = { ok: false, error: String(error?.message || error) };
+  }
+  for (const phase of ["waypoints", "reseed", "letterPack", "inquiryVerification"]) {
     const result = out[phase];
     if (!result || result.ok !== true || result.error || result.errors?.length || result.errored?.length) {
       out.failures.push({ phase, error: result?.error || result?.reason || `${phase}_failed` });

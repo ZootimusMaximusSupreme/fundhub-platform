@@ -6,7 +6,7 @@
 // entitlements.mjs imports them back and re-exports them; the writers (grant, revoke, ...) stay there.
 // Read only: SELECT, no I/O beyond the db handed in.
 
-/* forClient — the portal's read. Returns every catalogued entitlement with an
+/* forClient — the portal's read. Returns every catalogued deliverable with an
    `active` flag, so the caller can render owned and locked tiles from one query
    without deciding the expiry rules itself.
 
@@ -39,7 +39,7 @@ export async function forClient(db, { orgId, clientId } = {}) {
            LEFT JOIN v_client_entitlements e
                   ON e.org_id = c.org_id AND e.entitlement_code = c.code
                  AND e.client_id = $2
-          WHERE c.org_id = $1 AND c.active = true
+          WHERE c.org_id = $1 AND c.active = true AND c.kind = 'deliverable'
           ORDER BY c.code, COALESCE(e.active, false) DESC, e.granted_at DESC NULLS LAST
        ) one_per_code
       ORDER BY sort_order, code`,

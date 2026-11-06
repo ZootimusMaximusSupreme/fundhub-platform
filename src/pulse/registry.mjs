@@ -364,6 +364,11 @@ const API_KEYS = [
   "blueprint/plan",
   "blueprint/business-plans",
   "blueprint/letter-mailing",
+  // Authenticated GET only; calls, report orders, paid help and funding actions use POST.
+  "blueprint/funding",
+  "blueprint/inquiries",
+  "blueprint/repair",
+  "blueprint/services",
   "read/call-outcomes",
   /* The only read behind the client progress page. An outage here is a client
      who paid up to $10,000 seeing no scores, no checklist and no next step. */

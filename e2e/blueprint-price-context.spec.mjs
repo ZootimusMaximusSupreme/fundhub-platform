@@ -69,6 +69,34 @@ async function marked(page, locator, filename, caption) {
 }
 
 for (const width of [1440, 390]) {
+  test(`Present ${width}: full package uses its own contract and exact checkout price`, async ({page}) => {
+    await page.setViewportSize({width,height:1000});
+    const writes = [];
+    const routes = handlers(writes);
+    routes['/api/read/contracts'] = {ok:true,items:[{id:'fixture-full-template',template_key:'BLUEPRINT-SELF-FUNDING-AGREEMENT',name:'Full implementation agreement',active:true}]};
+    await openScreen(page,`/app/present.html?contact=${CLIENT_ID}`,CLOSER,routes);
+    await page.locator('[data-act="phase:06"]').click();
+    await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight');
+    await page.locator('[data-act="stack-close"]').click();
+    await page.locator('#fh-blueprint-package').selectOption('full');
+    const amount = page.locator('#fh-blueprint-amount');
+    await expect(amount).toHaveValue('30000');
+    await expect(amount).toHaveAttribute('min','20000');
+    await expect(amount).toHaveAttribute('max','30000');
+    await amount.fill('25000');
+    await expect(page.locator('#fh-chosen-offer')).toContainText('$25,000');
+    await page.locator('#fh-blueprint-provider').selectOption('whop');
+    await page.locator('[data-act="contract"]').first().click();
+    await expect.poll(()=>writes.filter(w=>w.url==='/api/contracts').length).toBe(2);
+    expect(writes[0].body.template_id).toBe('fixture-full-template');
+    await page.locator('[data-act="pay"]').click();
+    await expect.poll(()=>writes.filter(w=>w.url==='/api/closer-deck').length).toBe(1);
+    const payment = writes.find(w=>w.url==='/api/closer-deck').body;
+    expect(payment.offer_key).toBe('BLUEPRINT_SELF_FUNDING');
+    expect(payment.provider).toBe('whop');
+    for (const write of writes) expect(write.body.amount_cents).toBe(2500000);
+  });
+
   test(`Present ${width}: chosen price/provider reaches agreement and pay link; shared file is visible`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     const writes = [];

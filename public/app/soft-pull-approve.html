@@ -82,6 +82,7 @@ ol.next li:last-child{margin-bottom:0}
   var q = new URLSearchParams(location.search);
   var token = { org: q.get("org"), client: q.get("client"), exp: q.get("exp"), sig: q.get("sig") };
   var portalMode = q.get("portal") === "1";
+  var blueprintMode = portalMode && q.get("blueprint") === "1";
   var root = document.getElementById("app");
   var pricing = { base_cents: 3200, business_addon_cents: 1000, max_businesses: 20, base_display: "$32", business_addon_display: "$10" };
   var bizCount = 0;
@@ -99,7 +100,7 @@ ol.next li:last-child{margin-bottom:0}
   }
 
   function apiUrl() {
-    if (portalMode) return "/api/soft-pull-approve?portal=1";
+    if (portalMode) return "/api/soft-pull-approve?portal=1" + (blueprintMode ? "&blueprint=1" : "");
     return "/api/soft-pull-approve?org=" + encodeURIComponent(token.org || "") +
       "&client=" + encodeURIComponent(token.client || "") +
       "&exp=" + encodeURIComponent(token.exp || "") +
@@ -131,6 +132,17 @@ ol.next li:last-child{margin-bottom:0}
     if (!body || body.error !== "account_required") return false;
     location.replace("/portal-login.html?mode=claim");
     return true;
+  }
+
+  function showBlueprintProgress(data) {
+    var status = (data.pull || {}).status;
+    var title = status === "complete" ? "Your report is ready" :
+      status === "failed" ? "Your report needs review" :
+      ["queued", "processing"].includes(status) ? "Your included report is in progress" : "Your report authorization is saved";
+    var detail = status === "failed" ? "Your Fundhub team can check the saved request." :
+      "Open Blueprint to see your report status and next step.";
+    root.innerHTML = '<div class="pull-progress" role="status"><h1>' + esc(title) + '</h1><p>' + esc(detail) + '</p></div>' +
+      '<div class="pull-foot"><a href="/app/client-portal.html#blueprint-fulfillment">Return to my Blueprint</a></div>';
   }
 
   function showProgress(data, opts) {
@@ -317,25 +329,34 @@ ol.next li:last-child{margin-bottom:0}
     bizCount = 0;
     root.innerHTML =
       '<div class="mono">Fundhub · soft pull</div>' +
+      (blueprintMode ? "<h1>Authorize your included credit report</h1>" +
+        '<p class="lede">Your Blueprint includes a personal soft pull. Enter your legal details and review the authorization below.</p>' :
       "<h1>Approve your soft-pull assessment</h1>" +
       '<p class="lede">Hi ' + esc(name) + ". You can authorize now, even before your call. " +
       "Your information is saved securely. This is a soft inquiry and does not hurt your score. " +
-      "The pull starts only after your authorization and payment are both on file.</p>" +
+      "The pull starts only after your authorization and payment are both on file.</p>") +
       (data.paid ? '<div class="ok">A previous assessment payment is on file. If you add businesses or change the total, your advisor may need to review the amount.</div><br>' : "") +
       (already ? '<div class="ok">Your authorization is saved. You can update your details below if needed.</div><br>' : "") +
       '<div class="approval-layout"><aside class="approval-guidance" aria-label="Authorization details"><div class="card"><h2>Soft pull authorization</h2>' +
       '<div class="disc">' + esc((data.disclosure && data.disclosure.text) || "") + "</div>" +
       '<p class="fine">Version ' + esc((data.disclosure && data.disclosure.version) || "—") + "</p></div>" +
       '<div class="card"><h2>What happens next</h2><ol class="next">' +
-      "<li>Your information is sent securely and saved for this authorization. Your advisor never sees your Social Security number.</li>" +
+      (blueprintMode ? "<li>Your information is saved securely. Your Fundhub team cannot view your Social Security number on this screen.</li>" :
+      "<li>Your information is sent securely and saved for this authorization. Your advisor never sees your Social Security number.</li>") +
+      (blueprintMode ? "<li>After you authorize, Fundhub requests your included report. You can track it in Blueprint.</li>" :
       (data.paid ? "<li>A previous payment is on file. Any changed total must be reviewed before another pull.</li>" :
       "<li>You pay the total shown — " + esc(pricing.base_display) + " soft pull plus " +
       esc(pricing.business_addon_display) + " per business.</li>") +
-      "<li>When authorization and payment are both on file, we request the report. Nothing else is needed from you.</li>" +
+      "<li>When authorization and payment are both on file, we request the report. Nothing else is needed from you.</li>") +
       "</ol></div></aside>" +
-      '<form id="f"><h2>Your details</h2><p class="form-intro">Enter your legal information to authorize the assessment.</p>' +
-      '<label for="granted_name">Full legal name</label>' +
-      '<input id="granted_name" name="granted_name" autocomplete="name" required>' +
+      '<form id="f"><h2>Your details</h2><p class="form-intro">' +
+      (blueprintMode ? "Enter your legal information to authorize your credit report." : "Enter your legal information to authorize the assessment.") + "</p>" +
+      (blueprintMode ? '<label for="first_name">Legal first name</label>' +
+        '<input id="first_name" name="first_name" autocomplete="given-name" required>' +
+        '<label for="last_name">Legal last name</label>' +
+        '<input id="last_name" name="last_name" autocomplete="family-name" required>' :
+        '<label for="granted_name">Full legal name</label>' +
+        '<input id="granted_name" name="granted_name" autocomplete="name" required>') +
       '<label for="ssn">Social Security number</label>' +
       '<input id="ssn" name="ssn" inputmode="numeric" autocomplete="off" required placeholder="123-45-6789">' +
       '<label for="dob">Date of birth</label>' +
@@ -346,20 +367,21 @@ ol.next li:last-child{margin-bottom:0}
       '<div><label for="state">State</label><input id="state" name="state" maxlength="2" required placeholder="AZ"></div></div>' +
       '<label for="postal_code">ZIP</label>' +
       '<input id="postal_code" name="postal_code" inputmode="numeric" required>' +
-      '<div class="card" style="margin-top:16px">' +
+      (blueprintMode ? "" : '<div class="card" style="margin-top:16px">' +
       "<h2>Add businesses (optional)</h2>" +
       "<p class=\"lede\" style=\"margin:0 0 8px\">If a company has other owners, say so. Extra owners make funding slower and harder. We usually prefer one-owner companies, but write the truth here anyway.</p>" +
       "<p class=\"lede\" style=\"margin:0 0 8px\">Add each business you want funded. Each one adds " +
       esc(pricing.business_addon_display) + ". Leave empty if you only need the personal soft pull.</p>" +
       '<div id="biz_list"></div>' +
       '<button type="button" class="btn-sec" id="add_biz">+ Add a business</button>' +
-      '<div class="total" id="total_line"></div></div>' +
+      '<div class="total" id="total_line"></div></div>') +
       '<button class="btn" type="submit" id="go">I agree — submit soft-pull approval</button>' +
+      (blueprintMode ? '<p class="fine">This request uses your included report. No additional payment is due.</p>' :
       '<p class="fine">Your advisor cannot see this Social Security number on their screen. ' +
-      "After you submit, pay the total from the Pay button (or the matching link in your email if you added no businesses).</p>" +
+      "After you submit, pay the total from the Pay button (or the matching link in your email if you added no businesses).</p>") +
       '<div id="msg" role="status" aria-live="polite"></div></form></div>';
 
-    document.getElementById("add_biz").addEventListener("click", function () {
+    if (!blueprintMode) document.getElementById("add_biz").addEventListener("click", function () {
       if (bizCount >= pricing.max_businesses) return;
       bizDrafts = snapshotBiz();
       bizCount += 1;
@@ -409,7 +431,6 @@ ol.next li:last-child{margin-bottom:0}
       }
 
       var body = {
-        granted_name: document.getElementById("granted_name").value,
         ssn: document.getElementById("ssn").value,
         dob: document.getElementById("dob").value,
         address_line1: addr.address_line1,
@@ -418,13 +439,20 @@ ol.next li:last-child{margin-bottom:0}
         postal_code: addr.postal_code,
         businesses: businesses
       };
+      if (blueprintMode) {
+        body.first_name = document.getElementById("first_name").value;
+        body.last_name = document.getElementById("last_name").value;
+        body.org = data.orgId;
+        body.client = data.clientId;
+        delete body.businesses;
+      } else body.granted_name = document.getElementById("granted_name").value;
       if (!portalMode) {
         body.org = token.org;
         body.client = token.client;
         body.exp = token.exp;
         body.sig = token.sig;
       }
-      fetch("/api/soft-pull-approve", {
+      fetch(blueprintMode ? apiUrl() : "/api/soft-pull-approve", {
         method: "POST",
         credentials: "include",
         headers: authHeaders(),
@@ -437,6 +465,7 @@ ol.next li:last-child{margin-bottom:0}
             msg.innerHTML = '<div class="err">' + esc((r.body && (r.body.message || r.body.error)) || "Could not save") + "</div>";
             return;
           }
+          if (blueprintMode) { showBlueprintProgress(r.body); return; }
           var pay = r.body.checkout && r.body.checkout.checkout_url;
           var total = (r.body.pricing && r.body.pricing.total_display) ||
             (r.body.checkout && r.body.checkout.amount_display) || pricing.base_display;
@@ -463,7 +492,10 @@ ol.next li:last-child{margin-bottom:0}
         showErr((r.body && (r.body.message || r.body.error)) || "Could not open this link.");
         return;
       }
-      if (r.body.consent && r.body.consent.valid) showProgress(r.body);
+      if (blueprintMode) {
+        if (r.body.reportSetup.required) renderForm(r.body);
+        else showBlueprintProgress(r.body);
+      } else if (r.body.consent && r.body.consent.valid) showProgress(r.body);
       else renderForm(r.body);
     })
     .catch(function () { showErr("Could not reach the server."); });

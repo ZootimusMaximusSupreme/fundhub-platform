@@ -65,6 +65,9 @@ export async function runParseAdvanceLoop(db, {
 } = {}) {
   const items = itemsIn || await loadOpenDisputeItems(db, { orgId, clientId });
   const parseResult = parseResponseText({ text, items });
+  // Preserve the round the response was matched to before advancing its items.
+  // An escalated item may already be on another round when fulfillment checks.
+  parseResult.source_item_rounds = items.map(it=>({id:it.id,caseId:it.case_id,round:it.round}));
   if (documentValidation) parseResult.document_validation = { ...documentValidation };
   if (requireHumanReview) { parseResult.needsConfirm = true; parseResult.requiresHumanReview = true; }
   if (requireDocumentValidation) {

@@ -2,10 +2,19 @@ import { randomUUID } from 'node:crypto';
 import { generateLinkRef, resolveLinkContext } from '../payment-links/index.mjs';
 import { whopRequest } from '../messaging/providers/whop-payments.mjs';
 import { assertBlueprintAgreementPrice } from '../contracts/blueprint-price.mjs';
+import { getOffer } from '../config/offers.mjs';
 
 export const WHOP_BLUEPRINT_PRODUCT = 'consulting-package';
 export const WHOP_BLUEPRINT_TITLE = 'Consulting Services Package';
 export const WHOP_BLUEPRINT_OFFER = 'UWIQ_DELIVERABLES';
+export const WHOP_FULL_BLUEPRINT_PRODUCT = 'blueprint-self-funding';
+export function isWhopBlueprintProduct(code) {
+  return [WHOP_BLUEPRINT_PRODUCT, WHOP_FULL_BLUEPRINT_PRODUCT].includes(code);
+}
+export function whopBlueprintOfferKey(productCode = WHOP_BLUEPRINT_PRODUCT) {
+  if (!isWhopBlueprintProduct(productCode)) throw new TypeError('Choose a Blueprint package');
+  return productCode === WHOP_FULL_BLUEPRINT_PRODUCT ? 'BLUEPRINT_SELF_FUNDING' : WHOP_BLUEPRINT_OFFER;
+}
 export const WHOP_REQUIRED_ENV = Object.freeze([
   'WHOP_API_KEY', 'WHOP_ACCOUNT_ID', 'WHOP_CONSULTING_PACKAGE_PRODUCT_ID', 'WHOP_WEBHOOK_SECRET'
 ]);
@@ -21,9 +30,10 @@ export function whopConfig(env = process.env) {
   apiKey, accountId, productId, webhookSecret };
 }
 
-export function blueprintAmountCents(value) {
-  if (!Number.isSafeInteger(value) || value < 500000 || value > 1000000) {
-    throw new RangeError('Capital Blueprint amount must be $5,000–$10,000 in whole cents');
+export function blueprintAmountCents(value, productCode = WHOP_BLUEPRINT_PRODUCT) {
+  const offer = getOffer(whopBlueprintOfferKey(productCode));
+  if (!offer || !Number.isSafeInteger(value) || value < offer.priceMinCents || value > offer.priceMaxCents) {
+    throw new RangeError('Blueprint amount is outside the selected package range');
   }
   return value;
 }
@@ -41,13 +51,13 @@ export function whopMoneyCents(money) {
 
 export function whopBlueprintMetadata(link) {
   return { fh_schema: '1', fh_payment_link_id: link.id, fh_link_ref: link.link_ref,
-    fh_org_id: link.org_id, fh_client_id: link.client_id, offer_key: WHOP_BLUEPRINT_OFFER,
-    product_code: WHOP_BLUEPRINT_PRODUCT, fh_amount_cents: String(link.amount_cents),
+    fh_org_id: link.org_id, fh_client_id: link.client_id, offer_key: whopBlueprintOfferKey(link.product_code || WHOP_BLUEPRINT_PRODUCT),
+    product_code: link.product_code || WHOP_BLUEPRINT_PRODUCT, fh_amount_cents: String(link.amount_cents),
     fh_currency: 'USD' };
 }
 
 export function buildWhopBlueprintCheckout(link, cfg) {
-  const amount = blueprintAmountCents(Number(link.amount_cents));
+  const amount = blueprintAmountCents(Number(link.amount_cents), link.product_code || WHOP_BLUEPRINT_PRODUCT);
   return { account_id: cfg.accountId, mode: 'payment', metadata: whopBlueprintMetadata(link),
     plan: { product_id: cfg.productId, plan_type: 'one_time', release_method: 'buy_now',
       initial_price: amount / 100, currency: 'usd', title: WHOP_BLUEPRINT_TITLE,
@@ -98,16 +108,17 @@ export async function createWhopBlueprintPaymentLink(db, {
   if (!cfg.ok) throw Object.assign(new Error('Whop Blueprint checkout is not configured'),
     { code: 'whop_not_configured', status: 503 });
   if (!UUID.test(orgId || '') || !UUID.test(clientId || '')) throw new TypeError('Whop checkout requires client and org IDs');
-  blueprintAmountCents(amountCents);
+  const selectedProduct = productCode || WHOP_BLUEPRINT_PRODUCT;
+  const offerKey = whopBlueprintOfferKey(selectedProduct);
+  blueprintAmountCents(amountCents, selectedProduct);
   if (currency !== 'USD') throw new TypeError('Whop Blueprint checkout accepts USD only');
-  if (productCode && productCode !== WHOP_BLUEPRINT_PRODUCT) throw new TypeError('Whop financing is only for Capital Blueprint');
   if (saleMotion != null && !['upsell', 'downsell'].includes(saleMotion)) throw new TypeError('Invalid sale motion');
   const client = (await db.query('SELECT id FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1', [clientId, orgId])).rows[0];
   if (!client) throw new TypeError('Whop checkout client is not in this org');
   const context = await resolveLinkContext(db, { orgId, clientId, productId,
-    productCode: WHOP_BLUEPRINT_PRODUCT, saleId, saleMotion, createdByStaffId, createdByRole });
-  if (context.productCode !== WHOP_BLUEPRINT_PRODUCT) throw new TypeError('Whop financing is only for Capital Blueprint');
-  await assertBlueprintAgreementPrice(db, { orgId, clientId, amountCents });
+    productCode: selectedProduct, saleId, saleMotion, createdByStaffId, createdByRole });
+  if (context.productCode !== selectedProduct) throw new TypeError('Whop checkout product does not match the selected Blueprint package');
+  await assertBlueprintAgreementPrice(db, { orgId, clientId, amountCents, offerKey });
   // Reserve the order before POST. An interrupted response can be recovered from
   // Whop metadata without creating a second checkout. An empty URL is never returned.
   const id = randomUUID();
@@ -120,6 +131,7 @@ export async function createWhopBlueprintPaymentLink(db, {
     [id, orgId, clientId, WHOP_BLUEPRINT_TITLE, amountCents, linkRef, context.productId,
       context.saleId, saleMotion, createdByStaffId, context.closerStaffId, context.salesManagerStaffId]
   )).rows[0];
+  saved.product_code = context.productCode;
   const out = await verifyWhopCheckout(await whopRequest('/checkout_configurations', {
     apiKey: cfg.apiKey, method: 'POST', body: buildWhopBlueprintCheckout(saved, cfg),
     idempotencyKey: `whop-blueprint:${id}`, env, fetchImpl

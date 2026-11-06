@@ -44,6 +44,10 @@ async function createCheckinTask(db, { orgId, clientId, eventId, now = new Date(
 }
 
 export async function handle({ event, db, step, now = new Date() }) {
+  if (event?.payload?.product==="blueprint_managed_funding") {
+    const {managedTakeoverEvent}=await import("../blueprint/managed-round.mjs");
+    if (await managedTakeoverEvent(db,event)) return {done:false,reason:"purchased_takeover_has_no_follow_on"};
+  }
   const clientId = await step.run("resolve-client", () => findClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 

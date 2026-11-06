@@ -50,7 +50,7 @@ export const BLUEPRINT_PRODUCT_CODE = OFFERS.UWIQ_DELIVERABLES.productCode;
    than an equality test only so that adding the second one is a one-word edit
    instead of a refactor. It is NOT configuration and there is no table behind
    it — nobody has asked for one. */
-const CHECKLIST_PRODUCT_CODES = new Set([BLUEPRINT_PRODUCT_CODE]);
+const CHECKLIST_PRODUCT_CODES = new Set([BLUEPRINT_PRODUCT_CODE, OFFERS.BLUEPRINT_SELF_FUNDING.productCode]);
 
 /** Does buying this product create the client's checklist? */
 export function productCreatesChecklist(productCode) {

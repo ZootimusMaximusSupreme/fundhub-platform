@@ -48,6 +48,7 @@ export function offerKeys() {
 export function campaignForOffer(key) {
   const offer = getOffer(key);
   if (!offer) return null;
+  if (offer.key === 'BLUEPRINT_SELF_FUNDING') return 'capital-blueprint-full';
   for (const [campaign, k] of Object.entries(KNOWN_CAMPAIGNS)) if (k === offer.key) return campaign;
   const head = String(offer.name).split(/\s[—–-]\s|\s\(/)[0];
   let slug = head.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");

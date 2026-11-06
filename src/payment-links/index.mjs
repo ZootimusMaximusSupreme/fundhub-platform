@@ -237,9 +237,10 @@ export async function createPaymentLink(db, {
     createdByRole
   });
 
-  if (context.productCode === "consulting-package") {
-    resolveOfferAmountCents("UWIQ_DELIVERABLES", amountCents);
-    await assertBlueprintAgreementPrice(db, { orgId, clientId, amountCents });
+  if (["consulting-package", "blueprint-self-funding"].includes(context.productCode)) {
+    const offerKey = context.productCode === "blueprint-self-funding" ? "BLUEPRINT_SELF_FUNDING" : "UWIQ_DELIVERABLES";
+    resolveOfferAmountCents(offerKey, amountCents);
+    await assertBlueprintAgreementPrice(db, { orgId, clientId, amountCents, offerKey });
   }
 
   const commasTitle = commasProductTitleFor({

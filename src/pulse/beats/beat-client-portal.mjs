@@ -45,7 +45,10 @@ export const RUNS_ELSEWHERE = Object.freeze({
   "portal:progress-read-real-client": Object.freeze(["client-progress", "portal-progress-read-real-client"]),
   "blueprint:preparation-evidence": Object.freeze(["blueprint-delivery", "preparation-evidence"]),
   "blueprint:letter-mailing": Object.freeze(["blueprint-delivery", "letter-mailing"]),
-  "blueprint:response-validation": Object.freeze(["blueprint-delivery", "response-validation"])
+  "blueprint:response-validation": Object.freeze(["blueprint-delivery", "response-validation"]),
+  "blueprint-full:paid-installation": Object.freeze(["blueprint-client-fulfillment", "paid-installation"]),
+  "blueprint-full:round-access": Object.freeze(["blueprint-client-fulfillment", "round-access"]),
+  "blueprint-full:report-delivery": Object.freeze(["blueprint-client-fulfillment", "report-delivery"])
 });
 
 const ONE = (row) => Object.freeze([Object.freeze(row)]);

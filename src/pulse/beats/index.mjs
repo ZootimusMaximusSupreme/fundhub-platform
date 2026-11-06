@@ -17,6 +17,7 @@ export const BEAT_FILES = Object.freeze([
   ["beat-auth-links.mjs", () => import("./beat-auth-links.mjs")],
   ["beat-bank-links.mjs", () => import("./beat-bank-links.mjs")],
   ["beat-bank-outreach.mjs", () => import("./beat-bank-outreach.mjs")],
+  ["beat-blueprint-client-fulfillment.mjs", () => import("./beat-blueprint-client-fulfillment.mjs")],
   ["beat-blueprint-delivery.mjs", () => import("./beat-blueprint-delivery.mjs")],
   ["beat-brief-link.mjs", () => import("./beat-brief-link.mjs")],
   ["beat-built-funnels.mjs", () => import("./beat-built-funnels.mjs")],

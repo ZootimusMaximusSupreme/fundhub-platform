@@ -78,7 +78,8 @@ test("R-05H: consent revocation or expiry before final claim prevents PostGrid; 
   "CREATE TEMP TABLE sales (id uuid,org_id uuid,client_id uuid,product_id uuid,status text) ON COMMIT DROP",
   "CREATE TEMP TABLE sale_payments (org_id uuid,sale_id uuid,kind text,amount numeric) ON COMMIT DROP",
   "CREATE TEMP TABLE dispute_letters (id uuid PRIMARY KEY,org_id uuid,client_id uuid,status text,send_claimed_at timestamptz,mailed_at timestamptz) ON COMMIT DROP",
-  "CREATE TEMP TABLE contracts (org_id uuid,client_id uuid,template_key text,status text) ON COMMIT DROP",
+  // Final claim checks signed full-Blueprint authorization in this same SQL snapshot.
+  "CREATE TEMP TABLE contracts (org_id uuid,client_id uuid,template_key text,status text,signed_at timestamptz,rendered_body text,body_sha text) ON COMMIT DROP",
   "CREATE TEMP TABLE contract_templates (org_id uuid,template_key text,subtype text) ON COMMIT DROP",
   "CREATE TEMP TABLE client_consents (org_id uuid,client_id uuid,kind text,granted_at timestamptz,expires_at timestamptz,revoked_at timestamptz) ON COMMIT DROP"
  ])await db.query(sql);
@@ -112,7 +113,7 @@ test("R-05H: consent revocation or expiry before final claim prevents PostGrid; 
  assert.equal((await claim()).reason,"send_claim_held","replay stays fenced");
  await db.query("UPDATE dispute_letters SET status='ready',send_claimed_at=NULL WHERE id=$1",[l]);
  await db.query("UPDATE client_consents SET revoked_at=now() WHERE org_id=$1 AND revoked_at IS NULL",[o]);
- await db.query("INSERT INTO contracts VALUES($1,$2,'FH_REPAIR_AGREEMENT','signed')",[o,c]);
+ await db.query("INSERT INTO contracts(org_id,client_id,template_key,status) VALUES($1,$2,'FH_REPAIR_AGREEMENT','signed')",[o,c]);
  assert.equal((await claim()).claimed,true,"signed active repair contract independently authorizes");
  await db.query("UPDATE dispute_letters SET status='ready',send_claimed_at=NULL WHERE id=$1",[l]);
  await db.query("UPDATE contracts SET org_id=$1",[foreign]);
