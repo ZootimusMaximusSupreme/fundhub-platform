@@ -201,7 +201,9 @@ async function captureMarkedSetup(page, filename) {
     document.querySelector("#passkey-review-overlay")?.remove();
     const dialog = document.querySelector(".fh-plaid-stepup");
     if (!dialog.hasAttribute("data-review-overflow")) dialog.dataset.reviewOverflow = dialog.style.overflow;
+    if (!dialog.hasAttribute("data-review-padding")) dialog.dataset.reviewPadding = dialog.style.paddingBottom;
     dialog.style.overflow = "visible";
+    dialog.style.paddingBottom = "50px";
     const dialogBox = dialog.getBoundingClientRect();
     const titleNode = document.querySelector(".fh-plaid-stepup h2");
     const range = document.createRange(); range.selectNodeContents(titleNode);
@@ -231,7 +233,8 @@ async function captureMarkedSetup(page, filename) {
     const addMark = (rect, number, placement) => {
       const size = 34, left = rect.left - dialogBox.left, top = rect.top - dialogBox.top;
       const x = placement === "right" ? left + rect.width + 20 : left + rect.width / 2 - size / 2;
-      const y = placement === "right" ? top + rect.height / 2 - size / 2 : top - size - 12;
+      const y = placement === "right" ? top + rect.height / 2 - size / 2
+        : placement === "above" ? top - size - 12 : top + rect.height + 14;
       const badge = document.createElement("div");
       badge.textContent = String(number);
       Object.assign(badge.style, { position: "absolute", left: `${x}px`, top: `${y}px`, width: `${size}px`, height: `${size}px`,
@@ -239,9 +242,10 @@ async function captureMarkedSetup(page, filename) {
         background: "#d52222", color: "#fff", font: "bold 18px Arial,sans-serif", boxShadow: "0 1px 4px #333" });
       overlay.appendChild(badge);
       if (placement === "right") addArrow(x, y + size / 2, left + rect.width + 4, top + rect.height / 2);
-      else addArrow(x + size / 2, y + size, left + rect.width / 2, top + 2);
+      else if (placement === "above") addArrow(x + size / 2, y + size, left + rect.width / 2, top + 2);
+      else addArrow(x + size / 2, y, left + rect.width / 2, top + rect.height - 2);
     };
-    addMark(title, 1, "right"); addMark(action, 2, "above");
+    addMark(title, 1, "right"); addMark(action, 2, "below");
     overlay.appendChild(svg);
     const caption = document.createElement("div");
     caption.textContent = "Existing account; passkey setup before bank connection";
@@ -252,7 +256,11 @@ async function captureMarkedSetup(page, filename) {
   fs.mkdirSync(EVIDENCE, { recursive: true });
   await page.screenshot({ path: `${EVIDENCE}/${filename}`, fullPage: true });
   await page.locator("#passkey-review-overlay").evaluate(node => node.remove());
-  await page.locator(".fh-plaid-stepup").evaluate(dialog => { dialog.style.overflow = dialog.dataset.reviewOverflow || ""; delete dialog.dataset.reviewOverflow; });
+  await page.locator(".fh-plaid-stepup").evaluate(dialog => {
+    dialog.style.overflow = dialog.dataset.reviewOverflow || "";
+    dialog.style.paddingBottom = dialog.dataset.reviewPadding || "";
+    delete dialog.dataset.reviewOverflow; delete dialog.dataset.reviewPadding;
+  });
 }
 
 test.describe("Plaid bank passkey step-up on the exact Fundhub origin", () => {
@@ -268,6 +276,8 @@ test.describe("Plaid bank passkey step-up on the exact Fundhub origin", () => {
     await page.locator("#start").click();
     await expect(page.locator(".fh-plaid-stepup h2")).toHaveText("Set up a passkey");
     await expect(page.locator("[data-continue]")).toHaveText("Set up passkey");
+    await expect(page.locator("[data-passkey-browser]")).toBeVisible();
+    await expect(page.locator(".fh-plaid-stepup")).toContainText("On Mac, open fundhub.ai in Safari or Chrome.");
     await captureMarkedSetup(page, "passkey-setup-mobile-390.png");
     await page.setViewportSize({ width: 1280, height: 900 });
     await captureMarkedSetup(page, "passkey-setup-desktop.png");
@@ -313,6 +323,26 @@ test.describe("Plaid bank passkey step-up on the exact Fundhub origin", () => {
     await page.locator("[data-continue]").click();
     await expectOutcome(page, { state: "resolved", value: "synthetic-bank-grant" });
     expect(api.timeline.map(x => x.action)).toEqual(["status", "consent_details", "authorize"]);
+    expect(pageErrors).toEqual([]);
+  });
+
+  test("missing WebAuthn APIs keep browser fallback usable and never authorize the bank", async ({ page }) => {
+    const { api, pageErrors } = await openFixture(page, { targetKind: "client_bank" });
+    await page.evaluate(() => { window.PublicKeyCredential = undefined; });
+    await page.locator("#start").click();
+    const dialog = page.locator(".fh-plaid-stepup");
+    await expect(dialog.locator("h2")).toHaveText("Verify in a browser");
+    await expect(dialog).toContainText("Use Safari or Chrome to set up or verify your passkey");
+    await expect(dialog.locator("[data-passkey-browser]")).toBeVisible();
+    await expect(dialog.locator("[data-continue]")).toBeHidden();
+    await expect(dialog.locator("[data-passkey-recovery]")).toBeHidden();
+    expect(await dialog.locator("[data-passkey-browser]").getAttribute("href")).toBe("https://www.fundhub.ai/portal-login.html");
+    expect(api.timeline.map(item => item.action)).toEqual(["status"]);
+    expect(await page.evaluate(() => window.__credentialCalls)).toEqual([]);
+    expect(api.timeline.some(item => ["register_options", "register_verify", "authenticate_options", "authenticate_verify", "consent_details", "authorize"].includes(item.action))).toBe(false);
+    await dialog.locator("[data-cancel]").click();
+    await expectOutcome(page, { state: "rejected", error: "cancelled" });
+    expect(api.timeline.map(item => item.action)).toEqual(["status"]);
     expect(pageErrors).toEqual([]);
   });
 
