@@ -295,3 +295,9 @@ stateDiagram-v2
 The buyer routes `blueprint/plan`, `blueprint/business-plans` and `blueprint/letter-mailing` have read-only GET pings plus deep tripwires. Existing daily/hourly Blueprint checks now also judge malformed or foreign preparation evidence, exact $97 USD payment/letter/version receipts and completed response-upload waypoints without a current accepted server validation. Existing Blueprint checks are preserved. Waiting for a buyer response does not itself mean failure.
 
 `blueprint-letter-mailing` runs every five minutes on the existing Netlify clock, with matching heartbeat registration. It only recovers explicitly authorized saved orders; the clock never creates a charge. Held or uncertain payment/send states remain visible for review. No mailing cron is registered with Inngest. These are source registrations and saved-record checks, not proof of live payment, mail delivery, document authenticity or a deployed buyer session.
+
+## Affiliate Blueprint seller handoffs (November 6 build)
+
+The existing `whop-billing` beat covers `affiliates/blueprint-sale` and `public/blueprint-handoff`. Its seller check reads the saved buyer record, referral, actual account actor, exact-price agreement and reserved Whop order together; a mismatched or stalled handoff remains red. The ordinary contract-signing checks retain their initial-email and signing checks. No heartbeat creates a buyer, sends an agreement, issues a checkout or grants access.
+
+The seller price uses the full Blueprint offer's existing whole-dollar $20K–$30K bounds with a $30K default. The agreed amount stays pinned to the buyer/request, agreement and order. The paid-access check still requires the provider transaction and the product's entitlements. These stored-state checks do not establish provider financing approval, delivery to a buyer's inbox or a completed live purchase.

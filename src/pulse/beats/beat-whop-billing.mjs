@@ -34,8 +34,8 @@ export const ACCESS_SQL = `SELECT count(DISTINCT l.id)::integer AS n
             AND e.source_transaction_id = t.id AND e.entitlement_code = pe.entitlement_code)))`;
 
 
-// A pending human agreement is a truthful wait. Once a contract is pinned,
-// the same-company buyer, first-touch seller and exact order must all agree.
+// Once a seller agreement is pinned, the actual actor, agreed price and
+// provider-verified financing must agree within the preparation window.
 export const SELLER_SQL = `SELECT count(*)::integer AS n FROM clients c
   CROSS JOIN LATERAL (SELECT c.custom_fields->'blueprint_seller_sale' AS s) handoff
   LEFT JOIN affiliates a ON a.id=(s->>'affiliate_id')::uuid AND a.org_id=c.org_id
@@ -45,10 +45,17 @@ export const SELLER_SQL = `SELECT count(*)::integer AS n FROM clients c
   LEFT JOIN payment_links l ON l.id=(s->>'payment_link_id')::uuid AND l.client_id=c.id AND l.org_id=c.org_id
   LEFT JOIN products p ON p.id=l.product_id AND p.org_id=l.org_id
   WHERE s IS NOT NULL AND c.is_demo IS NOT TRUE AND (a.id IS NULL OR ac.id IS NULL OR r.id IS NULL
-    OR s->>'org_id'<>c.org_id::text OR s->>'client_id'<>c.id::text
-    OR (s->>'contract_id' IS NOT NULL AND ((s->>'created_at')::timestamptz < now()-interval '15 minutes')
-      AND (k.id IS NULL OR k.template_key<>'BLUEPRINT-SELF-FUNDING-AGREEMENT'
-        OR l.id IS NULL OR l.provider<>'whop' OR l.amount_cents<>3000000 OR p.code<>'blueprint-self-funding'))) `;
+    OR s->>'org_id' IS DISTINCT FROM c.org_id::text OR s->>'client_id' IS DISTINCT FROM c.id::text
+    OR (s->>'contract_id' IS NOT NULL AND (COALESCE((s->>'created_at')::timestamptz,c.created_at) < now()-interval '15 minutes')
+      AND (k.id IS NULL OR k.template_key IS DISTINCT FROM 'BLUEPRINT-SELF-FUNDING-AGREEMENT'
+        OR k.status NOT IN ('sent','viewed','signed')
+        OR (k.created_by_account_id IS NOT NULL AND k.created_by_account_id::text IS DISTINCT FROM s->>'account_id')
+        OR (k.sent_by_account_id IS NOT NULL AND k.sent_by_account_id::text IS DISTINCT FROM s->>'account_id')
+        OR s->>'financing_verified' IS DISTINCT FROM 'true'
+        OR s->>'amount_cents' IS NULL OR (s->>'amount_cents')::bigint NOT BETWEEN 2000000 AND 3000000 OR (s->>'amount_cents')::bigint%100<>0
+        OR k.merge_values->>'_blueprint_amount_cents' IS DISTINCT FROM s->>'amount_cents'
+        OR l.id IS NULL OR l.provider IS DISTINCT FROM 'whop'
+        OR l.amount_cents IS DISTINCT FROM (s->>'amount_cents')::bigint OR p.code IS DISTINCT FROM 'blueprint-self-funding'))) `;
 
 export const fixGuide = `A Whop payment clock, receipt or Blueprint access grant needs attention.
 

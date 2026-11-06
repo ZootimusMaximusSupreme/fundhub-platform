@@ -1,0 +1,28 @@
+INDEPENDENT REVIEW - 2026-11-06
+Reviewer lane: read-only source review, synthetic fixtures, temporary embedded PostgreSQL. No production writes, real buyers, contract signing, customer sends, provider orders, charges, or credit pulls.
+
+STATUS: Review in progress. No overall production-readiness or live-journey verdict. Canonical Whop source and complete provider-dependent regression cases still require final review after the peer Whop dependency is combined.
+
+INDEPENDENT CURRENT RECEIPTS
+- Negotiated-price seller UI + contract continuation + existing contract page: 47 passed, 0 failed, 0 skipped. Local Chromium/static server, synthetic API responses.
+- Existing contract render/fields/signers/templates/signed links/price/placeholder/PDF checks: 160 passed, 0 failed, 0 skipped.
+- Actual affiliate actor/helper/normal notification/reminder/idempotent initial-notice recovery fixture: 7 passed, 0 failed, 0 skipped. The earlier 2-pass/4-fail run was retained; fixture actor-column mapping was repaired before the successful rerun.
+- Migration566 scope/grants probe: 12 passed. Covers legacy staff creator, actual affiliate creator, absent/dual creator refusal, wrong account kind/company refusal, creator/sender immutability, and ordinary table grants applying to new actor columns.
+- Additional sender-history probe using migration566 plus the real existing125 frozen-contract trigger now refuses sender rewriting even after both status and sent_at are cleared. The first and stronger bypasses were reproduced before repair, not treated as passes.
+- Native seller service PostgreSQL fixture: 16 passed, 0 failed, 0 skipped. Covers automatic actual-account agreement wiring, default/20K/29K/30K and invalid prices, price/account tamper, bound UUID aliases, interleaving/replaced-order guard, initial-notice recovery, full-product outcome, and real heartbeat SQL. Create/send helper seams in this suite are synthetic; actual helper behavior and migration semantics are covered separately above.
+- Temp-only integrated Whop draft: 12 passed. Covers selected/effective financing configuration list shapes, denied/missing effective method, preserved generic opaque metadata body, optional strict ClarityPay body, and refusal of unexpected product metadata, changed amount, or wrong fh-order idempotency. Three synthetic fetches, no real provider traffic. This draft has not been substituted for the canonical source and is not a provider checkout receipt.
+
+RESOLVED FINDINGS IN CURRENT REVIEW
+- Account switch scrubbed buyer form, identity, response body, copied/opened link, captured payload, and delayed create/refresh responses.
+- Original request UUID and all accepted aliases bind to the canonical buyer payload. Interleaved completion uses guarded atomic financing_verified update and preserves new aliases; stale/replaced order cannot inherit verification.
+- Transaction advisory locks run only inside BEGIN. Immutable buyer/contract/order reservation commits before provider I/O; no transaction-pooler-unsafe session lock remains.
+- Actual account creator/sender replaces any staff stand-in. Creator is immutable; any recorded sender is immutable independently of mutable status/timestamp fields.
+- Stored amount must equal the request and the saved fingerprint price before send/checkout. $29K is accepted; cents, below $20K, and above $30K are refused. UI captures immutable agreed price, validates returned amount, and preserves it on refresh.
+- Handoff HMAC binds company, affiliate, actual account, buyer, agreement, order, and agreed price.
+- Initial signing mail and reminders use the permanent outer buyer link. A real sent agreement can open before financing preparation; signed buyers see an explicit preparation response while no verified checkout exists.
+- Missing initial notice after an interrupted send can be recovered with the existing idempotent initial-message key, without deliberate resend behavior.
+
+REMAINING INTEGRATION CHECKS
+- Peer Whop v2 integration/reservation helper applied to canonical source, then complete focused provider/service regression rerun.
+- Seller broker must use environment-aware exact Whop checkout host validation so sandbox checkout can traverse the same broker while production remains restricted.
+- Actual provider sandbox compatibility/availability and live release receipts are separate and currently unproven by this review. No invented commission rate or skipped payout gate is approved here.

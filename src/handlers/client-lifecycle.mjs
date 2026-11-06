@@ -91,7 +91,6 @@ async function markCrmLinkMissing(db, clientId, reason) {
  * NEVER throws and NEVER blocks client creation.
  */
 async function syncCrmContact(db, { clientId, orgId, email, phone, firstName, lastName }, opts = {}) {
-  if (opts.skipCrmLink === true) return; // Native Fundhub intake does not provision a retired CRM.
   const env = opts.env || process.env;
   if (!email && !phone) {
     console.warn(

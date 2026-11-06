@@ -134,6 +134,8 @@ table.grid tbody tr:hover{background:var(--soft)}
 .blueprint-seller h3{font-size:var(--fs-title);line-height:1.3}
 .blueprint-seller-note{color:var(--gray);margin:8px 0 16px;font-size:var(--fs-body)}
 .blueprint-seller-fields{border:0;padding:0;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.blueprint-seller-price{grid-column:1/-1}
+.blueprint-seller-price .blueprint-seller-note{margin:8px 0 0;font-size:var(--fs-caption)}
 .blueprint-seller label{display:block;font-size:var(--fs-body);margin-bottom:8px}
 .blueprint-seller input{width:100%;min-width:0;min-height:48px;padding:10px 12px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;font-size:var(--fs-body)}
 .blueprint-seller input:focus-visible{outline:3px solid var(--info);outline-offset:2px}
@@ -223,7 +225,7 @@ body.fh-astra.fh-astra-affiliate .blueprint-seller .btn{font-size:var(--fs-body)
       <div class="affiliate-heading fh-astra-heading"><div><p class="affiliate-kicker">Your network</p><h2>Referrals &amp; earnings</h2><p class="fh-astra-subtitle">Track your referrals, see your earnings, and choose a link to share.</p></div><div class="affiliate-heading-actions"><button class="btn blueprint-primary" id="blueprintSellerOpen" type="button" aria-controls="blueprintSeller" aria-expanded="false" hidden>Sell Blueprint</button><a class="btn affiliate-history-link" href="#affiliate-records">View activity <span aria-hidden="true">↓</span></a></div></div>
       <div class="affiliate-load" role="status" aria-live="polite"><span id="affiliateLoadStatus">Loading your referral dashboard…</span> <button class="btn sm" id="affiliateRetry" type="button" hidden>Try again</button></div>
       <section class="card blueprint-seller" id="blueprintSeller" aria-labelledby="blueprintSellerTitle" data-state="empty" hidden>
-        <div class="card-hd"><div><h3 id="blueprintSellerTitle">Sell Capital Blueprint</h3><p class="blueprint-seller-note">Full implementation · $30,000</p></div><button class="btn" id="blueprintSellerClose" type="button">Close</button></div>
+        <div class="card-hd"><div><h3 id="blueprintSellerTitle">Sell Capital Blueprint</h3><p class="blueprint-seller-note" id="blueprintSellerPriceSummary">Full implementation · $30,000</p></div><button class="btn" id="blueprintSellerClose" type="button">Close</button></div>
         <div class="card-bd">
           <form id="blueprintSellerForm">
             <p class="blueprint-seller-note">Add your buyer to prepare their agreement and financing link.</p>
@@ -232,11 +234,13 @@ body.fh-astra.fh-astra-affiliate .blueprint-seller .btn{font-size:var(--fs-body)
               <div><label for="blueprintBuyerLast">Last name</label><input id="blueprintBuyerLast" name="last_name" autocomplete="family-name" maxlength="100" required></div>
               <div><label for="blueprintBuyerEmail">Email</label><input id="blueprintBuyerEmail" name="email" type="email" autocomplete="email" maxlength="254" required></div>
               <div><label for="blueprintBuyerPhone">Phone</label><input id="blueprintBuyerPhone" name="phone" type="tel" autocomplete="tel" maxlength="32" required></div>
+              <div class="blueprint-seller-price"><label for="blueprintBuyerPrice">Agreed price (USD)</label><input id="blueprintBuyerPrice" name="amount" type="number" inputmode="numeric" min="20000" max="30000" step="1" value="30000" aria-describedby="blueprintBuyerPriceHelp" required><p class="blueprint-seller-note" id="blueprintBuyerPriceHelp">Choose a whole-dollar price from $20,000 to $30,000.</p></div>
             </fieldset>
             <div class="blueprint-seller-actions"><button class="btn blueprint-primary" id="blueprintSellerCreate" type="submit">Create buyer link</button><button class="btn" id="blueprintSellerEdit" type="button" hidden>Edit buyer details</button></div>
           </form>
           <div class="blueprint-seller-result" id="blueprintSellerResult" hidden>
             <h4 id="blueprintSellerResultTitle">Buyer link ready</h4>
+            <p class="blueprint-seller-note" id="blueprintSellerAgreedPrice"></p>
             <p class="blueprint-seller-note" id="blueprintSellerNext"></p>
             <div id="blueprintSellerLinkBlock"><label for="blueprintBuyerLink">Buyer agreement and financing link</label><input id="blueprintBuyerLink" readonly></div>
             <div class="blueprint-seller-actions"><button class="btn blueprint-primary" id="blueprintSellerCopy" type="button">Copy buyer link</button><a class="btn" id="blueprintSellerVisit" target="_blank" rel="noopener noreferrer">Open buyer link <span aria-hidden="true">↗</span></a><button class="btn" id="blueprintSellerRefresh" type="button">Refresh status</button><button class="btn" id="blueprintSellerAnother" type="button">Start another buyer</button></div>
@@ -1267,12 +1271,25 @@ renderLeads(); renderPayouts();
 
   // Selling is a server-granted capability, not an affiliate role shortcut.
   var sellerAllowed = false, sellerBusy = false, sellerRequestId = null, sellerPayload = null;
-  var sellerIdentity = null, sellerGeneration = 0, sellerController = null, portalGeneration = 0;
+  var sellerIdentity = null, sellerGeneration = 0, sellerController = null, portalGeneration = 0, sellerPricing = null;
+  function sellerAmountAllowed(amount) {
+    return !!(sellerPricing && Number.isSafeInteger(amount) && amount >= sellerPricing.min
+      && amount <= sellerPricing.max && amount % sellerPricing.step === 0);
+  }
+  function sellerMoney(amount) { return "$" + (amount / 100).toLocaleString("en-US", { maximumFractionDigits: 0 }); }
+  function chosenSellerAmount() {
+    var dollars = Number(byId("blueprintBuyerPrice").value);
+    return Number.isSafeInteger(dollars) && sellerAmountAllowed(dollars * 100) ? dollars * 100 : null;
+  }
+  function paintSellerPrice(amount) {
+    setText("blueprintSellerPriceSummary", "Full implementation" + (sellerAmountAllowed(amount) ? " · " + sellerMoney(amount) : ""));
+  }
   function resetSellerBuyer(clearValues) {
     sellerGeneration += 1;
     if (sellerController) sellerController.abort();
     sellerController = null; sellerRequestId = null; sellerPayload = null;
     if (clearValues) byId("blueprintSellerForm").reset();
+    paintSellerPrice(chosenSellerAmount()); setText("blueprintSellerAgreedPrice", "");
     byId("blueprintBuyerLink").value = ""; byId("blueprintSellerVisit").removeAttribute("href");
     setText("blueprintSellerNext", ""); setText("blueprintSellerResultTitle", "Buyer link ready"); setText("blueprintSellerError", "");
     byId("blueprintSellerResult").hidden = true; byId("blueprintSellerForm").hidden = false;
@@ -1281,7 +1298,7 @@ renderLeads(); renderPayouts();
     sellerBusyState(false, false);
   }
   function clearSellerAccess() {
-    resetSellerBuyer(true); sellerAllowed = false; sellerIdentity = null;
+    resetSellerBuyer(true); sellerAllowed = false; sellerIdentity = null; sellerPricing = null;
     byId("blueprintSellerOpen").hidden = true; byId("blueprintSeller").hidden = true;
     byId("blueprintSellerOpen").setAttribute("aria-expanded", "false");
     byId("blueprintSellerOpen").classList.add("blueprint-primary");
@@ -1294,10 +1311,17 @@ renderLeads(); renderPayouts();
   function paintSeller(capability, identity) {
     var allowed = !!(capability && capability.enabled === true && identity && identity.token && identity.affiliateId
       && capability.amountCents === 3000000 && capability.offerKey === "BLUEPRINT_SELF_FUNDING"
+      && capability.minAmountCents === 2000000 && capability.maxAmountCents === 3000000 && capability.amountStepCents === 100
       && capability.createPath === "/api/affiliates/blueprint-sale"
       && (!capability.currency || capability.currency === "USD"));
     if (!allowed) { clearSellerAccess(); return; }
     if (sellerIdentity && (sellerIdentity.token !== identity.token || sellerIdentity.affiliateId !== identity.affiliateId)) clearSellerAccess();
+    sellerPricing = { min: capability.minAmountCents, max: capability.maxAmountCents, step: capability.amountStepCents };
+    byId("blueprintBuyerPrice").min = String(sellerPricing.min / 100); byId("blueprintBuyerPrice").max = String(sellerPricing.max / 100);
+    byId("blueprintBuyerPrice").step = String(sellerPricing.step / 100); byId("blueprintBuyerPrice").defaultValue = String(capability.amountCents / 100);
+    if (!sellerPayload) byId("blueprintBuyerPrice").value = String(capability.amountCents / 100);
+    setText("blueprintBuyerPriceHelp", "Choose a whole-dollar price from " + sellerMoney(sellerPricing.min) + " to " + sellerMoney(sellerPricing.max) + ".");
+    paintSellerPrice(sellerPayload ? sellerPayload.amount_cents : chosenSellerAmount());
     sellerAllowed = true; sellerIdentity = identity; byId("blueprintSellerOpen").hidden = false;
   }
   function showSeller(open) {
@@ -1330,6 +1354,8 @@ renderLeads(); renderPayouts();
   function sellerError(code, refresh) {
     var messages = {
       buyer_already_attributed: "This buyer is already linked to another referrer. Contact the Fundhub team before continuing.",
+      request_conflict: "This buyer already has saved agreement details. Contact Fundhub before changing them.",
+      invalid_amount: "Choose a whole-dollar price within the range shown.",
       seller_disabled: "Selling is not enabled for this account. Contact the Fundhub team.",
       validation_error: "Check the buyer’s name, email and phone, then try again.",
       invalid_buyer: "Check the buyer’s name, email and phone, then try again."
@@ -1342,7 +1368,7 @@ renderLeads(); renderPayouts();
     byId("blueprintSeller").dataset.state = "error"; setText("blueprintSellerStatus", "");
   }
   function paintSellerSale(sale) {
-    if (sale.amount_cents !== 3000000 || sale.offer_key !== "BLUEPRINT_SELF_FUNDING"
+    if (!sellerPayload || !sellerAmountAllowed(sale.amount_cents) || sale.amount_cents !== sellerPayload.amount_cents || sale.offer_key !== "BLUEPRINT_SELF_FUNDING"
         || ["needs_contract", "awaiting_signature", "ready_to_pay", "paid"].indexOf(sale.stage) < 0) throw new Error("invalid_handoff");
     var needsContract = sale.stage === "needs_contract", name = [sellerPayload.first_name, sellerPayload.last_name].join(" "), url = null;
     if (!needsContract) {
@@ -1359,7 +1385,7 @@ renderLeads(); renderPayouts();
     if (needsContract) {
       byId("blueprintBuyerLink").value = ""; byId("blueprintSellerVisit").removeAttribute("href");
       setText("blueprintSellerResultTitle", "Preparing agreement");
-      setText("blueprintSellerNext", name + " is saved. Fundhub needs to issue their $30,000 agreement before financing is available.");
+      setText("blueprintSellerNext", name + " is saved. Fundhub needs to issue their " + sellerMoney(sale.amount_cents) + " agreement before financing is available.");
       setText("blueprintSellerStatus", "Refresh status after the agreement is ready. No payment has been collected here.");
     } else {
       byId("blueprintBuyerLink").value = url.href; byId("blueprintSellerVisit").href = url.href;
@@ -1370,6 +1396,7 @@ renderLeads(); renderPayouts();
       setText("blueprintSellerResultTitle", sale.stage === "paid" ? "Buyer is ready for Fundhub" : "Buyer link ready");
       setText("blueprintSellerStatus", "This buyer link has no expiry.");
     }
+    paintSellerPrice(sale.amount_cents); setText("blueprintSellerAgreedPrice", "Agreed price: " + sellerMoney(sale.amount_cents));
     byId("blueprintSellerForm").hidden = true; byId("blueprintSellerResult").hidden = false;
     byId("blueprintSeller").dataset.state = "full";
   }
@@ -1379,11 +1406,14 @@ renderLeads(); renderPayouts();
       if (!byId("blueprintSellerForm").reportValidity()) return;
       var buyer = {
         first_name: byId("blueprintBuyerFirst").value.trim(), last_name: byId("blueprintBuyerLast").value.trim(),
-        email: byId("blueprintBuyerEmail").value.trim(), phone: byId("blueprintBuyerPhone").value.trim()
+        email: byId("blueprintBuyerEmail").value.trim(), phone: byId("blueprintBuyerPhone").value.trim(), amount_cents: chosenSellerAmount()
       };
-      if (sellerPayload && ["first_name", "last_name", "email", "phone"].some(function (key) { return buyer[key] !== sellerPayload[key]; })) {
+      if (!sellerAmountAllowed(buyer.amount_cents)) {
+        sellerError("invalid_buyer", false); setText("blueprintSellerError", "Choose a whole-dollar price within the range shown."); return;
+      }
+      if (sellerPayload && ["first_name", "last_name", "email", "phone", "amount_cents"].some(function (key) { return buyer[key] !== sellerPayload[key]; })) {
         sellerError("buyer_changed", false);
-        setText("blueprintSellerError", "These details changed after the request started. Choose Edit buyer details before creating a different buyer link.");
+        setText("blueprintSellerError", "The buyer details or agreed price changed after the request started. Choose Edit buyer details before creating a different buyer link.");
         return;
       }
       if (!sellerPayload) {
@@ -1425,6 +1455,7 @@ renderLeads(); renderPayouts();
       if (completed) (byId("blueprintSellerCopy").hidden ? byId("blueprintSellerRefresh") : byId("blueprintSellerCopy")).focus();
     });
   }
+  byId("blueprintBuyerPrice").addEventListener("input", function () { if (!sellerPayload) paintSellerPrice(chosenSellerAmount()); });
   byId("blueprintSellerOpen").addEventListener("click", function () { showSeller(byId("blueprintSeller").hidden); });
   byId("blueprintSellerClose").addEventListener("click", function () { showSeller(false); });
   byId("blueprintSellerForm").addEventListener("submit", function (event) { event.preventDefault(); createSellerSale(false); });
