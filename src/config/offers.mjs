@@ -13,7 +13,7 @@ export const UWIQ_DELIVERABLES_CONTENTS = Object.freeze([
   "How To Use This mini course"
 ]);
 
-/** @typedef {"SOFT_PULL"|"FUNDING_DFY"|"REPAIR_DFY"|"REPAIR_TRIAL"|"UWIQ_DELIVERABLES"|"FUNDING_MASTERY"} OfferKey */
+/** @typedef {"SOFT_PULL"|"FUNDING_DFY"|"REPAIR_DFY"|"REPAIR_TRIAL"|"UWIQ_DELIVERABLES"|"BLUEPRINT_SELF_FUNDING"|"FUNDING_MASTERY"} OfferKey */
 
 /**
  * @typedef {object} Offer
@@ -40,6 +40,7 @@ const COMMAS_TITLE_BY_PRODUCT_CODE = Object.freeze({
   diagnostic: "Consulting Services Assessment",
   "card-stacking-dfy": "Consulting Services Engagement",
   "consulting-package": "Consulting Services Package",
+  "blueprint-self-funding": "Consulting Services Package",
   /* The $1,000 DIY dispute-letter downsell. It used to share
      'consulting-package' — and therefore this exact vendor title — with the
      $5,000 Capital Blueprint, which is how one payment could never be told from
@@ -189,6 +190,20 @@ export const OFFERS = Object.freeze({
        db/migrations/287_contract_seller_signature_and_real_text.sql. */
     contractTemplateKey: "CAPITAL-BLUEPRINT-AGREEMENT",
     contents: UWIQ_DELIVERABLES_CONTENTS
+  }),
+  BLUEPRINT_SELF_FUNDING: Object.freeze({
+    key: "BLUEPRINT_SELF_FUNDING",
+    name: "Capital Blueprint — full implementation",
+    priceCents: 3000000,
+    priceMinCents: 2000000,
+    priceMaxCents: 3000000,
+    financing: true,
+    letters: true,
+    paymentPurpose: "custom",
+    productCode: "blueprint-self-funding",
+    commasProductTitle: "Consulting Services Package",
+    contractTemplateKey: "BLUEPRINT-SELF-FUNDING-AGREEMENT",
+    contents: Object.freeze([...UWIQ_DELIVERABLES_CONTENTS, "Owner-operated funding round"])
   }),
   FUNDING_MASTERY: Object.freeze({
     key: "FUNDING_MASTERY",
@@ -415,12 +430,13 @@ export function resolveOfferAmountCents(offerKey, amountCents = undefined) {
   const offer = getOffer(offerKey);
   if (!offer) throw new RangeError("Unknown offer.");
   if (amountCents === undefined) return offer.priceCents;
-  if (offer.key !== "UWIQ_DELIVERABLES") {
+  if (!["UWIQ_DELIVERABLES", "BLUEPRINT_SELF_FUNDING"].includes(offer.key)) {
     throw new RangeError("Only Capital Blueprint accepts a custom price.");
   }
   if (!Number.isSafeInteger(amountCents) || amountCents % 100 !== 0
       || amountCents < offer.priceMinCents || amountCents > offer.priceMaxCents) {
-    throw new RangeError("Choose a whole-dollar Capital Blueprint price from $5,000 to $10,000.");
+    throw new RangeError("Choose a whole-dollar Capital Blueprint price from " +
+      formatCents(offer.priceMinCents) + " to " + formatCents(offer.priceMaxCents) + ".");
   }
   return amountCents;
 }
@@ -555,6 +571,7 @@ export function defaultContractValues({ offerKey = null, tier = null, templateKe
   if (key === "FUNDING-MASTERY-AGREEMENT") {
     return { program_fee: price || "$5,000" };
   }
+  if (key === "BLUEPRINT-SELF-FUNDING-AGREEMENT") return { package_fee: price };
   if (key === "CAPITAL-BLUEPRINT-AGREEMENT") {
     return { package_fee: price || "$1,000" };
   }

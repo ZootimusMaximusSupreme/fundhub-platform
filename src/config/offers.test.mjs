@@ -23,9 +23,19 @@ test("Blueprint resolves only whole-dollar prices within the owner range", () =>
   for (const cents of [499999, 1000001, 750001, 750000.5, "750000", null, NaN, Infinity]) {
     assert.throws(() => resolveOfferAmountCents("UWIQ_DELIVERABLES", cents), /whole-dollar/);
   }
-  for (const offer of Object.values(OFFERS).filter((o) => o.key !== "UWIQ_DELIVERABLES")) {
+  for (const offer of Object.values(OFFERS).filter((o) => !o.priceMinCents)) {
     assert.equal(resolveOfferAmountCents(offer.key), offer.priceCents);
     assert.throws(() => resolveOfferAmountCents(offer.key, offer.priceCents), /Only Capital Blueprint/);
+  }
+});
+
+test("full Blueprint uses its own product and whole-dollar range", () => {
+  const full = OFFERS.BLUEPRINT_SELF_FUNDING;
+  assert.equal(full.productCode, "blueprint-self-funding");
+  assert.equal(resolveOfferAmountCents(full.key), 3000000);
+  for (const value of [2000000, 2475100, 3000000]) assert.equal(resolveOfferAmountCents(full.key, value), value);
+  for (const value of [1000000, 1999900, 3000100, 2000001, null]) {
+    assert.throws(() => resolveOfferAmountCents(full.key, value), /whole-dollar/);
   }
 });
 

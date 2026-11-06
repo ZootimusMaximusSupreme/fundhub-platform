@@ -88,8 +88,8 @@ async function createTaskWithNote(db, spec, line) {
 }
 
 /** Fundable from freshest crs_results + tradelines, same path as closer cockpit. */
-export async function loadBlueprintFundable(db, { orgId, clientId }) {
-  const crs = await latestCreditFile(db, { orgId, clientId });
+export async function loadBlueprintFundable(db, { orgId, clientId, creditFile }) {
+  const crs = creditFile === undefined ? await latestCreditFile(db, { orgId, clientId }) : creditFile;
   if (!crs?.result) return { fundable: false, reason: "no_credit_file" };
 
   const [tradelines, liabilities, businesses, clientRow] = await Promise.all([

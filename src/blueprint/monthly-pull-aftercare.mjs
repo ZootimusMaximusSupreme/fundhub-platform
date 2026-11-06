@@ -4,6 +4,7 @@
 // Finance OS system-request path (finance-os-pull-sweeper fulfil hook).
 
 import { isCapitalBlueprintBuyer } from "./coach-exception.mjs";
+import { isBlueprintCoachClient } from "./coach.mjs";
 import { evaluateWaypoints } from "../waypoints/verify.mjs";
 import { seedClientWaypoints } from "../waypoints/seed.mjs";
 import { buildLetterPackForClient, PACK_REASON } from "../underwrite/letter-pack.mjs";
@@ -21,7 +22,7 @@ export async function runBlueprintMonthlyPullAftercare(db, {
   clientId,
   crsResultId = null,
   now = new Date(),
-  isBuyer = isCapitalBlueprintBuyer,
+  isBuyer = async (conn, scope) => (await isCapitalBlueprintBuyer(conn, scope)) || isBlueprintCoachClient(conn, scope),
   verify = evaluateWaypoints,
   seed = seedClientWaypoints,
   buildPack = buildLetterPackForClient,
