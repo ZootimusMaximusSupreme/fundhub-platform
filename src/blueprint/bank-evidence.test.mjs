@@ -21,6 +21,13 @@ test("bank approval, issuance and posted funding each require their own evidence
   assert.deepEqual(matchBankMail(mail,app),{decision:"funded",approvedAmount:null,fundedAmount:8000});
   assert.deepEqual(matchBankMail({...mail,body_preview:"You have been approved for $12,000."},app),{decision:"approved",approvedAmount:12000});
   assert.equal(matchBankMail({...mail,body_preview:"You may be eligible for available credit of $8,000"},app),null);
+  for (const body_preview of [
+    "Your card is not active. Available credit is $8,000.","Your card is inactive. Available credit is $8,000.",
+    "The credit line is not available to use. Available credit is $8,000.","No funds were disbursed $8,000.",
+    "Your account will be active. Available credit is $8,000.","Your card isn’t active. Available credit is $8,000."
+  ]) assert.equal(matchBankMail({...mail,body_preview},app),null);
+  assert.equal(matchBankMail({...mail,classification:"DENIED"},app),null);
+
   assert.equal(matchBankMail({...mail,raw:{source:"mailgun",authenticatedBankDomain:"phisher.test"}},app),null);
   assert.equal(matchBankMail({...mail,subject:"FH-614280"},app),null);
   assert.deepEqual(matchBankMail({...mail,classification:"DENIED",body_preview:"Your application was declined."},app),{decision:"declined"});

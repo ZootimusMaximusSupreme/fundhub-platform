@@ -59,6 +59,10 @@ async function createRenewalTask(db, { orgId, clientId, eventId }) {
 // happens inside step.sleep before this runs its post-wait half; tests call handle()
 // already "post-wait" since fakeStep().sleep is a no-op.
 export async function handle({ event, db, step }) {
+  if (event?.payload?.product==="blueprint_managed_funding") {
+    const {managedTakeoverEvent}=await import("../blueprint/managed-round.mjs");
+    if (await managedTakeoverEvent(db,event)) return {done:false,reason:"purchased_takeover_has_no_follow_on"};
+  }
   const clientId = await step.run("resolve-client", () => findClient(db, event));
   if (!clientId) return { sent: false, reason: "no_client" };
 
