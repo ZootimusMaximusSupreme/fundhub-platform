@@ -397,3 +397,27 @@ review required; old83test clear does not clear the new source automatically.
 After exact review, fold only this guard pair to437 required repair; archive
 our isolated CI worktree to release its active claims. No device WIP transfers
 to437. Explicit source ownership transfer and exact receipt will be recorded.
+
+GUARD TRANSFER COMPLETE — EXACT REVIEWED SOURCE
+Commit d4a28c03b9b257abf6c144026fce7c5d90709776 on local CI branch contains
+reviewed exact pair plus its own text board. Managed CI worktree is now
+ARCHIVED (confirmed app attachment and absent from git worktree list); no
+active duplicate script ownership remains. App worktree stays active.
+File handoff: scripts/preflight-collisions.mjs -> codex/plaid-approval-readiness-20261106
+File handoff: scripts/preflight-collisions.test.mjs -> codex/plaid-approval-readiness-20261106
+Reviewed patch (ONLY these two files):
+ /private/tmp/fundhub-preflight-guard-reviewed-20261106.patch
+Patch SHA256 e7cf4a9eddabb264ee6f68563c6352fab8a738c28778c6131b63e8df18204ed9
+Exact Git blobs:
+ script fbd610b5e4a6edcedf28c89764b763c78486e3f3
+ test 40fe07e8a2bed8cab892b09ac3a4fecb298887a2
+Final implementer254/254 combined controller tests,0skip. Independent146/146
+full changed preflight tests,0skip,162.5s; CLEAR,no P1/P2. Full lint4764,
+installedTypeScript,node syntax,diff checks passed. Both identity and full
+CLI composition-race fixes are in these final exact hashes. No restacker,
+ship-change or device feature source transfers. Existing437 owner folds this
+required repair and keeps source/CI/protected-release proof. No separate CI PR.
+436 has merged and437 auto-restacked to main/public27a864eb; its owner retains
+unpublished1163685 repairs and owns that source-boundary resolution. Current
+guard review does not prove437 publication or solve an unreviewed new helper
+boundary. Device feature still local; registrations parked pending CRS parent.
