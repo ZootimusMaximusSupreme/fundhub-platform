@@ -1,0 +1,89 @@
+Fundhub cross-chat handoff — November 5, 2026
+Scope: save current work and retrieval pointers. Research/status consolidation only; no production change.
+Source basis: recent Codex app messages and local Claude/Cursor sessions. These are attributed receipts, not new live checks.
+Private retrieval index: credentials/work-saves/2026-11-05-closeout/chat-index.json (gitignored, mode 0600).
+Original chats remain in their applications; no original chat was archived, renamed or deleted.
+
+Coverage
+- 10 active Codex history listings and all 986 archived Codex history listings indexed.
+- 201 local sessions inventoried: 16 Codex, 12 Claude, 173 Cursor.
+- 1,182 unique Fundhub-related source pointers after source/tool deduplication. Cross-tool imports can still represent the same underlying work.
+- Eleven recent operating lanes reviewed; older sessions retain retrieval pointers only.
+- This is a work index and handoff, not a full transcript export or a production audit.
+
+RECENT RESULTS / PENDING WORK
+
+Bank screening and lender decisions
+Source: Codex 01a19f28-ae75-7e73-9501-35dc991def68.
+Reported complete: PR #416 deployed/verified; new decision records preserve amount, time and screening reference.
+Pending: staff still need to log real outcomes; automatic financing-provider imports and validated model learning are not connected.
+Do not repeat the stale claim that no OffersIQ work has shipped; inspect #414/#416 and current receipts for exact scope.
+
+Portal tab transitions
+Source: Codex 01a1a85f-b39d-77e1-9300-10a9aad9aca2.
+Reported complete: #407/#413 live; fourteen main checks and Ship passed; signed-in four-tab replay and Calendar transition frames reviewed.
+Pending: nothing for the named four-tab jump. Other staff pages were not individually replayed live.
+Do not reopen the completed named issue from an older memory snapshot.
+
+Booking / SMS / iOS
+Source: Codex 01a1a64d-8370-7ef3-9968-67ef17d6329b.
+Reported complete: #409 booking gating deployed, saved answers preserved; Fundhub Portal 1.0.3 public and extra app 2FA removed.
+Pending: return from signed email resume link still needs live proof. Latest chat says Twilio billing suspended and delivery unproved after restoration. Hosted 24/7 native signing not set up.
+A billing/owner action and provider receipt must remain separate from a green code test.
+
+60-minute call offer
+Source: archived Codex 01a1adbb-57d7-7d21-a397-ab0121a1ea62.
+Saved: PR #415; commit fd91b847d9a527cfd9d6a29763c221155edd973a; three copy lines.
+Last chat receipt: 13/14 checks passed and browser check pending; no live publication claimed.
+Next: inspect current GitHub receipt before treating old pending state as current.
+
+Quiet startup messages / rules
+Source: Claude be960ea2-3f2e-43c6-a351-c98a50b44ecc.
+Saved locally: tested rule/model startup wording changes in .claude/worktrees/quiet-session-reminders.
+Pending publication: shared rule edits in the main checkout blocked preflight. Existing audience-data changes must be preserved and reconciled, not discarded.
+This is a concrete save/coordination item with no customer or spend side effects.
+
+Bank-data outreach hiring
+Source: Codex 01a1ad48-cd54-77a3-a276-ef6e7292f631.
+Saved in chat: Egypt-remote bank-outreach role pitch and LinkedIn promoted-job research.
+Pending: job not posted; role-specific compensation and spend cap not decided. Do not treat setter pay as this role's pay.
+
+Quiz and challenge funnels
+Source: Codex 01a1aab3-2d29-7313-a616-1ac0cb110801.
+Saved: separate quiz and challenge boards; independent Claude challenge review. Local challenge review commit 5751940e1 was not pushed at the last receipt.
+Artifacts:
+ops/workflows/quiz-funnel-research-2026-11-05/BOARD.txt
+ops/workflows/challenge-funnel-research-2026-11-05/BOARD.txt
+Pending: research only; no funnels built or ads launched; estimated cost/value remain unverified.
+
+Campaign / Dock / website navigation
+Source: Codex 01a1aa94-4b15-7d32-91ee-6e8e0474ad9b.
+Latest turn confirms separate challenge marketing review, not animation assignment.
+Existing Dock/navigation releases have their own receipts; verify signed-in Dock proof independently.
+Animations remain outside this chat's work ownership.
+
+Ad spending
+Source: Cursor 92679b95-43ad-4365-a68a-20feb19fe750.
+Reported complete: only active campaign changed from $150/day to $30/day with Meta readback.
+Pending detail: no corresponding database campaign row existed; paused drafts unchanged.
+Save task grants no new budget change.
+
+Finance OS
+Source: Codex 01a19d7c-8b51-7f12-83eb-04feef07ba15.
+Latest owner goal: $40k net/month for Fundhub.
+Pending: statement-backed targets and spending limits; latest turn does not establish current live bank-link behavior.
+
+30-minute company factory
+Source: Codex 01a1ade1-7f00-7ba3-b278-c9510c082bde.
+Saved: roster, architecture, Fundhub-first extraction plan and primary-source vendor research.
+Artifacts:
+reports/Fundhub company launch architecture.txt
+research_notes/Fundhub company launch architecture/
+ops/workflows/company-swarm-architecture-2026-11-05/BOARD.txt
+Current owner direction: 30-minute launch remains the goal; Fundhub is already close. Close actual remaining gaps and extract proven workflows rather than rebuild existing systems.
+One-week closeout was a planning target, not a measured completion promise.
+
+RECOMMENDED NEXT WORK
+First complete the save pass: protect dirty files and local-only commits, inspect the current release queue, and reconcile the shared rule-file ownership that prevented an already tested change from reaching GitHub.
+Then choose one confirmed remaining customer-flow proof, rather than starting another broad plan. The signed-email resume path is an explicit recent candidate; billing restoration is a separate owner/provider dependency.
+No claim is made that any of these pending items is still broken without a fresh owning-source check.

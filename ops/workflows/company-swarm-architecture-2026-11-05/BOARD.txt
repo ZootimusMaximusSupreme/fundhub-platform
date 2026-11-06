@@ -1,0 +1,16 @@
+Company launch swarm architecture — 2026-11-05
+Scope: research and architecture only. No production changes, accounts, spending, or new Markdown files.
+Owner: root — synthesize findings into direct chat answer. Synthesis waits for all three independent research lanes.
+
+Parallel workflows / self-contained copy-paste prompts:
+1. PLATFORM (platform agent): Verify Lithos AI identity and developer/runtime documentation and Kimi K3 availability using primary sources. Recommend durable coordination using existing Fundhub Inngest/Postgres where appropriate, model evaluations, and portability. Clearly distinguish verified facts from unknowns. Write research_notes/Fundhub company launch architecture/platform.txt. Owns board initialization only.
+2. ROSTER (roster agent): Design full company function roster, one line per role, with realistic 30-minute launch boundaries, external approval handling, and failure prevention. Research-only; primary sources for changing claims; no production actions. Write independent notes in research_notes/Fundhub company launch architecture/roster.txt.
+3. FUNDHUB (fundhub agent): Read existing Fundhub source/journey evidence, identify reusable-system architecture and the build order from Fundhub. Distinguish documented capability from current live proof. No audit claims, source edits, production writes, or paid calls. Write independent notes in research_notes/Fundhub company launch architecture/fundhub.txt.
+
+Status: research completed and synthesized; final report corrected with launch deliverables, external-dependency handling, skill contracts and remaining risks. Report: reports/Fundhub company launch architecture.txt. Architecture plan only; not implemented or live-verified. No product implementation authorized by this research request.
+
+2026-11-05 — owner save-all request and next-work intake
+Owner request: preserve work across Fundhub chats, then choose useful work without making the owner manage a task list. The 30-minute company-launch goal remains.
+Parallel lanes: save_chat_index owns private chat index and sanitized thread-handoff.txt; save_git_inventory owns read-only Git inventory; root owns private worktree snapshots, history bundles, recovery checks, and this board. Chat and Git inventory run together; the consolidated finish list waits for both. No product changes, deployments, customer messages, payments, or report orders in this preservation pass.
+Private save: credentials/work-saves/2026-11-05-closeout/ (gitignored). Original chats, worktrees, branches and stashes remain intact. No wholesale add or public upload of customer files.
+Next work: consolidate only unfinished, currently evidenced Fundhub items; select the shortest useful task in the existing authorized scope. Do not use Claude's older blocker list as current fact. Current closeout dates are targets, not verified estimates.
