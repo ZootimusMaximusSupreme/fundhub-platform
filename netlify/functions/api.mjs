@@ -34,6 +34,7 @@ import "pg";
 import authLogin from "../../api/auth/login.mjs";
 import authMfa from "../../api/auth/mfa.mjs";
 import authPlaidMfa from "../../api/auth/plaid-mfa.mjs";
+import authPasskey from "../../api/auth/passkey.mjs";
 import authLogout from "../../api/auth/logout.mjs";
 import authSession from "../../api/auth/session.mjs";
 import authReset from "../../api/auth/reset.mjs";
@@ -402,6 +403,7 @@ export const ROUTES = {
   "auth/login": authLogin,
   "auth/mfa": authMfa,
   "auth/plaid-mfa": authPlaidMfa,
+  "auth/passkey": authPasskey,
   "auth/logout": authLogout,
   "auth/session": authSession,
   "auth/reset": authReset,

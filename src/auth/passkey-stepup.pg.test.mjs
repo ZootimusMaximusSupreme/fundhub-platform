@@ -8,6 +8,8 @@ import { passkeyAction, bankPasskeyAssurance } from "./passkey-stepup.mjs";
 import { authorizeAccountPlaidLink, advanceAccountPlaidLink } from "./account-plaid-mfa.mjs";
 import { syntheticPasskey } from "./passkey-test-support.mjs";
 import { hashToken } from "./session.mjs";
+import { PLAID_GRANT_SQL } from "../pulse/beats/lib/auth-truth.mjs";
+import { eraseClient } from "../privacy/erasure.mjs";
 const url = process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL;
 
 describe("bank passkey real PostgreSQL app-role and signed assertion proof", {
@@ -68,6 +70,8 @@ describe("bank passkey real PostgreSQL app-role and signed assertion proof", {
     const proof=await bankPasskeyAssurance(app,i);assert.ok(proof);
     const grant=await authorizeAccountPlaidLink(app,{...i,consent:true});assert.equal(grant.ok,true);
     const row=(await app.query("SELECT * FROM account_plaid_link_grants WHERE id=$1",[grant.grant_id])).rows[0];
+    assert.equal(row.consent_version,"plaid-link-2026-11-06");
+    assert.equal(row.passkey_assurance_id,proof.id);
     assert.equal(row.mfa_verified_at.toISOString(),proof.verified_at.toISOString());assert.equal(row.account_session_id,i.sessionId);
     assert.equal((await app.query(`SELECT g.mfa_verified_at=a.verified_at AS exact FROM account_plaid_link_grants g
       JOIN auth_passkey_assurances a ON a.id=$2 WHERE g.id=$1`,[grant.grant_id,proof.id])).rows[0].exact,true);
@@ -79,6 +83,56 @@ describe("bank passkey real PostgreSQL app-role and signed assertion proof", {
     assert.ok(await advanceAccountPlaidLink(app,{...i,token:grant.grant_token,stage:"exchange"}));
     assert.equal(await advanceAccountPlaidLink(app,{...i,token:grant.grant_token,stage:"exchange"}),null);
     assert.equal((await act({action:"status"})).assured,true);
+  }));
+  test("heartbeat requires exact scoped assertion evidence after rollout and preserves earlier consent receipts",async()=>fixture(async({i,enroll,verify,admin,app})=>{
+    const key=await enroll();assert.equal((await verify(key)).result.ok,true);
+    const grant=await authorizeAccountPlaidLink(app,{...i,consent:true});assert.equal(grant.ok,true);
+    const count=async()=>Number((await app.query(PLAID_GRANT_SQL)).rows[0].broken_grants);
+    assert.equal(await count(),0);
+    const proof=await bankPasskeyAssurance(app,i);
+    await admin.query("UPDATE account_plaid_link_grants SET mfa_verified_at=NULL WHERE id=$1",[grant.grant_id]);
+    assert.equal(await count(),1,"new receipt without an assertion stays red");
+    await admin.query(`UPDATE account_plaid_link_grants SET mfa_verified_at=(SELECT verified_at FROM auth_passkey_assurances WHERE id=$2) WHERE id=$1`,[grant.grant_id,proof.id]);
+    assert.equal(await count(),0);
+    await admin.query("UPDATE auth_passkey_assurances SET expires_at=verified_at+interval '16 minutes' WHERE id=$1",[proof.id]);
+    assert.equal(await count(),1,"overlong assertion stays red");
+    await admin.query("UPDATE auth_passkey_assurances SET expires_at=verified_at+interval '15 minutes',revoked_at=verified_at-interval '1 second' WHERE id=$1",[proof.id]);
+    assert.equal(await count(),1,"assertion revoked before consent stays red");
+    await admin.query("UPDATE auth_passkey_assurances SET revoked_at=now()+interval '1 second' WHERE id=$1",[proof.id]);
+    assert.equal(await count(),0,"later recovery does not erase a valid historical receipt");
+    await admin.query("DELETE FROM account_sessions WHERE id=$1",[i.sessionId]);
+    assert.equal((await app.query("SELECT account_session_id,passkey_assurance_id FROM account_plaid_link_grants WHERE id=$1",[grant.grant_id])).rows[0].account_session_id,null);
+    assert.equal(await count(),0,"ordinary expired-session cleanup preserves the exact durable assertion receipt");
+    await admin.query("DELETE FROM auth_passkey_assurances WHERE id=$1",[proof.id]);
+    assert.equal(await count(),1,"missing cryptographic receipt stays red");
+    await admin.query(`UPDATE account_plaid_link_grants SET mfa_verified_at=NULL,
+      consent_version='plaid-link-2026-11-02' WHERE id=$1`,[grant.grant_id]);
+    assert.equal(await count(),0,"legacy consent-only receipts retain their meaning even during the migration/deploy window");
+    await admin.query("UPDATE account_plaid_link_grants SET consent_version='unknown' WHERE id=$1",[grant.grant_id]);
+    assert.equal(await count(),1,"unknown consent versions stay red");
+  }));
+  test("erasure and account cleanup clear the durable proof pointers without blocking cascades or another account",async()=>fixture(async({i,enroll,verify,app})=>{
+    const key=await enroll();await verify(key);
+    const grant=await authorizeAccountPlaidLink(app,{...i,consent:true});
+    assert.ok(await advanceAccountPlaidLink(app,{...i,token:grant.grant_token,stage:"open"}));
+    await fixture(async other=>{
+      const unrelated=await other.enroll();await other.verify(unrelated);
+      const tx=await app.connect();
+      try {
+        await tx.query("BEGIN");
+        const result=await eraseClient(tx,{orgId:i.orgId,clientId:i.targetId,
+          requestedBy:{label:"Synthetic passkey privacy regression"},reason:"Disposable synthetic account cleanup regression"});
+        assert.equal(result.erased,true);
+        await tx.query("DELETE FROM accounts WHERE id=$1 AND org_id=$2",[i.accountId,i.orgId]);
+        await tx.query("SET CONSTRAINTS ALL IMMEDIATE");
+        const receipt=(await tx.query("SELECT account_id,account_session_id,passkey_assurance_id,mfa_verified_at,consumed_at FROM account_plaid_link_grants WHERE id=$1",[grant.grant_id])).rows[0];
+        assert.equal(receipt.account_id,null);assert.equal(receipt.account_session_id,null);assert.equal(receipt.passkey_assurance_id,null);
+        assert.ok(receipt.mfa_verified_at);assert.ok(receipt.consumed_at);
+        assert.equal(Number((await tx.query("SELECT count(*) AS n FROM auth_passkey_subjects WHERE account_id=$1",[i.accountId])).rows[0].n),0);
+        assert.equal(Number((await tx.query("SELECT count(*) AS n FROM auth_passkeys WHERE credential_id=$1 AND revoked_at IS NULL",[unrelated.id])).rows[0].n),1);
+        assert.equal(Number((await tx.query(PLAID_GRANT_SQL)).rows[0].broken_grants),0);
+      } finally {await tx.query("ROLLBACK");tx.release();}
+    });
   }));
   test("stale primary login cannot enroll, and old session/foreign org or target cannot borrow assurance",async()=>fixture(async({i,act,enroll,verify,admin,app})=>{
     await admin.query("UPDATE account_sessions SET created_at=now()-interval '11 minutes' WHERE id=$1",[i.sessionId]);

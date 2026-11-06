@@ -1,5 +1,7 @@
 # client — intended
 
+Owner direction, November 6: account creation and normal sign-in come first and do not require an unenrolled second factor. Before the client opens Plaid or saves a bank connection, the existing account sets up and separately verifies a passkey, then gives explicit bank-data consent. Face ID, fingerprint, or the device passkey unlock can complete this check on supported devices. Registration alone is insufficient. Recovery must preserve access when cancelled and require a recent sign-in, an unused recovery code, verified replacement registration, and a separate assertion.
+
 > ⚠️ **WRITTEN AFTER THE FACT, NOT BEFORE IT.** CLAUDE.md §4 calls this file the
 > hand-authored source of truth, checked against the code — and says agents do
 > not write it, because an agent writing it would be authoring the very thing

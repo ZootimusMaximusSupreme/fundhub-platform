@@ -683,10 +683,15 @@
               var ex = { public_token: publicToken, institution: inst,
                 plaid_grant_token: body.plaid_grant_token };
               if (state.clientId) ex.client_id = state.clientId;
-              Promise.resolve(post("/api/banking/link-exchange", ex)).then(function (r2) {
+              root.FHPlaidStepUp.verify("client_bank").then(function () {
+                return post("/api/banking/link-exchange", ex);
+              }).then(function (r2) {
                 if (classify(r2) !== "ok") { done(); say(linkWords(r2)); return; }
                 say("Bank connected. Loading your accounts…");
                 load();
+              }).catch(function (err) {
+                done();
+                if (!err || err.message !== "cancelled") say((err && err.message) || "Bank verification did not work. Try again.");
               });
             },
             onExit: function (err) {

@@ -20,6 +20,7 @@ function fakeDb({ assured = true } = {}) {
         org_id: params[1], account_id: params[2], account_session_id: params[3],
         target_kind: params[4], target_id: params[5], consent_scope: JSON.parse(params[6]),
         consent_version: params[7], consent_text: params[8], privacy_url: params[9], mfa_verified_at: params[10] === "proof-1" ? "2026-11-06T20:00:00Z" : null,
+        passkey_assurance_id: params[10],
         consent_granted_at: new Date().toISOString(), expires_at: new Date(Date.now() + 600000).toISOString(),
         link_opened_at: null, consumed_at: null };
       grants.push(grant);
@@ -61,6 +62,7 @@ test("explicit consent with passkey assurance creates a scoped, single-use grant
   assert.equal(db.grants[0].consent_text, CONSENT_TEXT.client_bank);
   assert.equal(db.grants[0].privacy_url, PRIVACY_URL);
   assert.equal(db.grants[0].mfa_verified_at, "2026-11-06T20:00:00Z");
+  assert.equal(db.grants[0].passkey_assurance_id, "proof-1");
   assert.deepEqual(db.grants[0].consent_scope, ["accounts", "balances", "transactions"]);
   assert.equal(await advanceAccountPlaidLink(db, { ...identity, sessionId: "other-session",
     token: approved.grant_token, stage: "open" }), null);
