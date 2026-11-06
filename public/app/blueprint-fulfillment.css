@@ -1,4 +1,53 @@
 /* Full Blueprint work uses the existing client portal and Astra tokens. */
+body[data-blueprint-demo="full"] .page > :not(#blueprint-demo-banner):not(#blueprint-fulfillment):not(#blueprint-plan),
+body[data-blueprint-demo="full"] .shell > footer,
+body[data-blueprint-demo="full"] #fh-chat-fab,
+body[data-blueprint-demo="full"] #fh-chat-panel,
+body[data-blueprint-demo="full"] .cp-progress-disclosure,
+body[data-blueprint-demo="full"] #unlock-modal,
+body[data-blueprint-demo="full"] #book-modal,
+body[data-blueprint-demo="full"] #scrim,
+body.fh-astra.fh-astra-portal[data-blueprint-demo="full"][data-blueprint-fulfillment="active"] #blueprint-plan:not([hidden]) { display: none !important; }
+#blueprint-demo-banner[hidden] { display: none !important; }
+#blueprint-demo-banner {
+  order: -30;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--soft);
+  font-size: 16px;
+  line-height: 1.5;
+}
+#blueprint-demo-banner h1 { font-size: 28px; line-height: 1.2; margin: 8px 0 16px; }
+#blueprint-demo-banner .bf-demo-label { font-weight: 800; }
+#blueprint-demo-banner .bf-demo-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin: 24px 0 16px; }
+#blueprint-demo-banner label { display: grid; gap: 8px; flex: 1 1 260px; }
+#blueprint-demo-banner :is(select,button) { font: inherit; font-size: 16px; color: var(--ink); background: var(--paper); min-height: 44px; min-width: 0; padding: 10px 16px; border: 1px solid var(--line); border-radius: 8px; }
+#blueprint-demo-banner select { width: 100%; }
+#blueprint-demo-banner [data-blueprint-demo-status] { font-size: 13px; color: var(--gray); }
+#blueprint-demo-banner :is(button,select):focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+body[data-blueprint-demo="full"] .blueprint-demo-preview {
+  display: block;
+  width: min(100%, 720px);
+  height: 100vh;
+  margin: 0 auto;
+  padding: 32px 24px;
+  overflow-y: auto;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+}
+body[data-blueprint-demo="full"] .blueprint-demo-preview h1 { font-size: 28px; line-height: 1.2; margin-bottom: 24px; }
+body[data-blueprint-demo="full"] .blueprint-demo-preview p { margin-bottom: 24px; overflow-wrap: anywhere; }
+body[data-blueprint-demo="full"] .blueprint-demo-preview .blueprint-demo-notice { padding: 16px; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; font-size: 13px; }
+body[data-blueprint-demo="full"] .blueprint-demo-preview :is(button,a) { display: inline-flex; align-items: center; min-height: 44px; margin: 0 12px 24px 0; padding: 10px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; text-decoration: none; }
+body[data-blueprint-demo="full"] .blueprint-demo-preview :is(button,a):focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+@media (max-width: 600px) {
+  #blueprint-demo-banner { padding: 16px; margin-bottom: 16px; }
+  #blueprint-demo-banner .bf-demo-controls { display: grid; }
+}
 #blueprint-fulfillment {
   order: -28;
   margin: 24px 0;

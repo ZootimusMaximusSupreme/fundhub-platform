@@ -1,0 +1,2440 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-11-06T12:00:00.000Z",
+  "ids": {
+    "org": "a0000000-0000-4000-8000-000000000001",
+    "client": "a0000000-0000-4000-8000-000000000002",
+    "account": "a0000000-0000-4000-8000-000000000003",
+    "engagement": "a0000000-0000-4000-8000-000000000004",
+    "case": "a0000000-0000-4000-8000-000000000005",
+    "lender": "a0000000-0000-4000-8000-000000000006",
+    "document": "a0000000-0000-4000-8000-000000000007",
+    "application": "a0000000-0000-4000-8000-000000000008",
+    "business": "a0000000-0000-4000-8000-000000000009",
+    "business2": "a0000000-0000-4000-8000-000000000010",
+    "business3": "a0000000-0000-4000-8000-000000000011",
+    "letter": "a0000000-0000-4000-8000-000000000012",
+    "report": "a0000000-0000-4000-8000-000000000013"
+  },
+  "session": {
+    "ok": true,
+    "principal": "client",
+    "staff": {
+      "id": "a0000000-0000-4000-8000-000000000003",
+      "org_id": "a0000000-0000-4000-8000-000000000001",
+      "client_id": "a0000000-0000-4000-8000-000000000002",
+      "role": "client",
+      "name": "Alex Sample"
+    }
+  },
+  "plan": {
+    "ok": true,
+    "client": {
+      "name": "Alex Sample"
+    },
+    "businessPlans": {
+      "orgId": "a0000000-0000-4000-8000-000000000001",
+      "clientId": "a0000000-0000-4000-8000-000000000002",
+      "targetBusinessCount": 3,
+      "setupStep": 3,
+      "startedAt": "2026-11-06T12:00:00.000Z",
+      "hasExistingBusiness": false,
+      "homeState": "AZ",
+      "postalCode": "85004",
+      "availableCashCents": 600000,
+      "monthlyIncomeCents": 750000,
+      "cashBufferCents": 200000,
+      "oneTimePayoffCents": 100000,
+      "availableEvidence": [],
+      "businesses": [
+        {
+          "id": "a0000000-0000-4000-8000-000000000009",
+          "name": "Cedar Grove LLC",
+          "activity": "Website design for local shops",
+          "formationState": "AZ",
+          "operatingState": "AZ",
+          "formationStatus": "planned",
+          "formationDate": null,
+          "ownershipSince": null,
+          "operatingSince": null,
+          "website": null,
+          "evidence": {
+            "formation": {
+              "status": "not_added"
+            },
+            "ein": {
+              "status": "not_added"
+            }
+          },
+          "bankPreparation": {
+            "documentsReady": false,
+            "accountOpeningIssue": false,
+            "relationships": []
+          }
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000010",
+          "name": "Willow Studio LLC",
+          "activity": "Commercial photography",
+          "formationState": "AZ",
+          "operatingState": "AZ",
+          "formationStatus": "planned",
+          "formationDate": null,
+          "ownershipSince": null,
+          "operatingSince": null,
+          "website": null,
+          "evidence": {
+            "formation": {
+              "status": "not_added"
+            },
+            "ein": {
+              "status": "not_added"
+            }
+          },
+          "bankPreparation": {
+            "documentsReady": false,
+            "accountOpeningIssue": false,
+            "relationships": []
+          }
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000011",
+          "name": "Juniper Services LLC",
+          "activity": "Office cleaning",
+          "formationState": "AZ",
+          "operatingState": "AZ",
+          "formationStatus": "planned",
+          "formationDate": null,
+          "ownershipSince": null,
+          "operatingSince": null,
+          "website": null,
+          "evidence": {
+            "formation": {
+              "status": "not_added"
+            },
+            "ein": {
+              "status": "not_added"
+            }
+          },
+          "bankPreparation": {
+            "documentsReady": false,
+            "accountOpeningIssue": false,
+            "relationships": []
+          }
+        }
+      ],
+      "existingBusinesses": [],
+      "stepProgress": [],
+      "businessPreparation": {},
+      "payoffPlan": {
+        "strategy": "snowball",
+        "monthlyBudgetCents": 70000,
+        "debts": [
+          {
+            "id": "sample-card-a",
+            "label": "Sample Card A",
+            "balanceCents": 240000,
+            "aprBps": 2199,
+            "minimumPaymentCents": 7000
+          },
+          {
+            "id": "sample-card-b",
+            "label": "Sample Card B",
+            "balanceCents": 85000,
+            "aprBps": 2699,
+            "minimumPaymentCents": 3500
+          }
+        ]
+      }
+    },
+    "progress": {
+      "orgId": "a0000000-0000-4000-8000-000000000001",
+      "clientId": "a0000000-0000-4000-8000-000000000002",
+      "nextStep": {
+        "waypointId": "sample-mail-letters"
+      },
+      "waypoints": [
+        {
+          "id": "sample-mail-letters",
+          "key": "blueprint_dispute_mail_letters",
+          "title": "Review and mail your current letters",
+          "detail": "Review the sample letter packet and save a sample submission receipt.",
+          "owner": "client",
+          "state": "in_progress",
+          "verifyKind": "document",
+          "completedAt": null
+        },
+        {
+          "id": "sample-business",
+          "key": "blueprint_business_formation",
+          "title": "Prepare your first business",
+          "detail": "Save the name, real activity and formation state.",
+          "owner": "client",
+          "state": "not_started",
+          "verifyKind": "document",
+          "completedAt": null
+        }
+      ]
+    },
+    "lessons": [
+      {
+        "key": "credit_review",
+        "title": "Review your credit priorities",
+        "track": "credit",
+        "why": "Your next actions should come from the accounts and dates on your actual file.",
+        "steps": [
+          "Open your latest available credit report and check its date.",
+          "Match the account names, ownership, balances and limits to your records.",
+          "Work through the account-specific priorities in your roadmap; tell the Fundhub team about anything unclear.",
+          "Open Letters and responses to download the current letters your file needs and follow the self-mailing instructions, or review the optional one-time $97 Fundhub mailing batch before authorizing payment.",
+          "Upload mailing proof and the actual bureau replies you receive. The existing document reader must accept the current response file before that upload step can close; the team reviews the next action and any further letters from your updated file."
+        ],
+        "links": [
+          {
+            "label": "Read the CFPB credit guide",
+            "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+          }
+        ],
+        "proof": "The saved report and your notes about any incorrect or unclear account.",
+        "nextReview": "Review when a new report arrives or a material account detail changes.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+        ]
+      },
+      {
+        "key": "budget",
+        "title": "Set a workable cash plan",
+        "track": "credit",
+        "why": "Paydowns, deposits and business costs need to share the cash you can actually use.",
+        "steps": [
+          "Set the monthly debt-payment budget only after essential bills, your chosen buffer, business costs and any bank-deposit reserve. Keep the same dollars from being committed twice.",
+          "List each debt’s current balance, APR and monthly minimum from its actual statement. Leave an unknown amount unknown; zero is a real value, not a replacement for missing information.",
+          "Snowball puts extra money toward the smallest balance; avalanche puts extra toward the highest APR. Cover the minimum payments on all listed debts before directing extra in the chosen order.",
+          "Review your current UnderwriteIQ utilization step with the Fundhub team. An account-specific utilization action may take priority over a general snowball or avalanche order.",
+          "Save the budget, strategy and supported figures. If the budget cannot cover the minimums, pause extra payments and review the shortfall with the team or creditor. Recheck the actual statement and payment dates each month."
+        ],
+        "links": [
+          {
+            "label": "Compare CFPB debt-reduction strategies",
+            "url": "https://www.consumerfinance.gov/documents/5782/cfpb_ymyg-toolkit_reducing-debt-worksheet.pdf"
+          },
+          {
+            "label": "Review credit-building basics",
+            "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+          }
+        ],
+        "proof": "Your saved monthly plan and current statements. Actual payment confirmations and later report updates are separate proof; the calculation is not a payment, payoff-date forecast or credit-score promise.",
+        "nextReview": "After a new statement or when income, bills, balances, minimums, APRs or bank-deposit commitments change.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "https://www.consumerfinance.gov/documents/5782/cfpb_ymyg-toolkit_reducing-debt-worksheet.pdf",
+          "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+        ]
+      },
+      {
+        "key": "authorized_user",
+        "title": "Review an authorized-user account",
+        "track": "credit",
+        "why": "An authorized-user account and a joint account have different ownership. A change should fit your actual file.",
+        "steps": [
+          "Confirm which account your roadmap flags and whether you are an authorized user or joint owner.",
+          "If removal is the agreed step, contact the card issuer through its official app or customer-service number and ask about its removal process.",
+          "Save the issuer’s confirmation and check the next report. If the account is misreported, document the specific error for review."
+        ],
+        "links": [
+          {
+            "label": "Understand authorized-user removal",
+            "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-remove-an-authorized-user-from-my-credit-card-account-en-86/"
+          }
+        ],
+        "proof": "Issuer confirmation plus later reporting evidence; a phone call alone does not prove a bureau update.",
+        "nextReview": "After the issuer’s stated reporting period or when your next report is available.",
+        "optional": true,
+        "applicability": "review_needed",
+        "sourceRefs": [
+          "https://www.consumerfinance.gov/ask-cfpb/how-do-i-remove-an-authorized-user-from-my-credit-card-account-en-86/"
+        ]
+      },
+      {
+        "key": "secured_credit",
+        "title": "Review whether secured credit fits",
+        "track": "credit",
+        "why": "A secured card may help a thin file, but an extra application and deposit should have a clear purpose.",
+        "steps": [
+          "Confirm your roadmap calls for another primary account before applying.",
+          "Compare the issuer’s current deposit, fees, bureau reporting and credit-check terms.",
+          "Fit the deposit into your cash plan. Record the actual opening and reporting dates only if you open the account."
+        ],
+        "links": [
+          {
+            "label": "Review credit-building options",
+            "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+          }
+        ],
+        "proof": "The chosen product’s current terms, account-opening confirmation and later report.",
+        "nextReview": "Before applying, then after the issuer’s stated reporting cycle.",
+        "optional": true,
+        "applicability": "review_needed",
+        "sourceRefs": [
+          "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/",
+          "alec:secured-cards--3acec005"
+        ]
+      },
+      {
+        "key": "business_profile",
+        "title": "Make your business records consistent",
+        "track": "business",
+        "why": "Each business needs its own clear identity and accurate activity description.",
+        "steps": [
+          "Confirm this business’s actual ownership, formation state and product or service.",
+          "Compare its legal name and any DBA, address and contact details across its formation/EIN documents, bank records, website and relevant public profiles. Keep a list of specific mismatches; do not change the actual activity to fit an application.",
+          "Resolve each mismatch using the correct state, IRS or provider process. Keep the original record and accepted correction receipts.",
+          "Keep a separate document checklist for each of the three or four businesses: accepted formation record, EIN confirmation, actual ownership/signers and the bank’s requested documents. A plan is not a formed or operating company."
+        ],
+        "links": [
+          {
+            "label": "Open Arizona’s LLC filing guide",
+            "url": "https://azcc.gov/corporations"
+          }
+        ],
+        "proof": "The correct business’s formation/EIN records, current profile details, specific mismatches and accepted correction receipts.",
+        "nextReview": "After a correction is accepted and whenever business details change.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "alec:opening-llc--59d3968e",
+          "https://www.sba.gov/counseling/launch-your-business/state-registration-lookup/",
+          "fundhub-ip:tradeline-secrets/credibility-checklist"
+        ]
+      },
+      {
+        "key": "business_website",
+        "title": "Build a clear business website",
+        "track": "business",
+        "why": "A useful website explains the real business and gives customers consistent contact details.",
+        "steps": [
+          "Confirm the domain and customer contact methods the business actually uses: professional email, phone and the address details you intend to publish. A logo or extra paid tool is optional; use a setup your budget supports.",
+          "Copy the website prompt and fill in your actual services, audience and contact details.",
+          "Review the draft’s home, services, about and contact pages.",
+          "Check every claim, publish when accurate, and save the live website address with this business."
+        ],
+        "links": [
+          {
+            "label": "Check Google’s business information guidance",
+            "url": "https://support.google.com/business/answer/7091"
+          }
+        ],
+        "proof": "A working public URL whose business identity and claims match the saved records.",
+        "nextReview": "After publishing and whenever services or contact details change.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "alec:get-biz-website--94d03c1f",
+          "https://support.google.com/business/answer/7091",
+          "fundhub-ip:tradeline-secrets/establish-credibility"
+        ],
+        "prompt": "Write a clear website for [business name].\nActual activity: [real product or service].\nLocation: [business location].\nInclude a home page, services, about and contact information. Explain who we serve and what we actually sell.\nKeep the legal name, public name, address, phone, professional email and website consistent with the records I provide. Use only customer contact details I actually use and intend to publish.\nUse placeholders for missing facts. Ask before adding credentials, testimonials, years in business, revenue or results.\nGive me a short list of missing details to check before publishing."
+      },
+      {
+        "key": "business_listings",
+        "title": "Make eligible business listings accurate",
+        "track": "business",
+        "why": "Consistent listings help customers find and understand the actual business.",
+        "steps": [
+          "Search your business name and location to find existing Google and Yellow Pages listings.",
+          "Where eligible, claim the correct profile and complete the provider’s ownership verification; do not create duplicates.",
+          "Match the name, contact details, hours and actual business category. Keep the website useful and current; a first-page ranking is not guaranteed."
+        ],
+        "links": [
+          {
+            "label": "Add or claim a Google Business Profile",
+            "url": "https://support.google.com/business/answer/2911778"
+          },
+          {
+            "label": "Improve local information on Google",
+            "url": "https://support.google.com/business/answer/7091"
+          },
+          {
+            "label": "Find your Yellow Pages listing",
+            "url": "https://www.yellowpages.com/"
+          }
+        ],
+        "proof": "The public listing URLs and provider verification or correction receipts.",
+        "nextReview": "After verification or a details change; review search visibility separately from funding readiness.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "https://support.google.com/business/answer/2911778",
+          "https://support.google.com/business/answer/7091",
+          "https://www.yellowpages.com/"
+        ]
+      },
+      {
+        "key": "local_banking",
+        "title": "Find local credit-union candidates",
+        "track": "banking",
+        "why": "Local fit includes where a branch is, whether you can join, and whether the account suits this business.",
+        "steps": [
+          "Confirm 85004 and review up to five distinct institutions with local branch evidence.",
+          "Open each institution’s official information and confirm membership eligibility, business services and account availability.",
+          "Compare current fees, minimums and deposits against your available cash. Save the shortlist and the reason each candidate fits.",
+          "Before choosing a funding route, ask which products and actual industries the institution serves, required financials and operating history, personal-credit checks/bureaus, collateral or UCC requirements, and how existing loans or several separate businesses affect an application. Save its actual answers."
+        ],
+        "links": [
+          {
+            "label": "Open the official NCUA locator",
+            "url": "https://mapping.ncua.gov/"
+          }
+        ],
+        "proof": "Source-dated branch locations and current membership, product and deposit terms for each shortlisted institution.",
+        "nextReview": "Before choosing an account and when your address or eligibility changes.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "https://mapping.ncua.gov/",
+          "alec:details-aged-corp--1b8c3aa7",
+          "fundhub-ip:tradeline-secrets/business-funding-mastery"
+        ]
+      },
+      {
+        "key": "chexsystems",
+        "title": "Review account-opening history",
+        "track": "banking",
+        "why": "A checking-account report can affect account opening independently of a personal credit score.",
+        "steps": [
+          "If you were denied, read the bank’s notice and identify the reporting company it used, such as ChexSystems or Early Warning Services.",
+          "Request the relevant report through the reporting company’s official process and check the entries against your records.",
+          "For an error, send a specific dispute with supporting evidence. Save the confirmation and response; discuss any legitimate balance or account issue with the bank."
+        ],
+        "links": [
+          {
+            "label": "Read the CFPB account-opening guide",
+            "url": "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+          }
+        ],
+        "proof": "The report, specific disputed facts, submission confirmation and reporting company or bank response.",
+        "nextReview": "On the response date given by the reporting company and before the next account application.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+        ]
+      },
+      {
+        "key": "bank_opening",
+        "title": "Plan the first bank relationships",
+        "track": "banking",
+        "why": "Banking preparation can begin during credit optimization when documents, eligibility and cash support it.",
+        "steps": [
+          "List current relationships first, then review an initial one-to-three suitable account opportunities with the Fundhub team.",
+          "Ask the chosen institution for its actual account-opening document list. Gather this business’s formation and EIN records, actual ownership and signer identification, and supported business details.",
+          "Check the account’s current fees, opening minimum and ongoing balance requirements against cash reserved for bills, a buffer, paydowns and other business deposits. Record the required minimum separately from the amount you choose to deposit.",
+          "Confirm the account requirements and pace before applying. Save each actual accepted opening date against the correct business; use confirmed product requirements for the next deposit and seasoning review."
+        ],
+        "links": [
+          {
+            "label": "Find a credit union",
+            "url": "https://mapping.ncua.gov/"
+          },
+          {
+            "label": "Review account-opening issues",
+            "url": "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+          }
+        ],
+        "proof": "Account-opening confirmation and the business’s current account details; a planned date is not an opened account.",
+        "nextReview": "After opening and at the next relationship review date.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "alec:details-aged-corp--1b8c3aa7",
+          "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/",
+          "fundhub-ip:tradeline-secrets/credibility-checklist"
+        ]
+      },
+      {
+        "key": "bank_deposit",
+        "title": "Plan and track a business deposit",
+        "track": "banking",
+        "why": "The money available and the actual deposit date matter to a workable relationship plan.",
+        "steps": [
+          "Confirm the current product’s minimum, fees and any relevant relationship requirement directly with the institution.",
+          "Reserve the deposit in your shared cash plan, without reusing money committed elsewhere.",
+          "If you deposit, record the actual amount and cleared date with the correct business. Set a review using that product’s confirmed requirements."
+        ],
+        "links": [],
+        "proof": "A bank receipt or statement showing the actual deposit and date. A target or elapsed time is not verification.",
+        "nextReview": "After clearance and on the saved review date; reassess if the balance or product terms change.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "alec:details-aged-corp--1b8c3aa7"
+        ]
+      },
+      {
+        "key": "business_credit",
+        "title": "Consider optional business-credit tools",
+        "track": "business",
+        "why": "A useful business-credit account should support actual operating needs and fit your budget.",
+        "steps": [
+          "Identify a real business purchase or operating need before choosing an account, including any fuel or fleet-card use.",
+          "If this business has real fuel expenses, compare AtoB, WEX, Phillips 66/Conoco/76, Fuelman or ExxonMobil using the official pages below. Review accepted stations, current fees, payment terms, credit checks, personal guarantees and whether the issuer reports this exact account to a business bureau before applying.",
+          "Choose only the accounts you need and can repay. Use the business’s actual legal name, EIN, ownership, activity and revenue; provide the identity information and records the chosen issuer requires. Save the reviewed terms and decision with the Fundhub team. Do not apply just to create activity, assume approval or assume bureau reporting. Use a current reviewed program when suitable; ask the Fundhub team which optional tools fit your actual plan.",
+          "If approved, record the actual opening, statement, payment due and payment dates. Use the account for genuine business expenses, pay according to its actual agreement and keep confirmations. Check reporting after the issuer’s stated cycle; elapsed months alone never establish funding readiness."
+        ],
+        "links": [
+          {
+            "label": "Compare official WEX fleet-card options",
+            "url": "https://www.wexinc.com/products/fuel-cards-fleet/select/small-business/"
+          },
+          {
+            "label": "Review ExxonMobil BusinessPro",
+            "url": "https://www.exxonmobilfleetcards.com/"
+          },
+          {
+            "label": "Review AtoB fuel cards",
+            "url": "https://atob.com/fuel-cards"
+          },
+          {
+            "label": "Compare Phillips 66, Conoco and 76 fleet cards",
+            "url": "https://www.conocofleet.com/"
+          },
+          {
+            "label": "Review Fuelman billing and fees",
+            "url": "https://www.fuelman.com/faq/"
+          }
+        ],
+        "proof": "Reviewed current program terms and an actual business use case. Later save the issuer’s decision, invoices/statements, payment confirmations and actual reporting records if you apply; a provider link is not approval or proof of reporting.",
+        "nextReview": "When the specific program has been reviewed and after its first billing or reporting cycle.",
+        "optional": true,
+        "applicability": "review_needed",
+        "sourceRefs": [
+          "fundhub-ip:tradeline-secrets/unlock-your-credit-profile/fuel-only",
+          "https://www.wexinc.com/products/fuel-cards-fleet/select/small-business/",
+          "https://www.exxonmobilfleetcards.com/",
+          "https://atob.com/fuel-cards",
+          "https://www.conocofleet.com/",
+          "https://www.fuelman.com/faq/"
+        ]
+      },
+      {
+        "key": "merchant_tools",
+        "title": "Review payment processing and customer financing",
+        "track": "revenue",
+        "why": "An operating business may need a suitable way to accept payments or offer eligible customers financing.",
+        "steps": [
+          "Describe what you sell, the sales channel, actual transaction history and what customers need.",
+          "Ask the Fundhub team to confirm the appropriate Whop, Commas or Clarity route and any available partnership referral.",
+          "Review current product eligibility, fees, settlement and refund terms before applying. Save the provider’s actual decision and onboarding result."
+        ],
+        "links": [
+          {
+            "label": "Read Whop’s payment platform overview",
+            "url": "https://docs.whop.com/"
+          }
+        ],
+        "proof": "A confirmed referral destination and provider approval/onboarding receipt. Fundhub’s own checkout does not prove your merchant account is approved.",
+        "nextReview": "When a referral is available, after the provider’s decision, and when your selling model changes.",
+        "optional": true,
+        "applicability": "review_needed",
+        "sourceRefs": [
+          "https://docs.whop.com/",
+          "owner:merchant-partnership-destination-to-confirm"
+        ]
+      },
+      {
+        "key": "employment",
+        "title": "Prepare accurate owner and income records",
+        "track": "business",
+        "why": "Employment, business ownership and the way you are paid need to match your actual setup.",
+        "steps": [
+          "Record your real employer or business ownership and how you currently receive income.",
+          "Gather the records the lender requests, such as actual payroll, tax or business-income documents.",
+          "For an operating business, prepare the requested financial packet from real records: current business bank statements, profit-and-loss statement, balance sheet and merchant-processor statements when applicable. Keep each business’s records separate and reconcile mismatches.",
+          "Use the application’s correct category for your circumstances. A later corporate tax election is a separate decision and does not rewrite earlier employment or income history."
+        ],
+        "links": [
+          {
+            "label": "Read IRS guidance on paying yourself",
+            "url": "https://www.irs.gov/businesses/small-businesses-self-employed/paying-yourself"
+          }
+        ],
+        "proof": "Actual payroll, tax, ownership or income records and the requested business financial statements; a checklist or unsupported estimate is not income evidence.",
+        "nextReview": "Before an application and whenever your employment or pay structure changes.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "https://www.irs.gov/businesses/small-businesses-self-employed/paying-yourself",
+          "fundhub-ip:tradeline-secrets/tier-2-financials"
+        ]
+      },
+      {
+        "key": "calendar",
+        "title": "Put your next review on your calendar",
+        "track": "planning",
+        "why": "A visible reminder helps you return when a document, report or relationship is ready to review.",
+        "steps": [
+          "Choose the review date for the actual step and check which result you expect to have by then.",
+          "Use Add to Google Calendar, or import the calendar file into your calendar app, and save the event and reminder.",
+          "Update the saved event when the plan changes. Adding an event does not connect a bank, order a report or verify a task."
+        ],
+        "links": [],
+        "proof": "The saved calendar event and your selected reminder; the plan’s saved target date remains the source for the review.",
+        "nextReview": "On the event date or whenever the underlying step moves.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "owner:calendar-reminders"
+        ]
+      },
+      {
+        "key": "formation",
+        "title": "Form this single-member LLC",
+        "track": "business",
+        "why": "Each business needs its own correct formation record and timeline.",
+        "steps": [
+          "Start with a basic name and the state appropriate to your actual business. Check name availability and the state’s current filing requirements.",
+          "Follow the state’s LLC filing instructions for one member when you are the only owner, and review optional service costs before accepting them.",
+          "After acceptance, save the actual formation date and document. Keep three or four separate business plans moving through their own milestones over roughly 12 months."
+        ],
+        "links": [
+          {
+            "label": "Open Arizona’s LLC filing guide",
+            "url": "https://azcc.gov/corporations"
+          }
+        ],
+        "proof": "An accepted formation document and actual dates. Preparing or aging an entity does not establish operating history or funding approval.",
+        "nextReview": "After state acceptance and at the next saved business milestone.",
+        "optional": false,
+        "applicability": "ready",
+        "sourceRefs": [
+          "alec:opening-llc--59d3968e",
+          "https://www.sba.gov/counseling/launch-your-business/state-registration-lookup/"
+        ]
+      },
+      {
+        "key": "ein",
+        "title": "Get and save this business’s EIN confirmation",
+        "track": "business",
+        "why": "The IRS record should match the business that was actually formed.",
+        "steps": [
+          "Complete state formation first, then open the official IRS EIN guide and application.",
+          "Choose LLC and the actual member count, state and responsible-party information. Answer industry and other questions for this business’s real circumstances.",
+          "Download the IRS confirmation letter and add it to this business’s documents. The IRS online application allows one EIN per responsible party per day."
+        ],
+        "links": [
+          {
+            "label": "Open the official IRS EIN guide",
+            "url": "https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number"
+          }
+        ],
+        "proof": "The IRS confirmation letter for the correct formed entity; starting an application is not an issued EIN.",
+        "nextReview": "After the IRS issues the EIN and when the saved business record needs correction.",
+        "optional": false,
+        "applicability": "review_needed",
+        "sourceRefs": [
+          "https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number",
+          "alec:get-ein--fda2d58f"
+        ]
+      }
+    ],
+    "localBanks": {
+      "status": "candidates_for_review",
+      "source": {
+        "name": "Fictional demo directory",
+        "asOf": "2026-11-06"
+      },
+      "candidates": [
+        {
+          "name": "Sample Community Credit Union",
+          "city": "Phoenix",
+          "state": "AZ",
+          "membership": "Sample membership requirements need review",
+          "minimum_deposit_cents": 50000
+        }
+      ],
+      "asOf": "2026-11-06"
+    },
+    "bankPlan": {
+      "ok": true,
+      "client": {
+        "id": "a0000000-0000-4000-8000-000000000002"
+      },
+      "recommended_banks": [
+        {
+          "id": "a0000000-0000-4000-8000-000000000006",
+          "name": "Sample Community Bank",
+          "product": "Business checking",
+          "minimum_deposit_cents": 50000,
+          "seasoning_days": 90,
+          "reason": "Fictional bank for demonstrating saved deposit planning.",
+          "steps": [
+            "Review the account requirements.",
+            "Record the actual opening and deposit dates."
+          ],
+          "source": "Fictional demo — not a lender recommendation"
+        }
+      ]
+    },
+    "creditContext": {
+      "source": null,
+      "reportId": null,
+      "asOf": null,
+      "authorizedUserReviewRequired": null,
+      "securedCreditReviewRequired": null,
+      "authorizedUserCount": null,
+      "thinFile": null,
+      "authorizedUserFindingCodes": []
+    },
+    "businessLessons": [
+      {
+        "planId": "a0000000-0000-4000-8000-000000000009",
+        "lessons": [
+          {
+            "key": "credit_review",
+            "title": "Review your credit priorities",
+            "track": "credit",
+            "why": "Your next actions should come from the accounts and dates on your actual file.",
+            "steps": [
+              "Open your latest available credit report and check its date.",
+              "Match the account names, ownership, balances and limits to your records.",
+              "Work through the account-specific priorities in your roadmap; tell the Fundhub team about anything unclear.",
+              "Open Letters and responses to download the current letters your file needs and follow the self-mailing instructions, or review the optional one-time $97 Fundhub mailing batch before authorizing payment.",
+              "Upload mailing proof and the actual bureau replies you receive. The existing document reader must accept the current response file before that upload step can close; the team reviews the next action and any further letters from your updated file."
+            ],
+            "links": [
+              {
+                "label": "Read the CFPB credit guide",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+              }
+            ],
+            "proof": "The saved report and your notes about any incorrect or unclear account.",
+            "nextReview": "Review when a new report arrives or a material account detail changes.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+            ]
+          },
+          {
+            "key": "budget",
+            "title": "Set a workable cash plan",
+            "track": "credit",
+            "why": "Paydowns, deposits and business costs need to share the cash you can actually use.",
+            "steps": [
+              "Set the monthly debt-payment budget only after essential bills, your chosen buffer, business costs and any bank-deposit reserve. Keep the same dollars from being committed twice.",
+              "List each debt’s current balance, APR and monthly minimum from its actual statement. Leave an unknown amount unknown; zero is a real value, not a replacement for missing information.",
+              "Snowball puts extra money toward the smallest balance; avalanche puts extra toward the highest APR. Cover the minimum payments on all listed debts before directing extra in the chosen order.",
+              "Review your current UnderwriteIQ utilization step with the Fundhub team. An account-specific utilization action may take priority over a general snowball or avalanche order.",
+              "Save the budget, strategy and supported figures. If the budget cannot cover the minimums, pause extra payments and review the shortfall with the team or creditor. Recheck the actual statement and payment dates each month."
+            ],
+            "links": [
+              {
+                "label": "Compare CFPB debt-reduction strategies",
+                "url": "https://www.consumerfinance.gov/documents/5782/cfpb_ymyg-toolkit_reducing-debt-worksheet.pdf"
+              },
+              {
+                "label": "Review credit-building basics",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+              }
+            ],
+            "proof": "Your saved monthly plan and current statements. Actual payment confirmations and later report updates are separate proof; the calculation is not a payment, payoff-date forecast or credit-score promise.",
+            "nextReview": "After a new statement or when income, bills, balances, minimums, APRs or bank-deposit commitments change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/documents/5782/cfpb_ymyg-toolkit_reducing-debt-worksheet.pdf",
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+            ]
+          },
+          {
+            "key": "authorized_user",
+            "title": "Review an authorized-user account",
+            "track": "credit",
+            "why": "An authorized-user account and a joint account have different ownership. A change should fit your actual file.",
+            "steps": [
+              "Confirm which account your roadmap flags and whether you are an authorized user or joint owner.",
+              "If removal is the agreed step, contact the card issuer through its official app or customer-service number and ask about its removal process.",
+              "Save the issuer’s confirmation and check the next report. If the account is misreported, document the specific error for review."
+            ],
+            "links": [
+              {
+                "label": "Understand authorized-user removal",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-remove-an-authorized-user-from-my-credit-card-account-en-86/"
+              }
+            ],
+            "proof": "Issuer confirmation plus later reporting evidence; a phone call alone does not prove a bureau update.",
+            "nextReview": "After the issuer’s stated reporting period or when your next report is available.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-remove-an-authorized-user-from-my-credit-card-account-en-86/"
+            ]
+          },
+          {
+            "key": "secured_credit",
+            "title": "Review whether secured credit fits",
+            "track": "credit",
+            "why": "A secured card may help a thin file, but an extra application and deposit should have a clear purpose.",
+            "steps": [
+              "Confirm your roadmap calls for another primary account before applying.",
+              "Compare the issuer’s current deposit, fees, bureau reporting and credit-check terms.",
+              "Fit the deposit into your cash plan. Record the actual opening and reporting dates only if you open the account."
+            ],
+            "links": [
+              {
+                "label": "Review credit-building options",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+              }
+            ],
+            "proof": "The chosen product’s current terms, account-opening confirmation and later report.",
+            "nextReview": "Before applying, then after the issuer’s stated reporting cycle.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/",
+              "alec:secured-cards--3acec005"
+            ]
+          },
+          {
+            "key": "business_profile",
+            "title": "Make your business records consistent",
+            "track": "business",
+            "why": "Each business needs its own clear identity and accurate activity description.",
+            "steps": [
+              "Confirm Cedar Grove LLC’s actual ownership, formation state and product or service.",
+              "Compare its legal name and any DBA, address and contact details across its formation/EIN documents, bank records, website and relevant public profiles. Keep a list of specific mismatches; do not change the actual activity to fit an application.",
+              "Resolve each mismatch using the correct state, IRS or provider process. Keep the original record and accepted correction receipts.",
+              "Keep a separate document checklist for each of the three or four businesses: accepted formation record, EIN confirmation, actual ownership/signers and the bank’s requested documents. A plan is not a formed or operating company."
+            ],
+            "links": [
+              {
+                "label": "Open Arizona’s LLC filing guide",
+                "url": "https://azcc.gov/corporations"
+              }
+            ],
+            "proof": "The correct business’s formation/EIN records, current profile details, specific mismatches and accepted correction receipts.",
+            "nextReview": "After a correction is accepted and whenever business details change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:opening-llc--59d3968e",
+              "https://www.sba.gov/counseling/launch-your-business/state-registration-lookup/",
+              "fundhub-ip:tradeline-secrets/credibility-checklist"
+            ]
+          },
+          {
+            "key": "business_website",
+            "title": "Build a clear business website",
+            "track": "business",
+            "why": "A useful website explains the real business and gives customers consistent contact details.",
+            "steps": [
+              "Confirm the domain and customer contact methods the business actually uses: professional email, phone and the address details you intend to publish. A logo or extra paid tool is optional; use a setup your budget supports.",
+              "Copy the website prompt and fill in your actual services, audience and contact details.",
+              "Review the draft’s home, services, about and contact pages.",
+              "Check every claim, publish when accurate, and save the live website address with this business."
+            ],
+            "links": [
+              {
+                "label": "Check Google’s business information guidance",
+                "url": "https://support.google.com/business/answer/7091"
+              }
+            ],
+            "proof": "A working public URL whose business identity and claims match the saved records.",
+            "nextReview": "After publishing and whenever services or contact details change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:get-biz-website--94d03c1f",
+              "https://support.google.com/business/answer/7091",
+              "fundhub-ip:tradeline-secrets/establish-credibility"
+            ],
+            "prompt": "Write a clear website for Cedar Grove LLC.\nActual activity: Website design for local shops.\nLocation: AZ.\nInclude a home page, services, about and contact information. Explain who we serve and what we actually sell.\nKeep the legal name, public name, address, phone, professional email and website consistent with the records I provide. Use only customer contact details I actually use and intend to publish.\nUse placeholders for missing facts. Ask before adding credentials, testimonials, years in business, revenue or results.\nGive me a short list of missing details to check before publishing."
+          },
+          {
+            "key": "business_listings",
+            "title": "Make eligible business listings accurate",
+            "track": "business",
+            "why": "Consistent listings help customers find and understand the actual business.",
+            "steps": [
+              "Search your business name and location to find existing Google and Yellow Pages listings.",
+              "Where eligible, claim the correct profile and complete the provider’s ownership verification; do not create duplicates.",
+              "Match the name, contact details, hours and actual business category. Keep the website useful and current; a first-page ranking is not guaranteed."
+            ],
+            "links": [
+              {
+                "label": "Add or claim a Google Business Profile",
+                "url": "https://support.google.com/business/answer/2911778"
+              },
+              {
+                "label": "Improve local information on Google",
+                "url": "https://support.google.com/business/answer/7091"
+              },
+              {
+                "label": "Find your Yellow Pages listing",
+                "url": "https://www.yellowpages.com/"
+              }
+            ],
+            "proof": "The public listing URLs and provider verification or correction receipts.",
+            "nextReview": "After verification or a details change; review search visibility separately from funding readiness.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://support.google.com/business/answer/2911778",
+              "https://support.google.com/business/answer/7091",
+              "https://www.yellowpages.com/"
+            ]
+          },
+          {
+            "key": "local_banking",
+            "title": "Find local credit-union candidates",
+            "track": "banking",
+            "why": "Local fit includes where a branch is, whether you can join, and whether the account suits this business.",
+            "steps": [
+              "Confirm 85004 and review up to five distinct institutions with local branch evidence.",
+              "Open each institution’s official information and confirm membership eligibility, business services and account availability.",
+              "Compare current fees, minimums and deposits against your available cash. Save the shortlist and the reason each candidate fits.",
+              "Before choosing a funding route, ask which products and actual industries the institution serves, required financials and operating history, personal-credit checks/bureaus, collateral or UCC requirements, and how existing loans or several separate businesses affect an application. Save its actual answers."
+            ],
+            "links": [
+              {
+                "label": "Open the official NCUA locator",
+                "url": "https://mapping.ncua.gov/"
+              }
+            ],
+            "proof": "Source-dated branch locations and current membership, product and deposit terms for each shortlisted institution.",
+            "nextReview": "Before choosing an account and when your address or eligibility changes.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://mapping.ncua.gov/",
+              "alec:details-aged-corp--1b8c3aa7",
+              "fundhub-ip:tradeline-secrets/business-funding-mastery"
+            ]
+          },
+          {
+            "key": "chexsystems",
+            "title": "Review account-opening history",
+            "track": "banking",
+            "why": "A checking-account report can affect account opening independently of a personal credit score.",
+            "steps": [
+              "If you were denied, read the bank’s notice and identify the reporting company it used, such as ChexSystems or Early Warning Services.",
+              "Request the relevant report through the reporting company’s official process and check the entries against your records.",
+              "For an error, send a specific dispute with supporting evidence. Save the confirmation and response; discuss any legitimate balance or account issue with the bank."
+            ],
+            "links": [
+              {
+                "label": "Read the CFPB account-opening guide",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+              }
+            ],
+            "proof": "The report, specific disputed facts, submission confirmation and reporting company or bank response.",
+            "nextReview": "On the response date given by the reporting company and before the next account application.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+            ]
+          },
+          {
+            "key": "bank_opening",
+            "title": "Plan the first bank relationships",
+            "track": "banking",
+            "why": "Banking preparation can begin during credit optimization when documents, eligibility and cash support it.",
+            "steps": [
+              "List current relationships first, then review an initial one-to-three suitable account opportunities with the Fundhub team.",
+              "Ask the chosen institution for its actual account-opening document list. Gather this business’s formation and EIN records, actual ownership and signer identification, and supported business details.",
+              "Check the account’s current fees, opening minimum and ongoing balance requirements against cash reserved for bills, a buffer, paydowns and other business deposits. Record the required minimum separately from the amount you choose to deposit.",
+              "Confirm the account requirements and pace before applying. Save each actual accepted opening date against the correct business; use confirmed product requirements for the next deposit and seasoning review."
+            ],
+            "links": [
+              {
+                "label": "Find a credit union",
+                "url": "https://mapping.ncua.gov/"
+              },
+              {
+                "label": "Review account-opening issues",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+              }
+            ],
+            "proof": "Account-opening confirmation and the business’s current account details; a planned date is not an opened account.",
+            "nextReview": "After opening and at the next relationship review date.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:details-aged-corp--1b8c3aa7",
+              "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/",
+              "fundhub-ip:tradeline-secrets/credibility-checklist"
+            ]
+          },
+          {
+            "key": "bank_deposit",
+            "title": "Plan and track a business deposit",
+            "track": "banking",
+            "why": "The money available and the actual deposit date matter to a workable relationship plan.",
+            "steps": [
+              "Confirm the current product’s minimum, fees and any relevant relationship requirement directly with the institution.",
+              "Reserve the deposit in your shared cash plan, without reusing money committed elsewhere.",
+              "If you deposit, record the actual amount and cleared date with the correct business. Set a review using that product’s confirmed requirements."
+            ],
+            "links": [],
+            "proof": "A bank receipt or statement showing the actual deposit and date. A target or elapsed time is not verification.",
+            "nextReview": "After clearance and on the saved review date; reassess if the balance or product terms change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:details-aged-corp--1b8c3aa7"
+            ]
+          },
+          {
+            "key": "business_credit",
+            "title": "Consider optional business-credit tools",
+            "track": "business",
+            "why": "A useful business-credit account should support actual operating needs and fit your budget.",
+            "steps": [
+              "Identify a real business purchase or operating need before choosing an account, including any fuel or fleet-card use.",
+              "If this business has real fuel expenses, compare AtoB, WEX, Phillips 66/Conoco/76, Fuelman or ExxonMobil using the official pages below. Review accepted stations, current fees, payment terms, credit checks, personal guarantees and whether the issuer reports this exact account to a business bureau before applying.",
+              "Choose only the accounts you need and can repay. Use the business’s actual legal name, EIN, ownership, activity and revenue; provide the identity information and records the chosen issuer requires. Save the reviewed terms and decision with the Fundhub team. Do not apply just to create activity, assume approval or assume bureau reporting. Use a current reviewed program when suitable; ask the Fundhub team which optional tools fit your actual plan.",
+              "If approved, record the actual opening, statement, payment due and payment dates. Use the account for genuine business expenses, pay according to its actual agreement and keep confirmations. Check reporting after the issuer’s stated cycle; elapsed months alone never establish funding readiness."
+            ],
+            "links": [
+              {
+                "label": "Compare official WEX fleet-card options",
+                "url": "https://www.wexinc.com/products/fuel-cards-fleet/select/small-business/"
+              },
+              {
+                "label": "Review ExxonMobil BusinessPro",
+                "url": "https://www.exxonmobilfleetcards.com/"
+              },
+              {
+                "label": "Review AtoB fuel cards",
+                "url": "https://atob.com/fuel-cards"
+              },
+              {
+                "label": "Compare Phillips 66, Conoco and 76 fleet cards",
+                "url": "https://www.conocofleet.com/"
+              },
+              {
+                "label": "Review Fuelman billing and fees",
+                "url": "https://www.fuelman.com/faq/"
+              }
+            ],
+            "proof": "Reviewed current program terms and an actual business use case. Later save the issuer’s decision, invoices/statements, payment confirmations and actual reporting records if you apply; a provider link is not approval or proof of reporting.",
+            "nextReview": "When the specific program has been reviewed and after its first billing or reporting cycle.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "fundhub-ip:tradeline-secrets/unlock-your-credit-profile/fuel-only",
+              "https://www.wexinc.com/products/fuel-cards-fleet/select/small-business/",
+              "https://www.exxonmobilfleetcards.com/",
+              "https://atob.com/fuel-cards",
+              "https://www.conocofleet.com/",
+              "https://www.fuelman.com/faq/"
+            ]
+          },
+          {
+            "key": "merchant_tools",
+            "title": "Review payment processing and customer financing",
+            "track": "revenue",
+            "why": "An operating business may need a suitable way to accept payments or offer eligible customers financing.",
+            "steps": [
+              "Describe what you sell, the sales channel, actual transaction history and what customers need.",
+              "Ask the Fundhub team to confirm the appropriate Whop, Commas or Clarity route and any available partnership referral.",
+              "Review current product eligibility, fees, settlement and refund terms before applying. Save the provider’s actual decision and onboarding result."
+            ],
+            "links": [
+              {
+                "label": "Read Whop’s payment platform overview",
+                "url": "https://docs.whop.com/"
+              }
+            ],
+            "proof": "A confirmed referral destination and provider approval/onboarding receipt. Fundhub’s own checkout does not prove your merchant account is approved.",
+            "nextReview": "When a referral is available, after the provider’s decision, and when your selling model changes.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://docs.whop.com/",
+              "owner:merchant-partnership-destination-to-confirm"
+            ]
+          },
+          {
+            "key": "employment",
+            "title": "Prepare accurate owner and income records",
+            "track": "business",
+            "why": "Employment, business ownership and the way you are paid need to match your actual setup.",
+            "steps": [
+              "Record your real employer or business ownership and how you currently receive income.",
+              "Gather the records the lender requests, such as actual payroll, tax or business-income documents.",
+              "For an operating business, prepare the requested financial packet from real records: current business bank statements, profit-and-loss statement, balance sheet and merchant-processor statements when applicable. Keep each business’s records separate and reconcile mismatches.",
+              "Use the application’s correct category for your circumstances. A later corporate tax election is a separate decision and does not rewrite earlier employment or income history."
+            ],
+            "links": [
+              {
+                "label": "Read IRS guidance on paying yourself",
+                "url": "https://www.irs.gov/businesses/small-businesses-self-employed/paying-yourself"
+              }
+            ],
+            "proof": "Actual payroll, tax, ownership or income records and the requested business financial statements; a checklist or unsupported estimate is not income evidence.",
+            "nextReview": "Before an application and whenever your employment or pay structure changes.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.irs.gov/businesses/small-businesses-self-employed/paying-yourself",
+              "fundhub-ip:tradeline-secrets/tier-2-financials"
+            ]
+          },
+          {
+            "key": "calendar",
+            "title": "Put your next review on your calendar",
+            "track": "planning",
+            "why": "A visible reminder helps you return when a document, report or relationship is ready to review.",
+            "steps": [
+              "Choose the review date for the actual step and check which result you expect to have by then.",
+              "Use Add to Google Calendar, or import the calendar file into your calendar app, and save the event and reminder.",
+              "Update the saved event when the plan changes. Adding an event does not connect a bank, order a report or verify a task."
+            ],
+            "links": [],
+            "proof": "The saved calendar event and your selected reminder; the plan’s saved target date remains the source for the review.",
+            "nextReview": "On the event date or whenever the underlying step moves.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "owner:calendar-reminders"
+            ]
+          },
+          {
+            "key": "formation",
+            "title": "Form this single-member LLC",
+            "track": "business",
+            "why": "Each business needs its own correct formation record and timeline.",
+            "steps": [
+              "Start with a basic name and the state appropriate to your actual business. Check name availability and the state’s current filing requirements.",
+              "Follow the state’s LLC filing instructions for one member when you are the only owner, and review optional service costs before accepting them.",
+              "After acceptance, save the actual formation date and document. Keep three or four separate business plans moving through their own milestones over roughly 12 months."
+            ],
+            "links": [
+              {
+                "label": "Open Arizona’s LLC filing guide",
+                "url": "https://azcc.gov/corporations"
+              }
+            ],
+            "proof": "An accepted formation document and actual dates. Preparing or aging an entity does not establish operating history or funding approval.",
+            "nextReview": "After state acceptance and at the next saved business milestone.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:opening-llc--59d3968e",
+              "https://www.sba.gov/counseling/launch-your-business/state-registration-lookup/"
+            ]
+          },
+          {
+            "key": "ein",
+            "title": "Get and save this business’s EIN confirmation",
+            "track": "business",
+            "why": "The IRS record should match the business that was actually formed.",
+            "steps": [
+              "Complete state formation first, then open the official IRS EIN guide and application.",
+              "Choose LLC and the actual member count, state and responsible-party information. Answer industry and other questions for this business’s real circumstances.",
+              "Download the IRS confirmation letter and add it to this business’s documents. The IRS online application allows one EIN per responsible party per day."
+            ],
+            "links": [
+              {
+                "label": "Open the official IRS EIN guide",
+                "url": "https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number"
+              }
+            ],
+            "proof": "The IRS confirmation letter for the correct formed entity; starting an application is not an issued EIN.",
+            "nextReview": "After the IRS issues the EIN and when the saved business record needs correction.",
+            "optional": false,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number",
+              "alec:get-ein--fda2d58f"
+            ]
+          }
+        ]
+      },
+      {
+        "planId": "a0000000-0000-4000-8000-000000000010",
+        "lessons": [
+          {
+            "key": "credit_review",
+            "title": "Review your credit priorities",
+            "track": "credit",
+            "why": "Your next actions should come from the accounts and dates on your actual file.",
+            "steps": [
+              "Open your latest available credit report and check its date.",
+              "Match the account names, ownership, balances and limits to your records.",
+              "Work through the account-specific priorities in your roadmap; tell the Fundhub team about anything unclear.",
+              "Open Letters and responses to download the current letters your file needs and follow the self-mailing instructions, or review the optional one-time $97 Fundhub mailing batch before authorizing payment.",
+              "Upload mailing proof and the actual bureau replies you receive. The existing document reader must accept the current response file before that upload step can close; the team reviews the next action and any further letters from your updated file."
+            ],
+            "links": [
+              {
+                "label": "Read the CFPB credit guide",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+              }
+            ],
+            "proof": "The saved report and your notes about any incorrect or unclear account.",
+            "nextReview": "Review when a new report arrives or a material account detail changes.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+            ]
+          },
+          {
+            "key": "budget",
+            "title": "Set a workable cash plan",
+            "track": "credit",
+            "why": "Paydowns, deposits and business costs need to share the cash you can actually use.",
+            "steps": [
+              "Set the monthly debt-payment budget only after essential bills, your chosen buffer, business costs and any bank-deposit reserve. Keep the same dollars from being committed twice.",
+              "List each debt’s current balance, APR and monthly minimum from its actual statement. Leave an unknown amount unknown; zero is a real value, not a replacement for missing information.",
+              "Snowball puts extra money toward the smallest balance; avalanche puts extra toward the highest APR. Cover the minimum payments on all listed debts before directing extra in the chosen order.",
+              "Review your current UnderwriteIQ utilization step with the Fundhub team. An account-specific utilization action may take priority over a general snowball or avalanche order.",
+              "Save the budget, strategy and supported figures. If the budget cannot cover the minimums, pause extra payments and review the shortfall with the team or creditor. Recheck the actual statement and payment dates each month."
+            ],
+            "links": [
+              {
+                "label": "Compare CFPB debt-reduction strategies",
+                "url": "https://www.consumerfinance.gov/documents/5782/cfpb_ymyg-toolkit_reducing-debt-worksheet.pdf"
+              },
+              {
+                "label": "Review credit-building basics",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+              }
+            ],
+            "proof": "Your saved monthly plan and current statements. Actual payment confirmations and later report updates are separate proof; the calculation is not a payment, payoff-date forecast or credit-score promise.",
+            "nextReview": "After a new statement or when income, bills, balances, minimums, APRs or bank-deposit commitments change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/documents/5782/cfpb_ymyg-toolkit_reducing-debt-worksheet.pdf",
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+            ]
+          },
+          {
+            "key": "authorized_user",
+            "title": "Review an authorized-user account",
+            "track": "credit",
+            "why": "An authorized-user account and a joint account have different ownership. A change should fit your actual file.",
+            "steps": [
+              "Confirm which account your roadmap flags and whether you are an authorized user or joint owner.",
+              "If removal is the agreed step, contact the card issuer through its official app or customer-service number and ask about its removal process.",
+              "Save the issuer’s confirmation and check the next report. If the account is misreported, document the specific error for review."
+            ],
+            "links": [
+              {
+                "label": "Understand authorized-user removal",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-remove-an-authorized-user-from-my-credit-card-account-en-86/"
+              }
+            ],
+            "proof": "Issuer confirmation plus later reporting evidence; a phone call alone does not prove a bureau update.",
+            "nextReview": "After the issuer’s stated reporting period or when your next report is available.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-remove-an-authorized-user-from-my-credit-card-account-en-86/"
+            ]
+          },
+          {
+            "key": "secured_credit",
+            "title": "Review whether secured credit fits",
+            "track": "credit",
+            "why": "A secured card may help a thin file, but an extra application and deposit should have a clear purpose.",
+            "steps": [
+              "Confirm your roadmap calls for another primary account before applying.",
+              "Compare the issuer’s current deposit, fees, bureau reporting and credit-check terms.",
+              "Fit the deposit into your cash plan. Record the actual opening and reporting dates only if you open the account."
+            ],
+            "links": [
+              {
+                "label": "Review credit-building options",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+              }
+            ],
+            "proof": "The chosen product’s current terms, account-opening confirmation and later report.",
+            "nextReview": "Before applying, then after the issuer’s stated reporting cycle.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/",
+              "alec:secured-cards--3acec005"
+            ]
+          },
+          {
+            "key": "business_profile",
+            "title": "Make your business records consistent",
+            "track": "business",
+            "why": "Each business needs its own clear identity and accurate activity description.",
+            "steps": [
+              "Confirm Willow Studio LLC’s actual ownership, formation state and product or service.",
+              "Compare its legal name and any DBA, address and contact details across its formation/EIN documents, bank records, website and relevant public profiles. Keep a list of specific mismatches; do not change the actual activity to fit an application.",
+              "Resolve each mismatch using the correct state, IRS or provider process. Keep the original record and accepted correction receipts.",
+              "Keep a separate document checklist for each of the three or four businesses: accepted formation record, EIN confirmation, actual ownership/signers and the bank’s requested documents. A plan is not a formed or operating company."
+            ],
+            "links": [
+              {
+                "label": "Open Arizona’s LLC filing guide",
+                "url": "https://azcc.gov/corporations"
+              }
+            ],
+            "proof": "The correct business’s formation/EIN records, current profile details, specific mismatches and accepted correction receipts.",
+            "nextReview": "After a correction is accepted and whenever business details change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:opening-llc--59d3968e",
+              "https://www.sba.gov/counseling/launch-your-business/state-registration-lookup/",
+              "fundhub-ip:tradeline-secrets/credibility-checklist"
+            ]
+          },
+          {
+            "key": "business_website",
+            "title": "Build a clear business website",
+            "track": "business",
+            "why": "A useful website explains the real business and gives customers consistent contact details.",
+            "steps": [
+              "Confirm the domain and customer contact methods the business actually uses: professional email, phone and the address details you intend to publish. A logo or extra paid tool is optional; use a setup your budget supports.",
+              "Copy the website prompt and fill in your actual services, audience and contact details.",
+              "Review the draft’s home, services, about and contact pages.",
+              "Check every claim, publish when accurate, and save the live website address with this business."
+            ],
+            "links": [
+              {
+                "label": "Check Google’s business information guidance",
+                "url": "https://support.google.com/business/answer/7091"
+              }
+            ],
+            "proof": "A working public URL whose business identity and claims match the saved records.",
+            "nextReview": "After publishing and whenever services or contact details change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:get-biz-website--94d03c1f",
+              "https://support.google.com/business/answer/7091",
+              "fundhub-ip:tradeline-secrets/establish-credibility"
+            ],
+            "prompt": "Write a clear website for Willow Studio LLC.\nActual activity: Commercial photography.\nLocation: AZ.\nInclude a home page, services, about and contact information. Explain who we serve and what we actually sell.\nKeep the legal name, public name, address, phone, professional email and website consistent with the records I provide. Use only customer contact details I actually use and intend to publish.\nUse placeholders for missing facts. Ask before adding credentials, testimonials, years in business, revenue or results.\nGive me a short list of missing details to check before publishing."
+          },
+          {
+            "key": "business_listings",
+            "title": "Make eligible business listings accurate",
+            "track": "business",
+            "why": "Consistent listings help customers find and understand the actual business.",
+            "steps": [
+              "Search your business name and location to find existing Google and Yellow Pages listings.",
+              "Where eligible, claim the correct profile and complete the provider’s ownership verification; do not create duplicates.",
+              "Match the name, contact details, hours and actual business category. Keep the website useful and current; a first-page ranking is not guaranteed."
+            ],
+            "links": [
+              {
+                "label": "Add or claim a Google Business Profile",
+                "url": "https://support.google.com/business/answer/2911778"
+              },
+              {
+                "label": "Improve local information on Google",
+                "url": "https://support.google.com/business/answer/7091"
+              },
+              {
+                "label": "Find your Yellow Pages listing",
+                "url": "https://www.yellowpages.com/"
+              }
+            ],
+            "proof": "The public listing URLs and provider verification or correction receipts.",
+            "nextReview": "After verification or a details change; review search visibility separately from funding readiness.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://support.google.com/business/answer/2911778",
+              "https://support.google.com/business/answer/7091",
+              "https://www.yellowpages.com/"
+            ]
+          },
+          {
+            "key": "local_banking",
+            "title": "Find local credit-union candidates",
+            "track": "banking",
+            "why": "Local fit includes where a branch is, whether you can join, and whether the account suits this business.",
+            "steps": [
+              "Confirm 85004 and review up to five distinct institutions with local branch evidence.",
+              "Open each institution’s official information and confirm membership eligibility, business services and account availability.",
+              "Compare current fees, minimums and deposits against your available cash. Save the shortlist and the reason each candidate fits.",
+              "Before choosing a funding route, ask which products and actual industries the institution serves, required financials and operating history, personal-credit checks/bureaus, collateral or UCC requirements, and how existing loans or several separate businesses affect an application. Save its actual answers."
+            ],
+            "links": [
+              {
+                "label": "Open the official NCUA locator",
+                "url": "https://mapping.ncua.gov/"
+              }
+            ],
+            "proof": "Source-dated branch locations and current membership, product and deposit terms for each shortlisted institution.",
+            "nextReview": "Before choosing an account and when your address or eligibility changes.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://mapping.ncua.gov/",
+              "alec:details-aged-corp--1b8c3aa7",
+              "fundhub-ip:tradeline-secrets/business-funding-mastery"
+            ]
+          },
+          {
+            "key": "chexsystems",
+            "title": "Review account-opening history",
+            "track": "banking",
+            "why": "A checking-account report can affect account opening independently of a personal credit score.",
+            "steps": [
+              "If you were denied, read the bank’s notice and identify the reporting company it used, such as ChexSystems or Early Warning Services.",
+              "Request the relevant report through the reporting company’s official process and check the entries against your records.",
+              "For an error, send a specific dispute with supporting evidence. Save the confirmation and response; discuss any legitimate balance or account issue with the bank."
+            ],
+            "links": [
+              {
+                "label": "Read the CFPB account-opening guide",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+              }
+            ],
+            "proof": "The report, specific disputed facts, submission confirmation and reporting company or bank response.",
+            "nextReview": "On the response date given by the reporting company and before the next account application.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+            ]
+          },
+          {
+            "key": "bank_opening",
+            "title": "Plan the first bank relationships",
+            "track": "banking",
+            "why": "Banking preparation can begin during credit optimization when documents, eligibility and cash support it.",
+            "steps": [
+              "List current relationships first, then review an initial one-to-three suitable account opportunities with the Fundhub team.",
+              "Ask the chosen institution for its actual account-opening document list. Gather this business’s formation and EIN records, actual ownership and signer identification, and supported business details.",
+              "Check the account’s current fees, opening minimum and ongoing balance requirements against cash reserved for bills, a buffer, paydowns and other business deposits. Record the required minimum separately from the amount you choose to deposit.",
+              "Confirm the account requirements and pace before applying. Save each actual accepted opening date against the correct business; use confirmed product requirements for the next deposit and seasoning review."
+            ],
+            "links": [
+              {
+                "label": "Find a credit union",
+                "url": "https://mapping.ncua.gov/"
+              },
+              {
+                "label": "Review account-opening issues",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+              }
+            ],
+            "proof": "Account-opening confirmation and the business’s current account details; a planned date is not an opened account.",
+            "nextReview": "After opening and at the next relationship review date.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:details-aged-corp--1b8c3aa7",
+              "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/",
+              "fundhub-ip:tradeline-secrets/credibility-checklist"
+            ]
+          },
+          {
+            "key": "bank_deposit",
+            "title": "Plan and track a business deposit",
+            "track": "banking",
+            "why": "The money available and the actual deposit date matter to a workable relationship plan.",
+            "steps": [
+              "Confirm the current product’s minimum, fees and any relevant relationship requirement directly with the institution.",
+              "Reserve the deposit in your shared cash plan, without reusing money committed elsewhere.",
+              "If you deposit, record the actual amount and cleared date with the correct business. Set a review using that product’s confirmed requirements."
+            ],
+            "links": [],
+            "proof": "A bank receipt or statement showing the actual deposit and date. A target or elapsed time is not verification.",
+            "nextReview": "After clearance and on the saved review date; reassess if the balance or product terms change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:details-aged-corp--1b8c3aa7"
+            ]
+          },
+          {
+            "key": "business_credit",
+            "title": "Consider optional business-credit tools",
+            "track": "business",
+            "why": "A useful business-credit account should support actual operating needs and fit your budget.",
+            "steps": [
+              "Identify a real business purchase or operating need before choosing an account, including any fuel or fleet-card use.",
+              "If this business has real fuel expenses, compare AtoB, WEX, Phillips 66/Conoco/76, Fuelman or ExxonMobil using the official pages below. Review accepted stations, current fees, payment terms, credit checks, personal guarantees and whether the issuer reports this exact account to a business bureau before applying.",
+              "Choose only the accounts you need and can repay. Use the business’s actual legal name, EIN, ownership, activity and revenue; provide the identity information and records the chosen issuer requires. Save the reviewed terms and decision with the Fundhub team. Do not apply just to create activity, assume approval or assume bureau reporting. Use a current reviewed program when suitable; ask the Fundhub team which optional tools fit your actual plan.",
+              "If approved, record the actual opening, statement, payment due and payment dates. Use the account for genuine business expenses, pay according to its actual agreement and keep confirmations. Check reporting after the issuer’s stated cycle; elapsed months alone never establish funding readiness."
+            ],
+            "links": [
+              {
+                "label": "Compare official WEX fleet-card options",
+                "url": "https://www.wexinc.com/products/fuel-cards-fleet/select/small-business/"
+              },
+              {
+                "label": "Review ExxonMobil BusinessPro",
+                "url": "https://www.exxonmobilfleetcards.com/"
+              },
+              {
+                "label": "Review AtoB fuel cards",
+                "url": "https://atob.com/fuel-cards"
+              },
+              {
+                "label": "Compare Phillips 66, Conoco and 76 fleet cards",
+                "url": "https://www.conocofleet.com/"
+              },
+              {
+                "label": "Review Fuelman billing and fees",
+                "url": "https://www.fuelman.com/faq/"
+              }
+            ],
+            "proof": "Reviewed current program terms and an actual business use case. Later save the issuer’s decision, invoices/statements, payment confirmations and actual reporting records if you apply; a provider link is not approval or proof of reporting.",
+            "nextReview": "When the specific program has been reviewed and after its first billing or reporting cycle.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "fundhub-ip:tradeline-secrets/unlock-your-credit-profile/fuel-only",
+              "https://www.wexinc.com/products/fuel-cards-fleet/select/small-business/",
+              "https://www.exxonmobilfleetcards.com/",
+              "https://atob.com/fuel-cards",
+              "https://www.conocofleet.com/",
+              "https://www.fuelman.com/faq/"
+            ]
+          },
+          {
+            "key": "merchant_tools",
+            "title": "Review payment processing and customer financing",
+            "track": "revenue",
+            "why": "An operating business may need a suitable way to accept payments or offer eligible customers financing.",
+            "steps": [
+              "Describe what you sell, the sales channel, actual transaction history and what customers need.",
+              "Ask the Fundhub team to confirm the appropriate Whop, Commas or Clarity route and any available partnership referral.",
+              "Review current product eligibility, fees, settlement and refund terms before applying. Save the provider’s actual decision and onboarding result."
+            ],
+            "links": [
+              {
+                "label": "Read Whop’s payment platform overview",
+                "url": "https://docs.whop.com/"
+              }
+            ],
+            "proof": "A confirmed referral destination and provider approval/onboarding receipt. Fundhub’s own checkout does not prove your merchant account is approved.",
+            "nextReview": "When a referral is available, after the provider’s decision, and when your selling model changes.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://docs.whop.com/",
+              "owner:merchant-partnership-destination-to-confirm"
+            ]
+          },
+          {
+            "key": "employment",
+            "title": "Prepare accurate owner and income records",
+            "track": "business",
+            "why": "Employment, business ownership and the way you are paid need to match your actual setup.",
+            "steps": [
+              "Record your real employer or business ownership and how you currently receive income.",
+              "Gather the records the lender requests, such as actual payroll, tax or business-income documents.",
+              "For an operating business, prepare the requested financial packet from real records: current business bank statements, profit-and-loss statement, balance sheet and merchant-processor statements when applicable. Keep each business’s records separate and reconcile mismatches.",
+              "Use the application’s correct category for your circumstances. A later corporate tax election is a separate decision and does not rewrite earlier employment or income history."
+            ],
+            "links": [
+              {
+                "label": "Read IRS guidance on paying yourself",
+                "url": "https://www.irs.gov/businesses/small-businesses-self-employed/paying-yourself"
+              }
+            ],
+            "proof": "Actual payroll, tax, ownership or income records and the requested business financial statements; a checklist or unsupported estimate is not income evidence.",
+            "nextReview": "Before an application and whenever your employment or pay structure changes.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.irs.gov/businesses/small-businesses-self-employed/paying-yourself",
+              "fundhub-ip:tradeline-secrets/tier-2-financials"
+            ]
+          },
+          {
+            "key": "calendar",
+            "title": "Put your next review on your calendar",
+            "track": "planning",
+            "why": "A visible reminder helps you return when a document, report or relationship is ready to review.",
+            "steps": [
+              "Choose the review date for the actual step and check which result you expect to have by then.",
+              "Use Add to Google Calendar, or import the calendar file into your calendar app, and save the event and reminder.",
+              "Update the saved event when the plan changes. Adding an event does not connect a bank, order a report or verify a task."
+            ],
+            "links": [],
+            "proof": "The saved calendar event and your selected reminder; the plan’s saved target date remains the source for the review.",
+            "nextReview": "On the event date or whenever the underlying step moves.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "owner:calendar-reminders"
+            ]
+          },
+          {
+            "key": "formation",
+            "title": "Form this single-member LLC",
+            "track": "business",
+            "why": "Each business needs its own correct formation record and timeline.",
+            "steps": [
+              "Start with a basic name and the state appropriate to your actual business. Check name availability and the state’s current filing requirements.",
+              "Follow the state’s LLC filing instructions for one member when you are the only owner, and review optional service costs before accepting them.",
+              "After acceptance, save the actual formation date and document. Keep three or four separate business plans moving through their own milestones over roughly 12 months."
+            ],
+            "links": [
+              {
+                "label": "Open Arizona’s LLC filing guide",
+                "url": "https://azcc.gov/corporations"
+              }
+            ],
+            "proof": "An accepted formation document and actual dates. Preparing or aging an entity does not establish operating history or funding approval.",
+            "nextReview": "After state acceptance and at the next saved business milestone.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:opening-llc--59d3968e",
+              "https://www.sba.gov/counseling/launch-your-business/state-registration-lookup/"
+            ]
+          },
+          {
+            "key": "ein",
+            "title": "Get and save this business’s EIN confirmation",
+            "track": "business",
+            "why": "The IRS record should match the business that was actually formed.",
+            "steps": [
+              "Complete state formation first, then open the official IRS EIN guide and application.",
+              "Choose LLC and the actual member count, state and responsible-party information. Answer industry and other questions for this business’s real circumstances.",
+              "Download the IRS confirmation letter and add it to this business’s documents. The IRS online application allows one EIN per responsible party per day."
+            ],
+            "links": [
+              {
+                "label": "Open the official IRS EIN guide",
+                "url": "https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number"
+              }
+            ],
+            "proof": "The IRS confirmation letter for the correct formed entity; starting an application is not an issued EIN.",
+            "nextReview": "After the IRS issues the EIN and when the saved business record needs correction.",
+            "optional": false,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number",
+              "alec:get-ein--fda2d58f"
+            ]
+          }
+        ]
+      },
+      {
+        "planId": "a0000000-0000-4000-8000-000000000011",
+        "lessons": [
+          {
+            "key": "credit_review",
+            "title": "Review your credit priorities",
+            "track": "credit",
+            "why": "Your next actions should come from the accounts and dates on your actual file.",
+            "steps": [
+              "Open your latest available credit report and check its date.",
+              "Match the account names, ownership, balances and limits to your records.",
+              "Work through the account-specific priorities in your roadmap; tell the Fundhub team about anything unclear.",
+              "Open Letters and responses to download the current letters your file needs and follow the self-mailing instructions, or review the optional one-time $97 Fundhub mailing batch before authorizing payment.",
+              "Upload mailing proof and the actual bureau replies you receive. The existing document reader must accept the current response file before that upload step can close; the team reviews the next action and any further letters from your updated file."
+            ],
+            "links": [
+              {
+                "label": "Read the CFPB credit guide",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+              }
+            ],
+            "proof": "The saved report and your notes about any incorrect or unclear account.",
+            "nextReview": "Review when a new report arrives or a material account detail changes.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+            ]
+          },
+          {
+            "key": "budget",
+            "title": "Set a workable cash plan",
+            "track": "credit",
+            "why": "Paydowns, deposits and business costs need to share the cash you can actually use.",
+            "steps": [
+              "Set the monthly debt-payment budget only after essential bills, your chosen buffer, business costs and any bank-deposit reserve. Keep the same dollars from being committed twice.",
+              "List each debt’s current balance, APR and monthly minimum from its actual statement. Leave an unknown amount unknown; zero is a real value, not a replacement for missing information.",
+              "Snowball puts extra money toward the smallest balance; avalanche puts extra toward the highest APR. Cover the minimum payments on all listed debts before directing extra in the chosen order.",
+              "Review your current UnderwriteIQ utilization step with the Fundhub team. An account-specific utilization action may take priority over a general snowball or avalanche order.",
+              "Save the budget, strategy and supported figures. If the budget cannot cover the minimums, pause extra payments and review the shortfall with the team or creditor. Recheck the actual statement and payment dates each month."
+            ],
+            "links": [
+              {
+                "label": "Compare CFPB debt-reduction strategies",
+                "url": "https://www.consumerfinance.gov/documents/5782/cfpb_ymyg-toolkit_reducing-debt-worksheet.pdf"
+              },
+              {
+                "label": "Review credit-building basics",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+              }
+            ],
+            "proof": "Your saved monthly plan and current statements. Actual payment confirmations and later report updates are separate proof; the calculation is not a payment, payoff-date forecast or credit-score promise.",
+            "nextReview": "After a new statement or when income, bills, balances, minimums, APRs or bank-deposit commitments change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/documents/5782/cfpb_ymyg-toolkit_reducing-debt-worksheet.pdf",
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+            ]
+          },
+          {
+            "key": "authorized_user",
+            "title": "Review an authorized-user account",
+            "track": "credit",
+            "why": "An authorized-user account and a joint account have different ownership. A change should fit your actual file.",
+            "steps": [
+              "Confirm which account your roadmap flags and whether you are an authorized user or joint owner.",
+              "If removal is the agreed step, contact the card issuer through its official app or customer-service number and ask about its removal process.",
+              "Save the issuer’s confirmation and check the next report. If the account is misreported, document the specific error for review."
+            ],
+            "links": [
+              {
+                "label": "Understand authorized-user removal",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-remove-an-authorized-user-from-my-credit-card-account-en-86/"
+              }
+            ],
+            "proof": "Issuer confirmation plus later reporting evidence; a phone call alone does not prove a bureau update.",
+            "nextReview": "After the issuer’s stated reporting period or when your next report is available.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-remove-an-authorized-user-from-my-credit-card-account-en-86/"
+            ]
+          },
+          {
+            "key": "secured_credit",
+            "title": "Review whether secured credit fits",
+            "track": "credit",
+            "why": "A secured card may help a thin file, but an extra application and deposit should have a clear purpose.",
+            "steps": [
+              "Confirm your roadmap calls for another primary account before applying.",
+              "Compare the issuer’s current deposit, fees, bureau reporting and credit-check terms.",
+              "Fit the deposit into your cash plan. Record the actual opening and reporting dates only if you open the account."
+            ],
+            "links": [
+              {
+                "label": "Review credit-building options",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/"
+              }
+            ],
+            "proof": "The chosen product’s current terms, account-opening confirmation and later report.",
+            "nextReview": "Before applying, then after the issuer’s stated reporting cycle.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/how-do-i-get-and-keep-a-good-credit-score-en-318/",
+              "alec:secured-cards--3acec005"
+            ]
+          },
+          {
+            "key": "business_profile",
+            "title": "Make your business records consistent",
+            "track": "business",
+            "why": "Each business needs its own clear identity and accurate activity description.",
+            "steps": [
+              "Confirm Juniper Services LLC’s actual ownership, formation state and product or service.",
+              "Compare its legal name and any DBA, address and contact details across its formation/EIN documents, bank records, website and relevant public profiles. Keep a list of specific mismatches; do not change the actual activity to fit an application.",
+              "Resolve each mismatch using the correct state, IRS or provider process. Keep the original record and accepted correction receipts.",
+              "Keep a separate document checklist for each of the three or four businesses: accepted formation record, EIN confirmation, actual ownership/signers and the bank’s requested documents. A plan is not a formed or operating company."
+            ],
+            "links": [
+              {
+                "label": "Open Arizona’s LLC filing guide",
+                "url": "https://azcc.gov/corporations"
+              }
+            ],
+            "proof": "The correct business’s formation/EIN records, current profile details, specific mismatches and accepted correction receipts.",
+            "nextReview": "After a correction is accepted and whenever business details change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:opening-llc--59d3968e",
+              "https://www.sba.gov/counseling/launch-your-business/state-registration-lookup/",
+              "fundhub-ip:tradeline-secrets/credibility-checklist"
+            ]
+          },
+          {
+            "key": "business_website",
+            "title": "Build a clear business website",
+            "track": "business",
+            "why": "A useful website explains the real business and gives customers consistent contact details.",
+            "steps": [
+              "Confirm the domain and customer contact methods the business actually uses: professional email, phone and the address details you intend to publish. A logo or extra paid tool is optional; use a setup your budget supports.",
+              "Copy the website prompt and fill in your actual services, audience and contact details.",
+              "Review the draft’s home, services, about and contact pages.",
+              "Check every claim, publish when accurate, and save the live website address with this business."
+            ],
+            "links": [
+              {
+                "label": "Check Google’s business information guidance",
+                "url": "https://support.google.com/business/answer/7091"
+              }
+            ],
+            "proof": "A working public URL whose business identity and claims match the saved records.",
+            "nextReview": "After publishing and whenever services or contact details change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:get-biz-website--94d03c1f",
+              "https://support.google.com/business/answer/7091",
+              "fundhub-ip:tradeline-secrets/establish-credibility"
+            ],
+            "prompt": "Write a clear website for Juniper Services LLC.\nActual activity: Office cleaning.\nLocation: AZ.\nInclude a home page, services, about and contact information. Explain who we serve and what we actually sell.\nKeep the legal name, public name, address, phone, professional email and website consistent with the records I provide. Use only customer contact details I actually use and intend to publish.\nUse placeholders for missing facts. Ask before adding credentials, testimonials, years in business, revenue or results.\nGive me a short list of missing details to check before publishing."
+          },
+          {
+            "key": "business_listings",
+            "title": "Make eligible business listings accurate",
+            "track": "business",
+            "why": "Consistent listings help customers find and understand the actual business.",
+            "steps": [
+              "Search your business name and location to find existing Google and Yellow Pages listings.",
+              "Where eligible, claim the correct profile and complete the provider’s ownership verification; do not create duplicates.",
+              "Match the name, contact details, hours and actual business category. Keep the website useful and current; a first-page ranking is not guaranteed."
+            ],
+            "links": [
+              {
+                "label": "Add or claim a Google Business Profile",
+                "url": "https://support.google.com/business/answer/2911778"
+              },
+              {
+                "label": "Improve local information on Google",
+                "url": "https://support.google.com/business/answer/7091"
+              },
+              {
+                "label": "Find your Yellow Pages listing",
+                "url": "https://www.yellowpages.com/"
+              }
+            ],
+            "proof": "The public listing URLs and provider verification or correction receipts.",
+            "nextReview": "After verification or a details change; review search visibility separately from funding readiness.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://support.google.com/business/answer/2911778",
+              "https://support.google.com/business/answer/7091",
+              "https://www.yellowpages.com/"
+            ]
+          },
+          {
+            "key": "local_banking",
+            "title": "Find local credit-union candidates",
+            "track": "banking",
+            "why": "Local fit includes where a branch is, whether you can join, and whether the account suits this business.",
+            "steps": [
+              "Confirm 85004 and review up to five distinct institutions with local branch evidence.",
+              "Open each institution’s official information and confirm membership eligibility, business services and account availability.",
+              "Compare current fees, minimums and deposits against your available cash. Save the shortlist and the reason each candidate fits.",
+              "Before choosing a funding route, ask which products and actual industries the institution serves, required financials and operating history, personal-credit checks/bureaus, collateral or UCC requirements, and how existing loans or several separate businesses affect an application. Save its actual answers."
+            ],
+            "links": [
+              {
+                "label": "Open the official NCUA locator",
+                "url": "https://mapping.ncua.gov/"
+              }
+            ],
+            "proof": "Source-dated branch locations and current membership, product and deposit terms for each shortlisted institution.",
+            "nextReview": "Before choosing an account and when your address or eligibility changes.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://mapping.ncua.gov/",
+              "alec:details-aged-corp--1b8c3aa7",
+              "fundhub-ip:tradeline-secrets/business-funding-mastery"
+            ]
+          },
+          {
+            "key": "chexsystems",
+            "title": "Review account-opening history",
+            "track": "banking",
+            "why": "A checking-account report can affect account opening independently of a personal credit score.",
+            "steps": [
+              "If you were denied, read the bank’s notice and identify the reporting company it used, such as ChexSystems or Early Warning Services.",
+              "Request the relevant report through the reporting company’s official process and check the entries against your records.",
+              "For an error, send a specific dispute with supporting evidence. Save the confirmation and response; discuss any legitimate balance or account issue with the bank."
+            ],
+            "links": [
+              {
+                "label": "Read the CFPB account-opening guide",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+              }
+            ],
+            "proof": "The report, specific disputed facts, submission confirmation and reporting company or bank response.",
+            "nextReview": "On the response date given by the reporting company and before the next account application.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+            ]
+          },
+          {
+            "key": "bank_opening",
+            "title": "Plan the first bank relationships",
+            "track": "banking",
+            "why": "Banking preparation can begin during credit optimization when documents, eligibility and cash support it.",
+            "steps": [
+              "List current relationships first, then review an initial one-to-three suitable account opportunities with the Fundhub team.",
+              "Ask the chosen institution for its actual account-opening document list. Gather this business’s formation and EIN records, actual ownership and signer identification, and supported business details.",
+              "Check the account’s current fees, opening minimum and ongoing balance requirements against cash reserved for bills, a buffer, paydowns and other business deposits. Record the required minimum separately from the amount you choose to deposit.",
+              "Confirm the account requirements and pace before applying. Save each actual accepted opening date against the correct business; use confirmed product requirements for the next deposit and seasoning review."
+            ],
+            "links": [
+              {
+                "label": "Find a credit union",
+                "url": "https://mapping.ncua.gov/"
+              },
+              {
+                "label": "Review account-opening issues",
+                "url": "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/"
+              }
+            ],
+            "proof": "Account-opening confirmation and the business’s current account details; a planned date is not an opened account.",
+            "nextReview": "After opening and at the next relationship review date.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:details-aged-corp--1b8c3aa7",
+              "https://www.consumerfinance.gov/ask-cfpb/why-was-i-denied-a-checking-account-en-1113/",
+              "fundhub-ip:tradeline-secrets/credibility-checklist"
+            ]
+          },
+          {
+            "key": "bank_deposit",
+            "title": "Plan and track a business deposit",
+            "track": "banking",
+            "why": "The money available and the actual deposit date matter to a workable relationship plan.",
+            "steps": [
+              "Confirm the current product’s minimum, fees and any relevant relationship requirement directly with the institution.",
+              "Reserve the deposit in your shared cash plan, without reusing money committed elsewhere.",
+              "If you deposit, record the actual amount and cleared date with the correct business. Set a review using that product’s confirmed requirements."
+            ],
+            "links": [],
+            "proof": "A bank receipt or statement showing the actual deposit and date. A target or elapsed time is not verification.",
+            "nextReview": "After clearance and on the saved review date; reassess if the balance or product terms change.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:details-aged-corp--1b8c3aa7"
+            ]
+          },
+          {
+            "key": "business_credit",
+            "title": "Consider optional business-credit tools",
+            "track": "business",
+            "why": "A useful business-credit account should support actual operating needs and fit your budget.",
+            "steps": [
+              "Identify a real business purchase or operating need before choosing an account, including any fuel or fleet-card use.",
+              "If this business has real fuel expenses, compare AtoB, WEX, Phillips 66/Conoco/76, Fuelman or ExxonMobil using the official pages below. Review accepted stations, current fees, payment terms, credit checks, personal guarantees and whether the issuer reports this exact account to a business bureau before applying.",
+              "Choose only the accounts you need and can repay. Use the business’s actual legal name, EIN, ownership, activity and revenue; provide the identity information and records the chosen issuer requires. Save the reviewed terms and decision with the Fundhub team. Do not apply just to create activity, assume approval or assume bureau reporting. Use a current reviewed program when suitable; ask the Fundhub team which optional tools fit your actual plan.",
+              "If approved, record the actual opening, statement, payment due and payment dates. Use the account for genuine business expenses, pay according to its actual agreement and keep confirmations. Check reporting after the issuer’s stated cycle; elapsed months alone never establish funding readiness."
+            ],
+            "links": [
+              {
+                "label": "Compare official WEX fleet-card options",
+                "url": "https://www.wexinc.com/products/fuel-cards-fleet/select/small-business/"
+              },
+              {
+                "label": "Review ExxonMobil BusinessPro",
+                "url": "https://www.exxonmobilfleetcards.com/"
+              },
+              {
+                "label": "Review AtoB fuel cards",
+                "url": "https://atob.com/fuel-cards"
+              },
+              {
+                "label": "Compare Phillips 66, Conoco and 76 fleet cards",
+                "url": "https://www.conocofleet.com/"
+              },
+              {
+                "label": "Review Fuelman billing and fees",
+                "url": "https://www.fuelman.com/faq/"
+              }
+            ],
+            "proof": "Reviewed current program terms and an actual business use case. Later save the issuer’s decision, invoices/statements, payment confirmations and actual reporting records if you apply; a provider link is not approval or proof of reporting.",
+            "nextReview": "When the specific program has been reviewed and after its first billing or reporting cycle.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "fundhub-ip:tradeline-secrets/unlock-your-credit-profile/fuel-only",
+              "https://www.wexinc.com/products/fuel-cards-fleet/select/small-business/",
+              "https://www.exxonmobilfleetcards.com/",
+              "https://atob.com/fuel-cards",
+              "https://www.conocofleet.com/",
+              "https://www.fuelman.com/faq/"
+            ]
+          },
+          {
+            "key": "merchant_tools",
+            "title": "Review payment processing and customer financing",
+            "track": "revenue",
+            "why": "An operating business may need a suitable way to accept payments or offer eligible customers financing.",
+            "steps": [
+              "Describe what you sell, the sales channel, actual transaction history and what customers need.",
+              "Ask the Fundhub team to confirm the appropriate Whop, Commas or Clarity route and any available partnership referral.",
+              "Review current product eligibility, fees, settlement and refund terms before applying. Save the provider’s actual decision and onboarding result."
+            ],
+            "links": [
+              {
+                "label": "Read Whop’s payment platform overview",
+                "url": "https://docs.whop.com/"
+              }
+            ],
+            "proof": "A confirmed referral destination and provider approval/onboarding receipt. Fundhub’s own checkout does not prove your merchant account is approved.",
+            "nextReview": "When a referral is available, after the provider’s decision, and when your selling model changes.",
+            "optional": true,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://docs.whop.com/",
+              "owner:merchant-partnership-destination-to-confirm"
+            ]
+          },
+          {
+            "key": "employment",
+            "title": "Prepare accurate owner and income records",
+            "track": "business",
+            "why": "Employment, business ownership and the way you are paid need to match your actual setup.",
+            "steps": [
+              "Record your real employer or business ownership and how you currently receive income.",
+              "Gather the records the lender requests, such as actual payroll, tax or business-income documents.",
+              "For an operating business, prepare the requested financial packet from real records: current business bank statements, profit-and-loss statement, balance sheet and merchant-processor statements when applicable. Keep each business’s records separate and reconcile mismatches.",
+              "Use the application’s correct category for your circumstances. A later corporate tax election is a separate decision and does not rewrite earlier employment or income history."
+            ],
+            "links": [
+              {
+                "label": "Read IRS guidance on paying yourself",
+                "url": "https://www.irs.gov/businesses/small-businesses-self-employed/paying-yourself"
+              }
+            ],
+            "proof": "Actual payroll, tax, ownership or income records and the requested business financial statements; a checklist or unsupported estimate is not income evidence.",
+            "nextReview": "Before an application and whenever your employment or pay structure changes.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "https://www.irs.gov/businesses/small-businesses-self-employed/paying-yourself",
+              "fundhub-ip:tradeline-secrets/tier-2-financials"
+            ]
+          },
+          {
+            "key": "calendar",
+            "title": "Put your next review on your calendar",
+            "track": "planning",
+            "why": "A visible reminder helps you return when a document, report or relationship is ready to review.",
+            "steps": [
+              "Choose the review date for the actual step and check which result you expect to have by then.",
+              "Use Add to Google Calendar, or import the calendar file into your calendar app, and save the event and reminder.",
+              "Update the saved event when the plan changes. Adding an event does not connect a bank, order a report or verify a task."
+            ],
+            "links": [],
+            "proof": "The saved calendar event and your selected reminder; the plan’s saved target date remains the source for the review.",
+            "nextReview": "On the event date or whenever the underlying step moves.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "owner:calendar-reminders"
+            ]
+          },
+          {
+            "key": "formation",
+            "title": "Form this single-member LLC",
+            "track": "business",
+            "why": "Each business needs its own correct formation record and timeline.",
+            "steps": [
+              "Start with a basic name and the state appropriate to your actual business. Check name availability and the state’s current filing requirements.",
+              "Follow the state’s LLC filing instructions for one member when you are the only owner, and review optional service costs before accepting them.",
+              "After acceptance, save the actual formation date and document. Keep three or four separate business plans moving through their own milestones over roughly 12 months."
+            ],
+            "links": [
+              {
+                "label": "Open Arizona’s LLC filing guide",
+                "url": "https://azcc.gov/corporations"
+              }
+            ],
+            "proof": "An accepted formation document and actual dates. Preparing or aging an entity does not establish operating history or funding approval.",
+            "nextReview": "After state acceptance and at the next saved business milestone.",
+            "optional": false,
+            "applicability": "ready",
+            "sourceRefs": [
+              "alec:opening-llc--59d3968e",
+              "https://www.sba.gov/counseling/launch-your-business/state-registration-lookup/"
+            ]
+          },
+          {
+            "key": "ein",
+            "title": "Get and save this business’s EIN confirmation",
+            "track": "business",
+            "why": "The IRS record should match the business that was actually formed.",
+            "steps": [
+              "Complete state formation first, then open the official IRS EIN guide and application.",
+              "Choose LLC and the actual member count, state and responsible-party information. Answer industry and other questions for this business’s real circumstances.",
+              "Download the IRS confirmation letter and add it to this business’s documents. The IRS online application allows one EIN per responsible party per day."
+            ],
+            "links": [
+              {
+                "label": "Open the official IRS EIN guide",
+                "url": "https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number"
+              }
+            ],
+            "proof": "The IRS confirmation letter for the correct formed entity; starting an application is not an issued EIN.",
+            "nextReview": "After the IRS issues the EIN and when the saved business record needs correction.",
+            "optional": false,
+            "applicability": "review_needed",
+            "sourceRefs": [
+              "https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number",
+              "alec:get-ein--fda2d58f"
+            ]
+          }
+        ]
+      }
+    ],
+    "websitePrompts": [
+      {
+        "planId": "a0000000-0000-4000-8000-000000000009",
+        "businessId": null,
+        "prompt": "Write a clear website for Cedar Grove LLC.\nActual activity: Website design for local shops.\nLocation: AZ.\nInclude a home page, services, about and contact information. Explain who we serve and what we actually sell.\nKeep the legal name, public name, address, phone, professional email and website consistent with the records I provide. Use only customer contact details I actually use and intend to publish.\nUse placeholders for missing facts. Ask before adding credentials, testimonials, years in business, revenue or results.\nGive me a short list of missing details to check before publishing."
+      },
+      {
+        "planId": "a0000000-0000-4000-8000-000000000010",
+        "businessId": null,
+        "prompt": "Write a clear website for Willow Studio LLC.\nActual activity: Commercial photography.\nLocation: AZ.\nInclude a home page, services, about and contact information. Explain who we serve and what we actually sell.\nKeep the legal name, public name, address, phone, professional email and website consistent with the records I provide. Use only customer contact details I actually use and intend to publish.\nUse placeholders for missing facts. Ask before adding credentials, testimonials, years in business, revenue or results.\nGive me a short list of missing details to check before publishing."
+      },
+      {
+        "planId": "a0000000-0000-4000-8000-000000000011",
+        "businessId": null,
+        "prompt": "Write a clear website for Juniper Services LLC.\nActual activity: Office cleaning.\nLocation: AZ.\nInclude a home page, services, about and contact information. Explain who we serve and what we actually sell.\nKeep the legal name, public name, address, phone, professional email and website consistent with the records I provide. Use only customer contact details I actually use and intend to publish.\nUse placeholders for missing facts. Ask before adding credentials, testimonials, years in business, revenue or results.\nGive me a short list of missing details to check before publishing."
+      }
+    ],
+    "cashPlan": {
+      "availableCashCents": 600000,
+      "bankDepositTotalCents": 0,
+      "cashBufferCents": 200000,
+      "oneTimePayoffCents": 100000,
+      "knownCommitmentsCents": 300000,
+      "status": "ready",
+      "remainingCashCents": 300000,
+      "banks": [
+        {
+          "name": "Sample Community Bank",
+          "minimumDepositReferenceCents": 50000,
+          "cashFit": "within_reported_budget"
+        }
+      ]
+    },
+    "payoffCalculation": {
+      "status": "ready",
+      "strategy": "snowball",
+      "monthlyBudgetCents": 70000,
+      "totalBalanceCents": 325000,
+      "knownMinimumTotalCents": 10500,
+      "requiredMinimumTotalCents": 10500,
+      "minimumShortfallCents": 0,
+      "allocatedCents": 70000,
+      "unallocatedCents": 0,
+      "priority": [
+        "sample-card-b",
+        "sample-card-a"
+      ],
+      "debts": [
+        {
+          "id": "sample-card-b",
+          "label": "Sample Card B",
+          "balanceCents": 85000,
+          "aprBps": 2699,
+          "minimumPaymentCents": 3500,
+          "minimumDueCents": 3500,
+          "priorityRank": 1,
+          "minimumAllocationCents": 3500,
+          "extraAllocationCents": 59500,
+          "allocationCents": 63000
+        },
+        {
+          "id": "sample-card-a",
+          "label": "Sample Card A",
+          "balanceCents": 240000,
+          "aprBps": 2199,
+          "minimumPaymentCents": 7000,
+          "minimumDueCents": 7000,
+          "priorityRank": 2,
+          "minimumAllocationCents": 7000,
+          "extraAllocationCents": 0,
+          "allocationCents": 7000
+        }
+      ],
+      "reviewReasons": []
+    },
+    "letterResponses": [],
+    "letterReadiness": {
+      "orgId": "a0000000-0000-4000-8000-000000000001",
+      "clientId": "a0000000-0000-4000-8000-000000000002",
+      "state": "ready",
+      "usableLetterCount": 2,
+      "mailingOrderCount": 0
+    },
+    "warnings": []
+  },
+  "funding": {
+    "ok": true,
+    "engagement": {
+      "id": "a0000000-0000-4000-8000-000000000004",
+      "orgId": "a0000000-0000-4000-8000-000000000001",
+      "clientId": "a0000000-0000-4000-8000-000000000002",
+      "status": "active",
+      "executionOwner": "client",
+      "roundId": "sample-purchased-round",
+      "productKey": "blueprint-self-funding",
+      "priceCents": 3000000,
+      "purchasedAt": "2026-11-06T12:00:00.000Z"
+    },
+    "state": "optimize",
+    "nextAction": "Review your sample repair and inquiry work before opening the next bank.",
+    "lenders": [
+      {
+        "id": "a0000000-0000-4000-8000-000000000006",
+        "name": "Sample Community Bank",
+        "productName": "Sample business credit line",
+        "businessId": "a0000000-0000-4000-8000-000000000009",
+        "businessName": "Cedar Grove LLC",
+        "available": false,
+        "reason": "Waiting for the sample bureau evidence review."
+      }
+    ],
+    "applications": [
+      {
+        "id": "sample-previous-application",
+        "lenderId": "sample-previous-lender",
+        "lenderName": "Sample Neighborhood Bank",
+        "status": "Sample pending",
+        "reportedStatus": "pending",
+        "outcomeVerified": false,
+        "sample": true
+      }
+    ],
+    "canFinishSubmissions": false,
+    "submissionsClosed": false
+  },
+  "inquiries": {
+    "ok": true,
+    "cases": [
+      {
+        "id": "a0000000-0000-4000-8000-000000000005",
+        "bureau": "Experian",
+        "status": "In progress",
+        "executionOwner": "client",
+        "packet": {
+          "complete": true,
+          "missing": [],
+          "uploads": []
+        },
+        "portalUrl": null,
+        "documentUploadUrl": null,
+        "nextCheckAt": "2026-11-09T12:00:00.000Z",
+        "call": {
+          "status": "not_requested"
+        },
+        "inquiries": [
+          {
+            "id": "sample-inquiry",
+            "name": "Sample Community Bank inquiry",
+            "state": "pending_verification"
+          }
+        ],
+        "documents": [
+          {
+            "id": "a0000000-0000-4000-8000-000000000007",
+            "title": "Open sample inquiry packet"
+          }
+        ],
+        "actions": {
+          "canRecordSubmission": true,
+          "canLaunchCall": true,
+          "canCheckSavedEvidence": true
+        }
+      }
+    ]
+  },
+  "repair": {
+    "ok": true,
+    "program": {
+      "id": "sample-repair-program",
+      "round": 1
+    },
+    "authorization": {
+      "signed": true,
+      "packetComplete": true,
+      "missing": [],
+      "uploads": []
+    },
+    "stage": "Ready to prepare sample repair letters",
+    "cases": [
+      {
+        "id": "sample-repair-case",
+        "bureau": "Experian",
+        "round": "R1",
+        "status": "Ready",
+        "portalUrl": null,
+        "documentUploadUrl": null,
+        "items": [
+          {
+            "id": "sample-repair-item",
+            "creditor": "Sample reporting item",
+            "status": "Open"
+          }
+        ],
+        "letters": []
+      }
+    ],
+    "actions": {
+      "canGenerate": true
+    }
+  },
+  "services": {
+    "ok": true,
+    "engagement": {
+      "id": "a0000000-0000-4000-8000-000000000004",
+      "orgId": "a0000000-0000-4000-8000-000000000001",
+      "clientId": "a0000000-0000-4000-8000-000000000002",
+      "status": "active",
+      "executionOwner": "client",
+      "roundId": "sample-purchased-round",
+      "productKey": "blueprint-self-funding",
+      "priceCents": 3000000,
+      "purchasedAt": "2026-11-06T12:00:00.000Z"
+    },
+    "allowance": {
+      "includedAvailable": true,
+      "nextIncludedAt": "2026-12-06T12:00:00.000Z",
+      "pendingRequestId": null,
+      "engagementActive": true
+    },
+    "reportSetup": {
+      "required": false
+    },
+    "checkoutProviders": [
+      {
+        "id": "commas",
+        "label": "Sample pay in full"
+      },
+      {
+        "id": "whop",
+        "label": "Sample financing through Whop"
+      }
+    ],
+    "serviceTypes": [
+      {
+        "key": "inquiry_removal",
+        "label": "Inquiry removal",
+        "priceCents": null,
+        "requiresQuote": true,
+        "targets": [
+          {
+            "id": "a0000000-0000-4000-8000-000000000005",
+            "label": "Sample Experian case"
+          }
+        ]
+      },
+      {
+        "key": "repair_round",
+        "label": "One repair round",
+        "priceCents": null,
+        "requiresQuote": true,
+        "targets": [
+          {
+            "id": "sample-repair-case",
+            "label": "Sample repair round"
+          }
+        ]
+      },
+      {
+        "key": "full_repair",
+        "label": "Full repair",
+        "priceCents": null,
+        "requiresQuote": true
+      },
+      {
+        "key": "funding_round",
+        "label": "Funding takeover",
+        "priceCents": null,
+        "requiresQuote": true,
+        "targets": [
+          {
+            "id": "sample-purchased-round",
+            "label": "Current sample funding round"
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "id": "sample-help-quote",
+        "serviceKind": "inquiry_removal",
+        "status": "quoted",
+        "priceCents": 50000,
+        "quoteVersion": 1,
+        "note": "Fictional service quote for the demo; not a live price."
+      }
+    ],
+    "capabilities": {
+      "requestHelp": true,
+      "requestReport": true,
+      "quote": false
+    }
+  },
+  "letters": {
+    "ok": true,
+    "letters": [
+      {
+        "id": "a0000000-0000-4000-8000-000000000007",
+        "title": "Sample Experian inquiry letter",
+        "bureau": "Experian",
+        "currentVersionId": "sample-v1",
+        "versionId": "sample-v1",
+        "download": null,
+        "documentId": "a0000000-0000-4000-8000-000000000007",
+        "eligibleForMailing": true,
+        "reason": null
+      },
+      {
+        "id": "a0000000-0000-4000-8000-000000000012",
+        "title": "Sample personal-information letter",
+        "bureau": "TransUnion",
+        "currentVersionId": "sample-v1",
+        "versionId": "sample-v1",
+        "download": null,
+        "documentId": "a0000000-0000-4000-8000-000000000012",
+        "eligibleForMailing": true,
+        "reason": null
+      }
+    ],
+    "orders": [],
+    "returnAddress": {
+      "name": "Alex Sample",
+      "line1": "100 Example Street",
+      "city": "Phoenix",
+      "state": "AZ",
+      "postalCode": "85004"
+    }
+  },
+  "documents": [
+    {
+      "id": "a0000000-0000-4000-8000-000000000007",
+      "title": "Sample inquiry packet",
+      "kind": "inquiry_doc"
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000012",
+      "title": "Sample personal-information letter",
+      "kind": "inquiry_doc"
+    }
+  ],
+  "messages": [],
+  "scenario": "optimize",
+  "provenance": {
+    "source": "Fictional values; real Blueprint lesson and debt-allocation helpers",
+    "payoffSha256": "80ee2dab21e86b5a1315937d06b3ba1ac4b0416b50859248b387a3df2316ff23",
+    "guidanceSha256": "5a34895c3d13b59a35cbaa06ef767180c6aa8c4a28ab38f8978622d2bf8e30b3"
+  }
+}

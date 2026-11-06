@@ -2,9 +2,10 @@
 (() => {
   'use strict';
   const host = document.getElementById('blueprint-fulfillment');
-  if (!host || new URLSearchParams(location.search).get('demo') === '1') return;
-  const token = localStorage.getItem('fh_token');
-  if (!token || token === 'demo') return;
+  const demo = window.FHBlueprintDemo?.active === true ? window.FHBlueprintDemo : null;
+  if (!host || demo?.isPreview || (!demo && new URLSearchParams(location.search).get('demo') === '1')) return;
+  const token = demo ? null : localStorage.getItem('fh_token');
+  if (!demo && (!token || token === 'demo')) return;
   const abort = new AbortController();
   const pendingWindows = new Set();
   const actionKeys = new Map();
@@ -52,12 +53,17 @@
   }
 
   function current() {
-    if (!invalid && localStorage.getItem('fh_token') !== token) invalidate();
+    if (!invalid && (demo ? !demo.isCurrent() : localStorage.getItem('fh_token') !== token)) invalidate();
     return !invalid;
   }
 
   async function request(path, options = {}) {
     if (!current()) throw new Error('Sign in again to continue.');
+    if (demo) {
+      const body = await demo.request(path, options);
+      if (!current()) throw new Error('Sign in again to continue.');
+      return body;
+    }
     const headers = {accept:'application/json', authorization:'Bearer ' + token};
     if (typeof options.body === 'string') headers['content-type'] = 'application/json';
     const response = await fetch(path, {credentials:'same-origin', ...options, headers, signal:abort.signal});
@@ -219,7 +225,7 @@
     const ended = services.engagement?.status === 'completed' || allowance.engagementActive === false;
     const setupRequired = services.reportSetup?.required === true && !ended;
     const reportText = ended ? 'Your purchased funding round is complete. Its included report schedule has ended.' : setupRequired ? 'Enter your identity and authorize your included report through the secure form.' : allowance.includedAvailable ? 'Your included monthly report is available.' : allowance.nextIncludedAt ? 'Next included report: ' + date(allowance.nextIncludedAt) + '.' : 'Your included report allowance is being checked.';
-    const reportAction = setupRequired ? '<a class="bf-link bf-primary" href="/app/soft-pull-approve.html?portal=1&amp;blueprint=1">Set up my included report</a>' : allowance.pendingRequestId ? '<p>A report request is already in progress.</p>' : services.capabilities?.requestReport ? button(allowance.includedAvailable ? 'Request included report' : 'Request an extra report quote','request-report','',true) : '';
+    const reportAction = setupRequired ? `<a class="bf-link bf-primary" href="${esc(demo?demo.previewUrl('document','report-authorization'):'/app/soft-pull-approve.html?portal=1&blueprint=1')}">Set up my included report</a>` : allowance.pendingRequestId ? '<p>A report request is already in progress.</p>' : services.capabilities?.requestReport ? button(allowance.includedAvailable ? 'Request included report' : 'Request an extra report quote','request-report','',true) : '';
     return `<section><h3>Reports and help</h3><div class="bf-panel"><h3>Your credit report</h3><p>${esc(reportText)}</p>${reportAction}</div>
       ${services.capabilities?.requestHelp ? `<div class="bf-panel"><h3>Ask Fundhub to run a service</h3><form data-bf-form="service"><div class="bf-fields"><label>What would you like help with?<select name="serviceKind">${rows(services.serviceTypes).map(s => `<option value="${esc(s.key)}">${esc(s.label)}${s.priceCents != null ? ' · ' + esc(money(s.priceCents)) : ' · request a quote'}</option>`).join('')}</select></label><label>Case or round<select name="targetId">${targetOptions(rows(services.serviceTypes)[0]?.key)}</select></label><label>Tell the team which step needs help<textarea name="note" rows="3" maxlength="1500"></textarea></label></div><button type="submit">Request help and pricing</button></form></div>` : ''}
       <div class="bf-panel"><h3>Your service requests</h3>${rows(services.requests).length ? services.requests.map(serviceRequestView).join('') : '<p>You have no extra service requests.</p>'}</div></section>`;
@@ -271,6 +277,12 @@
 
   const screens = {today, repair:repairWork, inquiries:inquiryWork, funding:fundingWork, services:serviceWork};
   function httpsUrl(value) {
+    if (demo) {
+      try {
+        const url = new URL(value, location.origin);
+        return url.origin === location.origin && url.pathname === '/app/client-portal.html' && url.searchParams.get('demo') === '1' && url.searchParams.get('blueprint') === 'full' && ['bank','document','payment'].includes(url.searchParams.get('preview')) ? url.href : null;
+      } catch { return null; }
+    }
     try { const url = new URL(value); return url.protocol === 'https:' ? url.href : null; } catch { return null; }
   }
 
@@ -326,8 +338,8 @@
           : await request('/api/documents-download?id=' + encodeURIComponent(el.dataset.id));
         const download = result.document?.download;
         let url = result.url || (typeof download === 'string' ? download : download?.url || download?.path);
-        if (action === 'document' && typeof url === 'string' && url.startsWith('/api/documents/')) url = new URL(url,location.origin).href;
-        if (typeof url !== 'string' || !url.trim() || (!httpsUrl(url) && !(action === 'document' && url.startsWith(location.origin + '/api/documents/')))) throw new Error('A valid destination was not returned. Please try again.');
+        if (!demo && action === 'document' && typeof url === 'string' && url.startsWith('/api/documents/')) url = new URL(url,location.origin).href;
+        if (typeof url !== 'string' || !url.trim() || (!httpsUrl(url) && !(!demo && action === 'document' && url.startsWith(location.origin + '/api/documents/')))) throw new Error('A valid destination was not returned. Please try again.');
         if (!current()) return;
         if (popup) { popup.location.href = url; pendingWindows.delete(popup); }
         else location.assign(url);
@@ -427,6 +439,13 @@
   host.addEventListener('click', event => { if (!current()) { event.preventDefault(); event.stopImmediatePropagation(); } },true);
   window.addEventListener('storage', () => current());
   window.addEventListener('focus', () => current());
+  if (demo) {
+    let demoScenario = demo.scenario;
+    window.addEventListener('fh:blueprint-demo-change', () => {
+      if (demo.scenario !== demoScenario) { demoScenario = demo.scenario; view = 'today'; notice = ''; actionKeys.clear(); }
+      if (principal && current()) refresh();
+    });
+  }
   request('/api/auth/session').then(session => {
     if (!current()) return;
     const staff = session.staff || {};

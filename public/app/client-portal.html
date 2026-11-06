@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+/* The explicit full-package sample has its own local data transport. */
+(function () {
+  var q = new URLSearchParams(location.search);
+  window.__fhBlueprintFullDemoRoute = location.pathname === "/app/client-portal.html" && q.get("demo") === "1" && q.get("blueprint") === "full";
+  if (window.__fhBlueprintFullDemoRoute) document.write('<script defer src="/app/blueprint-demo.js"><' + '/script>');
+})();
+</script>
 <!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
 <link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/app/fundhub-font.css">
@@ -26,7 +34,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Legacy staff fonts load without blocking the client system-font first paint. -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<script>
+if (!window.__fhBlueprintFullDemoRoute) document.write('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media=\'all\'">');
+</script>
 <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
 <link rel="stylesheet" href="fundhub-brand.css">
 <style>
@@ -491,7 +501,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
   "use strict";
   try {
     var q = new URLSearchParams(window.location.search);
-    if (q.get("demo") !== "1") return;
+    if (window.__fhBlueprintFullDemoRoute || q.get("demo") !== "1") return;
     if (localStorage.getItem("fh_demo_staff")) return;
     localStorage.setItem("fh_demo_staff", JSON.stringify({
       id: "demo-owner", role: "owner", name: "DEMO Owner", email: "owner@demo.fundhub.local"
@@ -503,7 +513,9 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
 <link rel="stylesheet" href="/app/client-portal-ios.css">
 <!-- Fetch the independent client foundation early; execute only after body and header exist. -->
 <link rel="preload" href="/app/client-ios.js" as="script">
-<script defer src="shell.js"></script>
+<script>
+if (!window.__fhBlueprintFullDemoRoute) document.write('<script defer src="shell.js"><' + '/script>');
+</script>
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-client.css">
 <link rel="stylesheet" href="/app/blueprint-plan.css">
@@ -513,9 +525,13 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
 </head>
 <body class="no-funding no-docs no-own no-funding-door no-inquiry-door no-bureau-door no-upload-doors no-dispute-consent fh-astra fh-astra-client fh-astra-portal" data-client-page="client-portal" data-portal-state="loading">
 <script>
+if (window.__fhBlueprintFullDemoRoute) { document.body.dataset.blueprintDemo = 'full'; document.body.dataset.clientPublic = 'true'; }
+</script>
+<script>
 /* Portal presentation uses the same file-first order for clients and staff
    previews. Client navigation remains gated by client-ios.js. */
 (function () {
+  if (window.__fhBlueprintFullDemoRoute) return;
   var started = false;
   function enhance() {
     if (document.body.dataset.portalState === "empty-staff" || document.body.dataset.portalState === "error-staff") return;
@@ -559,7 +575,9 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
       <span id="who-name">—</span>
     </div>
   </header>
-  <script async src="/app/client-ios.js"></script>
+  <script>
+if (!window.__fhBlueprintFullDemoRoute) document.write('<script async src="/app/client-ios.js"><' + '/script>');
+</script>
 
   <main id="portal-home">
     <div class="page fh-maxw">
@@ -573,6 +591,17 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
       <div class="welcome-sub precall-only" id="greeting-sub-pre">Loading your file…</div>
       <div class="welcome-sub funding-only" id="greeting-sub">Here's where things stand on your funding.</div>
       <div class="rep-files" id="rep-files" hidden></div>
+      <section id="blueprint-demo-banner" aria-label="Blueprint demo controls" hidden>
+        <p class="bf-demo-label">$30,000 full implementation · Demo</p>
+        <h1>Explore your full Blueprint dashboard</h1>
+        <p>Fictional client, businesses and bank applications. Changes stay in this demo on this device.</p>
+        <div class="bf-demo-controls">
+          <label>Demo stage<select data-blueprint-demo-control="scenario"><option value="start">Getting started</option><option value="optimize">Credit and business preparation</option><option value="ready">Ready for sample applications</option><option value="completed">Completed sample round</option></select></label>
+          <button type="button" data-blueprint-demo-control="advance">Advance demo</button>
+          <button type="button" data-blueprint-demo-control="reset">Reset demo</button>
+        </div>
+        <p data-blueprint-demo-status role="status">Sample actions never send applications, messages, documents or payments to a provider.</p>
+      </section>
       <section id="blueprint-fulfillment" aria-label="Your funding workspace" hidden></section>
       <section id="blueprint-plan" aria-label="Your Capital Blueprint plan"><div role="status" aria-label="Loading your plan"><div class="bp-skeleton"></div><div class="bp-skeleton large"></div><p class="bp-caption">Loading your saved account plan…</p></div></section>
       <section class="cp-next-action" aria-labelledby="cp-next-title"><div class="card-title">Next action</div><h2 id="cp-next-title">Review your account.</h2><p id="cp-next-copy">Review your documents, agreements and payments.</p><a id="cp-next-link" href="#acct">Open your account →</a></section>
@@ -1509,6 +1538,7 @@ var PRODUCTS = {
    it scans the comments too, so do not name one here — because a clock ticking
    with no video behind it is the exact fake this card used to be. */
 document.addEventListener('DOMContentLoaded', function(){
+  if (window.__fhBlueprintFullDemoRoute) return;
   var player = document.getElementById('player');
   var empty  = document.getElementById('video-empty');
   if (!player || !empty) return;
@@ -1677,7 +1707,9 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 })();
 </script>
-<script defer src="data.js"></script>
+<script>
+if (!window.__fhBlueprintFullDemoRoute) document.write('<script defer src="data.js"><' + '/script>');
+</script>
 <script>
 
 /* Client Portal — the tiles lock and unlock from real entitlements (032).
@@ -1704,6 +1736,7 @@ document.addEventListener('DOMContentLoaded', function(){
 // that answer is back.
 document.addEventListener("DOMContentLoaded", async function () {
   "use strict";
+  if (window.__fhBlueprintFullDemoRoute) return;
   // Screen tile keys (src/config/offers.mjs) → entitlement catalog codes (032).
   var MAP = {
     SOFT_PULL:         "credit-analysis-report",
@@ -3492,6 +3525,7 @@ document.addEventListener("DOMContentLoaded", async function () {
    client-side gate; POST sends name + method, not a new upload. */
 (function () {
   "use strict";
+  if (window.__fhBlueprintFullDemoRoute) return;
   var KIND = "dispute_authorization";
   var card = document.getElementById("dispute-auth-card");
   var canvas = document.getElementById("cpSignPad");
@@ -3819,6 +3853,7 @@ document.addEventListener("DOMContentLoaded", async function () {
    ═══════════════════════════════════════════════════════════════════════════ */
 (function () {
   "use strict";
+  if (window.__fhBlueprintFullDemoRoute) return;
 
   function escape2(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -3969,6 +4004,7 @@ document.addEventListener("DOMContentLoaded", async function () {
  */
 (function () {
   "use strict";
+  if (window.__fhBlueprintFullDemoRoute) return;
 
   var SW_URL = "/app/client-portal-sw.js";
   /* SCOPE IS ONE PAGE, NOT THE WHOLE /app/ FOLDER, AND THAT IS THE SAFETY
@@ -4380,6 +4416,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 <script>
 (function () {
   "use strict";
+  if (window.__fhBlueprintFullDemoRoute) return;
 
   var READ_PATH  = "/api/read/affiliate-portal";
   var JOIN_PATH  = "/api/affiliates/refer";
@@ -4574,6 +4611,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 <script>
 (function () {
+  if (window.__fhBlueprintFullDemoRoute) return;
   function openAccount() {
     if (!document.body.hasAttribute("data-client-ios")) return;
     var view = new URLSearchParams(location.search).get("view");
@@ -4596,6 +4634,7 @@ document.addEventListener("DOMContentLoaded", async function () {
    their staff-scoped painter. Sample mode cannot reveal real conversations. */
 (function () {
   "use strict";
+  if (window.__fhBlueprintFullDemoRoute) return;
   var pane = document.getElementById("tp-msg"), authorized = false, seq = 0;
   if (!pane) return;
   try {
@@ -4683,5 +4722,46 @@ document.addEventListener("DOMContentLoaded", async function () {
     }).catch(function () { /* A failed session check must not expose messages. */ });
 })();
 </script>
+
+<script>
+(function () {
+  if (!window.__fhBlueprintFullDemoRoute) return;
+  document.addEventListener('DOMContentLoaded', function () {
+    var demo = window.FHBlueprintDemo;
+    if (demo && demo.isPreview) return;
+    var banner = document.getElementById('blueprint-demo-banner');
+    if (!banner) return;
+    banner.hidden = false;
+    document.body.dataset.portalState = 'ready';
+    document.getElementById('who-name').textContent = 'DEMO Alex Sample';
+    document.getElementById('who-av').textContent = 'AS';
+    var status = banner.querySelector('[data-blueprint-demo-status]');
+    if (!demo || !demo.active) {
+      status.textContent = 'The sample dashboard could not load. Reload this page to try again.';
+      banner.querySelectorAll('button,select').forEach(function (control) { control.disabled = true; });
+      return;
+    }
+    var stage = banner.querySelector('[data-blueprint-demo-control="scenario"]');
+    function sync() { stage.value = demo.scenario; }
+    stage.addEventListener('change', function () { demo.setScenario(stage.value); sync(); });
+    banner.querySelector('[data-blueprint-demo-control="advance"]').addEventListener('click', function () { demo.advance(); sync(); });
+    banner.querySelector('[data-blueprint-demo-control="reset"]').addEventListener('click', function () { demo.reset(); location.reload(); });
+    window.addEventListener('fh:blueprint-demo-change', sync);
+    // Any legacy or instructional link that was not explicitly replaced with
+    // an app-owned sample preview stays inside this sample dashboard.
+    document.addEventListener('click', function (event) {
+      var link = event.target.closest && event.target.closest('a[href]');
+      if (!link) return;
+      var url;
+      try { url = new URL(link.href, location.origin); } catch (_) { event.preventDefault(); return; }
+      if (url.origin === location.origin && url.pathname === '/app/client-portal.html' && url.searchParams.get('demo') === '1' && url.searchParams.get('blueprint') === 'full' && ['bank','document','payment'].indexOf(url.searchParams.get('preview')) !== -1) return;
+      event.preventDefault();
+      status.textContent = 'This demo stays in the sample workspace. Use its sample documents, bank applications and payment previews.';
+    }, true);
+    sync();
+  });
+})();
+</script>
+
 </body>
 </html>
