@@ -1,0 +1,102 @@
+{
+  "actualProductionCoordinator": true,
+  "checkedAt": "2026-11-06T18:47:42Z",
+  "events": [
+    {
+      "kind": "loaded_fixture",
+      "url": "https://fundhub.ai/app/native-compatibility-fixture.html"
+    },
+    {
+      "kind": "external_destination",
+      "url": "https://www.experian.com/help/dispute-credit/"
+    },
+    {
+      "case": "actual_bureau_portal",
+      "kind": "javascript_result",
+      "result": "clicked"
+    },
+    {
+      "kind": "external_destination",
+      "url": "https://www.experian.com/consumer/upload/"
+    },
+    {
+      "case": "actual_bureau_upload",
+      "kind": "javascript_result",
+      "result": "clicked"
+    },
+    {
+      "case": "actual_client_bank",
+      "kind": "javascript_result",
+      "result": "clicked"
+    },
+    {
+      "kind": "external_destination",
+      "url": "https://bank.example.invalid/apply"
+    },
+    {
+      "case": "actual_client_packet",
+      "kind": "javascript_result",
+      "result": "clicked"
+    },
+    {
+      "kind": "first_party_document_policy",
+      "productionAllowed": true,
+      "url": "https://fundhub.ai/api/documents/10000000-0000-4000-8000-000000000003",
+      "queryKeys": [
+        "exp",
+        "sig"
+      ]
+    },
+    {
+      "case": "actual_client_repair_letter",
+      "kind": "javascript_result",
+      "result": "clicked"
+    },
+    {
+      "kind": "first_party_document_policy",
+      "productionAllowed": true,
+      "url": "https://fundhub.ai/api/documents/10000000-0000-4000-8000-000000000003",
+      "queryKeys": [
+        "exp",
+        "sig"
+      ]
+    },
+    {
+      "case": "start_csm_fixture",
+      "kind": "javascript_result",
+      "result": "started"
+    },
+    {
+      "case": "open_csm_client",
+      "kind": "javascript_result",
+      "result": "opened"
+    },
+    {
+      "case": "actual_csm_bank_document",
+      "kind": "javascript_result",
+      "result": "clicked"
+    },
+    {
+      "kind": "first_party_document_policy",
+      "productionAllowed": true,
+      "url": "https://fundhub.ai/api/documents/10000000-0000-4000-8000-000000000003",
+      "queryKeys": [
+        "exp",
+        "sig"
+      ]
+    },
+    {
+      "caseCount": 8,
+      "kind": "complete"
+    }
+  ],
+  "externalOpenTransport": "swizzled to record only; no external app or provider request",
+  "platform": "iOS simulator WKWebView",
+  "source": "6c9a10d7a5c094166342018026ff15f4e94fa48d",
+  "actualControlsExercised": 6,
+  "setupSteps": 2,
+  "exactFetchedLiveJavaScript": true,
+  "providerActionsExecuted": false,
+  "productionRowsWritten": 0,
+  "verdict": "PASS navigation transport compatibility only"
+}

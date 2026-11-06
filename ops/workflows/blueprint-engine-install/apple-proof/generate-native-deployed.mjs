@@ -1,0 +1,28 @@
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import {shapeDocument} from '../../../../src/documents/retrieve.mjs';
+const out='ops/workflows/blueprint-engine-install/apple-proof/deployed-6c9a10d7/';
+const org='10000000-0000-4000-8000-000000000001',client='10000000-0000-4000-8000-000000000002',doc='10000000-0000-4000-8000-000000000003';
+const clientJs=fs.readFileSync(out+'live-client.js','utf8'),csmJs=fs.readFileSync(out+'live-csm.js','utf8');
+const download=shapeDocument({id:doc,current_version_id:null},{signing:{secret:'synthetic-native-navigation-only-secret'}}).download;
+const prelude=`
+localStorage.setItem('fh_token','synthetic-native-client');
+const ORG=${JSON.stringify(org)}, CLIENT=${JSON.stringify(client)}, DOC=${JSON.stringify(doc)}, DOWNLOAD=${JSON.stringify(download)};
+const engagement={id:'engagement',orgId:ORG,clientId:CLIENT,status:'active',executionOwner:'client'};
+window.__transportLog=[];
+window.fetch=async function(input,options={}){const u=new URL(String(input),location.origin),p=u.pathname;let b={};try{b=JSON.parse(options.body||'{}')}catch{};window.__transportLog.push({path:p,action:b.action||null});let value={ok:true};
+if(p==='/api/auth/session')value={ok:true,principal:'client',staff:{id:'account',org_id:ORG,client_id:CLIENT,role:'client'}};
+else if(p==='/api/blueprint/funding'&&b.action==='open_lender')value={ok:true,url:'https://bank.example.invalid/apply'};
+else if(p==='/api/blueprint/funding')value={ok:true,engagement,state:'ready',nextAction:'Synthetic bank handoff',lenders:[{id:'lender',name:'Synthetic Bank',available:true,reason:'Synthetic file ready'}],applications:[{id:'application',lenderName:'Synthetic Bank',status:'Apply',evidenceDocuments:[{id:DOC,reference:'Synthetic saved bank evidence'}]}]};
+else if(p==='/api/blueprint/inquiries')value={ok:true,cases:[{id:'case',bureau:'Experian',status:'In progress',packet:{complete:true},portalUrl:'https://www.experian.com/help/dispute-credit/',documentUploadUrl:'https://www.experian.com/consumer/upload/',documents:[{id:DOC,title:'Open synthetic packet'}],inquiries:[],actions:{}}]};
+else if(p==='/api/blueprint/repair')value={ok:true,authorization:{signed:true},stage:'ready',cases:[{id:'repair',bureau:'Experian',round:1,status:'prepared',items:[],letters:[{id:'letter',documentId:DOC,target:'Experian',status:'Prepared',canRecordSubmission:false}]}],actions:{canGenerate:false}};
+else if(p==='/api/blueprint/services'&&u.searchParams.get('view')==='oversight')value={ok:true,clients:[{clientId:CLIENT,clientName:'Synthetic Buyer',status:'active',executionOwner:'client',openTasks:1,helpRequests:0}],hasMore:false};
+else if(p==='/api/blueprint/services')value={ok:true,engagement,allowance:{includedAvailable:true},serviceTypes:[],requests:[],capabilities:{quote:false},oversight:{openSteps:[]}};
+else if(p==='/api/documents-download')value={ok:true,document:{id:DOC,download:DOWNLOAD}};
+else if(p==='/api/blueprint/plan')value={ok:false,error:'synthetic-preparation-not-loaded'};
+return {ok:value.ok!==false,status:value.ok===false?403:200,json:async()=>value};};
+window.startCsmFixture=()=>{localStorage.setItem('fh_token','synthetic-native-csm');(0,eval)(${JSON.stringify(csmJs)});};
+`;
+const html='<!doctype html><meta name="viewport" content="width=device-width"><h1>Synthetic native candidate proof</h1><p>External navigation is intercepted; no provider/customer actions.</p><section id="blueprint-fulfillment" hidden></section><section id="blueprint-csm-services" hidden></section><script>'+prelude.replaceAll('</script','<\\/script')+'</script><script>'+clientJs.replaceAll('</script','<\\/script')+'</script>';
+fs.writeFileSync(out+'native-candidate-fixture.html',html);
+fs.writeFileSync(out+'native-candidate-sources.json',JSON.stringify({checkedAt:new Date().toISOString(),clientJsSha256:crypto.createHash('sha256').update(clientJs).digest('hex'),csmJsSha256:crypto.createHash('sha256').update(csmJs).digest('hex'),canonicalDownloadKeys:Object.keys(download),serverWrites:0},null,2)+'\n');

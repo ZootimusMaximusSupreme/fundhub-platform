@@ -1,5 +1,5 @@
 OWNER FOLLOW-UP — NOVEMBER 6, 2026
-Recovered from Codex history and current repository sources. No provider/customer actions or account changes performed. Only this report was written.
+Recovered from Codex history and current repository sources. The recovery pass itself was read-only. Current Blueprint execution receipts below distinguish later sandbox account/testing work from owner tasks.
 
 CHRIS'S PRIORITY LIST
 
@@ -47,8 +47,9 @@ OTHER REAL OWNER DECISIONS — SEPARATE FROM THE FIVE ABOVE
 
 AGENT-OWNED — DO NOT HAND THESE BACK AS CHRIS'S TO-DOS
 
-- Finish the currently assigned safe sandbox pull/webhook proof and distinguish actual vendor sandbox receipts from fixture transports. Parent owns any justified fix, protected publication and live readback.
-- Check and complete the Apple delivery path with actual version/build/submission receipts. The Apple lane is active; do not ask Chris to deploy code or infer a new owner blocker from an old signing/watch status.
+- Sandbox status: actual vendor TransUnion/Experian/Equifax test files passed through Fundhub into restricted scratch PostgreSQL. Seven normal-router payment/report/takeover rehearsals passed with fixture payment transports. A genuine Whop dashboard Test signature verified and its foreign sample account was refused403. The approved four-permission sandbox key was created; the first actual checkout POST was refused403 without a URL or paid effects. Create plans remains off after automatic approval review rejected the casual reply as unclear authorization; the owner requested no further questions. The precise missing scope is unconfirmed, so successful actual Whop purchase proof remains unproven. Agents own the remaining test, any justified fix and protected release; do not send Chris to configure the integration himself.
+- Current protected release verified: naming/metadata repair PR429 is live as1edbe206, exact-main14/14 and Ship42284747645 succeeded. Live health is200/up with444 expected migrations and zero pending; unchanged hosted client/CSM scripts retain the verified iOS behavior. The actual Whop sandbox checkout403 remains a separate failed provider test, not a deployment failure.
+- Apple verified: public Fundhub Portal1.0.3/build9 is VALID/READY_FOR_SALE with review COMPLETE. It loads the hosted portal; native source is unchanged from the public release source. The deployed hosted repair passed six controls/eight steps in the iOS simulator with exact fetched live scripts. No replacement binary or new submission is needed for this web change. Physical-device/testing-group delivery is not claimed; do not turn old signing/watch notes into a new owner task.
 - Restore/check the manual walkthrough environment and give Chris working direct links plus a short client/staff checklist. Record his feedback and repair/retest it.
 - Refresh/package the ad and 22-lesson recording inputs, reconcile old Blueprint wording/screenshots, then edit/caption/animate/clip the accepted takes. Do not invent a campaign launch or change spend from this report.
 - After owner account/document steps, verify Twilio delivery and finish the actual Company Cash/Plaid proof. Older signed-email booking-resume, Mac Dock and provider proofs must be checked against their owning latest receipts before being declared still open.
