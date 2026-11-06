@@ -96,11 +96,17 @@ test("OffersIQ ledger persists one synthetic receipt and shared summary as fundh
     assert.equal(rows[0].requester_staff_id, staffId);
     assert.equal(rows[0].consent_terms_url, CONSENT.termsUrl);
     assert.equal(rows[0].status, "matched");
+    assert.equal(rows[0].lead_sort_bucket, "can_not_tell");
+    assert.equal(rows[0].lead_sort_points, 0);
+    assert.equal(rows[0].lead_sort_result.bucket, rows[0].lead_sort_bucket);
+    assert.equal(rows[0].lead_sort_result.version, rows[0].lead_sort_version);
+    assert.ok(rows[0].lead_sort_updated_at);
     const saved = (await writer.query(
       "SELECT custom_fields FROM clients WHERE id=$1 AND org_id=$2", [clientId, orgId]
     )).rows[0].custom_fields;
     assert.equal(saved.unrelated.keep, true);
     assert.equal(saved.offersiq.credit_score, 721);
+    assert.equal(saved.offersiq.lead_sort_bucket, undefined);
     assert.deepEqual(saved.offersiq.offers_iq_summary,
       { creditScore: 721, totalAccountCount: 12, openMortgageDelinquency: false });
     assert.doesNotMatch(JSON.stringify(rows[0]), /unknownIdentity|secret/);

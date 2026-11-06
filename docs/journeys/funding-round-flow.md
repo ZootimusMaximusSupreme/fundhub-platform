@@ -395,3 +395,44 @@ a cleared hold back.
   signed settlement, or Cortana receipt has been observed. The three existing funded
   card-stacking rounds have no confirmed approval rows, so they remain internal advisor
   tasks rather than payable invoices. The alt-fin rail remains out of this per-bank scope.
+
+
+## Internal OffersIQ lead sort (approved backend plan, 2026-11-06)
+
+The finished screening ledger keeps a separate internal sort result: Can't tell,
+Super Prime, Prime, Blueprint or Not a fit yet; zero to100 points; the config
+version; retained ranges; and reasons. Only numeric thresholds or numeric pairs
+survive sanitation. The reader requires the complete configured code, name,
+operator and threshold list, including failed and unverifiable rules. Two passing
+ranges for one fact or a changed/partial list yields Can't tell with `rule list
+mismatch`. An unknown score is never bad credit. A verified no-file response with
+no evaluated rules also yields Can't tell.
+
+```mermaid
+flowchart LR
+    FIN[Saved finished check] --> READ[Read exact configured rule list]
+    READ -->|Matches| RANGE[Known ranges or unknown]
+    READ -->|Missing or changed| TELL[Can't tell with reason]
+    RANGE --> SORT[Bucket and points from versioned config]
+    TELL --> SAVE[Save internal sort on same ledger row]
+    SORT --> SAVE
+    FREE[Free stored-report reevaluation after CRS loads list] --> READ
+    SAVE --> PULSE[Daily and hourly read-only integrity check]
+```
+
+The config owns every range, Prime check and point value. The draft has123 readable
+numeric questions. Missing catalogue codes/names and a complete loaded-list
+sandbox receipt are still required. CRS confirmed five-point score bands,
+provider-validated rule capacity and complete flat/grouped per-condition results
+on November6. The boolean bankruptcy rule and no-car-loan distinction stay
+explicit pending config entries. Unconfirmed codes fail closed. The exact
+observed three starter rules on1677/1232 get verified nothing-to-judge heartbeat treatment until CRS loads the agreed list.
+
+Rescoring reads saved receipts and changes only ranking fields. Free reevaluation
+uses the stored request ID and never starts a paid check; production bulk reruns
+first require a complete matching free proof. The original paid receipt, identity,
+setter cache and current screen stay unchanged. No bucket or point is sent to
+Meta, any other ad platform, calendar routing or lender decisions. No SSN or date
+of birth is added. Sandbox proof uses only the four published test people.
+Full new-list proof and the first20 normal setter checks wait for CRS to load the
+rules. The setter screen is separate later work for Claude/Opus.

@@ -1,0 +1,141 @@
+{
+  "ownerLane": "lead-sort",
+  "base": "930713f6d35576df92bf359eda55ff752ea5769a",
+  "delivery": "draft; ordered ship tool stopped on prior queue base; shared manifest and CRS proof pending",
+  "files": [
+    {
+      "path": "db/migrations/567_offersiq_lead_sort.sql",
+      "sha256": "d900077398bd6febd2ba7253ef2ba6ad5100e2d4359edf03b555bbc17bf7b0be"
+    },
+    {
+      "path": "docs/journeys/CHANGELOG.md",
+      "sha256": "7d20cf9e94198759ec9aa7d70e604732abd0710b7c1d3a953781a99b7c922f3d"
+    },
+    {
+      "path": "docs/journeys/funding-round-flow.md",
+      "sha256": "39a195463961cce17d3508eb0f5991249b630e63ef23fd0b0320f1d684edd250"
+    },
+    {
+      "path": "ops/workflows/offersiq-lead-sort-2026-11-06.txt",
+      "sha256": "c848be6ddb2a654acec847dace3aff218a32c5a01eb42fef8941adab3e4ad1a3"
+    },
+    {
+      "path": "ops/workflows/offersiq-lead-sort-heartbeat.pending.patch",
+      "sha256": "acec7b2646d2a8a840780d350469d5d4c8fddba7c63ec1cf6b723427ceb1b0e4"
+    },
+    {
+      "path": "ops/workflows/offersiq-lead-sort-manifest.pending.patch",
+      "sha256": "00732528d47f699bc1579a094dabdf01ca4b9a2c3b87888e126c9d49a2c5eef5"
+    },
+    {
+      "path": "scripts/offersiq-lead-sort-reevaluate.mjs",
+      "sha256": "48067537aa26e13c2c08acb0d33ea1e01273ccfe6ac611da710cd922d405f0d9"
+    },
+    {
+      "path": "scripts/offersiq-lead-sort-rescore.mjs",
+      "sha256": "12c97d854f3347b045bef1f19b3e9a3afea08bbb5977ab12563e5f47ba0170a7"
+    },
+    {
+      "path": "scripts/offersiq-lead-sort-sandbox.mjs",
+      "sha256": "a71c13c2679b9749bd724ee5ec7ed4f506f13795dde5e24a85076a24ba0451c6"
+    },
+    {
+      "path": "scripts/offersiq-lead-sort-tools.mjs",
+      "sha256": "ee38952cc0764c87d2234d2736f911a6fa9abf625098cbbbfe7d4963c56d90b0"
+    },
+    {
+      "path": "scripts/offersiq-lead-sort-tools.pg.test.mjs",
+      "sha256": "3a0b6f0b7e33c7cb640cbc261718c62361751a73b11c26ce074873ea57e8253d"
+    },
+    {
+      "path": "scripts/offersiq-lead-sort-tools.test.mjs",
+      "sha256": "2abea059989abf8724d5e5c84ea380e4114c69f090e3af9a613862d313b6d787"
+    },
+    {
+      "path": "src/finance/offersiq-lead-sort-config.mjs",
+      "sha256": "14f44e7e8196235dbde4e660dd09f05848bbff66ef37bf615d03df4c38a0c961"
+    },
+    {
+      "path": "src/finance/offersiq-lead-sort-store.mjs",
+      "sha256": "600dd915f613d181e2631cb8fe7691a2cc1580ad024b77fc93bfba237a854c3d"
+    },
+    {
+      "path": "src/finance/offersiq-lead-sort-store.pg.test.mjs",
+      "sha256": "987352d7e7e596714372fb2f946efac0f3e218abb4655352738869619e898ace"
+    },
+    {
+      "path": "src/finance/offersiq-lead-sort.mjs",
+      "sha256": "13bdac49d281d0f2d02be2fce7da65c2ca7b6d7b17505dad9421f07725497a84"
+    },
+    {
+      "path": "src/finance/offersiq-lead-sort.test.mjs",
+      "sha256": "8036fbc310a0461385db83e2ef8322365174ae8294d34e2a69f9bae0e3da1492"
+    },
+    {
+      "path": "src/finance/offersiq.mjs",
+      "sha256": "fecf948a0091c1cc40aec3da0a5c49d2e72e89fec66bd168199eb301a96a7272"
+    },
+    {
+      "path": "src/finance/offersiq.pg.test.mjs",
+      "sha256": "e56d681e84a5c118271e725672400085fb4d44e8ccde4165e21425032ba156d8"
+    },
+    {
+      "path": "src/finance/offersiq.test.mjs",
+      "sha256": "0339ce678ca704b925dda7addd515d594f76944ad8eb90fab84203202d004b53"
+    },
+    {
+      "path": "src/pulse/beats/beat-soft-pull.mjs",
+      "sha256": "ccb72296f1788e9cb7490b681c17975e973d29611d956befb2b863daa027a3e6"
+    },
+    {
+      "path": "src/pulse/beats/beat-soft-pull.test.mjs",
+      "sha256": "d6ee10853e902d2aa05f325fe95db636882c7fd9879d067d5aacd2c8569c0dd8"
+    },
+    {
+      "path": "src/pulse/beats/contract.mjs",
+      "sha256": "202e413228d1a41c9b1d6dc210e65bf8bc9f875c3519632166e5d9d14aa1e768"
+    },
+    {
+      "path": "src/pulse/beats/contract.test.mjs",
+      "sha256": "74beb473f5ddcb83ebba31e87acc9ef6b6e4ab9a85a705e14ec387985301d25a"
+    },
+    {
+      "path": "src/pulse/beats/lib/offersiq-lead-sort-truth.mjs",
+      "sha256": "9b30783f8686330df4ecf58e364c40cb37804b231fd8e85bd0d2ae2b28719598"
+    },
+    {
+      "path": "src/pulse/coverage/gap-offersiq-lead-sort.mjs",
+      "sha256": "0a91ae3f67552d0bfabf2725508a6b0c4a34ee6df78a92cb3d9f46f37abbddf9"
+    },
+    {
+      "path": "src/pulse/coverage/gap-offersiq-lead-sort.pg.test.mjs",
+      "sha256": "8c9d5030ae6a25b3bbf216f8a9d3c21bb5c4a476efb590c9524aaa0061805a30"
+    },
+    {
+      "path": "src/pulse/coverage/gap-offersiq-lead-sort.test.mjs",
+      "sha256": "b15d71494bf1d8f5a251baa42465cb5f35d9e9797fdb65e0ed200d92f2103710"
+    },
+    {
+      "path": "src/pulse/coverage/modules.mjs",
+      "sha256": "f17d8847f14d23319e1488a28402176e8df33e8d8678fe2d332897f1a427e6bb"
+    },
+    {
+      "path": "src/pulse/na-conditions.mjs",
+      "sha256": "596813a8a9df2e4d240324560f3fff806536c80292ad45222d94baed08c52a09"
+    },
+    {
+      "path": "src/pulse/na-conditions.test.mjs",
+      "sha256": "5d79155415d6e21bda7aea398580ec3b651b7bd0e5bafb5dc2a4cbdf775e9520"
+    }
+  ],
+  "checks": {
+    "focusedPassed": 299,
+    "focusedFailed": 0,
+    "focusedSkipped": 0,
+    "lint": "4762 parsed",
+    "typescript": "passed",
+    "scratchPostgres": "16.15; fundhub_app; no superuser/bypassrls",
+    "sandbox": "4 published identities; 3 no-file, 1 starter; full new list not proven"
+  },
+  "currentMainBase": "c6019c9beed4c6e21aa57b8e7d7c8d57b57a3578"
+}

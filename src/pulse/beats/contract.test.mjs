@@ -347,8 +347,19 @@ test("pinBeatSource: lib helpers may import siblings and the contract; a beat ma
   assert.deepEqual(pinBeatSource('import { x } from "./lib/other.mjs";\nimport { isMasked } from "./contract.mjs";\nimport crypto from "node:crypto";', { role: "beat" }), []);
 });
 
-test("pinBeatSource: PURE_IMPORTS is the only way past the allow-list, and it starts empty", () => {
-  assert.deepEqual(Object.keys(PURE_IMPORTS), []);
+test("pinBeatSource: PURE_IMPORTS permits exactly the two pinned OffersIQ pure modules", () => {
+  assert.deepEqual(Object.keys(PURE_IMPORTS).sort(), [
+    "../../../finance/offersiq-lead-sort-config.mjs", "../../../finance/offersiq-lead-sort.mjs"
+  ]);
+  for (const [file, expectedImports] of [
+    ["offersiq-lead-sort.mjs", ["./offersiq-lead-sort-config.mjs"]],
+    ["offersiq-lead-sort-config.mjs", []]
+  ]) {
+    const source = fs.readFileSync(path.join(ROOT, "src/finance", file), "utf8");
+    assert.deepEqual(pinBeatSource(source, { role: "lib" }), [], file);
+    const imports = [...source.matchAll(/^\s*import[\s\S]*?from\s+["']([^"']+)["'];/gm)].map(match => match[1]);
+    assert.deepEqual(imports, expectedImports, `${file}: the complete pure import closure is pinned`);
+  }
   const src = 'import { classify } from "../../lib/some-pure-thing.mjs";';
   assert.ok(pinBeatSource(src).length > 0);
   assert.deepEqual(pinBeatSource(src, { pureImports: { "../../lib/some-pure-thing.mjs": "pure string function" } }), []);

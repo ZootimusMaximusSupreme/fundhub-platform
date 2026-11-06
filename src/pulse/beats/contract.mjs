@@ -378,7 +378,10 @@ export async function checkBeatSelfTest(beat, { makeCtx, limitMs = 2000 } = {}) 
 /** Modules (other than ./contract.mjs, ./lib/* and node:crypto) a beat may import.
     Each entry is specifier -> why it is pure (no I/O, no clock, no network).
     Empty to start. Adding one is a decision someone reads. */
-export const PURE_IMPORTS = Object.freeze({});
+export const PURE_IMPORTS = Object.freeze({
+  "../../../finance/offersiq-lead-sort.mjs": "Pure saved-receipt reader and scorer; no database, provider, clock or network access.",
+  "../../../finance/offersiq-lead-sort-config.mjs": "Frozen question and points configuration only; no database, provider, clock or network access."
+});
 
 const BANNED_IMPORTS = [
   [/(^|\/)db\.mjs$/, "the database module"],
