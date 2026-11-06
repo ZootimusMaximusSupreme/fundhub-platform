@@ -1,0 +1,24 @@
+OffersIQ / CRS enrichment audit — November 5, 2026
+Owner lane: front-house. Base fbd817985. Open #418 owns the closeout plan, with no overlapping paths. #414 and #416 already merged.
+Scope: synthetic local contracts, documented vendor sandbox only, existing routes and read-only receipts. No consumer reports, paid add-ons, vendor sends or customer writes.
+Separate stages: record observed failures first; targeted repairs; independent regression run; normal protected delivery.
+Parallel instructions
+Provider: verify the vendor guides, existing activation receipts, supported shapes, score models and test profiles. Return only sanitized receipts and the unanswered questions.
+Contract: reproduce defects in the adapter, durable request, scoped storage and reload path with synthetic inputs. Hold product edits until each defect is recorded.
+Display: follow saved evidence to the private setter/closer, fit cards, booking route and decision reference. Reproduce wrong or missing labels and keep decision rules separate from observed numbers.
+Coordinator: own this file and a disposable loopback PostgreSQL, cross-layer tests, independent verification and protected delivery.
+Ground truth: docs/journeys/role-closer-intended.md (Saved offer match); docs/sops/weekend-2026-10-24/02-setter.md (Offer matching); docs/journeys/funding-round-flow.md (Evidence retained). Client and closer generic intended route inventories alone have no sequence proof. System-map skill points to ops/workflows/system-map-2026-08-26.md, absent from current tree.
+Audit evidence on unchanged base (synthetic, no provider traffic)
+C1 Wrong response types/contradictions can become a match, e.g. ruleset [752], string false, object decision status or contradictory nested ruleset. See parseOffersIqResponse.
+C2 Malformed optional attributes become facts, including availableCredit=true and negative/fractional counts. See safeOffersIqAttributes.
+C3 Address changes can leave earlier financial values in the JSON for a stale result. A → B → A with scores 800 and 620 reuses A's receipt without a new call yet the staff card still reads B as stale. See offersIqSummaryForClient / evaluateLeadOffersIq.
+C4 Malformed HTTP 200 cause was replaced with provider_http_200; a non-UUID error receipt was published then disappeared on replay.
+D1 Saving corrected address in setter UI keeps the old operation, so the next valid request conflicts. Reproduced with actual setter functions.
+D2 reportScores combined a FICO 9 value of 619 with the cached VantageScore 3 label from a different 801 measurement. A Vantage-only report was hidden. Draft thresholds alone passed nine synthetic boundaries.
+Repairs C1–C4 and D1–D2 authorized after reproductions; no changes to qualification policy. Provider fixtures and independent verification remain separate.
+
+November 5 repair scope (C1 and C3)
+The parser now rejects malformed decision types and mismatched rule sets, and checks the final root outcome when present. A valid OR can have a failed child. A conflicting or stale result supplies no financial evidence to the three fit cards. Correcting or reconfirming an address restores its scoped prior receipt without a new provider call.
+Verified in src/finance/offersiq{,-contract}.test.mjs and offersiq.pg.test.mjs, src/finance/lead-fit-models.test.mjs and the setter/profile suites. The 620, 750 and 800 draft floors were tested below, at and above each floor. PostgreSQL used fundhub_app on a separate loopback scratch database. No production reports or consumer records were used.
+Out of scope for this repair: C2 attribute-type validation and D1/D2 setter and report display findings above. Verified deployment and real provider/customer outcomes require separate receipts.
+Focused regression: 111 passed, zero failed, zero skipped. Nine fit boundaries and an unchanged-address repair were included. TypeScript passed. Preflight had no blockers. Its inactive heartbeat branch contained a pre-integration version of two touched contract files, already superseded on main.

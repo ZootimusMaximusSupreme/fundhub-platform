@@ -4,12 +4,13 @@
 // repeated automatically, because CRS may already have processed it.
 
 import { createHash } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { allowsRole, isUuid, ROLE_SETS } from "../http/read-api.mjs";
 import { adaptersBlocked } from "../lib/dry-run.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
 import { CRS_PRODUCTION_HOST, CRS_SANDBOX_HOST, normalizeHost } from "./crs-identities.mjs";
 import { createCrsClient } from "./crs-client.mjs";
-import { assertOffersIqWireBody, buildOffersIqRequest } from "./offersiq-contract.mjs";
+import { assertOffersIqWireBody, buildOffersIqRequest, parseOffersIqResponse } from "./offersiq-contract.mjs";
 
 const FINISHED = new Set(["matched", "not_matched", "needs_review", "error"]);
 const SAFE_REASONS = new Set(["identity_changed", "request_id_missing", "invalid_response",
@@ -146,7 +147,15 @@ export function offersIqSummaryForClient(client) {
   const identity = identityFromClient(client);
   const current = identity && identityFingerprint(identity, summary.rule_set_id, summary.environment);
   if (current === summary.identity_fingerprint && !summary.stale) return summary;
-  return { ...summary, stale: true, outcome: "needs_review", reason: "identity_changed" };
+  return staleSummary(summary);
+}
+
+function staleSummary(summary) {
+  return {
+    outcome: "needs_review", stale: true, reason: "identity_changed",
+    rule_set_id: summary.rule_set_id, environment: summary.environment,
+    checked_at: summary.checked_at
+  };
 }
 
 function allowedStaff(staff) {
@@ -256,6 +265,19 @@ function sanitizeStoredSummary(input) {
   if (SAFE_REASONS.has(value.reason) || /^provider_http_\d{1,3}$/.test(clean(value.reason))) {
     summary.reason = value.reason;
   }
+  if (value.stale || !["matched", "not_matched"].includes(value.outcome)) return summary;
+  // Older rows can predate contract checks. Recheck any retained decision
+  // fields before showing financial values from a previously saved receipt.
+  const body = { ruleSetId: value.rule_set_id };
+  if (Object.hasOwn(value, "decision_status")) body.decisionStatus = value.decision_status;
+  if (Object.hasOwn(value, "overall_decision")) body.overallDecision = value.overall_decision;
+  if (Object.hasOwn(value, "root_group")) body.ruleEvaluation = { rootGroup: value.root_group };
+  if (!Object.hasOwn(body, "overallDecision") && !Object.hasOwn(body, "decisionStatus")) {
+    body.overallDecision = value.outcome === "matched";
+  }
+  if (parseOffersIqResponse({ body, requestId: summary.request_id }).outcome !== value.outcome) {
+    return { ...summary, outcome: "needs_review", reason: "decision_missing_or_conflicting" };
+  }
   const counts = {};
   for (const key of ["totalConditions", "passedConditions", "failedConditions", "unverifiableConditions"]) {
     if (safeCount(object(value.condition_counts)[key]) !== undefined) counts[key] = value.condition_counts[key];
@@ -324,6 +346,25 @@ function responseFromRow(row) {
     { result: summary, replayed: true });
 }
 
+async function publishSummary(db, orgId, clientId, summary) {
+  const published = await db.query(
+    `UPDATE clients SET custom_fields = jsonb_set(
+       COALESCE(custom_fields, '{}'::jsonb), '{offersiq}', $3::jsonb, true), updated_at = now()
+     WHERE id = $1 AND org_id = $2 RETURNING id`,
+    [clientId, orgId, JSON.stringify(summary)]
+  );
+  if (!published.rows.length) throw new Error("offersiq_client_publish_failed");
+}
+
+// The caller holds the client row lock and has verified the receipt's identity.
+async function replayCurrentReceipt(db, staff, client, row) {
+  const response = responseFromRow(row);
+  if (FINISHED.has(row.status) && !isDeepStrictEqual(offersIqSummaryForClient(client), response.body.result)) {
+    await publishSummary(db, staff.org_id, client.id, response.body.result);
+  }
+  return response;
+}
+
 function consentForRequest(input) {
   const consent = object(input);
   if (consent.accepted !== true || !/^https:\/\//i.test(clean(consent.termsUrl))
@@ -353,6 +394,16 @@ async function pendingReceipt(db, staff, clientId) {
       LIMIT 1`,
     [staff.org_id, clientId]
   )).rows[0] || null;
+}
+
+// Saving a previously screened address restores its receipt for all staff views.
+export async function restoreOffersIqForAddress(db, staff, client, env) {
+  const config = offersIqConfigFromEnv(env);
+  const identity = identityFromClient(client);
+  if (!config.configured || !identity) return;
+  const fingerprint = identityFingerprint(identity, config.ruleSetId, config.environment);
+  const row = await currentReceipt(db, staff, client.id, config, fingerprint);
+  if (row) await replayCurrentReceipt(db, staff, client, row);
 }
 
 export async function getOffersIqStatus(db, staff, { clientId } = {}, deps = {}) {
@@ -393,10 +444,10 @@ export async function evaluateLeadOffersIq(db, staff,
           || byOperation.environment !== config.environment || byOperation.identity_fingerprint !== fingerprint) {
         return answer(409, "error", { error: "operation_identity_mismatch" });
       }
-      return responseFromRow(byOperation);
+      return replayCurrentReceipt(writer, staff, client, byOperation);
     }
     const existing = await currentReceipt(writer, staff, clientId, config, fingerprint);
-    if (existing) return responseFromRow(existing);
+    if (existing) return replayCurrentReceipt(writer, staff, client, existing);
     if (await pendingReceipt(writer, staff, clientId)) {
       return answer(202, "needs_review", { error: "offer_check_in_progress" });
     }
@@ -432,7 +483,7 @@ export async function evaluateLeadOffersIq(db, staff,
         return answer(409, "error", { error: "operation_identity_mismatch" });
       }
       const raced = racedOperation || await currentReceipt(writer, staff, clientId, config, fingerprint);
-      if (raced) return responseFromRow(raced);
+      if (raced) return replayCurrentReceipt(writer, staff, client, raced);
       if (await pendingReceipt(writer, staff, clientId)) {
         return answer(202, "needs_review", { error: "offer_check_in_progress" });
       }
@@ -457,13 +508,14 @@ export async function evaluateLeadOffersIq(db, staff,
   const outcome = FINISHED.has(result.decision?.outcome)
     ? result.decision.outcome
     : result.blocked || (result.status >= 400 && result.status < 500) ? "error" : "needs_review";
-  const summary = safeSummary(result.decision || { outcome }, {
+  const evaluated = safeSummary(result.decision || { outcome }, {
     ruleSetId: config.ruleSetId, environment: config.environment,
     fingerprint: claim.fingerprint, checkedAt
   });
-  if (!result.ok) summary.reason = result.blocked ? "transmission_blocked"
+  if (!result.ok && !evaluated.reason) evaluated.reason = result.blocked ? "transmission_blocked"
     : outcome === "needs_review" ? "provider_uncertain" : `provider_http_${Number(result.status) || 0}`;
-  if (!summary.request_id && clean(result.requestId)) summary.request_id = clean(result.requestId);
+  if (!evaluated.request_id && isUuid(result.requestId)) evaluated.request_id = result.requestId;
+  const summary = sanitizeStoredSummary(evaluated);
 
   const published = await withTransaction(db, async writer => {
     const currentClient = (await writer.query(
@@ -479,23 +531,15 @@ export async function evaluateLeadOffersIq(db, staff,
          normalized_response = $6::jsonb, error_code = $7, finished_at = $8, updated_at = now()
        WHERE id = $1 AND org_id = $2 AND client_id = $3 AND status = 'in_flight'
        RETURNING id`,
-      [claim.claimed.id, staff.org_id, clientId, outcome, summary.request_id,
+      [claim.claimed.id, staff.org_id, clientId, summary.outcome, summary.request_id,
         JSON.stringify(summary), summary.reason || null, checkedAt]
     )).rows[0];
     if (!saved) throw new Error("offersiq_claim_finalization_failed");
     if (stillCurrent) {
-      const publishedClient = (await writer.query(
-        `UPDATE clients SET custom_fields = jsonb_set(
-           COALESCE(custom_fields, '{}'::jsonb), '{offersiq}', $3::jsonb, true), updated_at = now()
-         WHERE id = $1 AND org_id = $2
-         RETURNING id`,
-        [clientId, staff.org_id, JSON.stringify(summary)]
-      )).rows[0];
-      if (!publishedClient) throw new Error("offersiq_client_publish_failed");
+      await publishSummary(writer, staff.org_id, clientId, summary);
     }
     return !!stillCurrent;
   });
-  const visible = published ? summary
-    : { ...summary, stale: true, outcome: "needs_review", reason: "identity_changed" };
+  const visible = published ? summary : staleSummary(summary);
   return answer(200, visible.outcome, { result: visible, replayed: false });
 }

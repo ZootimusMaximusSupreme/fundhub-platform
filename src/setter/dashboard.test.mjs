@@ -54,6 +54,7 @@ function fakeDb(booked = true) {
     if (sql.includes("SELECT id FROM clients WHERE") && sql.includes("FOR UPDATE")) return { rows: [{ id: client.client_id }] };
     if (sql.includes("FROM clients c")) return { rows: [structuredClone(client)] };
     if (sql.includes("SELECT custom_fields FROM clients")) return { rows: [{ custom_fields: structuredClone(client.custom_fields) }] };
+    if (sql.includes("SELECT custom_fields, id, first_name, last_name, phone FROM clients")) return { rows: [structuredClone(client)] };
     if (sql.includes("SELECT id, name FROM staff")) return { rows: [{ id: "staff-2", name: "Closer" }] };
     if (sql.includes("UPDATE clients")) {
       if (sql.includes("qualification_bucket")) {

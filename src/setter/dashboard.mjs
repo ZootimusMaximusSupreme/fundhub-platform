@@ -8,7 +8,7 @@ import { tierBookingLink } from "../workflows/messaging.mjs";
 import { creditTierFor, stampQualificationBucket } from "../config/survey-qualification.mjs";
 import { refreshPrecallForScore } from "../workflows/precall-plan.mjs";
 import { emit } from "../events/bus.mjs";
-import { offersIqIdentityKeyForClient, offersIqSummaryForClient } from "../finance/offersiq.mjs";
+import { offersIqIdentityKeyForClient, offersIqSummaryForClient, restoreOffersIqForAddress } from "../finance/offersiq.mjs";
 
 // Assigned setters have the same personal queue boundary as primary setters.
 // Only the existing owner/admin seats may use the management-wide view.
@@ -470,7 +470,7 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
     if (checked.error) return { status: 400, body: { ok: false, error: checked.error } };
     return withTransaction(db, async writer => {
       const locked = await writer.query(
-        `SELECT custom_fields FROM clients WHERE id = $1 AND org_id = $2
+        `SELECT custom_fields, id, first_name, last_name, phone FROM clients WHERE id = $1 AND org_id = $2
           AND custom_fields->>'crm_archived_at' IS NULL FOR UPDATE`,
         [client_id, staff.org_id]
       );
@@ -501,6 +501,7 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
       const previous = jsonObject(fields.setter_residential_address);
       const same = Object.keys(checked.address).every(key => previous[key] === checked.address[key]);
       if (same && previous.source === "setter_confirmed") {
+        await restoreOffersIqForAddress(writer, staff, locked.rows[0], deps.env ?? process.env);
         return { status: 200, body: { ok: true, address: previous } };
       }
       const at = (deps.now || (() => new Date()))();
@@ -519,6 +520,9 @@ export async function updateSetterHandoff(db, staff, { client_id, action, handof
          WHERE id = $1 AND org_id = $2 RETURNING custom_fields->'setter_residential_address' AS address`,
         [client_id, staff.org_id, JSON.stringify(saved)]
       );
+      await restoreOffersIqForAddress(writer, staff, {
+        ...locked.rows[0], custom_fields: { ...fields, setter_residential_address: saved }
+      }, deps.env ?? process.env);
       return { status: 200, body: { ok: true, address: jsonObject(result.rows[0]?.address) } };
     });
   }
