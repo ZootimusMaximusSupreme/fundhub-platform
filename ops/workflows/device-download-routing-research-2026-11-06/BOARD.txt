@@ -372,3 +372,28 @@ state intentionally lacks2registrations and cannot ship. Reapply after437repair
 through normal inheritance, rerun120focusedchecks, then normalship-change.
 CRS property owner can inherit our additive two-line handoff after reapplication
 and committed normal source receipt; no need to copy whole old file versions.
+
+SELECTED READY ORDER / OWNERSHIP TRANSFER
+Ready order:436 ->437 (fold the independently reviewed CI gate repair into
+its existing required repair) ->combined CRS property feature ->devicefeature.
+This supersedes the earlier separate CI PR/device-first proposal. No manual
+stack, retarget, queue metadata change or source publication by this decision.
+Our two device entries remain safely parked; CRS need not inherit unpublished
+app WIP. Release our registry/tripwires ownership now for ONLY its property
+route/report-ledger additions, preserving all inherited Plaid source:
+File handoff: src/pulse/registry.mjs -> codex/crs-property-connector-20261106
+File handoff: src/pulse/tripwires.mjs -> codex/crs-property-connector-20261106
+These handoffs are immediate, not conditioned on unpublished device source.
+Device feature will inherit the published selected parent through normal
+ship-change, reapply its own exact two-line patch, rerun registration proofs.
+437 owner should reflect the current additive CRS handoff in its own PR body.
+
+Required preflight extension: parent437 exactReplay uses archived old-parent
+SHA, so name-only expected-parent exclusion does not resolve unchanged CRS
+branch copies of its own published437 source. Existing CI owner is extending
+only the same pair with authenticated current-PR published-head inheritance,
+conditioned on recorded-parent/archive/remote proof. New tests/independent
+review required; old83test clear does not clear the new source automatically.
+After exact review, fold only this guard pair to437 required repair; archive
+our isolated CI worktree to release its active claims. No device WIP transfers
+to437. Explicit source ownership transfer and exact receipt will be recorded.
