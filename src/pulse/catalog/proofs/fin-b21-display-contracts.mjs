@@ -98,11 +98,13 @@ check({
   ]
 });
 
+// Control labels remain the original inventory join identities. The requirement
+// and predicates below implement the owner's 2026-11-06 permanent-link policy.
 check({
   key: "staff-reset-link",
   surface: STAFF_SURFACE,
   control: "Editor 'Reset password': makes a 1 hour reset link and shows it in a prompt box to copy",
-  requirement: "Every reset link of the last 90 days must run for one hour, belong to a person in the same company, never be used after it ran out, and a new link must end the earlier unused one.",
+  requirement: "Owner-issued reset links do not expire; finite self-service reset links of the last 90 days must run for one hour, belong to a person in the same company, never be used after it ran out, and a new link must end the earlier unused one.",
   parts: [
     {
       from: `password_resets r
@@ -110,7 +112,7 @@ check({
       where: `r.org_id = $1::uuid AND r.kind = 'reset' AND r.created_at > now() - interval '90 days'`,
       bad: [
         ["the link does not run for one hour",
-          `EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) < ${50 * 60} OR EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) > ${70 * 60}`],
+          `CASE WHEN r.expires_at = 'infinity'::timestamptz THEN false WHEN r.expires_at = '-infinity'::timestamptz THEN true ELSE (EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) < ${50 * 60} OR EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) > ${70 * 60}) END`],
         // Until 2026-10-20 a new link also stamped used_at on the person's EXPIRED earlier links (src/auth/invite.mjs,
         // the "end the earlier link" UPDATE). That stamp lands within a second of the newer link being made and is
         // not a use, so it is not counted as one.
@@ -153,14 +155,14 @@ check({
   key: "staff-new-person",
   surface: STAFF_SURFACE,
   control: "Editor 'Save' for a NEW person: creates the login, mails the invite, shows the 7 day link",
-  requirement: "Every invite link of the last 180 days must run for 7 days, belong to a person in the same company who has a login email and a job that is on the job list.",
+  requirement: "Owner-issued invite links do not expire; legacy finite invites of the last 180 days must run for 7 days, belong to a person in the same company who has a login email and a job that is on the job list.",
   parts: [{
     from: `password_resets r
       LEFT JOIN staff st ON st.id = r.staff_id`,
     where: `r.org_id = $1::uuid AND r.kind = 'invite' AND r.created_at > now() - interval '180 days'`,
     bad: [
       ["the invite does not run for 7 days",
-        `EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) < ${7 * 24 * HOUR - 600} OR EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) > ${7 * 24 * HOUR + 600}`],
+        `CASE WHEN r.expires_at = 'infinity'::timestamptz THEN false WHEN r.expires_at = '-infinity'::timestamptz THEN true ELSE (EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) < ${7 * 24 * HOUR - 600} OR EXTRACT(EPOCH FROM (r.expires_at - r.created_at)) > ${7 * 24 * HOUR + 600}) END`],
       ["the invite belongs to nobody who exists", `st.id IS NULL`],
       ["the invite is filed under another company than its person", `st.id IS NOT NULL AND st.org_id <> r.org_id`],
       ["the invited person has no login email", `st.id IS NOT NULL AND ${BLANK("st.email")}`],

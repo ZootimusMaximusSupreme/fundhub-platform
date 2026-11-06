@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert";
 import {
   inviteStaff, acceptInvite, resetPassword, requestPasswordReset,
-  setPasswordWithToken, suspendStaff, removeStaff, setStaffRole, updateStaffProfile, roleIsKnown, INVITER_ROLES
+  setPasswordWithToken, suspendStaff, removeStaff, setStaffRole, updateStaffProfile, roleIsKnown, INVITER_ROLES, INVITE_TTL_MS, RESET_TTL_MS
 } from "./invite.mjs";
 import { hashToken } from "./session.mjs";
 import { verifyPassword } from "./hash.mjs";
@@ -501,4 +501,57 @@ test("updateStaffProfile requires owner/admin, refuses owner rows, and writes pr
     actor: OWNER, staffId: "nope", name: "A B", email: "a@b.c"
   });
   assert.equal(missing.status, 404);
+});
+
+
+test("owner-issued staff invites and staff/account resets store deliberate infinity with safe null responses", async () => {
+  const invitedDb = fakeDb();
+  const invite = await inviteStaff(invitedDb, { actor: OWNER, email: "invite@fundhub.test", orgId: "org-1" });
+  assert.equal(invite.expiresAt, null);
+  assert.equal(invitedDb.calls.find((c) => /INSERT INTO password_resets/.test(c.sql)).params.at(-1), "infinity");
+  for (const subject of [
+    { existingStaff: { id: "staff-permanent", status: "active" } },
+    { existingAccount: { id: "affiliate-permanent", status: "active", kind: "affiliate" } },
+    { existingAccount: { id: "partner-permanent", status: "active", kind: "partner" } }
+  ]) {
+    const db = fakeDb(subject);
+    const result = await requestPasswordReset(db, { orgId: "org-1", email: "permanent@fundhub.test" });
+    assert.match(result.token, /^[A-Za-z0-9_-]{43}$/);
+    assert.equal(result.expiresAt, null);
+    assert.equal(JSON.parse(JSON.stringify(result)).expiresAt, null);
+    assert.equal(db.calls.find((c) => /INSERT INTO password_resets/.test(c.sql)).params.at(-1), "infinity");
+  }
+});
+
+test("explicit finite invite and staff/account reset TTLs remain bounded", async () => {
+  const start = Date.now();
+  const db = fakeDb();
+  const invite = await inviteStaff(db, { actor: OWNER, email: "finite@fundhub.test", orgId: "org-1", ttl: INVITE_TTL_MS });
+  assert.ok(invite.expiresAt.getTime() >= start + INVITE_TTL_MS);
+  assert.ok(invite.expiresAt.getTime() <= Date.now() + INVITE_TTL_MS);
+  for (const subject of [
+    { existingStaff: { id: "staff-finite", status: "active" } },
+    { existingAccount: { id: "affiliate-finite", status: "active", kind: "affiliate" } }
+  ]) {
+    const target = fakeDb(subject);
+    const out = await requestPasswordReset(target, { orgId: "org-1", email: "finite@fundhub.test", ttl: RESET_TTL_MS });
+    assert.ok(out.expiresAt.getTime() >= start + RESET_TTL_MS);
+    assert.ok(out.expiresAt.getTime() <= Date.now() + RESET_TTL_MS);
+    assert.equal(target.calls.find((c) => /INSERT INTO password_resets/.test(c.sql)).params.at(-1), out.expiresAt);
+  }
+});
+
+test("a new reset replaces a permanent staff or affiliate link without touching other subjects", async () => {
+  for (const [column, subject] of [
+    ["staff_id", { existingStaff: { id: "permanent", status: "active" } }],
+    ["account_id", { existingAccount: { id: "permanent", status: "active", kind: "affiliate" } }]
+  ]) {
+    const old = link({ [column]: "permanent" }, "reset", Infinity);
+    const other = link({ [column]: "other" }, "reset", Infinity);
+    const db = withLinks(fakeDb(subject), [old, other]);
+    const out = await requestPasswordReset(db, { orgId: "org-1", email: "permanent@fundhub.test" });
+    assert.equal(out.expiresAt, null);
+    assert.notEqual(old.used_at, null);
+    assert.equal(other.used_at, null);
+  }
 });

@@ -12,23 +12,23 @@ export function looksLikeEmail(v) {
   return EMAIL_RE.test(String(v || "").trim());
 }
 
-export function inviteMailCopy({ loginEmail, link }) {
+export function inviteMailCopy({ loginEmail, link, expiresAt = null }) {
   return {
     subject: "Your Fundhub login is ready",
     body:
       `Your Fundhub login is ${loginEmail}.\n\n` +
-      `Open this link to set your password. The link lasts 7 days and works once.\n\n` +
+      `Open this link to set your password. ${expiresAt === null ? "The link does not expire" : "The link expires at " + new Date(expiresAt).toUTCString()} and works once.\n\n` +
       `${link}\n\n` +
       `If the link is missing, ask an owner or admin to send a new one.`
   };
 }
 
-export function resetMailCopy({ loginEmail, link }) {
+export function resetMailCopy({ loginEmail, link, expiresAt = null }) {
   return {
     subject: "Reset your Fundhub password",
     body:
       `A password reset was requested for your Fundhub login ${loginEmail}.\n\n` +
-      `Open this link to set a new password. The link lasts 1 hour and works once.\n\n` +
+      `Open this link to set a new password. ${expiresAt === null ? "The link does not expire" : "The link expires at " + new Date(expiresAt).toUTCString()} and works once.\n\n` +
       `${link}\n\n` +
       `If you did not ask for this, ignore this email.`
   };

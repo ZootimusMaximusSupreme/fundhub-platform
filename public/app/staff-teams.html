@@ -854,8 +854,8 @@ document.getElementById('edSave').addEventListener('click',function(){
     var mailed=!!(res.data&&res.data.mailed);
     prompt(
       mailed
-        ? 'Invite emailed. Login: '+email+' — the link lasts 7 days. Copy it if they need a backup:'
-        : 'Mail did not send. Login: '+email+' — copy this link (7 days) and send it yourself:',
+        ? 'Invite emailed. Login: '+email+' — the link does not expire and works once. Copy it if they need a backup:'
+        : 'Mail did not send. Login: '+email+' — copy this link (no time limit, works once) and send it yourself:',
       link
     );
     closeEditor();
@@ -923,7 +923,7 @@ document.getElementById('edReset').addEventListener('click', async function(){
     return;
   }
   var link = location.origin + res.data.resetPath;
-  prompt('Reset link for '+p.email+' — copy this and send it to them. Reset links last 1 hour:', link);
+  prompt('Reset link for '+p.email+' — copy this and send it to them. This link does not expire and works once:', link);
 });
 document.getElementById('roleFilter').addEventListener('change',renderRoster);
 document.getElementById('qFilter').addEventListener('input',renderRoster);

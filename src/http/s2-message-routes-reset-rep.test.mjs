@@ -55,7 +55,7 @@ describe("POST /api/auth/reset action=request", () => {
     /FROM accounts\s+WHERE org_id = \$1 AND lower\(email\) = \$2\s+AND kind IN \('affiliate', 'partner'\)/,
     (_s, p) => (p[0] === ORG_ID && p[1] === "pat@example.test" && ["affiliate", "partner"].includes(kind) ? [{ id: ACCOUNT_LOGIN, status, kind }] : [])];
   const resetInsert = [/INSERT INTO password_resets/, [{ id: "9e000000-0000-4000-8000-000000000001" }]];
-  const ask = (email, rules) => call(reset, req("POST", { body: { action: "request", email } }), [org, ...rules, resetInsert]);
+  const ask = (email, rules) => call(reset, req("POST", { body: { action: "request", email, ttl: null, permanent: true } }), [org, ...rules, resetInsert]);
 
   test("a live staff, partner or affiliate login is mailed a one hour link, the link is the stored token, and the reply never carries it", async () => {
     const cases = [
@@ -78,7 +78,8 @@ describe("POST /api/auth/reset action=request", () => {
       const token = /reset-password\.html\?token=([A-Za-z0-9_-]+)/.exec(asked[0].body.text)?.[1];
       assert.ok(token, "the mail carries the reset link");
       assert.match(asked[0].body.text, /https:\/\/fundhub\.ai\/reset-password\.html\?token=/);
-      assert.match(asked[0].body.text, /lasts 1 hour and works once/);
+      assert.match(asked[0].body.text, /expires at Wed, 14 Oct 2026 16:00:00 GMT and works once/);
+      assert.doesNotMatch(asked[0].body.text, /does not expire/);
       // The mailed token is the one whose hash was stored, and never the reply.
       const [stored] = fake.find(insertShape);
       assert.deepEqual([stored.params[0], stored.params[1], stored.params[2]], [ORG_ID, login, hashToken(token)], email);

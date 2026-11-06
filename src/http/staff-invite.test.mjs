@@ -56,8 +56,8 @@ test("staff-teams persists a role change and tells how many people are hidden", 
   assert.ok(html.includes("notify_email"));
   assert.ok(html.includes("Lead alerts"));
   assert.ok(!html.includes("ed_booked_sms"));
-  assert.ok(html.includes("7 days"));
-  assert.ok(html.includes("1 hour"));
+  assert.ok(html.includes("the link does not expire and works once"));
+  assert.ok(html.includes("This link does not expire and works once"));
 });
 
 test("invite and reset send through Resend and keep the copy-link", () => {
@@ -76,8 +76,9 @@ test("login forgot-password does not claim a link is on its way", () => {
   assert.ok(html.includes("Reset links last 1 hour"));
 });
 
-test("reset-password page names both link lifetimes", () => {
+test("reset-password page defers finite lifetimes to the matching email", () => {
   const html = fs.readFileSync(path.join(ROOT, "public/reset-password.html"), "utf8");
-  assert.ok(html.includes("Invite links last 7 days"));
-  assert.ok(html.includes("Reset links last 1 hour"));
+  assert.ok(html.includes("Each link works once"));
+  assert.ok(html.includes("its email tells you when it expires"));
+  assert.ok(!html.includes("Reset links last 1 hour"));
 });

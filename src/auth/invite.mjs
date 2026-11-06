@@ -22,6 +22,9 @@ import { normalizeEmail } from "./login.mjs";
 // org with no owner row would otherwise be unable to onboard anyone.
 export const INVITER_ROLES = ["owner", "admin"];
 
+// Owner-issued links have no time limit (owner-set 2026-11-06). Finite TTLs
+// remain available explicitly; the public reset route always passes RESET_TTL_MS.
+// PostgreSQL stores deliberate no-expiry as infinity; API results use null.
 export const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;   // 7 days — a person has to read an email
 export const RESET_TTL_MS  = 60 * 60 * 1000;            // 1 hour — a person is sitting at the form
 
@@ -50,7 +53,7 @@ export async function roleIsKnown(db, orgId, role) {
 // single cleartext invite token to deliver.
 //   → { ok: true, token, expiresAt, staff: { id, email, name, role, status } }
 //   → { ok: false, status, error }
-export async function inviteStaff(db, { actor, email, name, role, orgId, ttl = INVITE_TTL_MS } = {}) {
+export async function inviteStaff(db, { actor, email, name, role, orgId, ttl = null } = {}) {
   const org = orgId || (await resolveDefaultOrg(db));
 
   if (!actor || !INVITER_ROLES.includes(String(actor.role || "").toLowerCase())) {
@@ -106,11 +109,11 @@ export async function inviteStaff(db, { actor, email, name, role, orgId, ttl = I
   );
 
   const token = newToken();
-  const expiresAt = new Date(Date.now() + ttl);
+  const expiresAt = ttl === null ? null : new Date(Date.now() + ttl);
   await db.query(
     `INSERT INTO password_resets (org_id, staff_id, token_hash, kind, expires_at)
      VALUES ($1,$2,$3,'invite',$4)`,
-    [org, staff.id, hashToken(token), expiresAt]
+    [org, staff.id, hashToken(token), expiresAt ?? "infinity"]
   );
 
   return { ok: true, token, expiresAt, staff };
@@ -120,7 +123,7 @@ export async function inviteStaff(db, { actor, email, name, role, orgId, ttl = I
 // address belongs to staff, an affiliate, or a partner who can use one. The
 // caller emails the token if present and says "check your inbox" either way,
 // so the endpoint does not become a directory oracle.
-export async function requestPasswordReset(db, { email, orgId, ttl = RESET_TTL_MS } = {}) {
+export async function requestPasswordReset(db, { email, orgId, ttl = null } = {}) {
   const org = orgId || (await resolveDefaultOrg(db));
   const normEmail = normalizeEmail(email);
   if (!normEmail) return { ok: true, token: null };
@@ -140,11 +143,11 @@ export async function requestPasswordReset(db, { email, orgId, ttl = RESET_TTL_M
     );
 
     const token = newToken();
-    const expiresAt = new Date(Date.now() + ttl);
+    const expiresAt = ttl === null ? null : new Date(Date.now() + ttl);
     await db.query(
       `INSERT INTO password_resets (org_id, staff_id, token_hash, kind, expires_at)
        VALUES ($1,$2,$3,'reset',$4)`,
-      [org, staff.id, hashToken(token), expiresAt]
+      [org, staff.id, hashToken(token), expiresAt ?? "infinity"]
     );
     return { ok: true, token, expiresAt, staffId: staff.id };
   }
@@ -165,11 +168,11 @@ export async function requestPasswordReset(db, { email, orgId, ttl = RESET_TTL_M
   );
 
   const token = newToken();
-  const expiresAt = new Date(Date.now() + ttl);
+  const expiresAt = ttl === null ? null : new Date(Date.now() + ttl);
   await db.query(
     `INSERT INTO password_resets (org_id, staff_id, account_id, token_hash, kind, expires_at)
      VALUES ($1, NULL, $2, $3, 'reset', $4)`,
-    [org, account.id, hashToken(token), expiresAt]
+    [org, account.id, hashToken(token), expiresAt ?? "infinity"]
   );
   return { ok: true, token, expiresAt, accountId: account.id };
 }

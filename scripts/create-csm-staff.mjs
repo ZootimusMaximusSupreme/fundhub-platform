@@ -25,17 +25,17 @@
 // visible in shell history and to `ps`) or scripts/seed-staff.mjs (a shared
 // password from the environment).
 //
-// The link it prints IS the credential for the next 7 days and it works once.
+// The link it prints IS the credential until it is used or replaced and it works once.
 // Treat it like a password: hand it over directly, do not paste it into a
 // ticket, a chat log or a document.
 // ───────────────────────────────────────────────────────────────────────────
 //
 // SAFE TO RE-RUN. Three cases, and none of them destroys anything:
 //
-//   no row yet          → creates it and prints a 7-day invite link
-//   row exists, invited → replaces the old invite with a fresh 7-day link
+//   no row yet          → creates it and prints a permanent single-use invite link
+//   row exists, invited → replaces the old invite with a fresh permanent single-use link
 //   row exists, active  → the password is already set, so it does NOT touch
-//                         it; prints a 1-hour password-reset link instead
+//                         it; prints a permanent single-use password-reset link instead
 //   row exists, suspended → refuses and stops. Reactivating somebody who was
 //                         deliberately switched off is a decision, not a
 //                         side effect of re-running a script.
@@ -44,7 +44,7 @@
 // set an environment variable, and it never prints a password or a hash.
 
 import { db, close, dbTarget } from "../src/db.mjs";
-import { inviteStaff, requestPasswordReset, INVITE_TTL_MS } from "../src/auth/invite.mjs";
+import { inviteStaff, requestPasswordReset } from "../src/auth/invite.mjs";
 import { resolveDefaultOrg } from "../src/auth/org.mjs";
 import { staffRoleKey } from "../src/auth/company-email.mjs";
 import {
@@ -146,10 +146,10 @@ try {
     console.log(
       `\nDRY RUN — nothing was written.\n` +
       (alreadyActive
-        ? `A real run would issue a 1-hour password-RESET link. The existing password stays.`
+        ? `A real run would issue a permanent single-use password-RESET link. The existing password stays.`
         : existing
-          ? `A real run would refresh this row and issue a 7-day INVITE link.`
-          : `A real run would create this staff row and issue a 7-day INVITE link.`)
+          ? `A real run would refresh this row and issue a permanent single-use INVITE link.`
+          : `A real run would create this staff row and issue a permanent single-use INVITE link.`)
     );
     await close();
     process.exit(0);
@@ -170,7 +170,7 @@ try {
     kind = "reset";
     expiresAt = reset.expiresAt;
     path = "/reset-password.html?token=" + encodeURIComponent(reset.token);
-    copy = resetMailCopy({ loginEmail: email, link: credentialLink(path) });
+    copy = resetMailCopy({ loginEmail: email, link: credentialLink(path), expiresAt });
   } else {
     const result = await inviteStaff(db, { actor, email, name, role: ROLE, orgId });
     if (!result.ok) {
@@ -178,9 +178,9 @@ try {
       process.exit(1);
     }
     kind = "invite";
-    expiresAt = result.expiresAt || new Date(Date.now() + INVITE_TTL_MS);
+    expiresAt = result.expiresAt;
     path = "/reset-password.html?token=" + encodeURIComponent(result.token);
-    copy = inviteMailCopy({ loginEmail: email, link: credentialLink(path) });
+    copy = inviteMailCopy({ loginEmail: email, link: credentialLink(path), expiresAt });
     console.log(`\nstaff row: ${result.staff.status} — ${result.staff.email} (${result.staff.role})`);
   }
 
@@ -195,7 +195,7 @@ try {
 
   console.log(`
 ────────────────────────────────────────────────────────────────────────
-${kind === "invite" ? "SET-PASSWORD LINK (invite)" : "PASSWORD RESET LINK"} — works ONCE, expires ${new Date(expiresAt).toISOString()}
+${kind === "invite" ? "SET-PASSWORD LINK (invite)" : "PASSWORD RESET LINK"} — works ONCE, ${expiresAt === null ? "does not expire" : "expires " + new Date(expiresAt).toISOString()}
 
 ${credentialLink(path)}
 

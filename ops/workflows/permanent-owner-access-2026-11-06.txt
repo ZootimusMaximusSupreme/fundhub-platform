@@ -1,0 +1,18 @@
+Permanent owner-issued credential links — 2026-11-06
+
+Owner correction: links sent by the owner/agents must not expire. This repair covers the existing owner-issued set-password invite and reset paths, including affiliate/partner resets. Explicit public self-service reset remains one hour. All links remain single-use; a replacement ends the prior unused link; password setting revokes sessions; suspended accounts remain suspended.
+
+Reuse: existing auth helpers, auth/invite and auth/admin-reset routes, staff mail, Staff & Teams prompts and reset page. PostgreSQL infinity stores deliberate permanence; API expiry is null. Monitoring accepts only deliberate infinity or the existing valid finite lifetime. Invalid finite expiry, negative infinity, orphan/company and replacement checks stay red.
+
+Change record: the policy is in docs/journeys/role-owner-intended.md. Endpoint routing, actor gates and event sequence are unchanged. The global journey changelog has a conflicting unshipped Meta-tracking entry in offersiq-consistency; it was read and preserved. The task-specific expiry record lives here so unrelated review-only work is not published or overwritten.
+
+Verification before release:
+- 213 focused helper, mail, HTTP route, staff access and monitor checks passed, zero failures/skips.
+- 22 in-memory PostgreSQL assertions passed using actual helper/redemption code: permanent links issued 100 years earlier, staff/affiliate/partner redemption, replay, replacement, finite expiry, session revocation, suspension and company scope.
+- External PostgreSQL integration source was strengthened; not run locally against an external database. No production database used for tests.
+- Lint, TypeScript and diff whitespace checks passed.
+- Independent source review approved with no blocker; 68 independent focused checks passed and 17 browser cases passed (9 existing Staff & Teams plus 8 desktop/phone invite/reset prompt and reset-page cases), zero skips/page errors. No customer accounts or provider sends were used. Release receipts pending.
+
+Operational receipt: the one owner-requested access link issued in this session was corrected to no expiry with separate database readback; the recipient was emailed the correction and stable portal URL. No password was changed or token consumed. Private account/contact data and token values are intentionally excluded.
+
+Preflight: clean; 17 changed paths, 38 other sources scanned, no shared paths. Three historical changelog overlaps and one unrelated unsaved overlap were avoided by keeping the global changelog untouched and recording this expiry policy here; no other work was edited.

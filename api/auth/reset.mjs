@@ -18,7 +18,7 @@
 // Thin mount over src/auth/invite.mjs — all the real logic lives there.
 
 import { db } from "../../src/db.mjs";
-import { requestPasswordReset, setPasswordWithToken } from "../../src/auth/invite.mjs";
+import { requestPasswordReset, setPasswordWithToken, RESET_TTL_MS } from "../../src/auth/invite.mjs";
 import {
   credentialLink, resetMailCopy, sendStaffCredentialEmail
 } from "../../src/auth/staff-mail.mjs";
@@ -33,13 +33,14 @@ export default async function handler(req, res) {
   const action = String(body.action || "").trim().toLowerCase();
 
   if (action === "request") {
-    const result = await requestPasswordReset(db, { email: body.email });
+    const result = await requestPasswordReset(db, { email: body.email, ttl: RESET_TTL_MS });
     let mailed = false;
     if (result && result.token) {
       const resetPath = "/reset-password.html?token=" + encodeURIComponent(result.token);
       const copy = resetMailCopy({
         loginEmail: String(body.email || "").trim().toLowerCase(),
-        link: credentialLink(resetPath)
+        link: credentialLink(resetPath),
+        expiresAt: result.expiresAt
       });
       const sent = await sendStaffCredentialEmail({ to: body.email, ...copy });
       mailed = sent.mailed;
