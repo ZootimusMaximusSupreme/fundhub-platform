@@ -2,7 +2,7 @@
 //
 // The journey pages are a copy of what the code says; nothing signed in as a
 // role and opened a route. This does: for each of the eight kinds of person, it
-// signs in against a stand-in database and sends a GET and an empty POST through
+// signs in against a stand-in database and sends a GET and a POST through
 // the REAL api adapter to every route (src/pulse/catalog/proofs/s2-role-probe.mjs),
 // then judges each row's exact named group.
 //
@@ -138,6 +138,44 @@ before(async () => {
 });
 
 describe("the probe and the written gates", () => {
+  test("passkeys reach only the authenticated owner, own client or own affiliate target, never public target validation", async () => {
+    const key = "auth/passkey";
+    for (const [caller, target] of [["role-owner", "company_bank"], ["client", "client_bank"], ["affiliate", "affiliate_payout"]]) {
+      const allowed = await probeRoute(api, key, caller, { passkeyTargetKind: target });
+      assert.equal(allowed.GET.status, 405);
+      assert.equal(allowed.POST.status, 200, `${caller}: ${target}`);
+      assert.equal(verdictFor(allowed), "reach");
+      const stale = await probeRoute(api, key, caller, { passkeyTargetKind: target, passkeySessionLive: false });
+      assert.equal(stale.POST.status, 403, `${caller}: a revoked live identity cannot pass`);
+    }
+    for (const caller of ["role-admin", "role-sales-manager", "role-closer", "role-setter", "role-outbound-rep",
+      "role-csm", "role-funding-advisor", "role-inquiry-remover"]) {
+      for (const target of ["company_bank", "client_bank", "affiliate_payout"]) {
+        const refused = await probeRoute(api, key, caller, { passkeyTargetKind: target });
+        assert.equal(refused.POST.status, 403, `${caller}: ${target}`);
+        assert.equal(verdictFor(refused), "blocked");
+      }
+    }
+    for (const target of ["company_bank", "client_bank", "affiliate_payout"]) {
+      assert.equal((await probeRoute(api, key, undefined, { passkeyTargetKind: target })).POST.status, 401);
+    }
+    assert.equal((await probeRoute(api, key, "affiliate", { passkeyTargetKind: "client_bank" })).POST.status, 403);
+    for (const target of ["client_bank", "affiliate_payout"]) {
+      assert.equal((await probeRoute(api, key, "role-owner", { passkeyTargetKind: target })).POST.status, 403);
+      assert.equal((await probeRoute(api, key, "white-label", { passkeyTargetKind: target })).POST.status, 403);
+    }
+    assert.equal((await probeRoute(api, key, "client", { passkeyTargetKind: "affiliate_payout" })).POST.status, 403);
+    assert.equal((await probeRoute(api, key, "affiliate", { passkeyAffiliateLinked: false })).POST.status, 403);
+    const foreignIds = await probeRoute(api, key, "client", { passkeyBody: { action: "status", target_kind: "client_bank",
+      target_id: "c1000000-0000-4000-8000-000000000099", org_id: "c1000000-0000-4000-8000-000000000098" } });
+    assert.equal(foreignIds.POST.status, 200, "only session-derived ids satisfy the target-bound fixture");
+    for (const body of [{ action: "status" }, { action: "status", target_kind: "unknown" }]) {
+      const validation = await probeRoute(api, key, undefined, { passkeyBody: body });
+      assert.equal(validation.POST.status, 400);
+      assert.equal(validation.POST.code, "bad_target", "public validation is separate from authenticated access");
+    }
+  });
+
   test("seller role eligibility never substitutes for the explicit affiliate capability",async()=>{
     const key="affiliates/blueprint-sale";
     const affiliate=await probeRoute(api,key,"affiliate");
