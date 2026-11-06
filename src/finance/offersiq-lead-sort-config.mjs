@@ -34,7 +34,7 @@ export const OFFERSIQ_LEAD_SORT_CONFIG = freeze({
   maximumQuestions: 512,
   pending: [
     "CRS must confirm all attribute codes and names before the new list can match",
-    "CRS must confirm rule capacity, score band size and complete per-condition results",
+    "The account catalogue must supply exact remaining codes/names, then the full configured list must be proved in sandbox",
     "Percentage and monetary BETWEEN bands are inclusive draft whole-number bands; fractional gaps remain unknown",
     "Boolean bankruptcy and a no-car-loan question need a supported retained threshold before enabling"
   ],

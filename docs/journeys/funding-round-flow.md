@@ -421,11 +421,12 @@ flowchart LR
 ```
 
 The config owns every range, Prime check and point value. The draft has123 readable
-numeric questions. CRS still needs to confirm missing attribute codes/names,
-capacity, score granularity and complete answers. The boolean bankruptcy rule and
-no-car-loan distinction stay explicit pending config entries. Unconfirmed codes
-fail closed. The exact observed three starter rules on1677/1232 get verified
-nothing-to-judge heartbeat treatment until CRS loads the agreed list.
+numeric questions. Missing catalogue codes/names and a complete loaded-list
+sandbox receipt are still required. CRS confirmed five-point score bands,
+provider-validated rule capacity and complete flat/grouped per-condition results
+on November6. The boolean bankruptcy rule and no-car-loan distinction stay
+explicit pending config entries. Unconfirmed codes fail closed. The exact
+observed three starter rules on1677/1232 get verified nothing-to-judge heartbeat treatment until CRS loads the agreed list.
 
 Rescoring reads saved receipts and changes only ranking fields. Free reevaluation
 uses the stored request ID and never starts a paid check; production bulk reruns
