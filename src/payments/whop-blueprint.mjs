@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { generateLinkRef, resolveLinkContext } from '../payment-links/index.mjs';
-import { whopRequest, WHOP_CHECKOUT_TITLE, whopCheckoutHostname } from '../messaging/providers/whop-payments.mjs';
+import { getWhopBlueprintPlanId, listWhopResource, prepareWhopBlueprintPlan, whopRequest, WHOP_CHECKOUT_TITLE, whopCheckoutHostname } from '../messaging/providers/whop-payments.mjs';
 import { assertBlueprintAgreementPrice } from '../contracts/blueprint-price.mjs';
 import { getOffer } from '../config/offers.mjs';
 
@@ -70,10 +70,14 @@ export function whopBlueprintMetadata(link) {
 export function buildWhopBlueprintCheckout(link, cfg) {
   if (link.whop_metadata_version !== 2) throw new TypeError('An existing Whop checkout can only be recovered via GET');
   const amount = blueprintAmountCents(Number(link.amount_cents), link.product_code || WHOP_BLUEPRINT_PRODUCT);
-  return { account_id: cfg.accountId, mode: 'payment', metadata: whopBlueprintMetadata(link),
-    plan: { product_id: cfg.productId, plan_type: 'one_time', release_method: 'buy_now',
-      initial_price: amount / 100, currency: 'usd', title: WHOP_BLUEPRINT_TITLE,
-      description: WHOP_BLUEPRINT_TITLE, visibility: 'hidden', adaptive_pricing_enabled: false } };
+  const checkout = { account_id: cfg.accountId, mode: 'payment', metadata: whopBlueprintMetadata(link) };
+  if (link.whop_existing_plan === true) {
+    if (!/^plan_[A-Za-z0-9]+$/.test(link.whop_plan_id || '')) throw new TypeError('A configured checkout requires a pinned plan');
+    return { ...checkout, plan_id: link.whop_plan_id };
+  }
+  return { ...checkout, plan: { product_id: cfg.productId, plan_type: 'one_time', release_method: 'buy_now',
+    initial_price: amount / 100, currency: 'usd', title: WHOP_BLUEPRINT_TITLE,
+    description: WHOP_BLUEPRINT_TITLE, visibility: 'hidden', adaptive_pricing_enabled: false } };
 }
 
 export function isWhopCheckoutUrl(value, checkoutId, env) {
@@ -91,7 +95,9 @@ export function validateWhopCheckout(out, cfg, link, env = process.env) {
       { code: 'whop_checkout_failed', status: 502 });
   }
   if (link) {
-    if (out.plan.currency !== 'usd' || out.plan.plan_type !== 'one_time'
+    if ((link.whop_checkout_configuration_id && link.whop_checkout_configuration_id !== out.id)
+      || (link.whop_plan_id && link.whop_plan_id !== out.plan.id)
+      || out.plan.currency !== 'usd' || out.plan.plan_type !== 'one_time'
       || whopMoneyCents({ amount: String(out.plan.initial_price), currency: 'usd', decimals: 2 }) !== Number(link.amount_cents)
       || !matchesWhopMetadata(out.metadata, whopBlueprintMetadata(link))) {
       throw Object.assign(new Error('Whop checkout price, currency or metadata does not match its order'),
@@ -119,6 +125,14 @@ export async function verifyWhopCheckout(out, cfg, link, { env = process.env, fe
   // The checkout response's embedded plan omits product/account identity.
   // Read the documented variant resource before exposing or recovering its URL.
   // https://docs.whop.com/api-reference/beta/variants/retrieve-variant
+  // Preserve the pricing mode captured when the order was created. Both the
+  // checkout ID and remote variant title can change during its lifetime.
+  if (link.whop_existing_plan === true) {
+    if (link.whop_metadata_version !== 2) throw new TypeError('Configured checkout prices require v2 metadata');
+    await prepareWhopBlueprintPlan({ planId: link.whop_plan_id, accountId: cfg.accountId,
+      productId: cfg.productId, amountCents: Number(link.amount_cents), apiKey: cfg.apiKey, env, fetchImpl });
+    return out;
+  }
   const variant = await whopRequest(`/variants/${out.plan.id}`, { apiKey: cfg.apiKey, env, fetchImpl });
   if (variant.id !== out.plan.id || variant.account?.id !== cfg.accountId
     || variant.product?.id !== cfg.productId || variant.currency !== 'usd'
@@ -142,33 +156,46 @@ export async function createWhopBlueprintPaymentLink(db, {
   if (!cfg.ok) throw Object.assign(new Error('Whop Blueprint checkout is not configured'),
     { code: 'whop_not_configured', status: 503 });
   if (!UUID.test(orgId || '') || !UUID.test(clientId || '')) throw new TypeError('Whop checkout requires client and org IDs');
-  const selectedProduct = productCode || WHOP_BLUEPRINT_PRODUCT;
-  const offerKey = whopBlueprintOfferKey(selectedProduct);
-  blueprintAmountCents(amountCents, selectedProduct);
   if (currency !== 'USD') throw new TypeError('Whop Blueprint checkout accepts USD only');
   if (saleMotion != null && !['upsell', 'downsell'].includes(saleMotion)) throw new TypeError('Invalid sale motion');
   const client = (await db.query('SELECT id FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1', [clientId, orgId])).rows[0];
   if (!client) throw new TypeError('Whop checkout client is not in this org');
+  const requestedCode = productCode || (!productId && !saleId ? WHOP_BLUEPRINT_PRODUCT : null);
   const context = await resolveLinkContext(db, { orgId, clientId, productId,
-    productCode: selectedProduct, saleId, saleMotion, createdByStaffId, createdByRole });
-  if (context.productCode !== selectedProduct) throw new TypeError('Whop checkout product does not match the selected Blueprint package');
+    productCode: requestedCode, saleId, saleMotion, createdByStaffId, createdByRole });
+  if ((productId && context.productId !== productId) || (requestedCode && context.productCode !== requestedCode)) {
+    throw new TypeError('Whop checkout product does not match the selected Blueprint package');
+  }
+  const offerKey = whopBlueprintOfferKey(context.productCode);
+  blueprintAmountCents(amountCents, context.productCode);
   await assertBlueprintAgreementPrice(db, { orgId, clientId, amountCents, offerKey });
   // Reserve the order before POST. An interrupted response can be recovered from
   // Whop metadata without creating a second checkout. An empty URL is never returned.
   const id = resumeLinkId || reservationId || randomUUID();
   if (!UUID.test(id)) throw new TypeError('Invalid Whop reservation identity');
-  const linkRef = generateLinkRef();
-  let saved = resumeLinkId ? (await db.query(`SELECT * FROM payment_links WHERE id=$1 AND org_id=$2 AND client_id=$3`,
-    [id, orgId, clientId])).rows[0] : (await db.query(
-    `INSERT INTO payment_links (id, org_id, client_id, purpose, description, amount_cents,
-       currency, link_ref, checkout_url, provider, product_id, sale_id, sale_motion,
-       created_by_staff_id, closer_staff_id, sales_manager_staff_id, whop_metadata_version)
-     VALUES ($1,$2,$3,'custom',$4,$5,'USD',$6,'','whop',$7,$8,$9,$10,$11,$12,2) ON CONFLICT (id) DO NOTHING RETURNING *`,
-    [id, orgId, clientId, WHOP_BLUEPRINT_TITLE, amountCents, linkRef, context.productId,
-      context.saleId, saleMotion, createdByStaffId, context.closerStaffId, context.salesManagerStaffId]
-  )).rows[0];
-  if (!saved && reservationId) saved = (await db.query(`SELECT * FROM payment_links WHERE id=$1 AND org_id=$2 AND client_id=$3`,
-    [id, orgId, clientId])).rows[0];
+  const readSaved = async () => (await db.query(
+    'SELECT * FROM payment_links WHERE id=$1 AND org_id=$2 AND client_id=$3', [id, orgId, clientId])).rows[0];
+  let saved = (resumeLinkId || reservationId) ? await readSaved() : null;
+  let inserted = false;
+  let verifiedPlan = null;
+  if (!saved && !resumeLinkId) {
+    const planId = getWhopBlueprintPlanId(amountCents, env);
+    if (planId) {
+      verifiedPlan = await prepareWhopBlueprintPlan({ planId, accountId: cfg.accountId,
+        productId: cfg.productId, amountCents, apiKey: cfg.apiKey, env, fetchImpl });
+    }
+    saved = (await db.query(
+      `INSERT INTO payment_links (id, org_id, client_id, purpose, description, amount_cents,
+         currency, link_ref, checkout_url, provider, product_id, sale_id, sale_motion,
+         created_by_staff_id, closer_staff_id, sales_manager_staff_id, whop_metadata_version, whop_plan_id, whop_existing_plan)
+       VALUES ($1,$2,$3,'custom',$4,$5,'USD',$6,'','whop',$7,$8,$9,$10,$11,$12,2,$13,$14)
+       ON CONFLICT (id) DO NOTHING RETURNING *`,
+      [id, orgId, clientId, WHOP_BLUEPRINT_TITLE, amountCents, generateLinkRef(), context.productId,
+        context.saleId, saleMotion, createdByStaffId, context.closerStaffId, context.salesManagerStaffId, planId, Boolean(planId)]
+    )).rows[0];
+    inserted = Boolean(saved);
+    if (!inserted && reservationId) saved = await readSaved();
+  }
   if (!saved || saved.org_id !== orgId || saved.client_id !== clientId || saved.provider !== 'whop'
     || saved.product_id !== context.productId || Number(saved.amount_cents) !== amountCents || saved.currency !== 'USD'
     || (saved.sale_id || null) !== (context.saleId || null) || (saved.sale_motion || null) !== (saleMotion || null)
@@ -183,18 +210,32 @@ export async function createWhopBlueprintPaymentLink(db, {
         { code: 'whop_checkout_failed', status: 502 });
     return saved;
   }
-  const body = buildWhopBlueprintCheckout(saved, cfg);
-  if (requiredPaymentMethod) body.payment_method_configuration = {
-    enabled: [requiredPaymentMethod], disabled: [], include_platform_defaults: true
-  };
-  const out = await verifyWhopCheckout(await whopRequest('/checkout_configurations', {
-    apiKey: cfg.apiKey, method: 'POST', body,
-    idempotencyKey: `fh-order:${id}`, env, fetchImpl
-  }), cfg, saved, { env, fetchImpl, requiredPaymentMethod });
+  let checkout;
+  if (inserted) {
+    const body = buildWhopBlueprintCheckout(saved, cfg);
+    if (requiredPaymentMethod) body.payment_method_configuration = {
+      enabled: [requiredPaymentMethod], disabled: [], include_platform_defaults: true
+    };
+    checkout = await whopRequest('/checkout_configurations', { apiKey: cfg.apiKey, method: 'POST', body,
+      idempotencyKey: `fh-order:${id}`, verifiedPlan, env, fetchImpl });
+  } else {
+    // The first POST may have reached Whop before its response was lost.
+    // An existing order can recover only its one exact checkout, without reposting.
+    const checkouts = await listWhopResource('checkout_configurations', { accountId: cfg.accountId, apiKey: cfg.apiKey, env, fetchImpl });
+    const expected = whopBlueprintMetadata(saved);
+    const matches = checkouts.filter(candidate => matchesWhopMetadata(candidate.metadata, expected));
+    if (matches.length !== 1) throw Object.assign(new Error('This reserved checkout is awaiting exact read-only reconciliation.'),
+      { code: 'whop_checkout_failed', status: 502 });
+    [checkout] = matches;
+  }
+  const out = await verifyWhopCheckout(checkout, cfg, saved, { env, fetchImpl, requiredPaymentMethod });
   const result = await db.query(
     `UPDATE payment_links SET checkout_url = $2, whop_checkout_configuration_id = $3,
-       whop_plan_id = $4 WHERE id = $1 AND provider = 'whop' RETURNING *`,
-    [id, out.purchase_url, out.id, out.plan.id]);
+       whop_plan_id = $4 WHERE id = $1 AND org_id = $5 AND client_id = $6 AND provider = 'whop'
+         AND (whop_plan_id IS NULL OR whop_plan_id = $4)
+         AND (whop_checkout_configuration_id IS NULL OR whop_checkout_configuration_id = $3)
+         AND (checkout_url = '' OR checkout_url = $2) RETURNING *`,
+    [id, out.purchase_url, out.id, out.plan.id, orgId, clientId]);
   if (!result.rows[0]) throw new Error('Whop checkout could not be saved; reconciliation is required');
   return result.rows[0];
 }

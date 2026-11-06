@@ -1,0 +1,139 @@
+{
+  "status": "real_existing_price_checkout_created_payment_pending",
+  "apiVersion": "2026-10-15-1",
+  "testMode": "isolated sandbox; no production configuration changed",
+  "variantRead": {
+    "at": "2026-11-06T21:37:07.127Z",
+    "status": 200,
+    "accountMatches": true,
+    "productMatches": true,
+    "plan_type": "one_time",
+    "release_method": "buy_now",
+    "currency": "usd",
+    "initial_price": 30000,
+    "initial_price_due": {
+      "currency": "usd",
+      "amount": "30000.00",
+      "decimals": 2,
+      "display_decimals": 2
+    },
+    "renewal_price": 0,
+    "visibility": "hidden",
+    "adaptive_pricing_enabled": false,
+    "trial_period_days": null,
+    "split_pay_required_payments": null,
+    "title": null,
+    "description": "Consulting Services Package",
+    "allow_multiple_quantity": false,
+    "unlimited_stock": true,
+    "collect_tax": true,
+    "tax_type": "inclusive",
+    "expiration_days": null
+  },
+  "copy": {
+    "productTitle": "Consulting Services Package",
+    "variantTitleFallback": "null inherits exact approved product title; arbitrary copy is refused"
+  },
+  "config": {
+    "name": "WHOP_BLUEPRINT_PLAN_IDS",
+    "example": {
+      "3000000": "plan_EXAMPLE"
+    },
+    "unset": "existing inline creation",
+    "configured": "only mapped exact cents permitted; chosen plan is validated and pinned before POST",
+    "storedMode": "whop_existing_plan pinned on INSERT and immutable; old inline/v1 rows default false"
+  },
+  "localChecks": {
+    "passed": 96,
+    "failed": 0,
+    "skipped": 0,
+    "database": "real local restricted PostgreSQL for package/service/reversal cases; seller fixture uses its existing isolated PGlite mode",
+    "providerTransport": "synthetic; these tests are not provider purchase proof",
+    "lint": "4764 files and inline scripts parse clean",
+    "typescript": "passed",
+    "initialSellerSetupFailure": "restricted role correctly refused public function DDL; original unsupported setup log retained, supported isolated seller fixture subsequently passed",
+    "independentReview": {
+      "passed": 96,
+      "failed": 0,
+      "skipped": 0,
+      "p1p2Remaining": 0,
+      "originalP2": "mutable remote title selected weaker saved-checkout checks; independently reproduced before fix",
+      "fixedProof": "immutable stored pricing mode; 2 valid saved titles accepted and 8 changed-term cases rejected",
+      "providerCallsByReview": 0,
+      "normalHttp": "Full canonical product ID with no productCode returned200 in independent rollback-only restricted-PostgreSQL fixture with synthetic provider; first session-matcher401 retained separately."
+    }
+  },
+  "externalPurchase": {
+    "checkout": {
+      "status": "created and locally saved through normal authenticated HTTP route",
+      "at": "2026-11-06T22:03:18.865Z",
+      "httpStatus": 200,
+      "providerRequests": [
+        {
+          "at": "2026-11-06T22:03:17.916Z",
+          "method": "GET",
+          "resource": "variants",
+          "status": 200,
+          "transmitted": true
+        },
+        {
+          "at": "2026-11-06T22:03:18.438Z",
+          "method": "POST",
+          "resource": "checkout_configurations",
+          "status": 200,
+          "transmitted": true
+        },
+        {
+          "at": "2026-11-06T22:03:18.675Z",
+          "method": "GET",
+          "resource": "variants",
+          "status": 200,
+          "transmitted": true
+        }
+      ],
+      "posts": 1,
+      "gets": 2,
+      "amountCents": 3000000,
+      "currency": "USD",
+      "existingPriceMode": true,
+      "metadataVersion": 2,
+      "original403Unchanged": true,
+      "keyPermissionsChanged": false,
+      "apiVersionChanged": false,
+      "planCreatedByAPI": false
+    },
+    "payment": "pending; hosted card form loading",
+    "canonicalActivation": "unproven",
+    "signedMatchingWebhook": "unproven; automatic approval review rejected redirecting callback to a new temporary external receiver; no bypass"
+  },
+  "key": {
+    "approvedPermissions": [
+      "Read checkout configurations",
+      "Create checkout configurations",
+      "Read plans",
+      "Read payments"
+    ],
+    "createPlansGranted": false,
+    "expiryUtc": "2026-11-07T00:00:00Z",
+    "value": "never included"
+  },
+  "catalogueEvidence": "whop-existing-price-MARKED.png",
+  "sourceHashes": {
+    "src/payments/whop-blueprint.mjs": "5ffd0962cc7a1a6d6b56096ec518c955e88964573d5ed77ed37b0a24aa37ff53",
+    "src/messaging/providers/whop-payments.mjs": "ba0c16aa5bb8f2a61afe91221afa2692ad62fc85e225fddcb09c8f98e96dde23",
+    "db/migrations/567_whop_existing_plan_identity.sql": "5f95d87ed298c2990e15936d7e40c5d402d0a458bf82ec47e0cc63d0c3efef80"
+  },
+  "migrationManifest": {
+    "expected": 446,
+    "includes567": true
+  },
+  "firstNormalHttpAttempt": {
+    "at": "2026-11-06T21:56:04.495Z",
+    "httpStatus": 400,
+    "error": "Blueprint amount is outside the selected package range",
+    "providerRequests": 0,
+    "ordersReserved": 0,
+    "rootCause": "Fixed: canonical product ID or sale is resolved before package range/agreement, with explicit ID/code matching.",
+    "retained": "Original local-attempt marker, response and error receipts preserved privately; no provider checkout retry occurred."
+  }
+}

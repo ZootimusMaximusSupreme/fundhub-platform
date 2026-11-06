@@ -13,6 +13,8 @@ const ORDER_KEYS = ['fh_schema', 'fh_payment_link_id', 'fh_org_id', 'fh_client_i
 const SERVICE_KEYS = ['fh_schema', 'fh_service_request_id', 'fh_org_id', 'fh_client_id',
   'fh_engagement_id', 'fh_target_id', 'fh_amount_cents', 'fh_currency'];
 const BODY_KEYS = ['account_id', 'mode', 'metadata', 'plan'];
+const EXISTING_PLAN_BODY_KEYS = ['account_id', 'mode', 'metadata', 'plan_id'];
+const verifiedPlans = new WeakMap();
 const PLAN_KEYS = ['product_id', 'plan_type', 'release_method', 'initial_price', 'currency',
   'title', 'description', 'visibility', 'adaptive_pricing_enabled'];
 const RESOURCE = /^\/(?:checkout_configurations|payments|refunds|disputes|variants)(?:[/?]|$)/;
@@ -45,22 +47,67 @@ function unsafeCheckout() {
     { code: 'whop_unsafe_checkout', status: 400 });
 }
 
+export function getWhopBlueprintPlanId(amountCents, env = process.env) {
+  const raw = env.WHOP_BLUEPRINT_PLAN_IDS;
+  if (raw == null || raw === '') return null;
+  let mapping;
+  try { mapping = JSON.parse(raw); } catch { throw unsafeCheckout(); }
+  if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)
+    || !Object.keys(mapping).length || Object.keys(mapping).length > 100
+    || Object.entries(mapping).some(([amount, id]) => !/^[1-9]\d*$/.test(amount)
+      || !Number.isSafeInteger(Number(amount)) || typeof id !== 'string' || !/^plan_[A-Za-z0-9]+$/.test(id))
+    || !Number.isSafeInteger(amountCents) || !Object.hasOwn(mapping, String(amountCents))) throw unsafeCheckout();
+  return mapping[String(amountCents)];
+}
+
+// Existing prices are read under the same API version before they can be used.
+// A private token binds that read to this exact merchant, amount, environment,
+// credential and transport. A caller-supplied plan ID alone cannot pass POST.
+export async function prepareWhopBlueprintPlan({ planId, accountId, productId, amountCents,
+  apiKey, env = process.env, fetchImpl = fetch } = {}) {
+  if (!/^plan_[A-Za-z0-9]+$/.test(planId || '') || !/^biz_[A-Za-z0-9]+$/.test(accountId || '')
+    || !/^prod_[A-Za-z0-9]+$/.test(productId || '') || !Number.isSafeInteger(amountCents) || amountCents <= 0) throw unsafeCheckout();
+  const variant = await whopRequest(`/variants/${planId}`, { apiKey, env, fetchImpl });
+  const due = variant.initial_price_due;
+  const exactDue = due && due.currency === 'usd' && due.decimals === 2
+    && typeof due.amount === 'string' && /^\d+\.\d{2}$/.test(due.amount)
+    && due.amount === (amountCents / 100).toFixed(2);
+  if (variant.id !== planId || variant.account?.id !== accountId || variant.product?.id !== productId
+    || variant.product.title !== WHOP_CHECKOUT_TITLE
+    || variant.currency !== 'usd' || variant.plan_type !== 'one_time' || variant.release_method !== 'buy_now'
+    || variant.initial_price !== amountCents / 100 || !exactDue || variant.renewal_price !== 0
+    // Whop's merchant editor leaves the variant title null and displays the
+    // product title. Both displayed copy sources must remain neutral.
+    || ![null, WHOP_CHECKOUT_TITLE].includes(variant.title) || variant.description !== WHOP_CHECKOUT_TITLE
+    || variant.visibility !== 'hidden' || variant.adaptive_pricing_enabled !== false
+    || variant.allow_multiple_quantity !== false || variant.unlimited_stock !== true
+    || ![null, 0].includes(variant.trial_period_days) || variant.split_pay_required_payments !== null
+    || (variant.collect_tax !== false && !(variant.collect_tax === true && variant.tax_type === 'inclusive'))
+    || variant.expiration_days !== null) throw unsafeCheckout();
+  const token = Object.freeze({});
+  verifiedPlans.set(token, { planId, accountId, productId, amountCents, apiKey,
+    apiBase: whopApiBase(env), fetchImpl });
+  return token;
+}
+
 // Validate the serialized body, not a hand-picked display field. Service/SKU
 // names stay on immutable Fundhub rows; the provider gets exact opaque refs.
-function assertWhopCheckoutBody(body, idempotencyKey) {
+function assertWhopCheckoutBody(body, idempotencyKey, authorization) {
+  const existing = Object.hasOwn(body || {}, 'plan_id');
   const hasMethods = Object.hasOwn(body || {}, 'payment_method_configuration');
-  const keys = hasMethods ? [...BODY_KEYS, 'payment_method_configuration'] : BODY_KEYS;
+  const baseKeys = existing ? EXISTING_PLAN_BODY_KEYS : BODY_KEYS;
+  const keys = hasMethods ? [...baseKeys, 'payment_method_configuration'] : baseKeys;
   const methods = body?.payment_method_configuration;
   if ((hasMethods && (!exactKeys(methods, ['enabled', 'disabled', 'include_platform_defaults'])
     || !Array.isArray(methods.enabled) || methods.enabled.length !== 1 || methods.enabled[0] !== 'claritypay'
     || !Array.isArray(methods.disabled) || methods.disabled.length !== 0 || methods.include_platform_defaults !== true))
-    || !exactKeys(body, keys) || !exactKeys(body.plan, PLAN_KEYS)
+    || !exactKeys(body, keys)
     || !/^biz_[A-Za-z0-9]+$/.test(body.account_id || '') || body.mode !== 'payment'
-    || !/^prod_[A-Za-z0-9]+$/.test(body.plan.product_id || '')
+    || (!existing && (!exactKeys(body.plan, PLAN_KEYS) || !/^prod_[A-Za-z0-9]+$/.test(body.plan.product_id || '')
     || body.plan.plan_type !== 'one_time' || body.plan.release_method !== 'buy_now'
     || body.plan.currency !== 'usd' || body.plan.visibility !== 'hidden'
     || body.plan.adaptive_pricing_enabled !== false
-    || [body.plan.title, body.plan.description].some(value => value !== WHOP_CHECKOUT_TITLE || !isCommasSafeCopy(value))) {
+    || [body.plan.title, body.plan.description].some(value => value !== WHOP_CHECKOUT_TITLE || !isCommasSafeCopy(value))))) {
     throw unsafeCheckout();
   }
   const meta = body.metadata;
@@ -71,13 +118,15 @@ function assertWhopCheckoutBody(body, idempotencyKey) {
   const amount = Number(meta.fh_amount_cents);
   const referenceKey = service ? 'fh_service_request_id' : 'fh_payment_link_id';
   if (!Number.isSafeInteger(amount) || amount <= 0 || typeof meta.fh_amount_cents !== 'string'
-    || body.plan.initial_price !== amount / 100
+    || (!existing && body.plan.initial_price !== amount / 100)
     || metadataKeys.filter(key => key.endsWith('_id')).some(key => !UUID.test(meta[key] || ''))
     || idempotencyKey !== `${service ? 'fh-request' : 'fh-order'}:${meta[referenceKey]}`) throw unsafeCheckout();
+  if (existing && (service || !authorization || authorization.planId !== body.plan_id
+    || authorization.accountId !== body.account_id || authorization.amountCents !== amount)) throw unsafeCheckout();
 }
 
 export async function whopRequest(path, { apiKey, method = 'GET', body, idempotencyKey,
-  env = process.env, fetchImpl = fetch } = {}) {
+  env = process.env, fetchImpl = fetch, verifiedPlan = null } = {}) {
   if (!apiKey) throw Object.assign(new Error('Whop API key is not configured'), { code: 'whop_not_configured' });
   if (!RESOURCE.test(path)) {
     throw new TypeError('Unsupported Whop billing resource');
@@ -92,7 +141,10 @@ export async function whopRequest(path, { apiKey, method = 'GET', body, idempote
     || (verb === 'GET' && body != null)) throw unsafeCheckout();
   const bodyText = body == null ? undefined : JSON.stringify(body);
   if (verb === 'POST') {
-    assertWhopCheckoutBody(bodyText ? JSON.parse(bodyText) : null, idempotencyKey);
+    const authorization = verifiedPlans.get(verifiedPlan);
+    if (authorization && (authorization.apiKey !== apiKey || authorization.apiBase !== whopApiBase(env)
+      || authorization.fetchImpl !== fetchImpl)) throw unsafeCheckout();
+    assertWhopCheckoutBody(bodyText ? JSON.parse(bodyText) : null, idempotencyKey, authorization);
   }
   const response = await transmit(url.href, {
     method: verb,
