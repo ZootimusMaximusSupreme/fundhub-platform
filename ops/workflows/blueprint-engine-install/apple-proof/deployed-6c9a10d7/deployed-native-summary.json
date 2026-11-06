@@ -1,0 +1,47 @@
+{
+  "checkedAt": "2026-11-06T18:48:28.272Z",
+  "source": "6c9a10d7a5c094166342018026ff15f4e94fa48d",
+  "scope": "Exact public production JavaScript bytes in unchanged production Coordinator on iOS simulator; synthetic APIs only",
+  "actualControls": 6,
+  "setupSteps": 2,
+  "externalDestinations": [
+    "https://www.experian.com/help/dispute-credit/",
+    "https://www.experian.com/consumer/upload/",
+    "https://bank.example.invalid/apply"
+  ],
+  "allowedScopedDocumentNavigations": 3,
+  "javascriptErrors": [],
+  "allDestinationsExpected": true,
+  "clientJsSha256": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81",
+  "csmJsSha256": "6ec711c17a476fe5fede8684e13973ebbc62c61733ab72c9aef0dc782e84424e",
+  "hashesMatchFetched": true,
+  "entryCacheHeaders": [
+    {
+      "path": "/app/blueprint-fulfillment.js",
+      "cacheControl": "public,max-age=0,must-revalidate"
+    },
+    {
+      "path": "/app/blueprint-csm-services.js",
+      "cacheControl": "public,max-age=0,must-revalidate"
+    },
+    {
+      "path": "/app/client-portal.html",
+      "cacheControl": "public,max-age=0,must-revalidate"
+    },
+    {
+      "path": "/app/csm-queue.html",
+      "cacheControl": "public,max-age=0,must-revalidate"
+    }
+  ],
+  "nativeTree": "4e49a0cc4ee9d55960787dc3bf1d17d256bb6595",
+  "nativeSourceEdits": false,
+  "providerActionsExecuted": false,
+  "productionRowsWritten": 0,
+  "limits": [
+    "No real customer/paid buyer session",
+    "No external bank/bureau/provider action executed",
+    "No actual document contents downloaded",
+    "No physical iPhone or tester delivery claim",
+    "No new Apple binary upload or submission"
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "checkedAt": "2026-11-06T19:35:26.818Z",
+  "provider": "Whop external sandbox",
+  "host": "sandbox-api.whop.com",
+  "mode": "One sandbox checkout configuration attempt for the isolated synthetic buyer; no charge.",
+  "post": {
+    "at": "2026-11-06T19:34:24.981Z",
+    "method": "POST",
+    "resource": "checkout_configurations",
+    "status": 403,
+    "title": "Consulting Services Package",
+    "description": "Consulting Services Package",
+    "amountCents": 3000000,
+    "currency": "USD",
+    "metadataVersion": "2",
+    "metadataKeys": [
+      "fh_amount_cents",
+      "fh_client_id",
+      "fh_currency",
+      "fh_org_id",
+      "fh_payment_link_id",
+      "fh_schema"
+    ],
+    "businessMatched": true,
+    "productMatched": true,
+    "errorCode": "forbidden",
+    "namedPermissions": [],
+    "permissionMessage": true,
+    "sandboxErrorClass": "forbidden"
+  },
+  "getCalls": 0,
+  "additionalPostCalls": 0,
+  "sandboxCheckoutUrlReturned": false,
+  "sandboxOwnerAccountIdMatched": true,
+  "sandboxOwnedProductIdMatched": true,
+  "missingPermissionNamedInCapturedResponse": false,
+  "canonical": {
+    "role": "fundhub_app",
+    "status": "created",
+    "amount_cents": "3000000",
+    "whop_metadata_version": 2,
+    "provider": "whop",
+    "checkout_url_empty": true,
+    "no_provider_checkout_id": true,
+    "no_verified_variant": true,
+    "no_payment_reference": true
+  },
+  "effects": {
+    "inbox": 0,
+    "transactions": 0,
+    "entitlements": 0,
+    "engagements": 0
+  },
+  "conclusion": "Provider rejected the single inline-plan checkout POST with a permission response. The missing scope is unconfirmed. Browser payment, a real purchase callback, and entitlement activation were not reached.",
+  "approvedKeyPermissionLabels": [
+    "Read checkout configurations",
+    "Create checkout configurations",
+    "Read plans",
+    "Read payments"
+  ],
+  "uncheckedKeyPermissionLabel": "Create plans",
+  "documentedScopeNames": {
+    "source": "Whop public OpenAPI, 2026-11-05-1; independently documented operation scopes, not observed API key identifiers",
+    "POST /checkout_configurations": "checkout_configuration:create",
+    "POST /variants": "plan:create",
+    "POST /plans": "plan:create"
+  },
+  "permissionEvidence": "The saved key UI showed the four listed permissions checked and Create plans unchecked. The sandbox API log reported that the credential lacked permission and did not name the missing scope.",
+  "dashboardObservation": {
+    "status": 403,
+    "operation": "Create checkout configuration",
+    "durationMs": 255,
+    "credentialName": "Consulting Services Sandbox",
+    "message": "The credential does not have permission to do this.",
+    "scopeNamed": false,
+    "response": {
+      "error": {
+        "type": "forbidden",
+        "message": "You are not authorized"
+      }
+    },
+    "screenshot": "whop-checkout-denied-MARKED.png"
+  }
+}

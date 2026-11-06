@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
+<link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<script defer src="/app/fundhub-font.js"></script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fundhub — Client Success</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="fundhub-brand.css">
+<link rel="stylesheet" href="crm-sidebar.css">
+<link rel="stylesheet" href="csm-queue.css">
+<script defer src="shell.js"></script>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
+</head>
+<body class="csm-queue-page fh-astra fh-astra-staff fh-astra--csm-queue">
+<div class="app">
+<aside class="side" id="side" aria-label="Workspace navigation">
+  <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav" aria-label="Main">
+    <div class="navgroup" data-fh-section="relationships"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-relationships">Relationships<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-relationships">
+      <a class="navitem" href="bank-outreach.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Bank outreach</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="work"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-work">Your work<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-work">
+      <a class="navitem" href="pipeline.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/></svg></span><span class="lbl">Pipeline</span></a>
+      <a class="navitem" href="setter-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9"/></svg></span><span class="lbl">Setter dashboard</span></a>
+      <a class="navitem" href="closer-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5m7 5V9m7 11V4"/></svg></span><span class="lbl">Sales workspace</span></a>
+      <a class="navitem" href="calendar.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="lbl">Calendar</span></a>
+      <a class="navitem" href="messaging.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg></span><span class="lbl">Messaging</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="clients"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-clients">Clients<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-clients">
+      <a class="navitem" href="client-control-panel.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span class="lbl">Client files</span></a>
+      <a class="navitem" href="csm-queue.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4"/></svg></span><span class="lbl">Client Success</span></a>
+      <a class="navitem" href="lenders.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Lenders</span></a>
+      <a class="navitem" href="documents.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6"/></svg></span><span class="lbl">Documents</span></a>
+      <a class="navitem" href="inquiry-remover.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><span class="lbl">Inquiry specialist</span></a>
+      <a class="navitem" href="consent-capture.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Consent</span></a>
+      <a class="navitem" href="finance-os.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Finance OS</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="insights"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-insights">Insights<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-insights">
+      <a class="navitem" href="my-numbers.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16v-7"/></svg></span><span class="lbl">My numbers</span></a>
+      <a class="navitem" href="sales-floor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="lbl">Sales floor</span></a>
+      <a class="navitem" href="company-brain.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z"/></svg></span><span class="lbl">Knowledge base</span></a>
+      <a class="navitem" href="galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Galaxy</span></a>
+      <a class="navitem" href="partner-galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Home</span></a>
+      <a class="navitem" href="ops-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Operations</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-marketing">Marketing<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-marketing">
+      <a class="navitem" href="marketing-command-center.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2"/></svg></span><span class="lbl">Marketing overview</span></a>
+      <a class="navitem" href="campaign-manager.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4"/></svg></span><span class="lbl">Campaigns</span></a>
+      <a class="navitem" href="social-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></svg></span><span class="lbl">Social Studio</span></a>
+      <a class="navitem" href="creative-factory.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/></svg></span><span class="lbl">Creative Factory</span></a>
+      <a class="navitem" href="content-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10m-10 4h10m-10 4h6"/></svg></span><span class="lbl">Content</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="automation"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-automation">Automation<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-automation">
+      <a class="navitem" href="agent-editor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Agent Editor</span></a>
+      <a class="navitem" href="automations.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Workflows</span></a>
+      <a class="navitem" href="journeys.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Journeys</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="settings"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-settings">Manage<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-settings">
+      <a class="navitem" href="staff-teams.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2"/></svg></span><span class="lbl">Team & access</span></a>
+      <a class="navitem" href="hiring.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Hiring</span></a>
+      <a class="navitem" href="products-commissions.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5"/></svg></span><span class="lbl">Products & commissions</span></a>
+      <a class="navitem" href="contracts.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4"/></svg></span><span class="lbl">Contract templates</span></a>
+      <a class="navitem" href="brand-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Brand Studio</span></a>
+      <a class="navitem" href="client-portal.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Client Portal</span></a>
+      <a class="navitem" href="affiliate.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Affiliate</span></a>
+    </div></div>
+  </nav>
+  <div class="side-foot"><span class="who">Private workspace</span></div>
+</aside>
+
+  <div class="main">
+    <main class="content fh-astra-page" aria-labelledby="qTitle">
+      <div class="q-head">
+        <div class="q-intro">
+          <h2 id="qTitle">Calls to make</h2>
+          <p>Claim a conversation, check in with your client, and keep what matters.</p>
+        </div>
+        <div class="q-head-actions">
+          <button class="btn ghost" id="qRefresh" type="button" aria-label="Refresh queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/></svg><span>Refresh<span class="q-refresh-detail"> queue</span></span></button>
+          <a class="btn ghost" href="client-control-panel.html">Client files</a>
+        </div>
+      </div>
+
+      <div class="q-shift" id="qShift">
+        <div class="state">
+          <span class="dot" aria-hidden="true"></span>
+          <span>
+            <span class="who" id="qShiftWho">Checking your shift…</span>
+            <span class="when" id="qShiftWhen">&nbsp;</span>
+          </span>
+        </div>
+        <div class="cta"><button class="btn" id="qClock" type="button" disabled>Start shift</button></div>
+      </div>
+
+      <div class="q-banner" id="qBanner" role="status" aria-live="polite"></div>
+      <div class="q-queue-head">
+        <div class="q-count" aria-live="polite" aria-atomic="true">
+          <span class="vl" id="qCount">—</span>
+          <span class="lb" id="qCountLabel">calls waiting</span>
+          <span class="cmp" id="qOverdue">Checking your queue…</span>
+        </div>
+        <span class="q-order">In due-date order</span>
+      </div>
+      <section class="q-list" id="qList" aria-label="Client calls" aria-busy="true">
+        <div class="q-skel" aria-hidden="true"></div>
+        <div class="q-skel" aria-hidden="true"></div>
+        <div class="q-skel" aria-hidden="true"></div>
+      </section>
+
+      <div class="q-foot">
+        <p class="q-foot-note" id="qFootNote">Looking for one client? <a class="q-link" href="client-control-panel.html">Open the Client Control Panel</a>.</p>
+        <span id="qStamp">Waiting for your queue</span>
+      </div>
+      <section class="card" id="blueprint-csm-services" aria-label="Full-package client oversight" hidden></section>
+      <script defer src="/app/blueprint-csm-services.js"></script>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* THE CSM'S DAY, IN ONE SCREEN.
+   *
+   * GET /api/read/csm-queue has returned the right rows since the day it
+   * shipped, and until 2026-09-17 nothing in public/ had ever asked it for
+   * them: a grep of the whole app for "csm-queue" returned nothing. The CSM's
+   * home was the pick-a-client Client Control Panel, so the first thing the
+   * role saw was a chooser, not a call list (live walk 2026-09-17, GAP 34).
+   *
+   * Three jobs, one screen: who to call, get on shift and take the row, write
+   * down what they said.
+   */
+
+  function $(id) { return document.getElementById(id); }
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  /* The session token is a Bearer header when the screen has one and a
+     same-origin cookie otherwise — src/http/middleware/requireAuth.mjs accepts
+     either, and calendar.html and consent-capture.html each use one of them. */
+  function api(path, options) {
+    var init = options || {};
+    init.headers = init.headers || {};
+    init.headers.accept = "application/json";
+    try {
+      var t = localStorage.getItem("fh_token") || "";
+      if (t && t !== "demo" && t !== "demo-token") init.headers.authorization = "Bearer " + t;
+    } catch (e) {}
+    if (init.body !== undefined) {
+      init.headers["content-type"] = "application/json";
+      init.body = JSON.stringify(init.body);
+    }
+    init.credentials = "same-origin";
+    return fetch(path, init).then(
+      function (r) {
+        return r.json().then(
+          function (b) { return { status: r.status, body: b }; },
+          function () { return { status: r.status, body: null }; }
+        );
+      },
+      function (e) { return { status: 0, body: null, transport: (e && e.message) || "network error" }; }
+    );
+  }
+
+  /* WHAT WENT WRONG, IN THE WORDS OF THE PERSON IT HAPPENED TO — never a raw
+     status code (UI-STANDARDS §6.3). The two shift-shaped refusals reuse
+     calendar.html's existing sentences rather than inventing a second set of
+     words for the same two facts. */
+  function problem(res) {
+    var err = String((res.body && res.body.error) || "");
+    if (res.transport || res.status === 0) return "Could not reach the server. Check your connection and try again.";
+    if (res.status === 401) return "You are signed out. Sign in and open this page again.";
+    if (err === "no_active_shift") return "Clock in first. Work can only be claimed or closed on a shift.";
+    if (err === "already_claimed") return "Somebody else took this one first.";
+    if (err === "shift_already_open") return "You are already on a shift.";
+    if (err === "no_open_shift") return "You are not on a shift right now.";
+    if (res.status === 403) return "Your account is not allowed to do that.";
+    if (res.status === 404) return "That is gone. Reload the page.";
+    if (res.status === 503) return "The database is not reachable right now. Try again in a moment.";
+    if (res.body && res.body.message) return String(res.body.message);
+    return "That did not work. Try again in a moment.";
+  }
+
+  function banner(tone, text) {
+    var el = $("qBanner");
+    el.className = "q-banner show " + tone;
+    el.textContent = text;
+  }
+  function clearBanner() { $("qBanner").className = "q-banner"; }
+
+  /* Relative under a day, absolute after, exact time always in the tooltip
+     (UI-STANDARDS §7). "No date" is said out loud rather than left blank. */
+  function whenText(iso) {
+    if (!iso) return { text: "No date set", title: "" };
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return { text: "No date set", title: "" };
+    var diff = d.getTime() - Date.now();
+    var hours = Math.round(Math.abs(diff) / 3600000);
+    var title = d.toLocaleString();
+    if (hours < 24) {
+      if (hours < 1) return { text: diff >= 0 ? "Due now" : "Due now", title: title };
+      return { text: diff >= 0 ? "Due in " + hours + "h" : hours + "h ago", title: title };
+    }
+    return {
+      text: d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
+      title: title
+    };
+  }
+
+  /* HOW LATE THE CALL IS, in whole days, from the call's OWN due date.
+     Nothing else on this row measures the call. The money chip measures the
+     BILL, and the two are different facts about the same client — a 30-day-old
+     invoice says nothing about whether today's call is late. Returns null when
+     there is no date, the date is unreadable, or the call is not late yet. */
+  function callLateDays(iso) {
+    if (!iso) return null;
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    var ms = Date.now() - d.getTime();
+    if (ms <= 0) return null;
+    return Math.floor(ms / 86400000);
+  }
+
+  /* MID or POST, read off the row's own source_workflow. Anything else is a CSM
+     task from another workflow and simply has no interview form. */
+  function stageOf(row) {
+    if (row.source_workflow === "customer-insights-mid") return "mid";
+    if (row.source_workflow === "customer-insights-post") return "post";
+    return null;
+  }
+
+  /* CAPITAL BLUEPRINT EXCEPTION TASKS. They are ordinary CSM tasks, told apart
+     by the source_workflow the backend stamps on them (src/blueprint/
+     coach-exception.mjs and closer-ready.mjs). Nothing here asks the queue for
+     anything new: the read already carries source_workflow and
+     assignee_staff_id. */
+  var BLUEPRINT_KIND = {
+    "blueprint-coach": "Exception: client stopped coach texts",
+    "blueprint-csm-prep": "Closing prep call before the closer"
+  };
+  function blueprintKind(row) { return BLUEPRINT_KIND[row.source_workflow] || null; }
+
+  var state = {
+    rows: [],
+    shift: null,          // the open shift row, or null
+    myStaffId: null,      // read off the shift; it is the only id this screen gets
+    questions: null,      // { mid: [...], post: [...] } from the read endpoint
+    open: null,           // task_id whose answer form is showing
+    next: null,           // first available call in the API’s due-date order
+    queueReady: false     // never replace loading/failed reads with a false empty queue
+  };
+
+  /* ── the shift ─────────────────────────────────────────────────────────── */
+
+  function paintShift() {
+    var box = $("qShift");
+    var btn = $("qClock");
+    btn.disabled = false;
+    if (state.shift) {
+      box.className = "q-shift on";
+      $("qShiftWho").textContent = "You are on shift";
+      var started = state.shift.started_at ? new Date(state.shift.started_at) : null;
+      $("qShiftWhen").textContent = started && !isNaN(started.getTime())
+        ? "Since " + started.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" })
+        : "";
+      btn.textContent = "End shift";
+    } else {
+      box.className = "q-shift";
+      $("qShiftWho").textContent = "You are not clocked in";
+      $("qShiftWhen").textContent = "Start a shift before you claim a call.";
+      btn.textContent = "Start shift";
+    }
+  }
+
+  function loadShift() {
+    return api("/api/shifts").then(function (res) {
+      if (res.status !== 200 || !res.body || !res.body.ok) {
+        $("qShift").className = "q-shift";
+        $("qShiftWho").textContent = "Cannot read your shift";
+        $("qShiftWhen").textContent = problem(res);
+        $("qClock").disabled = true;
+        return;
+      }
+      state.shift = res.body.shift || null;
+      state.myStaffId = state.shift ? (state.shift.staff_id || null) : state.myStaffId;
+      paintShift();
+      if (state.queueReady) paintQueue();
+    });
+  }
+
+  function toggleClock() {
+    var btn = $("qClock");
+    var goingOn = !state.shift;
+    btn.disabled = true;
+    btn.textContent = goingOn ? "Starting…" : "Ending…";
+    clearBanner();
+    // staff_id and org_id are deliberately NOT sent: api/shifts.mjs refuses a
+    // body that carries either, and takes both off the session instead.
+    api("/api/shifts", { method: "POST", body: { action: goingOn ? "clock_in" : "clock_out" } })
+      .then(function (res) {
+        if (res.status !== 200 || !res.body || !res.body.ok) {
+          banner("err", problem(res));
+          return loadShift();
+        }
+        state.shift = goingOn ? (res.body.shift || null) : null;
+        if (state.shift && state.shift.staff_id) state.myStaffId = state.shift.staff_id;
+        paintShift();
+        if (state.queueReady) paintQueue();
+        banner("ok", goingOn ? "You are on shift. You can claim calls now." : "Shift ended.");
+      });
+  }
+
+  /* ── the queue ─────────────────────────────────────────────────────────── */
+
+  function moneyChip(row) {
+    /* NULL SURVIVES. The endpoint returns null when the client has no invoice
+       at all, which means "unknown until you look", not zero. A dash is the
+       honest render; a "$0.00" here would be a number nobody measured
+       (CLAUDE.md §12). */
+    if (row.balance_due === null || row.balance_due === undefined) {
+      return '<span class="chip num" title="No invoice on file for this client">Owes —</span>';
+    }
+    var n = row.open_invoices === 1 ? "1 invoice" : row.open_invoices + " invoices";
+    /* bill_days_overdue is the OLDEST UNPAID INVOICE's lateness, so it belongs
+       inside the money chip and nowhere near the call. It used to be printed on
+       its own as "30 days overdue" right beside the call time, which read as a
+       late call and is not one. */
+    var billLate = "";
+    if (row.bill_days_overdue !== null && row.bill_days_overdue !== undefined &&
+        row.bill_days_overdue > 0) {
+      billLate = " · bill " + (row.bill_days_overdue === 1
+        ? "1 day late" : row.bill_days_overdue + " days late");
+    }
+    return '<span class="chip owed num" title="What this client still owes. This is ' +
+      'about their bill, not about this call.">Owes $' + esc(row.balance_due) +
+      " · " + esc(n) + esc(billLate) + "</span>";
+  }
+
+  function entitlementLabel(code) {
+    var known = { funding_bundle: "Funding bundle", capital_blueprint: "Capital Blueprint", capital_academy: "Capital Academy", funding_dfy: "Funding, done-for-you", credit_optimization: "Credit optimization" };
+    if (known[code]) return known[code];
+    var words = String(code).replace(/_/g, " ");
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  }
+
+  function rowHtml(row) {
+    var name = row.client_name || row.client_code || "Unnamed client";
+    var when = whenText(row.due_at);
+    var lateDays = callLateDays(row.due_at);
+    var mine = state.myStaffId && row.assignee_staff_id === state.myStaffId;
+    var taken = row.assignee_staff_id && !mine;
+    var next = !!state.shift && state.next === row.task_id;
+    var context = moneyChip(row);
+
+    var chips = '<span class="chip" title="' + esc(when.title) + '">' + esc(when.text) + "</span>";
+    if (lateDays !== null) {
+      chips += '<span class="chip late num" title="This call was due ' + esc(when.title) +
+        ' and has not been done.">Call ' +
+        (lateDays < 1 ? "late today" : esc(lateDays) + (lateDays === 1 ? " day late" : " days late")) +
+        "</span>";
+    }
+    for (var i = 0; i < row.owned_codes.length; i++) {
+      context += '<span class="chip" data-entitlement="' + esc(row.owned_codes[i]) + '">Has ' + esc(entitlementLabel(row.owned_codes[i])) + "</span>";
+    }
+    var bpKind = blueprintKind(row);
+    if (bpKind) chips = '<span class="chip bp" title="' + esc(bpKind) + '">Capital Blueprint</span>' + chips;
+    if (row.source_workflow === "blueprint-csm-prep") {
+      /* The prep task is created for the CSM assigned to the client when there
+         is one (createBlueprintCsmPrepCallTask), so a holder here is that
+         CSM. Nobody holding it means no CSM was assigned yet. */
+      /* assigned_csm_name is the CSM on the client's file (api/read/csm-queue),
+         which is not always the holder of the task. Use the name when there is
+         one; fall back to the holder wording when the read has none. */
+      var csmName = row.assigned_csm_name ? String(row.assigned_csm_name) : "";
+      if (csmName) chips += '<span class="chip' + (mine ? " mine" : "") + '" title="The CSM assigned to this client\'s file.">Assigned CSM: ' + esc(csmName) + "</span>";
+      else if (mine) chips += '<span class="chip mine" title="This prep call sits with the CSM on this client\'s file.">Assigned CSM: you</span>';
+      else if (taken) chips += '<span class="chip" title="This prep call sits with the CSM on this client\'s file.">Assigned CSM: a teammate</span>';
+      else chips += '<span class="chip" title="No CSM holds this prep call yet.">No CSM assigned yet</span>';
+    } else if (mine) chips += '<span class="chip mine">Claimed by you</span>';
+    else if (taken) chips += '<span class="chip">Claimed by a teammate</span>';
+
+    var acts = "";
+    if (!row.assignee_staff_id) {
+      acts += '<button class="btn' + (next && !state.open ? "" : " ghost") + '" type="button" data-claim="' + esc(row.task_id) + '">Claim this call</button>';
+    }
+    if (stageOf(row)) {
+      acts += '<button class="btn' + (next && mine && !state.open ? "" : " ghost") + '" type="button" aria-expanded="' + (state.open === row.task_id ? "true" : "false") + '" aria-controls="q-form-' + esc(row.task_id) + '" data-open="' + esc(row.task_id) + '">' +
+              (state.open === row.task_id ? "Hide answers" : "Write down their answers") + "</button>";
+    }
+    if (row.meeting_url) {
+      acts += '<a class="btn ghost" href="' + esc(row.meeting_url) + '" target="_blank" rel="noopener">Booking link</a>';
+    }
+
+    return '<article class="card' + (next ? " q-next" : "") + '" data-row="' + esc(row.task_id) + '" aria-label="' + esc(name) + '">' +
+      '<div class="q-row">' +
+        '<div class="q-who">' +
+          '<div class="q-name-line"><a class="q-name" href="client-control-panel.html?client_id=' + esc(row.client_id) + '">' + esc(name) + "</a>" +
+          (next ? '<span class="q-up-next">Up next</span>' : "") + "</div>" +
+          '<div class="q-what">' + esc(row.title) + "</div>" +
+          '<div class="q-facts">' + chips + "</div>" +
+          '<div class="q-context" aria-label="Client context">' + context + "</div>" +
+        "</div>" +
+        '<div class="q-acts">' + acts + "</div>" +
+      "</div>" +
+      (state.open === row.task_id ? formHtml(row) : (stageOf(row) ? '<div class="q-form" id="q-form-' + esc(row.task_id) + '" hidden></div>' : "")) +
+      "</article>";
+  }
+
+  /* THE ANSWER FORM (GAP 38). There were 0 rows in customer_insights because no
+     screen had ever posted to /api/customer-insights, and the task body told
+     the CSM to call the API by hand. The questions come from the read endpoint,
+     which already serves the one question bank (src/insights/questions.mjs) —
+     this screen never keeps a second copy of them. */
+  function formHtml(row) {
+    var stage = stageOf(row);
+    var list = (state.questions && state.questions[stage]) || [];
+    if (!list.length) {
+      return '<div class="q-form open" id="q-form-' + esc(row.task_id) + '"><p class="q-empty">The question list did not load. ' +
+             "Reload the page and open this row again.</p></div>";
+    }
+    var channel = stage === "post" ? "google_meet" : "call";
+    var h = '<div class="q-form open" id="q-form-' + esc(row.task_id) + '">' +
+      '<h3 class="q-form-heading">Conversation notes</h3>' +
+      '<p class="q-form-copy">Keep the client’s words. Add at least one answer to save this conversation.</p>' +
+      '<div class="q-field">' +
+        '<label for="qChan">How did you speak to them?</label>' +
+        '<select class="q-select" id="qChan">' +
+          '<option value="call"' + (channel === "call" ? " selected" : "") + ">Phone call</option>" +
+          '<option value="google_meet"' + (channel === "google_meet" ? " selected" : "") + ">Google Meet</option>" +
+          '<option value="ai_reachout">AI reach-out</option>' +
+        "</select>" +
+      "</div>";
+    for (var i = 0; i < list.length; i++) {
+      h += '<div class="q-field">' +
+             '<label for="qa-' + esc(list[i].id) + '">' + esc(list[i].prompt) + "</label>" +
+             '<textarea class="q-area" id="qa-' + esc(list[i].id) + '" data-answer="' + esc(list[i].id) + '"></textarea>' +
+           "</div>";
+    }
+    h += '<div class="q-field q-notes">' +
+           '<label for="qNotes">Anything else worth keeping</label>' +
+           '<textarea class="q-area" id="qNotes" placeholder="Optional."></textarea>' +
+         "</div>" +
+         '<div class="q-save">' +
+           '<button class="btn" type="button" data-save="' + esc(row.task_id) + '">Save these answers</button>' +
+           '<span class="q-say" id="qSay" role="status" aria-live="polite"></span>' +
+         "</div>" +
+       "</div>";
+    return h;
+  }
+
+  function paintQueue() {
+    var list = $("qList");
+    // A shift read or a queue refresh can finish while notes are being typed.
+    // Preserve that open conversation when the same task is painted again.
+    var form = state.open && $("q-form-" + state.open);
+    var draft = [];
+    var focusId = form && form.contains(document.activeElement) ? document.activeElement.id : "";
+    if (form) {
+      var fields = form.querySelectorAll("textarea,select");
+      for (var f = 0; f < fields.length; f++) draft.push({ id: fields[f].id, value: fields[f].value });
+    }
+    state.next = null;
+    for (var n = 0; n < state.rows.length; n++) {
+      if (!state.rows[n].assignee_staff_id || state.rows[n].assignee_staff_id === state.myStaffId) {
+        state.next = state.rows[n].task_id;
+        break;
+      }
+    }
+    if (!state.rows.length) {
+      $("qCount").textContent = "0";
+      $("qCountLabel").textContent = "calls waiting";
+      $("qOverdue").textContent = "Nothing is due.";
+      list.innerHTML = '<div class="card q-empty">' +
+        "<p>No calls are waiting for you.</p>" +
+        "<p>A call appears here when a client pays (the halfway check-in) or when a " +
+        "funding round lands (the results call).</p>" +
+        '<a class="btn ghost" href="client-control-panel.html">Open a client instead</a>' +
+        "</div>";
+      return;
+    }
+    /* COUNTS LATE CALLS, not late bills. The headline sits above a list of
+       calls, so the only number that belongs in it is how many of those calls
+       are past their own due time. */
+    var late = 0;
+    for (var i = 0; i < state.rows.length; i++) {
+      if (callLateDays(state.rows[i].due_at) !== null) late++;
+    }
+    $("qCount").textContent = String(state.rows.length);
+    $("qCountLabel").textContent = state.rows.length === 1 ? "call waiting" : "calls waiting";
+    $("qOverdue").textContent = late
+      ? (late === 1 ? "1 call past due" : late + " calls past due")
+      : "No calls past due";
+    var bpCount = 0;
+    for (var b = 0; b < state.rows.length; b++) if (blueprintKind(state.rows[b])) bpCount++;
+    if (bpCount) {
+      $("qOverdue").textContent += " · " + bpCount +
+        (bpCount === 1 ? " Capital Blueprint exception" : " Capital Blueprint exceptions");
+    }
+
+    var html = "";
+    for (var j = 0; j < state.rows.length; j++) html += rowHtml(state.rows[j]);
+    list.innerHTML = html;
+    for (var d = 0; d < draft.length; d++) {
+      var field = $(draft[d].id);
+      if (field) field.value = draft[d].value;
+    }
+    if (focusId && $(focusId)) $(focusId).focus();
+  }
+
+  function loadQueue() {
+    state.queueReady = false;
+    $("qList").setAttribute("aria-busy", "true");
+    $("qRefresh").disabled = true;
+    return api("/api/read/csm-queue").then(function (res) {
+      $("qList").setAttribute("aria-busy", "false");
+      $("qRefresh").disabled = false;
+      if (res.status !== 200 || !res.body || !res.body.ok) {
+        $("qCount").textContent = "—";
+        $("qCountLabel").textContent = "queue did not load";
+        $("qStamp").textContent = "Queue unavailable";
+        $("qOverdue").textContent = "";
+        $("qList").innerHTML = '<div class="card q-empty">' + esc(problem(res)) +
+          ' <a class="q-link" href="client-control-panel.html">Open the Client Control Panel</a>' +
+          " while this is down.</div>";
+        return;
+      }
+      state.queueReady = true;
+      state.rows = (res.body.items || []).slice();
+      paintQueue();
+      $("qStamp").textContent = "Updated " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) + " Arizona";
+    });
+  }
+
+  /* The question bank rides along on the interview READ endpoint, which returns
+     it on every response. limit=1 because the rows are not what this is for. */
+  function loadQuestions() {
+    return api("/api/read/customer-insights?limit=1").then(function (res) {
+      if (res.status === 200 && res.body && res.body.questions) state.questions = res.body.questions;
+    });
+  }
+
+  /* ── the two writes ────────────────────────────────────────────────────── */
+
+  function claim(taskId, btn) {
+    clearBanner();
+    btn.disabled = true;
+    btn.textContent = "Claiming…";
+    api("/api/tasks", { method: "PATCH", body: { id: taskId, claim: true } }).then(function (res) {
+      if (res.status !== 200 || !res.body || !res.body.ok) {
+        banner("err", problem(res));
+        return loadQueue();
+      }
+      /* The claim is what tells this screen who the signed-in person is: the
+         queue read carries assignee_staff_id but never "you". */
+      var task = res.body.task || {};
+      if (task.assignee_staff_id) state.myStaffId = task.assignee_staff_id;
+      banner("ok", "This call is yours.");
+      return loadQueue();
+    });
+  }
+
+  function save(taskId, btn) {
+    var row = null;
+    for (var i = 0; i < state.rows.length; i++) {
+      if (state.rows[i].task_id === taskId) row = state.rows[i];
+    }
+    if (!row) return;
+
+    var answers = {};
+    var boxes = document.querySelectorAll("[data-answer]");
+    for (var j = 0; j < boxes.length; j++) {
+      var v = boxes[j].value.trim();
+      if (v) answers[boxes[j].getAttribute("data-answer")] = v;
+    }
+    var say = $("qSay");
+    if (!Object.keys(answers).length) {
+      say.className = "q-say show err";
+      say.textContent = "Write down at least one answer before saving.";
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Saving…";
+    say.className = "q-say";
+    api("/api/customer-insights", {
+      method: "POST",
+      body: {
+        client_id: row.client_id,
+        task_id: row.task_id,
+        stage: stageOf(row),
+        channel: $("qChan").value,
+        answers: answers,
+        notes: $("qNotes").value.trim() || null
+      }
+    }).then(function (res) {
+      btn.disabled = false;
+      btn.textContent = "Save these answers";
+      if (res.status !== 201 || !res.body || !res.body.ok) {
+        say.className = "q-say show err";
+        // The store writes a readable sentence on every InsightError; show that
+        // rather than the code beside it.
+        say.textContent = problem(res);
+        return;
+      }
+      state.open = null;
+      banner("ok", "Answers saved for " + (row.client_name || row.client_code || "this client") + ".");
+      paintQueue();
+      var again = document.querySelector('[data-open="' + taskId + '"]');
+      if (again) again.focus();
+    });
+  }
+
+  /* One delegated listener: the rows are repainted on every read, so a listener
+     per button would have to be rebound each time. */
+  $("qList").addEventListener("click", function (e) {
+    var t = e.target;
+    while (t && t !== this) {
+      if (t.getAttribute) {
+        if (t.getAttribute("data-claim")) { claim(t.getAttribute("data-claim"), t); return; }
+        if (t.getAttribute("data-save")) { save(t.getAttribute("data-save"), t); return; }
+        if (t.getAttribute("data-open")) {
+          var id = t.getAttribute("data-open");
+          state.open = state.open === id ? null : id;
+          paintQueue();
+          var focus = state.open === id && $("qChan");
+          if (!focus) focus = document.querySelector('[data-open="' + id + '"]');
+          if (focus) focus.focus();
+          return;
+        }
+      }
+      t = t.parentNode;
+    }
+  });
+
+  $("qClock").addEventListener("click", toggleClock);
+  $("qRefresh").addEventListener("click", function () {
+    clearBanner();
+    loadQuestions();
+    loadShift();
+    loadQueue();
+  });
+
+  loadQuestions();
+  loadShift();
+  loadQueue();
+})();
+</script>
+</body>
+</html>

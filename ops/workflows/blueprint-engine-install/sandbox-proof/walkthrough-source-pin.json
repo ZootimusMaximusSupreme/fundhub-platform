@@ -1,0 +1,98 @@
+{
+  "sourceSha": "1edbe20609790e08b0f377e6125c89bd3e77382d",
+  "checkedAt": "2026-11-06T20:44:13.945209+00:00",
+  "source": "Private git archive of the canonical commit; frontend files and normal backend router both run from the archive.",
+  "protectedLoopbackOnly": true,
+  "snapshotHasGitWorktree": false,
+  "urls": {
+    "buyer": "http://127.0.0.1:8905/app/client-portal.html#blueprint-fulfillment",
+    "csm": "http://127.0.0.1:8907/app/csm-queue.html"
+  },
+  "served": {
+    "buyer": {
+      "/app/client-portal.html": {
+        "status": 200,
+        "sha256": "751873d40b99b879541258824c2e7fe27538ec852a9ed84e91723ef948309631"
+      },
+      "/app/blueprint-fulfillment.js": {
+        "status": 200,
+        "sha256": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81"
+      },
+      "/app/client-control-panel.html": {
+        "status": 200,
+        "sha256": "7565f86b20e33bef82ac5417f0e5bab0c297cc40f300a4f8f06ee41879284f99"
+      },
+      "/app/csm-queue.html": {
+        "status": 200,
+        "sha256": "3b9bd5a0814e618552fce8bc5b8af3698dffa80b8bd20a6a14bae30e742b68e1"
+      },
+      "/api/health": {
+        "status": 200
+      },
+      "/api/blueprint/funding": {
+        "guestStatus": 401
+      }
+    },
+    "csm": {
+      "/app/client-portal.html": {
+        "status": 200,
+        "sha256": "751873d40b99b879541258824c2e7fe27538ec852a9ed84e91723ef948309631"
+      },
+      "/app/blueprint-fulfillment.js": {
+        "status": 200,
+        "sha256": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81"
+      },
+      "/app/client-control-panel.html": {
+        "status": 200,
+        "sha256": "7565f86b20e33bef82ac5417f0e5bab0c297cc40f300a4f8f06ee41879284f99"
+      },
+      "/app/csm-queue.html": {
+        "status": 200,
+        "sha256": "3b9bd5a0814e618552fce8bc5b8af3698dffa80b8bd20a6a14bae30e742b68e1"
+      },
+      "/api/health": {
+        "status": 200
+      },
+      "/api/blueprint/funding": {
+        "guestStatus": 401
+      },
+      "/app/blueprint-csm-services.js": {
+        "status": 200,
+        "sha256": "6ec711c17a476fe5fede8684e13973ebbc62c61733ab72c9aef0dc782e84424e"
+      }
+    }
+  },
+  "pinnedBackendFiles": {
+    "e2e/blueprint-real-server.mjs": "50eae88e4572422387f252fd4fb2ec808f3ebe249d5b108c2568246f33c614b4",
+    "scripts/dev-server.mjs": "9559ef705947ce44eaa954932c2327d2f3f5cb39035ec1904ec485aa8dacf911",
+    "netlify/functions/api.mjs": "12da320877090d44006161dd56346ed71450fa68547946a2d0d9b3354fd62a91",
+    "api/blueprint/funding.mjs": "851ca1e41aa34cee3312606e625b265167e67bd020e951fe51dc15bd25229de8",
+    "src/blueprint/client-funding.mjs": "3fc489574240fba29dff3d03f2b251fd8d753700cb6352a3443690df9465d532"
+  },
+  "reusedDatabase": true,
+  "runtimeRole": "fundhub_app",
+  "migration565": "Applied only the previously pending approved 565 migration to the same walkthrough scratch DB.",
+  "migration566Applied": false,
+  "sessionVerification": {
+    "activeBuyerSessions": 4,
+    "activeCsmSessions": 3,
+    "unchangedSessionIdSets": true,
+    "retainedActivePurchasedCase": true,
+    "reauthenticationPerformed": false
+  },
+  "existingLocalSettingsRetained": true,
+  "otherWalkthroughAndPostgresListenersUnchanged": true,
+  "externalProviderRequests": 0,
+  "scope": "Exact deployed-source loopback frontend/backend, database/session readback and normal authenticated browser reload; isolated synthetic data only.",
+  "authenticatedBrowserRefresh": {
+    "checkedAt": "2026-11-06T20:46:14.892Z",
+    "buyerSignedIn": true,
+    "buyerWorkspaceVisible": true,
+    "buyerReportSetupVisible": true,
+    "buyerErrors": [],
+    "csmFullPackageVisible": true,
+    "sameSyntheticBuyerVisible": true,
+    "reauthenticationPerformed": false,
+    "providerActionsExecuted": 0
+  }
+}

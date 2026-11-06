@@ -1,0 +1,80 @@
+{
+  "checkedAt": "2026-11-06T18:45:44.419Z",
+  "source": "6c9a10d7a5c094166342018026ff15f4e94fa48d",
+  "readOnly": true,
+  "production": true,
+  "ci": {
+    "runId": 42255960876,
+    "passed": 14,
+    "total": 14,
+    "url": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/42255960876",
+    "priorAttempt": "dependency mirror timeout retained; one browser-only infrastructure retry",
+    "fullBrowser": {
+      "passed": 2143,
+      "skipped": 9,
+      "skips": "Existing explicit legacy skips"
+    },
+    "fullDatabaseSkipped": 6,
+    "focusedNewTestsSkipped": 0,
+    "databaseSkips": {
+      "postgresUnitShards": 2,
+      "serialPgSuite": 4,
+      "appRoleAndIsolationGuards": 0,
+      "focusedNewProof": 0
+    }
+  },
+  "ship": {
+    "runId": 42271449259,
+    "conclusion": "success",
+    "url": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/42271449259",
+    "netlifyDeployId": "6aee1f2ec0a98d4f08f90f89",
+    "deployUrl": "https://6aee1f2ec0a98d4f08f90f89--transcendent-wisp-888771.netlify.app"
+  },
+  "assets": [
+    {
+      "path": "/app/blueprint-fulfillment.js",
+      "status": 200,
+      "expected": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81",
+      "actual": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81",
+      "match": true,
+      "cacheControl": "public,max-age=0,must-revalidate"
+    },
+    {
+      "path": "/app/blueprint-csm-services.js",
+      "status": 200,
+      "expected": "6ec711c17a476fe5fede8684e13973ebbc62c61733ab72c9aef0dc782e84424e",
+      "actual": "6ec711c17a476fe5fede8684e13973ebbc62c61733ab72c9aef0dc782e84424e",
+      "match": true,
+      "cacheControl": "public,max-age=0,must-revalidate"
+    }
+  ],
+  "gateways": [
+    {
+      "path": "/api/blueprint/funding",
+      "status": 401
+    },
+    {
+      "path": "/api/blueprint/inquiries",
+      "status": 401
+    },
+    {
+      "path": "/api/blueprint/repair",
+      "status": 401
+    },
+    {
+      "path": "/api/blueprint/services",
+      "status": 401
+    }
+  ],
+  "failures": [],
+  "health": {
+    "status": 200,
+    "ok": true,
+    "state": "up",
+    "expected": 443,
+    "migrations": 470,
+    "pending": 0
+  },
+  "providerActionsExecuted": false,
+  "productionRowsWritten": 0
+}

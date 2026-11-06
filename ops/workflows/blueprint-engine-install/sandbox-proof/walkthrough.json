@@ -1,6 +1,6 @@
 {
-  "source": "c4d3d615c",
-  "checkedAt": "2026-11-06T16:39:54.454Z",
+  "source": "1edbe20609790e08b0f377e6125c89bd3e77382d",
+  "checkedAt": "2026-11-06T20:46:14.892Z",
   "status": "ready",
   "kind": "local interactive walkthrough",
   "host": "127.0.0.1 only; two browser origins keep buyer and staff sessions separate",
@@ -48,6 +48,21 @@
       }
     ],
     "ownerChrome": {
+      "checkedAt": "2026-11-06T20:46:14.892Z",
+      "normalSavedBrowserSession": true,
+      "buyer": {
+        "page": "/app/client-portal.html#blueprint-fulfillment",
+        "heading": "My funding workspace",
+        "nextStep": "Your report is needed"
+      },
+      "csm": {
+        "page": "/app/csm-queue.html",
+        "client": "Taylor Full Blueprint",
+        "matchingClientVisible": true
+      },
+      "actions": "Normal authenticated reload of both pinned-source local pages; no report, quote or provider action submitted."
+    },
+    "initialOwnerChrome": {
       "checkedAt": "2026-11-06T17:20:47.478843+00:00",
       "normalSavedBrowserSession": true,
       "buyer": {
@@ -65,10 +80,13 @@
     }
   },
   "boundaries": [
-    "Existing e2e/blueprint-real-server.mjs serves the production web pages and API router locally.",
+    "The normal web pages and API router run from a fixed private archive of deployed1edbe206; later integration-worktree changes cannot alter this rehearsal.",
     "No live customer data, bureau orders, bank applications, payment provider transactions, email, SMS, or production settings.",
     "No external provider callback or background provider job is running for this manual case. Checkout transport is synthetic, provider fetch is blocked, and stored documents are in-memory.",
     "This case starts before first report authorization. Its pending report does not become a live report; the separate signed HTTP proof records fenced worker processing.",
     "Use synthetic details only. Both walkthrough servers and their local database must be running for these URLs to work."
-  ]
+  ],
+  "initialSource": "c4d3d615c",
+  "sourcePinned": true,
+  "sourcePinReceipt": "walkthrough-source-pin.json"
 }

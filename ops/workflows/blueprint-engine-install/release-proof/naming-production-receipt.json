@@ -1,0 +1,105 @@
+{
+  "checkedAt": "2026-11-06T20:22:04.459Z",
+  "source": "1edbe20609790e08b0f377e6125c89bd3e77382d",
+  "readOnly": true,
+  "production": true,
+  "ci": {
+    "runId": 42281674724,
+    "passed": 14,
+    "total": 14,
+    "url": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/42281674724",
+    "fullBrowser": {
+      "skipped": 9,
+      "passed": 2143
+    },
+    "fullDatabaseSkipped": 6,
+    "databaseSkips": {
+      "postgresUnitShards": 2,
+      "serialPgSuite": 4,
+      "focusedNewProof": 0
+    }
+  },
+  "ship": {
+    "runId": 42284747645,
+    "conclusion": "success",
+    "url": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/42284747645",
+    "netlifyDeployId": "6aee353ae77aa4fae68cf45d",
+    "deployUrl": "https://6aee353ae77aa4fae68cf45d--transcendent-wisp-888771.netlify.app",
+    "publishedAt": "2026-11-06T20:18:20Z",
+    "nonblockingMorningTimingWarnings": [
+      {
+        "check": "whole-morning",
+        "seconds": 20.6,
+        "limitSeconds": 20
+      },
+      {
+        "check": "coverage-gap-finance-os",
+        "seconds": 20.9,
+        "limitSeconds": 20
+      }
+    ],
+    "warningPolicy": "Existing Ship policy permits morning-only timing warnings; these remain warnings, not passing timing proofs. No threshold changed.",
+    "checkoutDoorsMs": 1345,
+    "checkoutDoorsHalfDeadlineMs": 4500
+  },
+  "migration": {
+    "key": "migrations/565_whop_checkout_metadata_version.sql",
+    "expectedCount": 444
+  },
+  "assets": [
+    {
+      "path": "/app/blueprint-fulfillment.js",
+      "status": 200,
+      "expected": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81",
+      "actual": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81",
+      "match": true,
+      "cacheControl": "public,max-age=0,must-revalidate"
+    },
+    {
+      "path": "/app/blueprint-csm-services.js",
+      "status": 200,
+      "expected": "6ec711c17a476fe5fede8684e13973ebbc62c61733ab72c9aef0dc782e84424e",
+      "actual": "6ec711c17a476fe5fede8684e13973ebbc62c61733ab72c9aef0dc782e84424e",
+      "match": true,
+      "cacheControl": "public,max-age=0,must-revalidate"
+    }
+  ],
+  "gateways": [
+    {
+      "path": "/api/blueprint/funding",
+      "status": 401
+    },
+    {
+      "path": "/api/blueprint/inquiries",
+      "status": 401
+    },
+    {
+      "path": "/api/blueprint/repair",
+      "status": 401
+    },
+    {
+      "path": "/api/blueprint/services",
+      "status": 401
+    }
+  ],
+  "failures": [],
+  "health": {
+    "status": 200,
+    "ok": true,
+    "state": "up",
+    "expected": 444,
+    "migrations": 471,
+    "pending": 0
+  },
+  "providerActionsExecuted": false,
+  "productionMutationRequests": 0,
+  "nativeContinuity": {
+    "priorProof": "apple-proof/deployed-6c9a10d7/deployed-native-summary.json",
+    "unchangedWebScripts": true,
+    "newNativeProbeExecuted": false
+  },
+  "limits": [
+    "Read-only deployment proof; no real buyer purchase, charge, report or bureau action executed.",
+    "Actual Whop sandbox purchase remains unproven after the separate provider403; current key permissions unchanged."
+  ]
+}
