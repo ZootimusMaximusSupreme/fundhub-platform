@@ -52,6 +52,13 @@ CREATE TABLE auth_passkey_assurances (
   FOREIGN KEY (credential_id,subject_id) REFERENCES auth_passkeys(id,subject_id) ON DELETE CASCADE
 );
 CREATE INDEX auth_passkey_assurances_session_target ON auth_passkey_assurances(session_id,target_kind,target_id,expires_at);
+-- Preserve assertion identity when ordinary expired-session cleanup clears
+-- the consent receipt's account_session_id. Erasure may still remove proof.
+-- Account deletion cascades through subject, credentials and assurances while
+-- older grant FKs also SET NULL. Validate this FK at transaction end, after all
+-- those referential actions; the final stored relationship remains enforced.
+ALTER TABLE account_plaid_link_grants ADD COLUMN passkey_assurance_id uuid
+  REFERENCES auth_passkey_assurances(id) ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED;
 CREATE TABLE auth_passkey_recovery_codes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   subject_id uuid NOT NULL REFERENCES auth_passkey_subjects(id) ON DELETE CASCADE,
