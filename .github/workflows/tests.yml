@@ -191,7 +191,16 @@ jobs:
       # --with-deps pulls the system libraries Chromium needs on a bare runner.
       # The main project uses Chromium; the PDF annotation and report-overlay
       # regressions also launch WebKit explicitly for the owner's phone sizes.
+      - name: Bound Ubuntu package downloads
+        run: |
+          printf '%s\n' 'Acquire::Retries "1";' 'Acquire::http::Timeout "15";' 'Acquire::https::Timeout "15";' | sudo tee /etc/apt/apt.conf.d/zzzz-fundhub-ci-downloads >/dev/null
+          apt-config dump Acquire::Retries Acquire::http::Timeout Acquire::https::Timeout
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/ubuntu#https://archive.ubuntu.com/ubuntu#g' /etc/apt/apt-mirrors.txt
+          fi
+
       - name: Install Chromium and WebKit
+        timeout-minutes: 15
         run: npx playwright install --with-deps chromium webkit
 
       - name: Screens
