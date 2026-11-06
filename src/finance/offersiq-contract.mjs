@@ -211,6 +211,21 @@ function buildWireFields(body) {
   return { ruleSetId: body.ruleSetId, consumerData, userConsent: consentFromInput(body.userConsent) };
 }
 
+function responseRuleSetId(value) {
+  const id = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+// The root's published result already reflects AND, OR and negation.
+// A failed child alone does not contradict a passing group.
+function rootAgreesWithDecision(root, passed) {
+  if (!plain(root) || (!Object.hasOwn(root, "passed") && !Object.hasOwn(root, "status"))) return false;
+  if (Object.hasOwn(root, "operator") && !["AND", "OR"].includes(root.operator)) return false;
+  if (Object.hasOwn(root, "negated") && typeof root.negated !== "boolean") return false;
+  if (Object.hasOwn(root, "passed") && root.passed !== passed) return false;
+  return !Object.hasOwn(root, "status") || root.status === (passed ? "PASSED" : "FAILED");
+}
+
 export function parseOffersIqResponse({ body, requestId, expectedRuleSetId } = {}) {
   const id = typeof requestId === "string" && UUID.test(requestId) ? requestId : null;
   const result = {
@@ -219,11 +234,17 @@ export function parseOffersIqResponse({ body, requestId, expectedRuleSetId } = {
     message: null, ruleEvaluation: null, offersIQSummary: null, reason: null
   };
   if (!plain(body)) return { ...result, reason: "invalid_response" };
-  const ruleSetId = Number(body.ruleSetId);
-  const expected = Number(expectedRuleSetId);
-  if (!Number.isSafeInteger(ruleSetId) || ruleSetId < 1 ||
-      (Number.isSafeInteger(expected) && expected > 0 && ruleSetId !== expected)) {
+  const ruleSetId = responseRuleSetId(body.ruleSetId);
+  const evaluation = body.ruleEvaluation;
+  if (!ruleSetId || (expectedRuleSetId != null && ruleSetId !== responseRuleSetId(expectedRuleSetId))
+      || (plain(evaluation) && Object.hasOwn(evaluation, "ruleSetId")
+        && responseRuleSetId(evaluation.ruleSetId) !== ruleSetId)) {
     return { ...result, reason: "ruleset_mismatch" };
+  }
+  if ((Object.hasOwn(body, "decisionStatus") && typeof body.decisionStatus !== "string")
+      || (Object.hasOwn(body, "overallDecision") && typeof body.overallDecision !== "boolean")
+      || (evaluation != null && !plain(evaluation))) {
+    return { ...result, ruleSetId, reason: "invalid_response" };
   }
   const decisionStatus = typeof body.decisionStatus === "string" ? body.decisionStatus : null;
   const overallDecision = typeof body.overallDecision === "boolean" ? body.overallDecision : null;
@@ -232,9 +253,13 @@ export function parseOffersIqResponse({ body, requestId, expectedRuleSetId } = {
   else if (decisionStatus === "ERROR") outcome = "error";
   else if (decisionStatus === "APPROVED" && overallDecision !== false) outcome = "matched";
   else if (decisionStatus === "DECLINED" && overallDecision !== true) outcome = "not_matched";
-  else if (!decisionStatus && overallDecision === true) outcome = "matched";
-  else if (!decisionStatus && overallDecision === false) outcome = "not_matched";
+  else if (decisionStatus === null && overallDecision === true) outcome = "matched";
+  else if (decisionStatus === null && overallDecision === false) outcome = "not_matched";
   else outcome = "needs_review";
+  if (evaluation && Object.hasOwn(evaluation, "rootGroup") && ["matched", "not_matched"].includes(outcome)
+      && !rootAgreesWithDecision(evaluation.rootGroup, outcome === "matched")) {
+    return { ...result, outcome: "needs_review", ruleSetId, reason: "decision_missing_or_conflicting" };
+  }
   if (!id && outcome !== "error") outcome = "needs_review";
   return {
     ...result, outcome, decisionStatus, ruleSetId, overallDecision,
