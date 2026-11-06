@@ -9,7 +9,7 @@ export async function getBlueprintFulfillmentAccess(db, { orgId, clientId, now =
   if (!orgId || !clientId) return null;
   const { rows } = await db.query(
     `SELECT g.id, g.org_id AS "orgId", g.client_id AS "clientId",
-            g.funding_round_id AS "roundId", g.opens_at AS "opensAt", g.status, g.execution_owner AS "executionOwner",
+            g.funding_round_id AS "roundId", g.opens_at AS "opensAt",g.submissions_closed_at AS "submissionsClosed", g.status, g.execution_owner AS "executionOwner",
             g.source_transaction_id AS "transactionId", g.source_entitlement_id AS "entitlementId",
             p.code AS "productCode", sp.sale_id AS "saleId"
        FROM blueprint_fulfillment_engagements g

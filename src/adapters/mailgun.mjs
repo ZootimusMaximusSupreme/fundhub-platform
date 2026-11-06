@@ -1,3 +1,4 @@
+import { mailgunAuthenticatedSender } from "../blueprint/bank-evidence.mjs";
 // Mailgun inbound-email adapter — Master Rebuild Spec Phase 1.
 //
 // Receives bank-forwarded emails from Mailgun, classifies them, and emits
@@ -940,6 +941,8 @@ export async function handleMailgunWebhook({ db, body, signingKey }) {
       clientId,
       source: "mailgun"
     };
+    const authenticatedBankDomain = mailgunAuthenticatedSender(body);
+    if (authenticatedBankDomain) payload.authenticatedBankDomain = authenticatedBankDomain;
     if (amounts) {
       payload.amountCandidates = amounts.candidates;
       payload.amountCandidatesFound = amounts.found;
