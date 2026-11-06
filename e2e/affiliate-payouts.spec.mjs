@@ -173,8 +173,14 @@ test.describe("Affiliate payout bank (affiliate.html)", () => {
   test("no bank: Link your bank asks for consent before Plaid", async ({ page }) => {
     const posts = [];
     const consentPosts = [];
+    const passkeyPosts = [];
     await openScreen(page, "/app/affiliate.html", client, {
       "/api/read/affiliate-portal": portal(),
+      "/api/auth/passkey": (route) => {
+        const body = route.request().postDataJSON();
+        passkeyPosts.push(body);
+        return json(route, { ok: true, enrolled: true, assured: true, recovery_required: false });
+      },
       "/api/auth/plaid-mfa": async (route) => {
         consentPosts.push(route.request().postDataJSON());
         return json(route, { ok: true, consent_text: "I agree to connect my payout bank.", privacy_url: "/privacy/" });
@@ -197,7 +203,55 @@ test.describe("Affiliate payout bank (affiliate.html)", () => {
     await expect(page.locator(".fh-plaid-stepup")).toContainText("I agree to connect my payout bank.");
     await expect(page.locator(".fh-plaid-stepup [name=consent]")).not.toBeChecked();
     expect(consentPosts).toEqual([{ action: "consent_details", target_kind: "affiliate_payout" }]);
+    expect(passkeyPosts).toEqual([{ action: "status", target_kind: "affiliate_payout" }]);
     expect(posts).toEqual([]);
+  });
+
+  test("affiliate exchange is blocked when Plaid returns after passkey assurance expires", async ({ page }) => {
+    const passkeyPosts = [], consentPosts = [], bankPosts = [];
+    await page.addInitScript(() => {
+      window.Plaid = { create: options => ({ open() { window.finishAffiliateLink = options.onSuccess; } }) };
+    });
+    await openScreen(page, "/app/affiliate.html", client, {
+      "/api/read/affiliate-portal": portal(),
+      "/api/auth/passkey": (route) => {
+        const body = route.request().postDataJSON();
+        passkeyPosts.push(body);
+        return json(route, { ok: true, enrolled: true, assured: passkeyPosts.length === 1, recovery_required: false });
+      },
+      "/api/auth/plaid-mfa": (route) => {
+        const body = route.request().postDataJSON();
+        consentPosts.push(body);
+        return body.action === "consent_details"
+          ? json(route, { ok: true, consent_text: "I agree to connect my payout bank.", privacy_url: "/privacy/" })
+          : json(route, { ok: true, grant_token: "synthetic-affiliate-grant" });
+      },
+      "/api/affiliates/payout-account": (route) => {
+        const body = route.request().postDataJSON();
+        bankPosts.push(body);
+        return body.action === "link_token"
+          ? json(route, { ok: true, link_token: "synthetic-link-token" })
+          : json(route, { ok: true });
+      }
+    });
+    await page.locator("#switch-payouts").click();
+    await page.locator("#payBankLink").click();
+    await expect(page.locator(".fh-plaid-stepup")).toContainText("I agree to connect my payout bank.");
+    await page.locator('[name="consent"]').check();
+    await page.locator("[data-continue]").click();
+    await page.waitForFunction(() => typeof window.finishAffiliateLink === "function");
+    await page.evaluate(() => window.finishAffiliateLink("synthetic-public-token", {
+      institution: { name: "Synthetic Bank" }, accounts: [{ id: "synthetic-account", name: "Checking", mask: "1234" }]
+    }));
+    await expect(page.locator(".fh-plaid-stepup h2")).toHaveText("Verify your bank connection");
+    expect(passkeyPosts).toEqual([
+      { action: "status", target_kind: "affiliate_payout" },
+      { action: "status", target_kind: "affiliate_payout" }
+    ]);
+    expect(consentPosts.map(body => body.action)).toEqual(["consent_details", "authorize"]);
+    expect(bankPosts.map(body => body.action)).toEqual(["link_token"]);
+    await page.locator("[data-cancel]").click();
+    expect(bankPosts.some(body => body.action === "exchange")).toBe(false);
   });
 
   test("linked on Plaid test data: says no real payout can go there", async ({ page }) => {
@@ -221,7 +275,7 @@ test.describe("Affiliate payout bank (affiliate.html)", () => {
 // Isolate the real shared step-up script. All HTTP responses and identities
 // are synthetic; these controls never open Plaid or touch an account.
 async function stepUpSessionFixture(page, reply) {
-  const posts = [], errors = [];
+  const posts = [], passkeyPosts = [], errors = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.route("**/*", async route => {
     const pathname = new URL(route.request().url()).pathname;
@@ -232,6 +286,10 @@ async function stepUpSessionFixture(page, reply) {
       const body = route.request().postDataJSON();
       posts.push({ body, bearer: route.request().headers().authorization });
       return reply(route, body, posts);
+    }
+    if (pathname === "/api/auth/passkey") {
+      passkeyPosts.push(route.request().postDataJSON());
+      return json(route, { ok: true, enrolled: true, assured: true, recovery_required: false });
     }
     return route.fulfill({ status: 404, body: "fixture only" });
   });
@@ -250,7 +308,7 @@ async function stepUpSessionFixture(page, reply) {
     };
   });
   await page.addScriptTag({ content: fs.readFileSync("public/app/plaid-stepup.js", "utf8") });
-  return { posts, errors };
+  return { posts, passkeyPosts, errors };
 }
 const detailsA = { ok: true, consent_text: "Synthetic consent for account A", privacy_url: "/privacy/" };
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
