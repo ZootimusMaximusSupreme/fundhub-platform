@@ -35,13 +35,13 @@ Law: fourth-grade-english (.ai/rules/fourth-grade-english.md) - talk to Chris at
 
 ## Prove path (required before "done")
 
-**Prove** = reproduce the board finding's exact check and write evidence (screenshot + response) to the evidence folder; update the board row. Chat claims of success count for nothing.
+**Prove** = reproduce the board finding's exact check and write evidence appropriate to the affected surface to the evidence folder; update the board row. For a live screen, capture the screenshot and response. Chat claims of success count for nothing.
 
 Order matters. Do not skip.
 
 1. `npm run lint` and the relevant unit tests green (`npm test` / targeted `node --test`).
-2. Law: test-means-human-click (.ai/rules/test-means-human-click.md) - live Playwright to 100/100, then the agent walks the live path like a person; Chris does no manual pass unless he offers.
-3. Law: named-fix-regression-gate (.ai/rules/named-fix-regression-gate.md) - after the fix a different tester tries to recreate the hole on the live site; the fixer never marks it done.
+2. For a changed live product path, follow test-means-human-click (.ai/rules/test-means-human-click.md): live Playwright to 100/100, then the agent walks the live path like a person. For an instruction-only repair, verify the affected instructions and their references instead; do not claim product or live proof. Chris does no manual pass unless he offers.
+3. After the fix a different tester tries to recreate the same hole. For live-site holes, the named-fix-regression-gate (.ai/rules/named-fix-regression-gate.md) requires the live site. For instruction-only repairs, independently check the affected instructions and references. The fixer never marks its own work independently verified.
 5. If a journey changed: update `docs/journeys/*-actual.md` in the same commit as the code, append `docs/journeys/CHANGELOG.md`. Write the change manifest to the batch board under `ops/workflows/`.
 
 ## Deploy

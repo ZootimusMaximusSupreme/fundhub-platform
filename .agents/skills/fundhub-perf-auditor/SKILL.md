@@ -39,6 +39,6 @@ Funnel pages first — they cost money per visitor. CRM screens second. Rank all
 
 1. Funnel: apply.fundhub.ai/watch, apply, book, thank-you.
 2. CRM: every screen in public/app/ (count them first; do not quote a number), logged in per primary role.
-3. Board: `ops/workflows/perf-audit-<date>.md`. Evidence: `ops/workflows/perf-audit-evidence/<page>/`.
+3. Use the assigned or an existing board, or create `ops/workflows/perf-audit-<date>.txt`. Evidence: `ops/workflows/perf-audit-evidence/<page>/`. Create new Markdown only when explicitly requested.
 4. Pattern findings (same cause across many pages — e.g. one blocking font, inline styles everywhere) get ONE row listing affected pages.
 5. Fan out in groups. Stop when the board is written.

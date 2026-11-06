@@ -23,7 +23,7 @@ You do not fix the agent in the same pass. Score. Write the board. Stop.
 ## Hard rules
 
 - Read `docs/journeys/<name>-intended.md` before the talk. Correct order comes from that file, not memory.
-- Load the live agent prompt from Agent Editor / `src/agents` — do not invent the script.
+- Load the active prompt from the source the actual runtime selects — Agent Editor, source-owned instructions, or a verified fallback. Do not invent the script.
 - Roleplay the full event sequence (not one hello).
 - Score PASS only if the agent did what the prompt said AND events fired in intended order.
 - One 8-second or 0.1s Bland call is FAIL for “call sequence.”
@@ -33,10 +33,10 @@ You do not fix the agent in the same pass. Score. Write the board. Stop.
 
 ## Load the script (never invent it)
 
-1. Pick the named live agent (code + name). If Chris did not name one, pick the one this thread already touched. Do not mint a new agent.
-2. Read the Agent Editor row: `agents.prompt` for that `code` (via `src/agents/registry.mjs` `byCode`, or `GET /api/read/agents` / Agent Editor). That string is the script.
-3. If the live row is empty or not ready, say so. A vendor fallback (`vendor/inquiry-remover/src/agents/*.js`) may be what production actually dials (the AI setter does this in `src/workflows/ai-set-01-josh-setter.mjs`). Load that file only as the **fallback the code uses**, and write `source: vendor_prompt` on the board. Do not paste a script from memory.
-4. Read `src/agents` for how this agent is selected, triggered, and sent (`runtime.mjs`, `select.mjs`, the workflow that fires it). Trigger order is code + intended journey, not a guess.
+1. Pick the named live agent (code and name when registered, or source route and name for a source-owned assistant). If Chris did not name one, pick the one this thread already touched. Do not mint a new agent.
+2. Trace the actual runtime to its prompt source. For registry agents, read the active `agents.prompt` row for that code via `src/agents/registry.mjs` `byCode`, `GET /api/read/agents`, or Agent Editor. For source-owned assistants, load the source prompt and its runtime inputs. Record the active prompt hash and source revision.
+3. If a registry row is empty or not ready, report its actual gate. Use a vendor fallback only when the current selection code uses it. For AG-04, `src/workflows/ai-set-01-josh-setter.mjs` uses the vendor fallback only when the row is absent; a present but unready row stops the call. Record the selected source. Do not paste a script from memory.
+4. Trace the actual route, runtime, and workflow for selection, triggers and actions. Registry agents may use `src/agents`; source-owned assistants may use `src/chat` and `api/chat`. Trigger order is code + intended journey, not a guess.
 
 Common map (still read the intended file — do not skip it):
 
@@ -72,7 +72,7 @@ Fill prompt `{{placeholders}}` from the sim’s survey / file only. Skip empty. 
 
 Two seats. Do not mix them.
 
-**Agent seat.** System = the live prompt, word for word. Same model path the product uses (`src/agents/model.mjs` `callModel`). No extra coaching. No “remember to hit every beat.”
+**Agent seat.** Use the active prompt and the actual provider, model and runtime path selected by this agent, including any runtime instructions and tools. `src/agents/model.mjs` `callModel` applies only where the product calls it. If the actual voice path cannot be exercised safely, record it as UNVERIFIED. A substitute model is exploratory evidence only. No extra coaching.
 
 **Client seat.** A second model (or a second `callModel` with a **client** system). The client walks the intended event list, one event at a time. Answers like a real person. Does not remind the agent what to say.
 
@@ -94,29 +94,30 @@ Per turn:
 
 - **Prompt PASS** = this turn did what the live prompt said (job, order, guardrails). Quote the prompt line you checked.
 - **Sequence PASS** = this event is the next one in the intended file. Skip, swap, or invent = FAIL.
+- Verify actual actions and stored events in their intended order using isolated fixtures. A transcript or proposed action alone does not prove an effect. Record provider, model, prompt hash, config and source version. If effects cannot be observed, mark action order UNVERIFIED.
 - A greeting-only run with later beats missing = FAIL.
 - Agent quotes a pre-approval, pulled credit, or a dollar the prompt forbids = FAIL.
 - Agent asks Chris to listen, or you score a hang-up as a full call = FAIL.
 
-Overall **PASS** only if every required turn is Prompt PASS **and** Sequence PASS.
+Overall **PASS** only if every required turn is Prompt PASS, Sequence PASS, and the required actions and event order are verified.
 
-Otherwise overall **FAIL**. Partial greens do not become done.
+An observed breach is FAIL. Missing proof is UNVERIFIED. Partial greens do not become done.
 
 After a **named fix**: run this whole roleplay **twice**. One run is not enough.
 
 ## Board
 
-Write `ops/workflows/agent-tester-YYYY-MM-DD.md` (add `-2` if the date file exists).
+Write to the assigned board or an existing board. If a new board is needed, use a `.txt` file under `ops/workflows/`; do not create new Markdown without an explicit request.
 
 Must include:
 
-- Agent code, name, prompt source (`ag-XX` / `vendor_prompt` / empty)
+- Agent code or route, name, prompt source and hash (registry row, source-owned prompt, selected fallback, or empty)
 - Intended file path
 - Ordered events copied from that file
 - Sim email (plus-tag) and agent phone
 - Per-turn PASS/FAIL table
 - One line: did the sequence match the intended journey? yes / no / UNVERIFIED
-- Overall PASS or FAIL
+- Overall PASS, FAIL, UNVERIFIED or NOT EXERCISED, with reason
 - Left undone
 
 Do not claim done in chat if the board is overall FAIL.
