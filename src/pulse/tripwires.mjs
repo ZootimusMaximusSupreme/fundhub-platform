@@ -91,7 +91,6 @@ export const TRIPWIRES = Object.freeze({
   "route:auth/magic-link-verify": { impact: "customer", checks: ["gap:auth-magic-link-dead", "gap:auth-signin-no-session"] },
   "route:auth/send-portal-link": { impact: "customer", checks: ["gap:auth-magic-link-dead"] },
   "page:portal-login.html": { impact: "customer", checks: ["gap:auth-magic-link-dead", "portal:paid-client-never-signed-in"] },
-  "page:devices.html": { impact: "customer", checks: ["portal:page-scripts-load"] },
   "desk:client-portal.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:paid-entitlement", "portal:next-step", "blueprint:preparation-evidence", "blueprint:letter-mailing", "blueprint:response-validation", "blueprint-full:paid-installation", "blueprint-full:round-access", "blueprint-full:report-delivery"] },
   "route:blueprint/funding": { impact: "customer", checks: ["blueprint-full:paid-installation", "blueprint-full:round-access", "blueprint-full:funding-evidence"] },
   "route:blueprint/inquiries": { impact: "customer", checks: ["blueprint-full:inquiry-evidence", "blueprint-full:inquiry-calls"] },
