@@ -9,7 +9,7 @@ import { HANDOFF_PATH, HANDOFF_ORIGIN, handoffSignature, handoffUrl } from "./bl
 export { HANDOFF_PATH, handoffSignature, handoffUrl } from "./blueprint-handoff-link.mjs";
 import { assertBlueprintAgreementPrice } from "../contracts/blueprint-price.mjs";
 import { signContractUrl, secretFromEnv } from "../contracts/signed-link.mjs";
-import { createWhopBlueprintPaymentLink } from "../payments/whop-blueprint.mjs";
+import { createWhopBlueprintPaymentLink, isWhopCheckoutUrl } from "../payments/whop-blueprint.mjs";
 import { normalizePhone } from "../messaging/providers/bland-voice.mjs";
 
 export const SELLER_OFFER = "BLUEPRINT_SELF_FUNDING";
@@ -237,6 +237,6 @@ export async function resolveSellerHandoff(db, { id, sig, env = process.env, now
   if (order.status === "paid") throw new SellerError("payment_processing", "Your payment is being applied. Open this same link again shortly.", 409);
   const match = await assertBlueprintAgreementPrice(db, { orgId: record.org_id, clientId: record.client_id, amountCents: record.amount_cents, offerKey: SELLER_OFFER });
   if (match.contractId !== id) throw fail();
-  if (!/^https:\/\/whop\.com\/checkout\/ch_[a-zA-Z0-9]+\/$/.test(order.checkout_url || "")) throw fail();
+  if (!isWhopCheckoutUrl(order.checkout_url,order.whop_checkout_configuration_id,env)) throw fail();
   return order.checkout_url;
 }

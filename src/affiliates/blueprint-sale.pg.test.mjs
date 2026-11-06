@@ -26,7 +26,8 @@ const principal={kind:'affiliate',orgId:ORG,affiliateId:AFF,accountId:ACCOUNT};
 const env={BLUEPRINT_AFFILIATE_SELLER_IDS:AFF,CONTRACT_URL_SECRET:'synthetic-seller-handoff-secret-32bytes-plus',WHOP_API_KEY:'synthetic-key',WHOP_ACCOUNT_ID:'biz_synthetic',WHOP_CONSULTING_PACKAGE_PRODUCT_ID:'prod_synthetic',WHOP_WEBHOOK_SECRET:'synthetic-secret',ADAPTERS_DRY_RUN:'0'};
 const buyer=()=>({first_name:'Synthetic',last_name:'Buyer',email:randomUUID()+'@example.test',phone:'+12025550123',request_id:randomUUID()});
 function response(){return {statusCode:200,headers:{},setHeader(k,v){this.headers[k]=v;},status(v){this.statusCode=v;return this;},json(v){this.body=v;return this;},end(){return this;}};}
-async function world(){
+async function world({sandbox=false}={}){
+ const testEnv=sandbox?{...env,WHOP_ENV:'sandbox'}:env;
  const db=PG_MODULE?new (await import(PG_MODULE)).PGlite():new pg.Client({connectionString:SCRATCH});
  if(!PG_MODULE)await db.connect();
  await (PG_MODULE ? db.exec.bind(db) : db.query.bind(db))(`CREATE TEMP TABLE clients(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid,email text,first_name text,last_name text,phone text,ghl_contact_id text,channel_source text,is_demo boolean DEFAULT false,custom_fields jsonb DEFAULT '{}',created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
@@ -40,7 +41,7 @@ async function world(){
  CREATE TEMP TABLE sales(id uuid,org_id uuid,client_id uuid,product_id uuid,status text,sale_motion text,sold_at timestamptz);
  CREATE TEMP TABLE sale_attributions(sale_id uuid,staff_id uuid,role text,attributed_at timestamptz);
  CREATE TEMP TABLE call_outcomes(org_id uuid,client_id uuid,staff_id uuid,logged_at timestamptz);
- CREATE TEMP TABLE payment_links(id uuid PRIMARY KEY,org_id uuid,client_id uuid,purpose text,description text,amount_cents bigint,currency text,link_ref text,checkout_url text,provider text,product_id uuid,sale_id uuid,sale_motion text,created_by_staff_id uuid,closer_staff_id uuid,sales_manager_staff_id uuid,status text DEFAULT 'created',created_at timestamptz DEFAULT now(),whop_checkout_configuration_id text,whop_plan_id text,whop_payment_id text);
+ CREATE TEMP TABLE payment_links(id uuid PRIMARY KEY,org_id uuid,client_id uuid,purpose text,description text,amount_cents bigint,currency text,link_ref text,checkout_url text,provider text,product_id uuid,sale_id uuid,sale_motion text,created_by_staff_id uuid,closer_staff_id uuid,sales_manager_staff_id uuid,status text DEFAULT 'created',created_at timestamptz DEFAULT now(),whop_checkout_configuration_id text,whop_plan_id text,whop_payment_id text,whop_metadata_version integer NOT NULL DEFAULT 2 CHECK(whop_metadata_version IN(1,2)));
  CREATE TEMP TABLE transactions(id uuid DEFAULT gen_random_uuid(),org_id uuid,client_id uuid,provider text,provider_ref text,status text,amount_paid numeric);
  CREATE TEMP TABLE affiliate_commission_rules(id uuid,org_id uuid,tier text,affiliate_id uuid,product_id uuid,active boolean,effective_from timestamptz,effective_to timestamptz,created_at timestamptz);
  CREATE TEMP TABLE entitlements(source_transaction_id uuid,org_id uuid,client_id uuid,entitlement_code text);`);
@@ -54,9 +55,10 @@ async function world(){
   let out;
   if(init.method==='POST'){
    posts++; const key=init.headers['Idempotency-Key']; const body=JSON.parse(init.body);
+   assert.equal(body.metadata.fh_schema,'2');assert.ok(!('fh_link_ref' in body.metadata));assert.ok(!('offer_key' in body.metadata));assert.ok(!('product_code' in body.metadata));
    assert.deepEqual(body.payment_method_configuration,{enabled:['claritypay'],disabled:[],include_platform_defaults:true});
    if(!cache.has(key)){
-    creates++; out={id:'ch_synthetic'+creates,account_id:'biz_synthetic',mode:'payment',metadata:body.metadata,plan:{id:'plan_synthetic'+creates,...body.plan},purchase_url:`https://whop.com/checkout/ch_synthetic${creates}/`,payment_method_configuration:configuration?configuration.selected:body.payment_method_configuration,effective_payment_method_configuration:configuration?configuration.effective:{enabled:financing?['claritypay']:[],disabled:[]}};
+    creates++; out={id:'ch_synthetic'+creates,account_id:'biz_synthetic',mode:'payment',metadata:body.metadata,plan:{id:'plan_synthetic'+creates,...body.plan},purchase_url:`https://${sandbox?'sandbox.whop.com':'whop.com'}/checkout/ch_synthetic${creates}/`,payment_method_configuration:configuration?configuration.selected:body.payment_method_configuration,effective_payment_method_configuration:configuration?configuration.effective:{enabled:financing?['claritypay']:[],disabled:[]}};
     cache.set(key,out);
    }else out=cache.get(key);
    if(failAfterCreate){failAfterCreate=false;throw Error('synthetic lost provider response');}
@@ -70,7 +72,7 @@ async function world(){
   const rendered=`Full Blueprint service agreement: $${(args.amountCents/100).toLocaleString('en-US')}.`;
   return (await db.query(`INSERT INTO contracts(org_id,client_id,template_key,status,created_by_account_id,merge_values,rendered_body,body_sha) VALUES($1,$2,'BLUEPRINT-SELF-FUNDING-AGREEMENT','draft',$3,$4,$5,$6) RETURNING *`,[args.orgId,args.clientId,args.accountId,JSON.stringify({package_fee:`$${(args.amountCents/100).toLocaleString('en-US')}`,_blueprint_amount_cents:args.amountCents}),rendered,'sha256:'+createHash('sha256').update(rendered).digest('hex')])).rows[0];
  },sendContract:async(db,args)=>({contract:(await db.query(`UPDATE contracts SET status='sent',sent_at=COALESCE(sent_at,now()),sent_by_account_id=$3 WHERE id=$1 AND org_id=$2 RETURNING *`,[args.id,args.orgId,args.accountId])).rows[0]}),getContract:async(db,{orgId,id})=>(await db.query('SELECT * FROM contracts WHERE id=$1 AND org_id=$2',[id,orgId])).rows[0],fetchImpl:send};
- const run=(body,over={})=>createSellerSale(db,{principal,body,env,deps,...over});
+ const run=(body,over={})=>createSellerSale(db,{principal,body,env:testEnv,deps,...over});
  const seedBuyer=async(b)=>{await db.query(`INSERT INTO clients(org_id,first_name,last_name,email,phone) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,[ORG,b.first_name,b.last_name,b.email,b.phone]);};
  const localCheckout=async(db,args)=>(await db.query(`INSERT INTO payment_links(id,org_id,client_id,product_id,provider,amount_cents,currency,checkout_url,status) VALUES($1,$2,$3,$4,'whop',$5,'USD','https://whop.com/checkout/ch_local/','created') ON CONFLICT(id) DO UPDATE SET checkout_url=EXCLUDED.checkout_url RETURNING *`,[args.reservationId,ORG,args.clientId,PRODUCT,args.amountCents])).rows[0];
  const agreement=async(email,{status='sent',amount=3000000}={})=>{
@@ -336,3 +338,17 @@ test('negotiated29K reaches the actual Whop helper and verified checkout unchang
  const contract=(await w.db.query('SELECT * FROM contracts WHERE id=$1',[out.contract_id])).rows[0];assert.equal(contract.merge_values._blueprint_amount_cents,2900000);
  const order=(await w.db.query('SELECT * FROM payment_links')).rows[0];assert.equal(Number(order.amount_cents),2900000);
 }));
+
+test('permanent seller broker traverses the exact sandbox checkout and refuses it in production',OPTIONS,async()=>{
+ const w=await world({sandbox:true});try{
+  const b={...buyer(),amount_cents:2900000};const out=await w.run(b);
+  await w.db.query(`UPDATE contracts SET status='signed' WHERE id=$1`,[out.contract_id]);
+  const args={id:out.contract_id,sig:new URL(out.handoff_url).searchParams.get('sig')};
+  const checkout=await resolveSellerHandoff(w.db,{...args,env:{...env,WHOP_ENV:'sandbox'}});
+  assert.match(checkout,/^https:\/\/sandbox\.whop\.com\/checkout\/ch_synthetic1\/$/);
+  await assert.rejects(resolveSellerHandoff(w.db,{...args,env}),{code:'not_found'});
+  const saved=(await record(w,b.email)).custom_fields.blueprint_seller_sale;
+  await w.db.query(`UPDATE payment_links SET checkout_url='https://sandbox.whop.com/checkout/ch_different/' WHERE id=$1`,[saved.payment_link_id]);
+  await assert.rejects(resolveSellerHandoff(w.db,{...args,env:{...env,WHOP_ENV:'sandbox'}}),{code:'not_found'});
+ }finally{await w.close();}
+});
