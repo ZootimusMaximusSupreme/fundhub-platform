@@ -569,6 +569,9 @@ final class FundhubTests: XCTestCase {
         for raw in [
             "https://fundhub.ai.evil.example/app/client-portal.html",
             "https://www.fundhub.ai/app/client-portal.html",
+            "https://www.fundhub.ai/portal-login.html",
+            "https://www.fundhub.ai/login.html?next=%2Fapp%2Faffiliate.html",
+            "https://www.fundhub.ai/login.html?next=%2Fapp%2Fcompany-cash.html",
             "http://fundhub.ai/app/client-portal.html",
             "https://example-payments.com/checkout",
             "mailto:support@fundhub.ai",

@@ -450,6 +450,9 @@
     var btn = $("ccConnect"); setBusy(btn, true, "Opening bank…"); message("");
     try {
       await revalidate(auth);
+      if (!root.FHPlaidStepUp || typeof root.FHPlaidStepUp.verify !== "function") throw new Error("The passkey check did not load. Reload this page and try again.");
+      await root.FHPlaidStepUp.verify("company_bank");
+      await revalidate(auth);
       var token = await request(BANK_URL, { action: "link_token" }, auth);
       if (!token.linkToken) throw new Error("Plaid did not return a bank window. Try again.");
       await loadPlaid();
@@ -471,7 +474,7 @@
       });
       plaidHandler = handler;
       handler.open();
-    } catch (err) { destroyPlaid(true); if (guard(auth)) message(err.message, true); }
+    } catch (err) { destroyPlaid(true); if (guard(auth) && err.message !== "cancelled") message(err.message, true); }
     finally { if (guard(auth)) setBusy(btn, false); }
   }
   function openAccountPicker(mode, accounts) {
@@ -501,7 +504,19 @@
       ? { action: "exchange", public_token: state.pendingLink && state.pendingLink.publicToken, account_id: choice.value,
           institution_name: state.pendingLink && state.pendingLink.institutionName, confirm_business_account: true, consent: true }
       : { action: "select_account", account_id: choice.value, confirm_business_account: true };
-    var btn = $("ccSaveAccount"); var ok = await mutate(BANK_URL, body, btn, "Saving bank…", "Business account selected. Refresh bank data for a posted balance.");
+    var btn = $("ccSaveAccount");
+    if (state.accountMode === "link") {
+      setBusy(btn, true, "Checking bank…");
+      try {
+        await root.FHPlaidStepUp.verify("company_bank");
+        await revalidate(auth);
+        if (!guard(auth) || !state.pendingLink || state.pendingLink.auth !== auth) return;
+      } catch (err) {
+        if (guard(auth) && err.message !== "cancelled") message(err.message, true);
+        return;
+      } finally { if (guard(auth)) setBusy(btn, false); }
+    }
+    var ok = await mutate(BANK_URL, body, btn, "Saving bank…", "Business account selected. Refresh bank data for a posted balance.");
     if (!guard(auth)) return;
     if (ok) { state.pendingLink = null; closeDialog("ccAccountDialog"); }
     else { $("ccAccountError").textContent = "The business account did not save. Check the account and try again."; $("ccAccountError").hidden = false; }

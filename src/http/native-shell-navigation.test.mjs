@@ -250,6 +250,7 @@ test("client portal notification reload stays bound to the verified bearer", () 
 test("staff SMS universal links are exact-scope app associations with post-refresh session guards", () => {
   const association = JSON.parse(readFileSync(new URL("../../public/.well-known/apple-app-site-association", import.meta.url), "utf8"));
   const details = association.applinks.details;
+  assert.deepEqual(association.webcredentials.apps, ["8VDXL37RR6.ai.fundhub.app", "8VDXL37RR6.ai.fundhub.mac"]);
   assert.equal(details.length, 1);
   assert.deepEqual(details[0].appIDs, ["8VDXL37RR6.ai.fundhub.app"]);
   assert.deepEqual(details[0].components.map(c => c["/"]).sort(), ["/app/closer-dashboard.html", "/app/setter-dashboard.html"]);
@@ -258,6 +259,7 @@ test("staff SMS universal links are exact-scope app associations with post-refre
     const entitlements = readFileSync(new URL(`../../tools/fundhub-ios/Fundhub/${name}`, import.meta.url), "utf8");
     assert.match(entitlements, /com\.apple\.developer\.associated-domains/);
     assert.match(entitlements, /<string>applinks:fundhub\.ai<\/string>/);
+    assert.match(entitlements, /<string>webcredentials:fundhub\.ai<\/string>/);
     assert.doesNotMatch(entitlements, /applinks:\*/);
   }
   const models = readFileSync(new URL("../../tools/fundhub-ios/Fundhub/Core/Models.swift", import.meta.url), "utf8");
