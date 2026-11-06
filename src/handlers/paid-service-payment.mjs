@@ -57,6 +57,8 @@
 
 import { on } from "../events/registry.mjs";
 import { recordPayment, stageRound, SERVICE_KIND } from "../paid-services/round.mjs";
+import { fulfillPaidBlueprintHelp } from "../blueprint/client-services.mjs";
+import { createTask } from "../lib/create-task.mjs";
 import { REFUSAL } from "../paid-services/refusals.mjs";
 
 export const SKIPPED = "[paid-service] skipped";
@@ -114,12 +116,30 @@ export async function onPaidServicePaymentReceived(event, db) {
     return { done: false, reason: "paid_service_request_not_found" };
   }
 
+  const blueprintService = String(row.idempotency_key || "").startsWith("blueprint-help:");
+  if (blueprintService && (!orgId || !paymentRefOf(event) || paidCentsFromEvent(event) !== Number(row.price_total_cents)
+    || (row.payment_ref && row.payment_ref !== paymentRefOf(event)))) {
+    if (orgId) {
+      await db.query(`UPDATE blueprint_client_services SET state='needs_review',updated_at=now()
+        WHERE id=$1 AND org_id=$2 AND state NOT IN ('in_progress','completed')`, [row.id, orgId]);
+      await createTask(db, { orgId, clientId: row.client_id, assigneeRole: "csm",
+        title: "Reconcile payment for a Blueprint service", sourceWorkflow: "blueprint-service-payment",
+        eventId: `blueprint-service-payment:${row.id}`, detail: `Service ${row.id}: the callback did not match the saved quote or payment receipt. Review the provider's receipt before fulfillment.` });
+    }
+    return { done: false, reason: "blueprint_service_payment_mismatch" };
+  }
+
   const payment = await recordPayment(db, {
     requestId: row.id,
     paymentRef: paymentRefOf(event),
     amountCents: paidCentsFromEvent(event),
     paidAt: paidAtOf(event)
   });
+
+  if (blueprintService) {
+    const fulfillment = await fulfillPaidBlueprintHelp(db, { requestId: row.id, orgId });
+    return { done: fulfillment.ok === true, reason: fulfillment.reason || "blueprint_service_handoff", ...fulfillment };
+  }
 
   if (!payment.applied) {
     /* MONEY ARRIVED AND IT WAS SHORT. recordPayment has already closed the
