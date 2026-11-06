@@ -88,6 +88,7 @@
 // is what the engine was handed.
 
 import { createHash } from "node:crypto";
+import { authorizeBlueprintReportExecution } from "../blueprint/report-allowance.mjs";
 import { emit } from "../events/bus.mjs";
 import {
   claimSoftPull,
@@ -536,6 +537,7 @@ export async function runCrsPull(db, {
   if (String(ledger.org_id) !== String(orgId) || String(ledger.client_id) !== String(clientId)) {
     throw new SoftPullError("soft pull request belongs to a different org or client", { status: 409 });
   }
+  if (ledger.status === "queued") await authorizeBlueprintReportExecution(db, ledger);
 
   /* An unreadable `simulate` closes the ledger row and stops. It is refused
      here rather than at the top of the function so that the row this caller

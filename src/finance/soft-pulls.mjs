@@ -102,7 +102,8 @@ const SELECT_COLUMNS = `
   requested_by_kind, requested_by_staff_id, requested_by_account_id,
   reason, cost_cents, subscription_id, crs_result_id,
   status, state_reason, provider, idempotency_key,
-  requested_at, resolved_at, created_at, updated_at`;
+  requested_at, resolved_at, created_at, updated_at,
+  blueprint_engagement_id, blueprint_service_request_id, blueprint_report_kind`;
 
 /* normalizeRequester — a principal-ish thing → { kind, staffId, accountId }.
  *
@@ -357,7 +358,14 @@ export async function requestSoftPull(db, {
      RETURNING ${SELECT_COLUMNS}`,
     [orgId, clientId, requester.kind, requester.staffId, requester.accountId,
      statedReason, cost, subscriptionId ?? null, idem, String(provider || "internal")]
-  );
+  ).catch(error => {
+    if (error?.code === "P0001" && ["blueprint_report_payment_required", "blueprint_engagement_completed"].includes(error.message)) {
+      throw new SoftPullError(error.message === "blueprint_report_payment_required"
+        ? "Your included report is already used. Choose the paid additional report before requesting another."
+        : "This funding engagement is complete.", { status: 409, code: error.message });
+    }
+    throw error;
+  });
 
   if (!res.rows[0]) {
     // Somebody else got there first, in the microseconds since guard 2. Their
