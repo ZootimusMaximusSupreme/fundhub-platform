@@ -50,7 +50,7 @@ async function world({sandbox=false,migratedSchema=false}={}){
  CREATE TEMP TABLE sales(id uuid,org_id uuid,client_id uuid,product_id uuid,status text,sale_motion text,sold_at timestamptz);
  CREATE TEMP TABLE sale_attributions(sale_id uuid,staff_id uuid,role text,attributed_at timestamptz);
  CREATE TEMP TABLE call_outcomes(org_id uuid,client_id uuid,staff_id uuid,logged_at timestamptz);
- CREATE TEMP TABLE payment_links(id uuid PRIMARY KEY,org_id uuid,client_id uuid,purpose text,description text,amount_cents bigint,currency text,link_ref text,checkout_url text,provider text,product_id uuid,sale_id uuid,sale_motion text,created_by_staff_id uuid,closer_staff_id uuid,sales_manager_staff_id uuid,status text DEFAULT 'created',paid_at timestamptz,created_at timestamptz DEFAULT now(),whop_checkout_configuration_id text,whop_plan_id text,whop_payment_id text,whop_metadata_version integer NOT NULL DEFAULT 2 CHECK(whop_metadata_version IN(1,2)));
+ CREATE TEMP TABLE payment_links(id uuid PRIMARY KEY,org_id uuid,client_id uuid,purpose text,description text,amount_cents bigint,currency text,link_ref text,checkout_url text,provider text,product_id uuid,sale_id uuid,sale_motion text,created_by_staff_id uuid,closer_staff_id uuid,sales_manager_staff_id uuid,status text DEFAULT 'created',paid_at timestamptz,created_at timestamptz DEFAULT now(),whop_checkout_configuration_id text,whop_plan_id text,whop_payment_id text,whop_existing_plan boolean NOT NULL DEFAULT false,whop_metadata_version integer NOT NULL DEFAULT 2 CHECK(whop_metadata_version IN(1,2)));
  CREATE TEMP TABLE transactions(id uuid DEFAULT gen_random_uuid(),org_id uuid,client_id uuid,provider text,provider_ref text,status text,amount_paid numeric);
  CREATE TEMP TABLE affiliate_commission_rules(id uuid,org_id uuid,tier text,affiliate_id uuid,product_id uuid,active boolean,effective_from timestamptz,effective_to timestamptz,created_at timestamptz);
  CREATE TEMP TABLE whop_billing_inbox(org_id uuid,status text,received_at timestamptz,claimed_at timestamptz);
@@ -61,7 +61,7 @@ async function world({sandbox=false,migratedSchema=false}={}){
  await db.query(`INSERT INTO affiliates VALUES ($1,$2,'Synthetic seller','active','AFF-SYNTHETIC',NULL)`,[AFF,ORG]);
  await db.query(`INSERT INTO accounts VALUES ($1,$2,'seller@example.test','affiliate','active',$3,NULL)`,[ACCOUNT,ORG,AFF]);
  await db.query(`INSERT INTO products VALUES ($1,$2,'blueprint-self-funding')`,[PRODUCT,ORG]);
- const cache=new Map(); let posts=0,creates=0,failAfterCreate=false,financing=true,configuration=null;
+ const cache=new Map(); let posts=0,creates=0,checkoutListReads=0,failAfterCreate=false,financing=true,configuration=null;
  const send=async(url,init={})=>{
   let out;
   if(init.method==='POST'){
@@ -73,6 +73,10 @@ async function world({sandbox=false,migratedSchema=false}={}){
     cache.set(key,out);
    }else out=cache.get(key);
    if(failAfterCreate){failAfterCreate=false;throw Error('synthetic lost provider response');}
+  }else if(new URL(url).pathname==='/api/v1/checkout_configurations'){
+   assert.equal(init.method,'GET');assert.equal(new URL(url).searchParams.get('account_id'),'biz_synthetic');
+   checkoutListReads++;
+   out={data:[...cache.values()],page_info:{has_next_page:false}};
   }else if(String(url).includes('/variants/')){
    const checkout=[...cache.values()].find(c=>String(url).endsWith(c.plan.id));
    out={id:checkout.plan.id,account:{id:'biz_synthetic'},product:{id:'prod_synthetic'},currency:'usd',plan_type:'one_time',title:'Consulting Services Package',initial_price:checkout.plan.initial_price};
@@ -91,7 +95,7 @@ async function world({sandbox=false,migratedSchema=false}={}){
   const rendered=`Full Blueprint service agreement: $${(amount/100).toLocaleString('en-US')}.`;
   return (await db.query(`INSERT INTO contracts(org_id,client_id,template_key,status,created_by,sent_by,merge_values,rendered_body,body_sha) VALUES($1,$2,'BLUEPRINT-SELF-FUNDING-AGREEMENT',$3,$4,$4,$5,$6,$7) RETURNING id`,[ORG,client.id,status,STAFF,JSON.stringify({package_fee:`$${(amount/100).toLocaleString('en-US')}`,_blueprint_amount_cents:amount}),rendered,'sha256:'+createHash('sha256').update(rendered).digest('hex')])).rows[0].id;
  };
- return {db,run,agreement,seedBuyer,localCheckout,deps,cache,get posts(){return posts;},get creates(){return creates;},loseResponse(){failAfterCreate=true;},denyFinancing(){financing=false;},malformedConfig(value){configuration=value;},close:()=>PG_MODULE?db.close():db.end()};
+ return {db,run,agreement,seedBuyer,localCheckout,deps,cache,get posts(){return posts;},get creates(){return creates;},get checkoutListReads(){return checkoutListReads;},loseResponse(){failAfterCreate=true;},denyFinancing(){financing=false;},malformedConfig(value){configuration=value;},close:()=>PG_MODULE?db.close():db.end()};
 }
 async function scenario(run){const w=await world();try{await run(w);}finally{await w.close();}}
 const record=async(w,email)=>(await w.db.query('SELECT id,custom_fields FROM clients WHERE lower(email)=$1',[email])).rows[0];
@@ -137,11 +141,13 @@ test('exact staff-issued agreement enables one explicit ClarityPay checkout and 
  const calls=w.posts;await w.db.query(`UPDATE contracts SET status='signed' WHERE id=$1`,[id]);
  assert.match(await resolveSellerHandoff(w.db,{id,sig:url.searchParams.get('sig'),env}),/^https:\/\/whop.com\/checkout\//);assert.equal(w.posts,calls);
 }));
-test('lost provider response resumes the exact saved order and original provider idempotency key',OPTIONS,()=>scenario(async w=>{
+test('lost provider response recovers the same seller checkout by GET without a second POST',OPTIONS,()=>scenario(async w=>{
  const b=buyer();await w.seedBuyer(b);await w.agreement(b.email);w.loseResponse();await assert.rejects(w.run(b));
  const reserved=(await record(w,b.email)).custom_fields.blueprint_seller_sale.payment_link_id;
- const done=await w.run(b);assert.ok(done.handoff_url);assert.equal(w.creates,1);assert.equal(w.posts,2);
- const links=(await w.db.query('SELECT id FROM payment_links')).rows;assert.deepEqual(links.map(x=>x.id),[reserved]);
+ const original=w.cache.get('fh-order:'+reserved);assert.ok(original);
+ const done=await w.run(b);assert.ok(done.handoff_url);assert.equal(w.creates,1);assert.equal(w.posts,1);assert.equal(w.checkoutListReads,1);
+ const links=(await w.db.query('SELECT id,whop_checkout_configuration_id,whop_plan_id,checkout_url FROM payment_links')).rows;
+ assert.deepEqual(links,[{id:reserved,whop_checkout_configuration_id:original.id,whop_plan_id:original.plan.id,checkout_url:original.purchase_url}]);
 }));
 test('unrelated same-buyer order is never adopted by the pinned sale',OPTIONS,()=>scenario(async w=>{
  const b=buyer();await w.seedBuyer(b);const c=await record(w,b.email);await w.agreement(b.email);const unrelated=randomUUID();

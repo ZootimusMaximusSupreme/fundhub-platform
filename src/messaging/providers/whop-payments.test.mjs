@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { WHOP_API_BASE, WHOP_CHECKOUT_TITLE, whopApiBase, whopCheckoutHostname, whopRequest } from './whop-payments.mjs';
+import { WHOP_API_BASE, WHOP_CHECKOUT_TITLE, whopApiBase, whopCheckoutHostname, whopRequest,
+  getWhopBlueprintPlanId, prepareWhopBlueprintPlan } from './whop-payments.mjs';
 
 const ids = ['10000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002',
   '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000004',
@@ -142,4 +143,88 @@ test('Whop permits only the exact financing override on a bound neutral checkout
   await assert.rejects(whopRequest('/checkout_configurations', options({ ...packet(),
     payment_method_configuration: forged })), { code: 'whop_unsafe_checkout' });
   assert.equal(calls, 1, 'malformed or serialized overrides never reach the provider');
+});
+
+const fixedVariant = (over = {}) => ({ id: 'plan_fixed', account: { id: 'biz_synthetic' },
+  product: { id: 'prod_synthetic', title: WHOP_CHECKOUT_TITLE }, currency: 'usd', plan_type: 'one_time', release_method: 'buy_now',
+  initial_price_due: { currency: 'usd', amount: '32.00', decimals: 2 },
+  initial_price: 32, renewal_price: 0, title: WHOP_CHECKOUT_TITLE, description: WHOP_CHECKOUT_TITLE,
+  visibility: 'hidden', adaptive_pricing_enabled: false, allow_multiple_quantity: false,
+  unlimited_stock: true, trial_period_days: null, split_pay_required_payments: null,
+  collect_tax: false, expiration_days: null, ...over });
+const prepareOptions = (fetchImpl, extra = {}) => ({ planId: 'plan_fixed', accountId: 'biz_synthetic',
+  productId: 'prod_synthetic', amountCents: 3200, apiKey: 'synthetic-key', env, fetchImpl, ...extra });
+const existingPacket = () => { const body = packet(); delete body.plan; return { ...body, plan_id: 'plan_fixed' }; };
+
+test('existing Whop prices require a complete trusted exact-cent mapping', () => {
+  assert.equal(getWhopBlueprintPlanId(3200, {}), null);
+  assert.equal(getWhopBlueprintPlanId(3200, { WHOP_BLUEPRINT_PLAN_IDS: '{"3200":"plan_fixed"}' }), 'plan_fixed');
+  for (const raw of ['no', 'null', '[]', '{}', '{"03200":"plan_fixed"}', '{"0":"plan_fixed"}',
+    '{"3200":"prod_wrong"}', '{"3200":32}', '{"3200":"plan_fixed","bad":"plan_other"}',
+    '{"9007199254740992":"plan_fixed"}', '{"3300":"plan_other"}']) {
+    assert.throws(() => getWhopBlueprintPlanId(3200, { WHOP_BLUEPRINT_PLAN_IDS: raw }), { code: 'whop_unsafe_checkout' });
+  }
+});
+
+test('an existing-price checkout uses the pinned API, exact neutral metadata and a verified read', async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, init });
+    return new Response(JSON.stringify(init.method === 'GET' ? fixedVariant() : { id: 'ch_fixed' }), { status: 200 });
+  };
+  const verifiedPlan = await prepareWhopBlueprintPlan(prepareOptions(fetchImpl));
+  const body = existingPacket();
+  await whopRequest('/checkout_configurations', { apiKey: 'synthetic-key', method: 'POST', body,
+    idempotencyKey: `fh-order:${ids[0]}`, verifiedPlan, env, fetchImpl });
+  assert.deepEqual(calls.map(call => call.init.method), ['GET', 'POST']);
+  assert.match(calls[0].url, /\/variants\/plan_fixed$/);
+  assert.equal(calls[1].init.headers['Api-Version-Date'], '2026-10-15-1');
+  assert.deepEqual(JSON.parse(calls[1].init.body), body);
+  assert.doesNotMatch(calls[1].init.body, /funding|blueprint|repair|product_code|offer_key|variant_id/i);
+});
+
+test('wrong or mutable existing prices never authorize checkout', async () => {
+  for (const over of [{ id: 'plan_other' }, { account: { id: 'biz_other' } }, { product: { id: 'prod_other' } },
+    { currency: 'eur' }, { initial_price: 0 }, { initial_price: 31 }, { initial_price: '32' },
+    { plan_type: 'renewal' }, { release_method: 'waitlist' }, { renewal_price: 1 },
+    { title: 'Funding' }, { description: 'Credit repair' }, { title: undefined }, { description: null },
+    { product: { id: 'prod_synthetic', title: 'Funding' } }, { product: { id: 'prod_synthetic' } },
+    { initial_price_due: null }, { initial_price_due: { currency: 'usd', amount: '31.00', decimals: 2 } },
+    { initial_price_due: { currency: 'cad', amount: '32.00', decimals: 2 } },
+    { visibility: 'visible' }, { adaptive_pricing_enabled: true }, { allow_multiple_quantity: true },
+    { unlimited_stock: false }, { trial_period_days: 1 }, { split_pay_required_payments: 2 },
+    { collect_tax: true }, { collect_tax: true, tax_type: 'exclusive' }, { expiration_days: 30 }]) {
+    const calls = [];
+    await assert.rejects(prepareWhopBlueprintPlan(prepareOptions(async (_url, init) => {
+      calls.push(init.method); return new Response(JSON.stringify(fixedVariant(over)), { status: 200 });
+    })), { code: 'whop_unsafe_checkout' });
+    assert.deepEqual(calls, ['GET']);
+  }
+});
+
+test('the normal merchant editor nullable title and inclusive tax preserve the neutral fixed total', async () => {
+  const fetchImpl = async () => Response.json(fixedVariant({ title: null, collect_tax: true, tax_type: 'inclusive' }));
+  await prepareWhopBlueprintPlan(prepareOptions(fetchImpl));
+});
+
+test('a bare ID, forged proof, changed account/amount/host/credential or service order cannot POST', async () => {
+  let posts = 0;
+  const fetchImpl = async (_url, init) => {
+    if (init.method === 'POST') posts++;
+    return new Response(JSON.stringify(fixedVariant()), { status: 200 });
+  };
+  const verifiedPlan = await prepareWhopBlueprintPlan(prepareOptions(fetchImpl));
+  const base = { apiKey: 'synthetic-key', method: 'POST', body: existingPacket(),
+    idempotencyKey: `fh-order:${ids[0]}`, verifiedPlan, env, fetchImpl };
+  const service = packet(true); delete service.plan; service.plan_id = 'plan_fixed';
+  for (const extra of [{ verifiedPlan: null }, { verifiedPlan: {} }, { apiKey: 'other-key' },
+    { env: { ...env, WHOP_ENV: 'sandbox' } }, { fetchImpl: async () => { posts++; } },
+    { body: { ...existingPacket(), account_id: 'biz_other' } },
+    { body: { ...existingPacket(), plan_id: 'plan_other' } },
+    { body: { ...existingPacket(), metadata: { ...packet().metadata, fh_amount_cents: '3300' } } },
+    { body: { ...existingPacket(), plan: packet().plan } },
+    { body: service, idempotencyKey: `fh-request:${ids[0]}` }]) {
+    await assert.rejects(whopRequest('/checkout_configurations', { ...base, ...extra }), { code: 'whop_unsafe_checkout' });
+  }
+  assert.equal(posts, 0);
 });
