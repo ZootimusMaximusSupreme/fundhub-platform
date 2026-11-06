@@ -128,3 +128,36 @@ test("OffersIQ decisions distinguish pass, fail, no-hit and provider error", () 
   assert.equal(parseOffersIqResponse({ body: { ...base, decisionStatus: "APPROVED" }, requestId: null, expectedRuleSetId: 752 }).outcome, "needs_review");
   assert.equal(parseOffersIqResponse({ body: { ...base, decisionStatus: "APPROVED" }, requestId: REQUEST_ID, expectedRuleSetId: 999 }).reason, "ruleset_mismatch");
 });
+
+test("malformed decision fields and mismatched nested rulesets cannot produce a match", () => {
+  const base = { ruleSetId: "752", decisionStatus: "APPROVED", overallDecision: true };
+  for (const patch of [
+    { ruleSetId: [752] }, { overallDecision: "false" }, { decisionStatus: {} },
+    { decisionStatus: "" }, { ruleEvaluation: { ruleSetId: "678" } },
+    { ruleEvaluation: { ruleSetId: [752] } }
+  ]) {
+    const decision = parseOffersIqResponse({ body: { ...base, ...patch }, requestId: REQUEST_ID, expectedRuleSetId: 752 });
+    assert.ok(["error", "needs_review"].includes(decision.outcome), JSON.stringify(patch));
+  }
+  const matched = parseOffersIqResponse({ body: { ...base, ruleEvaluation: { ruleSetId: 752 } },
+    requestId: REQUEST_ID, expectedRuleSetId: 752 });
+  assert.equal(matched.outcome, "matched");
+});
+
+test("a decisive OffersIQ outcome must agree with the final root when it is returned", () => {
+  function decide(overallDecision, rootGroup) {
+    const body = { ruleSetId: "752", overallDecision, decisionStatus: overallDecision ? "APPROVED" : "DECLINED",
+      ruleEvaluation: { ruleSetId: "752", rootGroup } };
+    return parseOffersIqResponse({ body, requestId: REQUEST_ID, expectedRuleSetId: 752 }).outcome;
+  }
+  for (const root of [null, [], {}, { passed: "true" }, { status: "UNVERIFIABLE" },
+    { status: "FAILED", passed: false }, { status: "PASSED", passed: false }]) {
+    assert.equal(decide(true, root), "needs_review");
+  }
+  assert.equal(decide(false, { status: "PASSED", passed: true }), "needs_review");
+  assert.equal(decide(false, { status: "FAILED", passed: false }), "not_matched");
+  for (const negated of [false, true]) {
+    assert.equal(decide(true, { operator: "OR", negated, status: "PASSED", passed: true,
+      conditions: [{ status: "FAILED", passed: false }, { status: "PASSED", passed: true }] }), "matched");
+  }
+});

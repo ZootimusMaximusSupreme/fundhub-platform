@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { clientFinancialProfile } from "../http/client-financial-profile.mjs";
+import { parseOffersIqResponse } from "./offersiq-contract.mjs";
 import {
   evaluateLeadOffersIq, getOffersIqStatus, offersIqConfigFromEnv,
   offersIqIdentityKeyForClient, offersIqSummaryForClient
@@ -255,6 +257,8 @@ test("address correction waits for the first wire and an old result never replac
   finishFirst(reply(610));
   const old = await first;
   assert.equal(old.body.result.stale, true);
+  assert.equal(old.body.result.credit_score, undefined);
+  assert.equal(old.body.result.offers_iq_summary, undefined);
   assert.equal(old.body.status, "needs_review");
   assert.equal(client.custom_fields.offersiq, undefined);
   assert.equal(ledger[0].status, "matched");
@@ -265,6 +269,64 @@ test("address correction waits for the first wire and an old result never replac
   assert.equal(client.custom_fields.offersiq.credit_score, 780);
   assert.equal(calls, 2);
   assert.equal(ledger.length, 2);
+});
+
+test("returning to a screened address restores its receipt without another provider call", async () => {
+  const { db, client, ledger } = fakeDb();
+  const address = client.custom_fields.setter_residential_address;
+  let calls = 0;
+  const opts = { env: ENV, client: { async evaluateOffersIq() {
+    calls += 1;
+    const requestId = randomUUID();
+    return { ok: true, status: 200, requestId, decision: { requestId, outcome: "matched",
+      offersIQSummary: { creditScore: calls === 1 ? 800 : 620 } } };
+  } } };
+  const evaluate = operationId => evaluateLeadOffersIq(db, ACTOR, { clientId: CLIENT, operationId, consent: CONSENT }, opts);
+  const originalOperation = randomUUID();
+  const original = await evaluate(originalOperation);
+  address.line1 = "200 Main St";
+  const stale = offersIqSummaryForClient(client);
+  assert.equal(stale.stale, true);
+  assert.equal(stale.credit_score, undefined);
+  assert.equal(stale.offers_iq_summary, undefined);
+  const second = await evaluate(randomUUID());
+  assert.equal(second.body.result.credit_score, 620);
+  address.line1 = "123 Main St";
+  const replay = await evaluate(randomUUID());
+  assert.equal(replay.body.replayed, true);
+  assert.deepEqual(replay.body.result, original.body.result);
+  assert.deepEqual(offersIqSummaryForClient(client), replay.body.result);
+  assert.deepEqual((await evaluate(originalOperation)).body.result, replay.body.result);
+  assert.equal(calls, 2);
+  assert.equal(ledger.length, 2);
+});
+
+test("conflicting or unresolved receipts cannot supply financial evidence to fit cards, including old rows", async () => {
+  const { db, client, ledger } = fakeDb();
+  const requestId = randomUUID();
+  const response = { ruleSetId: "752", decisionStatus: "APPROVED", overallDecision: false,
+    offersIQSummary: { creditScore: 800, delinquentAccountCount: 1 } };
+  const decision = parseOffersIqResponse({ body: response, requestId, expectedRuleSetId: 752 });
+  const result = await evaluateLeadOffersIq(db, ACTOR,
+    { clientId: CLIENT, operationId: randomUUID(), consent: CONSENT },
+    { env: ENV, client: { async evaluateOffersIq() { return { status: 200, ok: true, requestId, decision }; } } });
+  assert.equal(result.body.status, "needs_review");
+  assert.equal(ledger[0].normalized_response.offers_iq_summary, undefined);
+  const stored = client.custom_fields.offersiq;
+  stored.credit_score = 800;
+  stored.offers_iq_summary = response.offersIQSummary;
+  for (const outcome of ["needs_review", "error", "matched"]) {
+    stored.outcome = outcome;
+    const profile = clientFinancialProfile({ client });
+    assert.equal(profile.offerMatch.credit_score, undefined);
+    assert.equal(profile.offerMatch.offers_iq_summary, undefined);
+    assert.deepEqual(profile.fitModels.slice(0, 3).map(card => card.outcome), Array(3).fill("needs_data"));
+  }
+  stored.outcome = "not_matched";
+  stored.decision_status = "DECLINED";
+  const valid = clientFinancialProfile({ client });
+  assert.equal(valid.offerMatch.credit_score, 800);
+  assert.deepEqual(valid.fitModels.slice(0, 3).map(card => card.outcome), Array(3).fill("score_floor_met"));
 });
 
 test("sandbox refuses ordinary leads before a provider call or ledger claim", async () => {
