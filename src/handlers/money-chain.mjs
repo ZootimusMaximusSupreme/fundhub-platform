@@ -1458,6 +1458,10 @@ export async function onRoundStartedMoney(event, db) {
   const { round, clientId } = await ensureFundingRound(db, event, { status: "started" });
   if (!round) return { done: false, reason: "no_round" };
 
+  if (round.product==="blueprint_managed_funding") {
+    const gate=await attachGateToRound(db,{orgId:event.orgId,clientId,fundingRoundId:round.id});
+    return {done:true,fundingRoundId:round.id,clientId,saleId:null,bureauGate:gate?.status || null};
+  }
   const link = await db.query(SQL_LINK_ROUND_TO_SALE, [event.orgId, round.id]);
   const saleId = link.rows[0]?.sale_id || await ensureFundingRoundSaleLink(db, {
     orgId: event.orgId,
@@ -1613,6 +1617,8 @@ export async function onRoundFundedMoney(event, db) {
   // Check BEFORE marking the round funded, not after the ledger changes.
   const frozenLink = await db.query(SQL_SALE_FOR_ROUND, [round.id]);
   const linkedSaleId = frozenLink.rows[0]?.sale_id || null;
+  const managed = round.product==="blueprint_managed_funding";
+  if (managed && p.saleId && !linkedSaleId) return {done:false,reason:"sale_context_conflict"};
   if (linkedSaleId && p.saleId && String(linkedSaleId) !== String(p.saleId)) {
     return { done: false, reason: "sale_context_conflict" };
   }
@@ -1660,7 +1666,7 @@ export async function onRoundFundedMoney(event, db) {
      An ALREADY-funded round is never re-blocked: replays of a delivered event
      are routine and must stay idempotent. */
   const alreadyFunded = round.status === "funded" && Number(round.funded_amount) > 0;
-  const isCardStacking = String(round.product || "") === CARD_STACKING_PRODUCT;
+  const isCardStacking = managed || String(round.product || "") === CARD_STACKING_PRODUCT;
   if (!alreadyFunded && isCardStacking) {
     const orgForRound = round.org_id || event.orgId || null;
     const confirmed = await listConfirmedApprovals(db, {
@@ -1717,6 +1723,9 @@ export async function onRoundFundedMoney(event, db) {
   // The person row says funded too, from the rounds (hole 8).
   await syncClientFunded(db, { clientId: round.client_id, orgId: round.org_id });
 
+  // The negotiated service receipt paid for this takeover. Only an explicit
+  // frozen sale can add separate back-end terms. Never borrow a prior sale.
+  if (managed && !linkedSaleId) return {done:true,round,reason:"paid_blueprint_takeover_completed"};
   let link = await db.query(SQL_SALE_FOR_ROUND, [round.id]);
   if (!link.rows[0]) {
     await db.query(SQL_LINK_ROUND_TO_SALE, [event.orgId, round.id]);
@@ -2025,6 +2034,15 @@ export async function closePurchasedBlueprintRound(event,db) {
     return {done:false,reason:"not_purchased_round_close"};
   }
   const round=await findRoundForFundedEvent(db,event);
+  if (round?.product==="blueprint_managed_funding") {
+    const closed=await db.query(`UPDATE funding_rounds r SET status='closed',updated_at=now()
+      FROM blueprint_fulfillment_engagements g WHERE r.id=$1 AND r.org_id=$2 AND r.client_id=$3 AND r.id=g.funding_round_id
+        AND g.org_id=r.org_id AND g.client_id=r.client_id AND g.execution_owner='fundhub' AND g.status='active'
+        AND EXISTS(SELECT 1 FROM applications a WHERE a.funding_round_id=r.id)
+        AND NOT EXISTS(SELECT 1 FROM applications a WHERE a.funding_round_id=r.id AND a.status IS DISTINCT FROM 'Denied')
+      RETURNING r.id`,[round.id,event.orgId,event.clientId]);
+    return {done:closed.rowCount===1,reason:"managed_purchased_round_close"};
+  }
   if (!round || round.product!=="blueprint_self_funding") return {done:false,reason:"not_self_funding_round"};
   const marked=await db.query(`UPDATE blueprint_fulfillment_engagements g
     SET submissions_closed_at=COALESCE(submissions_closed_at,now())

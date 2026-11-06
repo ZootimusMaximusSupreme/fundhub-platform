@@ -1,3 +1,4 @@
+import { activatePaidBlueprintTakeover } from "./managed-round.mjs";
 import { randomUUID } from "node:crypto";
 import { withTransaction } from "../db/with-transaction.mjs";
 import { createTask } from "../lib/create-task.mjs";
@@ -254,7 +255,14 @@ export async function fulfillPaidBlueprintHelp(db, { requestId, orgId }, { creat
     if (!["paid", "staged"].includes(row.payment_status) || !row.ledger_payment_ref || !row.authorized_at || Number(row.amount_paid_cents) !== Number(row.price_total_cents)) {
       return { handled: true, ok: false, reason: "verified_exact_payment_required" };
     }
-    if (["in_progress", "completed"].includes(row.state)) return { handled: true, ok: true, replay: true };
+    if (["in_progress", "completed"].includes(row.state)) {
+      if (row.state==="in_progress" && row.service_kind==="funding_round") {
+        const lost=await tx.query("SELECT id FROM blueprint_fulfillment_engagements WHERE id=$1 AND org_id=$2 AND client_id=$3 AND status='active' AND funding_round_id IS NULL",
+          [row.engagement_id,row.org_id,row.client_id]);
+        if (lost.rowCount) await activatePaidBlueprintTakeover(tx,{orgId:row.org_id,clientId:row.client_id,engagementId:row.engagement_id,requestId:row.id});
+      }
+      return { handled: true, ok: true, replay: true };
+    }
     const scope = { orgId: row.org_id, clientId: row.client_id };
     let taskId = null;
     let pullId = null;
@@ -274,8 +282,9 @@ export async function fulfillPaidBlueprintHelp(db, { requestId, orgId }, { creat
         detail: `Paid service ${row.id}; same ${row.scope_type} ${row.target_id}${row.round_key ? `; round ${row.round_key}` : ""}. Verify the work and attach its completion evidence.` });
       if (!task?.id) throw new Error("blueprint_service_task_not_saved");
       taskId = task.id;
-      if (row.service_kind === "funding_round") await tx.query(`UPDATE blueprint_fulfillment_engagements SET execution_owner='fundhub'
-        WHERE id=$1 AND org_id=$2 AND client_id=$3 AND status='active'`, [row.engagement_id, row.org_id, row.client_id]);
+      if (row.service_kind === "funding_round") await activatePaidBlueprintTakeover(tx,{
+        orgId:row.org_id,clientId:row.client_id,engagementId:row.engagement_id,requestId:row.id
+      });
     }
     await tx.query(`UPDATE blueprint_client_services SET state='in_progress',payment_ref=$2,fulfillment_task_id=$3,
       soft_pull_request_id=$4,updated_at=now() WHERE id=$1`, [row.id, row.ledger_payment_ref, taskId, pullId]);

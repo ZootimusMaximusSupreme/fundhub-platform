@@ -384,6 +384,7 @@ export async function emitCardStackingRoundTransition(db, {
   if (billing && (!isPresent(fundedAmount) || !Number.isFinite(Number(fundedAmount)) || Number(fundedAmount) <= 0)) {
     return { emitted: false, reason: "funded_amount_required", eventName, roundNumber: rn };
   }
+  let managedTakeover = false;
   let fee = { confirmedApprovedAmount: null, feePercent: null, saleId: null, fundingRoundId: null };
   if (billing) {
     const row = await roundFor(db, { orgId, clientId, roundNumber: rn });
@@ -393,6 +394,7 @@ export async function emitCardStackingRoundTransition(db, {
       // came from another (the previously implicit latest-round fallback).
       return { emitted: false, reason: "funding_round_not_found", eventName, roundNumber: rn };
     }
+    managedTakeover = row.product==="blueprint_managed_funding";
     const resolved = await resolveSuccessFee(db, { orgId, fundingRoundId: row.id });
     fee = { ...resolved, fundingRoundId: row.id };
   }
@@ -407,6 +409,7 @@ export async function emitCardStackingRoundTransition(db, {
     fundingRoundId: fee.fundingRoundId
   });
 
+  if (managedTakeover && !fee.saleId) payload.product = "blueprint_managed_funding";
   const idempotencyKey = `card_stacking:${clientId}:${rn}:${stageKey}:${eventName}`;
   const res = await emit(db, eventName, payload, {
     orgId,

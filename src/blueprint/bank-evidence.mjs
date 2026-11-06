@@ -51,16 +51,21 @@ export function matchBankMail(mail, application) {
   if (host!==domain && !host.endsWith("."+domain) && !domain.endsWith("."+host)) return null;
   const text = [mail.subject,mail.body_preview].filter(Boolean).join(" ");
   if (!hasReference(text,application.reference)) return null;
-  if (/pre[- ]?approved|prequalif|counteroffer|subject to|if approved|conditionally|may be eligible/i.test(text)) return null;
-  if (mail.classification==="DENIED" && /application.{0,40}(?:was|is|has been) (?:declined|denied)/i.test(text))
-    return {decision:"declined"};
+  // These automatic writes establish financial outcomes. Anything conditional,
+  // negated, contradictory or phrased as a future event stays for the CSM.
+  if (mail.classification==="DENIED") {
+    const explicitDenial=/\b(?:your |the )?application (?:was|is|has been) (?:declined|denied)\b/i.test(text);
+    return explicitDenial && !/\b(?:never|not|previously|formerly)\b/i.test(text) ? {decision:"declined"} : null;
+  }
+  if (!["APPROVED","APP_RECEIVED","ACTION_REQUIRED","NOISE"].includes(mail.classification)) return null;
+  if (/\b(?:no|not|never|inactive|unavailable|ineligible|suspended|revoked|declined|denied|withdrawn|cancelled|canceled|conditional|conditionally|pending|unless|if|may|might|could|would|will|expected)\b|n['’]t\b|pre[- ]?approv|prequalif|counteroffer|subject to/i.test(text)) return null;
   const approved = money(String.raw`(?:approved (?:for|amount(?: is| of)?)|approved credit limit(?: is| of)?)\s*[:=]?\s*`,text);
-  // The bank must explicitly describe usable/issued credit or settled funds.
-  // A bare approval limit or marketing offer is never the actual funded amount.
-  const funded = money(String.raw`(?:funds (?:were |have been |are )?(?:disbursed|deposited)(?: in the amount of)?|(?:available credit|available credit line)(?: is| of)?)\s*[:=]?\s*`,text);
-  const issuance = /(?:card|account|line of credit|credit line).{0,35}(?:active|issued|opened|available to use)/i.test(text);
-  const loanSettled = /funds (?:were |have been |are )?(?:disbursed|deposited)/i.test(text);
-  if (funded && (loanSettled || issuance)) return {decision:"funded",approvedAmount:approved,fundedAmount:funded};
+  const issued = /\b(?:your|the|this) (?:new )?(?:credit card|card|account|line of credit|credit line) (?:is (?:now )?(?:active|open|available to use)|has (?:now )?been (?:issued|opened|activated))\b/i.test(text);
+  const usable = issued ? money(String.raw`(?:available credit|available credit line)(?: is| of)?\s*[:=]?\s*`,text) : null;
+  const settlement = money(String.raw`(?:your |the )?funds (?:were|have been|are) (?:disbursed|deposited)(?: in the amount of)?\s*[:=]?\s*`,text);
+  if (usable && settlement && usable!==settlement) return null;
+  const funded=usable || settlement;
+  if (funded) return {decision:"funded",approvedAmount:approved,fundedAmount:funded};
   return approved && mail.classification==="APPROVED" ? {decision:"approved",approvedAmount:approved} : null;
 }
 
@@ -68,6 +73,7 @@ export function matchPostedFunds(row,application) {
   if (row.provider!=="plaid" || row.is_pending || !row.posted_on || row.amount_cents<=0 ||
       !row.provider_transaction_id || !row.plaid_item_id || row.environment!=="production") return null;
   const text=[row.merchant_name,row.raw?.name,row.raw?.original_description].filter(Boolean).join(" ");
+  if (/\b(?:reversal|reversed|returned|not|no|pending)\b/i.test(text)) return null;
   if (!hasReference(text,application.reference) || !application.lender_name ||
       !text.toLowerCase().includes(application.lender_name.toLowerCase()) ||
       !/loan (?:funding|proceeds|disbursement)|funding disbursement|credit advance/i.test(text)) return null;

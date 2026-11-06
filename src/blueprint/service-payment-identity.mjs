@@ -16,6 +16,7 @@ export async function lookupBlueprintServiceReceipt(db,event) {
   const productCode = "blueprint-help-"+row.service_kind;
   let reason = null;
   if (buyer && buyer!==row.client_id) reason="service_client_mismatch";
+  else if (event.payload?.currency && String(event.payload.currency).toUpperCase()!=="USD") reason="service_currency_mismatch";
   else if (!row.authorized_at || !["checkout_pending","awaiting_payment","paid","in_progress","completed","needs_review"].includes(row.state)) reason="service_not_authorized";
   else if (!Number.isSafeInteger(amountCents) || amountCents<=0 || amountCents!==paidCentsFromEvent(event)) reason="service_amount_mismatch";
   return {matched:true,valid:!reason,reason,requestId,productCode,productName:productCode,clientId:row.client_id,orgId:row.org_id,amountCents};
