@@ -24,12 +24,16 @@ async function markedShot(page,name,selector,caption){
 for(const width of [1440,390,320])test(`Money task summary and complete details at ${width}`,async({page})=>{
   fs.mkdirSync(evidence,{recursive:true});
   await page.setViewportSize({width,height:1000});
-  let state='full',role='client';const writes=[],errors=[],consentRequests=[],linkBodies=[];
+  let state='full',role='client';const writes=[],errors=[],consentRequests=[],linkBodies=[],passkeyCalls=[];
   await page.addInitScript(()=>localStorage.setItem('fh_token','money-page-fixture-session'));
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/api/**',async route=>{
     const u=new URL(route.request().url()),p=u.pathname;
     const json=(d,status=200)=>route.fulfill({status,json:d});
+    if(p==='/api/auth/passkey'){
+      passkeyCalls.push(route.request().postDataJSON());
+      return json({ok:true,enrolled:true,assured:true,recovery_required:false});
+    }
     if(route.request().method()!=='GET'){
       writes.push(p);
       if(p==='/api/auth/plaid-mfa'){
@@ -118,6 +122,7 @@ for(const width of [1440,390,320])test(`Money task summary and complete details 
     {action:'consent_details',target_kind:'client_bank'},
     {action:'authorize',target_kind:'client_bank',consent:true}
   ]);
+  expect(passkeyCalls).toEqual([{action:'status',target_kind:'client_bank'}]);
   expect(linkBodies).toEqual([{client_id:sample.client.id,plaid_grant_token:'money-page-consent-grant'}]);
   expect(writes).toEqual(['/api/auth/plaid-mfa','/api/auth/plaid-mfa','/api/banking/link-token']);
   for(const next of ['empty','error','loading']){
@@ -143,6 +148,59 @@ for(const width of [1440,390,320])test(`Money task summary and complete details 
   await expect(page.getByRole('link',{name:'Review payments'})).toHaveAttribute('href','/app/financeos.html?client_id=safe-ui-fixture#payments');
   await expect(page.locator('.mnav a').first()).toHaveAttribute('href','/app/financeos.html?client_id=safe-ui-fixture#overview');
   expect(errors).toEqual([]);
+});
+
+test('client bank exchange is blocked when Plaid returns after passkey assurance expires',async({page})=>{
+  const passkeyCalls=[],consentCalls=[],bankCalls=[];
+  await page.addInitScript(()=>{
+    localStorage.setItem('fh_token','money-page-fixture-session');
+    window.Plaid={create:options=>({open(){window.finishMoneyLink=options.onSuccess;}})};
+  });
+  await page.route('**/api/**',async route=>{
+    const path=new URL(route.request().url()).pathname;
+    const json=(body,status=200)=>route.fulfill({status,json:body});
+    if(path==='/api/auth/passkey'){
+      passkeyCalls.push(route.request().postDataJSON());
+      return json({ok:true,enrolled:true,assured:passkeyCalls.length===1,recovery_required:false});
+    }
+    if(path==='/api/auth/plaid-mfa'){
+      const body=route.request().postDataJSON();consentCalls.push(body);
+      return body.action==='consent_details'
+        ?json({ok:true,consent_text:'I authorize Fundhub to connect my bank account.',privacy_url:'/privacy/'})
+        :json({ok:true,grant_token:'synthetic-client-grant'});
+    }
+    if(path==='/api/banking/link-token'){
+      bankCalls.push(route.request().postDataJSON());
+      return json({ok:true,link_token:'synthetic-link-token'});
+    }
+    if(route.request().method()!=='GET'){
+      bankCalls.push({path,body:route.request().postDataJSON()});
+      return json({ok:true});
+    }
+    return json(path==='/api/auth/session'
+      ?{ok:true,principal:'client',portal_sample_available:true,portal_sample:true,staff:{role:'client'}}
+      :path==='/api/read/affiliate-portal'?{ok:true,enrolled:false}
+      :path==='/api/money/overview'?sample:bundle.reads[path]||{ok:true,items:[]});
+  });
+  await page.goto('/app/money.html');
+  await page.getByRole('button',{name:'Connect a bank'}).click();
+  const consent=page.getByRole('dialog');
+  await expect(consent).toContainText('I authorize Fundhub to connect my bank account.');
+  await consent.locator('[name=consent]').check();
+  await consent.getByRole('button',{name:'Agree and connect',exact:true}).click();
+  await page.waitForFunction(()=>typeof window.finishMoneyLink==='function');
+  await page.evaluate(()=>window.finishMoneyLink('synthetic-public-token',{
+    institution:{name:'Synthetic Bank'},accounts:[{id:'synthetic-account',name:'Checking',mask:'1234'}]
+  }));
+  await expect(page.locator('.fh-plaid-stepup h2')).toHaveText('Verify your bank connection');
+  expect(passkeyCalls).toEqual([
+    {action:'status',target_kind:'client_bank'},
+    {action:'status',target_kind:'client_bank'}
+  ]);
+  expect(consentCalls.map(body=>body.action)).toEqual(['consent_details','authorize']);
+  expect(bankCalls).toEqual([{client_id:sample.client.id,plaid_grant_token:'synthetic-client-grant'}]);
+  await page.locator('.fh-plaid-stepup [data-cancel]').click();
+  expect(bankCalls.some(call=>call.action==='exchange'||call.path==='/api/banking/link-exchange')).toBe(false);
 });
 
 test('Review payments waits for the real FinanceOS boot after a delayed script at 390',async({page})=>{
