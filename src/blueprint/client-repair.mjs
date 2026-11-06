@@ -7,7 +7,7 @@ import { persistGeneratedLetters } from "../repair/persist-generated-letters.mjs
 import { readRepairStage } from "../repair/pipeline.mjs";
 import { onRepairEvent } from "../repair/handlers.mjs";
 import { storeFromEnv } from "../documents/store.mjs";
-import { INQUIRY_PORTALS } from "./client-inquiries.mjs";
+import { INQUIRY_PORTALS, INQUIRY_DOCUMENT_UPLOAD_PORTALS } from "./client-inquiries.mjs";
 import { violationsByBureauFromMergedCrs } from "../metro2/diy/from-crs.mjs";
 import { derogatoryClaimsByBureau, mergeDerogatoryClaims } from "../metro2/diy/derogatory.mjs";
 import { nextRound } from "../metro2/rounds/state.mjs";
@@ -119,6 +119,7 @@ export async function readClientRepair(db, scope, deps = {}) {
     authorization, stage, currentRound, executionOwner: teamOwnsRepair(services, currentRound) ? "fundhub" : "client",
     cases: data.cases.map(row => ({ id: row.id, bureau: row.bureau, round: row.round, status: row.status,
       responseDueAt: row.response_due_at || null, portalUrl: INQUIRY_PORTALS[row.bureau] || null,
+      documentUploadUrl: INQUIRY_DOCUMENT_UPLOAD_PORTALS[row.bureau] || null,
       executionOwner: teamOwnsRepair(services, row.round) ? "fundhub" : "client",
       items: data.items.filter(item => item.case_id === row.id).map(item => ({ id: item.id, creditor: item.creditor,
         accountLast4: item.account_last4, round: item.round, status: item.status, outcome: item.outcome })),

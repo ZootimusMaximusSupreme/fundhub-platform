@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-06T10:24:01.202Z",
+  "checkedAt": "2026-11-06T10:53:08.615Z",
   "surface": "normal Netlify router over authenticated local HTTP",
   "databaseRole": "fundhub_app",
   "databaseTestsSkipped": 0,
@@ -16,37 +16,37 @@
       "name": "new buyer authorizes the included first report without an assessment checkout at 1440px",
       "status": "passed",
       "expectedStatus": "passed",
-      "durationMs": 1809
+      "durationMs": 1568
     },
     {
       "name": "new buyer authorizes the included first report without an assessment checkout at 390px",
       "status": "passed",
       "expectedStatus": "passed",
-      "durationMs": 1140
+      "durationMs": 1209
     },
     {
       "name": "actual purchase, uploads, bureau proof, bank handoff, CSM quote and completion at 1440px",
       "status": "passed",
       "expectedStatus": "passed",
-      "durationMs": 4289
+      "durationMs": 5171
     },
     {
       "name": "actual purchase, uploads, bureau proof, bank handoff, CSM quote and completion at 390px",
       "status": "passed",
       "expectedStatus": "passed",
-      "durationMs": 6497
+      "durationMs": 5505
     },
     {
       "name": "actual empty and loading reads, transport error and recovery at 1440px",
       "status": "passed",
       "expectedStatus": "passed",
-      "durationMs": 971
+      "durationMs": 961
     },
     {
       "name": "actual empty and loading reads, transport error and recovery at 390px",
       "status": "passed",
       "expectedStatus": "passed",
-      "durationMs": 879
+      "durationMs": 944
     }
   ]
 }

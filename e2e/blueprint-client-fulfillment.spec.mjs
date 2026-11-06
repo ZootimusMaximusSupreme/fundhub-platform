@@ -14,7 +14,8 @@ async function open(page, { completed = false, denied = false, failInquiries = f
   const writes = [];
   const engagement = {id:ENGAGEMENT,orgId:ORG,clientId:CLIENT,status:completed ? 'completed' : 'active',executionOwner:'client',roundId:null};
   const funding = {ok:true,engagement,state:completed ? 'completed' : 'held',nextAction:'Wait for Experian removal verification before opening this bank.',lenders:[{id:LENDER,name:'Fixture Community Bank',productName:'Business card',available:false,reason:'Experian is waiting for verification.',nextEligibleAt:'2026-11-09T12:00:00Z'}],applications:[]};
-  const inquiries = {ok:true,cases:[{id:CASE,bureau:'Experian',status:'In progress',packet:{complete:true,missing:[]},portalUrl:'https://usa.experian.com/',nextCheckAt:'2026-11-09T12:00:00Z',call:{status:'not_requested'},inquiries:[{id:'inquiry',name:'Fixture Bank inquiry',state:'pending_verification'}],documents:[],actions:{canRecordSubmission:!completed,canLaunchCall:!completed,canCheckSavedEvidence:!completed}}]};
+  const inquiries = {ok:true,cases:[{id:CASE,bureau:'Experian',status:'In progress',packet:{complete:true,missing:[]},portalUrl:'https://www.experian.com/help/dispute-credit/',documentUploadUrl:'https://www.experian.com/consumer/upload/',nextCheckAt:'2026-11-09T12:00:00Z',call:{status:'not_requested'},inquiries:[{id:'inquiry',name:'Fixture Bank inquiry',state:'pending_verification'}],documents:[],actions:{canRecordSubmission:!completed,canLaunchCall:!completed,canCheckSavedEvidence:!completed}}]};
+  const repair = {ok:true,program:null,authorization:{signed:true,packetComplete:true,missing:[]},stage:'ready',cases:[{bureau:'Experian',round:'R1',status:'ready',portalUrl:inquiries.cases[0].portalUrl,documentUploadUrl:inquiries.cases[0].documentUploadUrl,items:[],letters:[]}],actions:{canGenerate:true}};
   const services = {ok:true,engagement,allowance:{includedAvailable:!completed,nextIncludedAt:'2026-12-06T12:00:00Z',pendingRequestId:null},checkoutProviders:[{id:'commas',label:'Pay in full'},{id:'whop',label:'Financing through Whop'}],serviceTypes:[{key:'funding_round',label:'Funding takeover',priceCents:null,requiresQuote:true}],requests:[],capabilities:{requestHelp:!completed,requestReport:!completed,quote:false}};
   await page.addInitScript(() => localStorage.setItem('fh_token','full-blueprint-browser-fixture'));
   await page.context().route('https://bank.example.invalid/**',route => route.fulfill({contentType:'text/html',body:'<h1>Fixture bank application</h1>'}));
@@ -27,7 +28,7 @@ async function open(page, { completed = false, denied = false, failInquiries = f
     if (path === '/api/blueprint/funding' && method === 'GET') return denied ? json(route,{ok:false,error:'full_blueprint_required'},403) : json(route,structuredClone(funding));
     if (path === '/api/blueprint/inquiries' && method === 'GET') return failInquiries ? json(route,{ok:false,message:'Bureau evidence is temporarily unavailable.'},503) : json(route,structuredClone(inquiries));
     if (path === '/api/blueprint/services' && method === 'GET') return json(route,structuredClone(services));
-    if (path === '/api/blueprint/repair' && method === 'GET') return json(route,{ok:true,program:null,authorization:{signed:true,packetComplete:true,missing:[]},stage:'ready',cases:[],actions:{canGenerate:true}});
+    if (path === '/api/blueprint/repair' && method === 'GET') return json(route,structuredClone(repair));
     if (path === '/api/documents-upload') return json(route,{ok:true,documents:[{id:DOCUMENT}]});
     if (method === 'POST' && path.startsWith('/api/blueprint/')) {
       const body = route.request().postDataJSON();
@@ -115,6 +116,19 @@ for (const width of [1440,390]) test(`owned bureau verification gates direct ban
   expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width + 1);
 });
 
+for (const width of [1440,390]) test(`inquiry and repair expose separate dispute and supporting-upload destinations at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:900});
+  const {app,writes}=await open(page);
+  for (const tab of ['Inquiry removal','Credit repair']) {
+    await app.getByRole('button',{name:tab,exact:true}).click();
+    await expect(app.getByRole('link',{name:'Open Experian portal ↗',exact:true})).toHaveAttribute('href','https://www.experian.com/help/dispute-credit/');
+    await expect(app.getByRole('link',{name:'Upload documents for a pending Experian request ↗',exact:true})).toHaveAttribute('href','https://www.experian.com/consumer/upload/');
+    await expect(app.getByText('Use the portal to start or manage a dispute. Document upload adds files to a request already open.')).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
+  expect(writes).toEqual([]);
+});
+
 test('submission receipts stay pending and bureau calls require explicit authorization',async({page}) => {
   const {app,writes} = await open(page);
   await app.getByRole('button',{name:'Inquiry removal',exact:true}).click();
@@ -156,6 +170,15 @@ test('completed round is read-only and changing accounts clears the private work
   await page.evaluate(() => {localStorage.setItem('fh_token','different-account');window.dispatchEvent(new Event('focus'));});
   await expect(app.getByRole('link',{name:'Sign in',exact:true})).toBeVisible();
   await expect(app.getByText('Fixture Community Bank')).toHaveCount(0);
+});
+
+test('completed engagement does not offer new bureau submissions',async({page})=>{
+  const {app,writes}=await open(page,{completed:true});
+  for(const tab of ['Inquiry removal','Credit repair']) {
+    await app.getByRole('button',{name:tab,exact:true}).click();
+    await expect(app.getByRole('link',{name:/Open Experian portal|Upload documents for a pending Experian request/})).toHaveCount(0);
+  }
+  expect(writes).toEqual([]);
 });
 
 test('unowned full package stays hidden while a bureau read failure has a retry',async({page}) => {

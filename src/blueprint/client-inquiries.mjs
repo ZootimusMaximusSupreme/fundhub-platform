@@ -8,9 +8,12 @@ import { captureInquiryBaseline, genuineInquiryReport, verifyClientInquiryRemova
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const INQUIRY_PORTALS = Object.freeze({
-  EX: "https://www.experian.com/consumer/upload/",
+  EX: "https://www.experian.com/help/dispute-credit/",
   EQ: "https://www.equifax.com/personal/credit-report-services/credit-dispute/",
   TU: "https://www.transunion.com/credit-disputes/dispute-your-credit"
+});
+export const INQUIRY_DOCUMENT_UPLOAD_PORTALS = Object.freeze({
+  EX: "https://www.experian.com/consumer/upload/"
 });
 
 export class ClientInquiryError extends Error {
@@ -141,6 +144,7 @@ export async function readClientInquiries(db, scope, deps = {}) {
           kind: "client_upload", subtype
         })) },
       portalUrl: INQUIRY_PORTALS[row.selected_bureaus_raw] || null,
+      documentUploadUrl: INQUIRY_DOCUMENT_UPLOAD_PORTALS[row.selected_bureaus_raw] || null,
       submittedAt: evidence?.submitted_at || null, submissionReference: evidence?.submission_reference || null,
       receiptDocumentId: evidence?.receipt_document_id || null, nextCheckAt: evidence?.next_check_at || null,
       call: { status: callState, callId: evidence?.call_id || null, canLaunch },

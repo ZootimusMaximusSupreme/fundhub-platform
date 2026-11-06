@@ -166,10 +166,17 @@
       <div class="bf-panel"><h3>Repair letters and responses</h3><p>Your saved letters, mailing choices and response uploads are in your preparation workspace.</p>${button('Open letters and responses','open-letters')}</div></section>`;
   }
 
+  function bureauPortalLinks(c) {
+    if (!active()) return '';
+    const portal = httpsUrl(c.portalUrl);
+    const upload = httpsUrl(c.documentUploadUrl);
+    if (!portal && !upload) return '';
+    return `<div class="bf-row">${portal ? `<a class="bf-link" href="${esc(portal)}" target="_blank" rel="noopener noreferrer">Open ${esc(c.bureau)} portal ↗</a>` : ''}${upload ? `<a class="bf-link" href="${esc(upload)}" target="_blank" rel="noopener noreferrer">Upload documents for a pending ${esc(c.bureau)} request ↗</a>` : ''}</div>${upload ? '<p class="bf-caption">Use the portal to start or manage a dispute. Document upload adds files to a request already open.</p>' : ''}`;
+  }
+
   function caseView(c) {
     const documents = rows(c.documents);
     const items = rows(c.inquiries);
-    const portal = httpsUrl(c.portalUrl);
     const packet = c.packet || {};
     return `<article class="bf-item"><h3>${esc(c.bureau)} · ${esc(c.status)}</h3>
       ${packet.complete ? '<p>Required identity documents are on file.</p>' : `<p>Documents needed: ${esc(rows(packet.missing).map(item => typeof item === 'string' ? item : item.label).join(', ') || 'Open your document upload steps.')}</p>`}
@@ -179,7 +186,8 @@
       ${c.nextCheckAt ? `<p>Next check: ${esc(date(c.nextCheckAt))}</p>` : ''}
       ${c.submissionReference ? `<p>Submission reference: ${esc(c.submissionReference)}</p>` : ''}
       ${c.call?.status ? `<p>Bureau call: ${esc(c.call.status)}</p>` : ''}
-      <div class="bf-row">${portal && active() ? `<a class="bf-link" href="${esc(portal)}" target="_blank" rel="noopener noreferrer">Open ${esc(c.bureau)} portal ↗</a>` : ''}
+      ${bureauPortalLinks(c)}
+      <div class="bf-row">
       ${documents.map(d => button(d.title || 'Open packet document','document',`data-id="${esc(d.id)}"`)).join('')}
       ${c.actions?.canCheckSavedEvidence ? button('Check saved bureau evidence','check-evidence',`data-id="${esc(c.id)}"`) : ''}</div>
       ${c.actions?.canLaunchCall && active() ? `<form data-bf-form="bureau-call" data-case="${esc(c.id)}" class="bf-panel"><label class="bf-authorization"><input type="checkbox" name="authorization" required> I authorize my AI agent to contact ${esc(c.bureau)} about the inquiries in this case.</label><button type="submit">Call bureau with my AI agent</button></form>` : ''}
@@ -246,7 +254,7 @@
       ${uploadForms(authorization.uploads)}
       <p>${esc(repair.stage || 'Your current saved repair file')}</p>
       ${repair.actions?.canGenerate && active() ? button('Prepare my current repair letters','generate-repair','',true) : ''}
-      ${rows(repair.cases).map(c => `<article class="bf-item"><h3>${esc(c.bureau)} · ${esc(c.round)} · ${esc(c.status)}</h3>${rows(c.items).map(item => `<p>${esc(item.creditor || item.creditorName || item.name || '')}${item.status ? ' · ' + esc(item.status) : ''}</p>`).join('')}${rows(c.letters).map(letterView).join('')}</article>`).join('')}
+      ${rows(repair.cases).map(c => `<article class="bf-item"><h3>${esc(c.bureau)} · ${esc(c.round)} · ${esc(c.status)}</h3>${bureauPortalLinks(c)}${rows(c.items).map(item => `<p>${esc(item.creditor || item.creditorName || item.name || '')}${item.status ? ' · ' + esc(item.status) : ''}</p>`).join('')}${rows(c.letters).map(letterView).join('')}</article>`).join('')}
       ${active() ? '<form data-bf-form="repair-response" class="bf-panel"><h3>Upload a bureau response</h3><label>Response document<input type="file" name="file" accept="application/pdf,image/jpeg,image/png" required></label><button type="submit">Upload response for review</button></form>' : ''}</section>`;
   }
 
