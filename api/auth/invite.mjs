@@ -51,7 +51,7 @@ export default async function handler(req, res) {
   const notify = String(body.notify_email || body.email || "").trim().toLowerCase();
   let mailed = false;
   if (looksLikeEmail(notify)) {
-    const copy = inviteMailCopy({ loginEmail: email, link: credentialLink(invitePath) });
+    const copy = inviteMailCopy({ loginEmail: email, link: credentialLink(invitePath), expiresAt: result.expiresAt });
     const sent = await sendStaffCredentialEmail({ to: notify, ...copy });
     mailed = sent.mailed;
   }

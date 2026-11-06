@@ -10,16 +10,16 @@ test("looksLikeEmail accepts a real address and rejects junk", () => {
   assert.equal(looksLikeEmail(""), false);
 });
 
-test("invite copy names the login and 7 days", () => {
+test("owner invite copy names the login and no expiry", () => {
   const copy = inviteMailCopy({ loginEmail: "sam.rivera@fundhub.ai", link: "https://fundhub.ai/x" });
   assert.match(copy.body, /sam\.rivera@fundhub\.ai/);
-  assert.match(copy.body, /7 days/);
+  assert.match(copy.body, /does not expire and works once/);
   assert.match(copy.body, /https:\/\/fundhub\.ai\/x/);
 });
 
-test("reset copy names 1 hour", () => {
+test("owner reset copy has no expiry", () => {
   const copy = resetMailCopy({ loginEmail: "chris@fundhub.ai", link: "https://fundhub.ai/y" });
-  assert.match(copy.body, /1 hour/);
+  assert.match(copy.body, /does not expire and works once/);
   assert.equal(credentialLink("/reset-password.html?token=a"), "https://fundhub.ai/reset-password.html?token=a");
 });
 
@@ -59,4 +59,14 @@ test("sendStaffCredentialEmail does not claim a send when Resend is unset", asyn
     env: {}
   });
   assert.equal(out.mailed, false);
+});
+
+
+test("finite credential mail uses the actual expiry instead of permanent or fixed-window copy", () => {
+  const expiresAt = new Date("2026-11-07T18:00:00Z");
+  for (const makeCopy of [inviteMailCopy, resetMailCopy]) {
+    const copy = makeCopy({ loginEmail: "finite@fundhub.test", link: "https://fundhub.ai/finite", expiresAt });
+    assert.match(copy.body, /expires at Sat, 07 Nov 2026 18:00:00 GMT and works once/);
+    assert.doesNotMatch(copy.body, /does not expire/);
+  }
 });

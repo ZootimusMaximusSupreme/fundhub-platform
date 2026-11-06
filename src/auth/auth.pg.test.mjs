@@ -205,6 +205,10 @@ test("suspendStaff revokes every live session at once", opts, async () => {
 test("an invite token is single-use", opts, async () => {
   await db.query(`DELETE FROM staff WHERE lower(email)=$1`, [EMAIL2]);
   const invite = await inviteStaff(db, { actor: OWNER, email: EMAIL2, name: "Single Use", role: "setter" });
+  assert.equal(invite.expiresAt, null);
+  const expiry = (await db.query(`SELECT expires_at::text AS expiry FROM password_resets WHERE token_hash=$1`, [hashToken(invite.token)])).rows[0].expiry;
+  assert.equal(expiry, "infinity");
+  await db.query(`UPDATE password_resets SET created_at=now()-interval '100 years' WHERE token_hash=$1`, [hashToken(invite.token)]);
   const first = await acceptInvite(db, { token: invite.token, password: PASSWORD });
   assert.equal(first.ok, true);
   const second = await acceptInvite(db, { token: invite.token, password: NEXT_PASSWORD });
@@ -261,9 +265,12 @@ test("password reset issues a working token and kills existing sessions", opts, 
 
   const reset = await requestPasswordReset(db, { email: EMAIL });
   assert.ok(reset.token);
+  assert.equal(reset.expiresAt, null);
+  assert.equal((await db.query(`SELECT expires_at::text AS expiry FROM password_resets WHERE token_hash=$1`, [hashToken(reset.token)])).rows[0].expiry, "infinity");
 
   const done = await resetPassword(db, { token: reset.token, password: NEXT_PASSWORD });
   assert.equal(done.ok, true);
+  assert.equal((await resetPassword(db, { token: reset.token, password: PASSWORD })).error, "invalid_or_expired_token", "a permanent link still works once");
   assert.equal(await verifySession(db, before.token), null, "changing a password signs you out everywhere");
 
   assert.equal((await login(db, { email: EMAIL, password: PASSWORD, ip: IP })).ok, false, "old password dead");

@@ -815,3 +815,24 @@ test("the page's own state words are the ones the legend check uses", () => {
   const sql = sqlFor(SPEC.get("social-states"));
   for (const state of ["posting", "posted", "failed", "blocked", "awaiting_approval"]) assert.ok(sql.includes(`'${state}'`), state);
 });
+
+
+test("permanent reset and invite links satisfy expiry policy while negative infinity stays red", () => {
+  const st = person();
+  for (const [key, kind] of [["staff-reset-link", "reset"], ["staff-new-person", "invite"]]) {
+    const rows = (expires_at) => [...ROLE_ROWS, R("staff", st), R("password_resets", link(st, { kind, expires_at }))];
+    assert.equal(runRows(SPEC.get(key), rows("infinity")).bad_count, 0, key);
+    assert.equal(runRows(SPEC.get(key), rows("-infinity")).bad_count, 1, key);
+  }
+});
+
+test("permanent reset links retain orphan, company and replacement checks", () => {
+  const spec = SPEC.get("staff-reset-link");
+  const st = person();
+  const permanent = (who, overrides = {}) => link(who, { expires_at: "infinity", ...overrides });
+  assert.equal(runRows(spec, [R("password_resets", permanent(null))]).bad_count, 1);
+  const away = person({ org_id: OTHER });
+  assert.equal(runRows(spec, [R("staff", away), R("password_resets", permanent(away))]).bad_count, 1);
+  assert.equal(runRows(spec, [R("staff", st), R("password_resets", permanent(st)), R("password_resets", permanent(st))]).bad_count, 1);
+  assert.equal(runRows(spec, [R("staff", st), R("password_resets", permanent(st, { used_at: HOURS_AGO(1) })), R("password_resets", permanent(st))]).bad_count, 0);
+});

@@ -90,3 +90,7 @@ Chris asked for his Fundhub LLC bank cash, exact CRS costs, reviewed ad replenis
 Bank connection is to the business account with explicit read-only consent and the owner session, without a separate Fundhub MFA prompt. The page keeps company bank data separate from client FinanceOS. Cash after tracked reserves stays unknown until the selected business bank and actual required costs are known. Exact posted-debit matching records a bill paid without moving money. Suggested recurring charges need owner review. No Colin recipient/rule, commission percentage or payout timing is invented. DOTS must use the business account; this build does not change its existing personal connection.
 
 Loading, empty, failed and populated states must work on desktop and phone. The page must clear private data and stop callbacks when the owner session changes or loses access. Source, fixture tests and deployment are distinct from an actual connected bank or real payout.
+
+## Owner-issued access links (owner-set 2026-11-06)
+
+When the owner/admin or an agent issues a set-password invite or reset link, it must have no time limit and work once. Sending a replacement ends the earlier unused link; setting a password revokes existing sessions. Public self-service forgot-password requests retain their one-hour limit and do not accept a caller-selected expiry. Suspended accounts stay suspended. Mail, copy-link prompts and monitoring must distinguish deliberate permanent links from invalid finite lifetimes.

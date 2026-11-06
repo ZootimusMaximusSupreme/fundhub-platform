@@ -131,7 +131,7 @@ test("auth/staff-update saves a clean profile, refuses a taken email and an owne
   log.mark("auth-staff-update");
 });
 
-test("auth/invite makes a new login with a company address and a 7 day hashed link", async () => {
+test("auth/invite makes a new login with a company address and a permanent single-use hashed link", async () => {
   assert.equal(ROUTES["auth/invite"], inviteHandler);
   // Another company already has an active login for this person. The lookup for
   // an existing login must not see it, or the new login is refused.
@@ -143,7 +143,6 @@ test("auth/invite makes a new login with a company address and a 7 day hashed li
       { id: TARGET, email: params[3], name: params[1], role: params[2], status: "invited" },
     ]],
   ];
-  const before = Date.now();
   const done = await hit(inviteHandler, { method: "POST", body: { name: "Sam Rivera", role: "closer" }, rules });
   assert.equal(done.status, 200);
   assert.equal(done.body.email, "sam.rivera2@fundhub.ai", "the first address was taken, so the next free one is used");
@@ -158,8 +157,8 @@ test("auth/invite makes a new login with a company address and a 7 day hashed li
   assert.equal(stored[1], TARGET);
   assert.match(stored[2], /^[0-9a-f]{64}$/);
   assert.notEqual(stored[2], done.body.token, "only a hash of the link token is stored");
-  const lifetime = new Date(stored[3]).getTime() - before;
-  assert.ok(Math.abs(lifetime - 7 * 24 * 3600e3) < 60e3, `link lifetime ${lifetime} ms is not 7 days`);
+  assert.equal(stored[3], "infinity", "owner invite has an explicit permanent database expiry");
+  assert.equal(done.body.expiresAt, null, "the public response safely represents no expiry as null");
 
   const owner = await hit(inviteHandler, { method: "POST", body: { name: "Sam Rivera", role: "owner" }, rules });
   assert.equal(owner.status, 400);
@@ -230,10 +229,9 @@ test("auth/invite emails the set-password link to a real notify address, and onl
   });
 });
 
-test("auth/admin-reset hands the admin a 1 hour link and refuses a suspended login", async () => {
+test("auth/admin-reset hands the admin a permanent single-use link and refuses a suspended login", async () => {
   assert.equal(ROUTES["auth/admin-reset"], adminResetHandler);
   const active = [[/SELECT id, status FROM staff WHERE org_id = \$1 AND lower\(email\)/, [{ id: TARGET, status: "active" }]]];
-  const before = Date.now();
   // Nothing is emailed: with mail switched fully on, the handler still sends nothing.
   const done = await withMailStandIn("down", async (sent) => {
     const out = await hit(adminResetHandler, { method: "POST", body: { email: "Pat.Target@Fundhub.ai" }, rules: active });
@@ -247,8 +245,8 @@ test("auth/admin-reset hands the admin a 1 hour link and refuses a suspended log
   const stored = sqlCalls(done, /INSERT INTO password_resets/)[0].params;
   assert.equal(stored[1], TARGET);
   assert.notEqual(stored[2], done.body.token);
-  const lifetime = new Date(done.body.expiresAt).getTime() - before;
-  assert.ok(Math.abs(lifetime - 3600e3) < 60e3, `reset lifetime ${lifetime} ms is not 1 hour`);
+  assert.equal(stored[3], "infinity", "owner reset stores deliberate no expiry");
+  assert.equal(done.body.expiresAt, null, "the API safely serializes no expiry");
 
   const suspended = await hit(adminResetHandler, {
     method: "POST", body: { email: "pat.target@fundhub.ai" },
