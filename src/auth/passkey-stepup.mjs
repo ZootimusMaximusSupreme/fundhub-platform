@@ -89,12 +89,12 @@ async function limited(db, subjectId) {
   return Number(r?.failures || 0) >= 10 || Number(r?.issued || 0) >= 40;
 }
 
-async function issue(db, s, i, purpose, challenge, authorization = null) {
+async function issue(db, s, i, purpose, challenge, authorization = null, recoveryCodeId = null) {
   const token = newToken();
   await db.query(
-    `INSERT INTO auth_passkey_challenges(token_hash,subject_id,session_id,target_kind,target_id,purpose,challenge,enrollment_authorization)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-    [hashToken(token), s.id, ...scope(i), purpose, challenge, authorization]);
+    `INSERT INTO auth_passkey_challenges(token_hash,subject_id,session_id,target_kind,target_id,purpose,challenge,enrollment_authorization,recovery_code_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [hashToken(token), s.id, ...scope(i), purpose, challenge, authorization, recoveryCodeId]);
   return token;
 }
 
@@ -164,12 +164,17 @@ export async function passkeyAction(db, i, body, { verifier = cryptoVerifier } =
     }
     if (await limited(tx, s.id)) return denied("too_many_passkey_attempts", 429);
     if (body.action === "register_options") {
-      if (keys.length >= 10) return denied("passkey_limit", 409);
-      let authorization;
+      if (keys.length >= 10 && !body.recovery_token) return denied("passkey_limit", 409);
+      let authorization, recoveryCodeId = null;
       if (body.recovery_token) {
         const recovered = await claim(tx, s, i, body.recovery_token, "recovery");
         if (!recovered || !actor.fresh_primary) return fail(tx, s, i, recovered);
+        const available = (await tx.query(`SELECT id FROM auth_passkey_recovery_codes
+          WHERE id=$1 AND subject_id=$2 AND used_at IS NULL AND revoked_at IS NULL`,
+          [recovered.recovery_code_id, s.id])).rows[0];
+        if (!available) return fail(tx, s, i, recovered);
         authorization = "recovery";
+        recoveryCodeId = available.id;
       } else if (s.enrolled_at) {
         if (!(await assurance(tx, s, i, 10))) return denied("passkey_required");
         authorization = "passkey";
@@ -184,13 +189,14 @@ export async function passkeyAction(db, i, body, { verifier = cryptoVerifier } =
         excludeCredentials: keys.map(k => ({ id: k.credential_id, transports: k.transports })),
         authenticatorSelection: { residentKey: "required", userVerification: "required" }
       });
-      const token = await issue(tx, s, i, "registration", options.challenge, authorization);
+      const token = await issue(tx, s, i, "registration", options.challenge, authorization, recoveryCodeId);
       return { ok: true, challenge_token: token, options };
     }
     if (body.action === "register_verify") {
       const c = await claim(tx, s, i, body.challenge_token, "registration");
       if (!c) return fail(tx, s, i);
       if ((c.enrollment_authorization === "initial" && (s.enrolled_at || !actor.fresh_primary)) ||
+          (c.enrollment_authorization === "recovery" && !actor.fresh_primary) ||
           (c.enrollment_authorization === "passkey" && !(await assurance(tx, s, i, 10)))) return fail(tx, s, i, c);
       if (!validPasskeyClientData(body.response)) return fail(tx, s, i, c);
       let result;
@@ -203,12 +209,28 @@ export async function passkeyAction(db, i, body, { verifier = cryptoVerifier } =
       const info = result.registrationInfo;
       const duplicate = await tx.query(`SELECT id FROM auth_passkeys WHERE credential_id=$1`, [info.credential.id]);
       if (duplicate.rows.length) return fail(tx, s, i, c);
+      // Recovery is two-phase: only an actually verified replacement key may
+      // spend the code. Cancellation, malformed/expired proof or a lost token
+      // leaves every existing key and remaining recovery code usable.
+      if (c.enrollment_authorization === "recovery") {
+        const consumed = (await tx.query(`UPDATE auth_passkey_recovery_codes SET used_at=now()
+          WHERE id=$1 AND subject_id=$2 AND used_at IS NULL AND revoked_at IS NULL RETURNING id`,
+          [c.recovery_code_id, s.id])).rows[0];
+        if (!consumed) return fail(tx, s, i, c);
+      }
       const label = typeof body.name === "string" ? body.name.trim().slice(0, 80) : "";
-      await tx.query(
+      const inserted = (await tx.query(
         `INSERT INTO auth_passkeys(subject_id,credential_id,public_key,sign_count,transports,device_type,backed_up,name)
-         VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8)`,
+         VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8) RETURNING id`,
         [s.id, info.credential.id, Buffer.from(info.credential.publicKey), info.credential.counter,
-          JSON.stringify(info.credential.transports || []), info.credentialDeviceType, info.credentialBackedUp, label || "Passkey"]);
+          JSON.stringify(info.credential.transports || []), info.credentialDeviceType, info.credentialBackedUp, label || "Passkey"])).rows[0];
+      if (c.enrollment_authorization === "recovery") {
+        await tx.query(`UPDATE auth_passkeys SET revoked_at=now()
+          WHERE subject_id=$1 AND id<>$2 AND revoked_at IS NULL`, [s.id, inserted.id]);
+        await tx.query(`UPDATE auth_passkey_assurances SET revoked_at=now() WHERE subject_id=$1 AND revoked_at IS NULL`, [s.id]);
+        await tx.query(`UPDATE auth_passkey_challenges SET used_at=COALESCE(used_at,now()) WHERE subject_id=$1`, [s.id]);
+        await tx.query(`UPDATE auth_passkey_recovery_codes SET revoked_at=now() WHERE subject_id=$1 AND revoked_at IS NULL`, [s.id]);
+      }
       await tx.query(`UPDATE auth_passkey_subjects SET enrolled_at=COALESCE(enrolled_at,now()) WHERE id=$1`, [s.id]);
       return { ok: true, registered: true, assured: false };
     }
@@ -251,19 +273,15 @@ export async function passkeyAction(db, i, body, { verifier = cryptoVerifier } =
       await tx.query(`UPDATE auth_passkey_assurances SET revoked_at=now() WHERE credential_id=$1 AND revoked_at IS NULL`, [key.id]);
       return { ok: true, removed: true };
     }
-    // A recovery code + a fresh primary login only permits one reenrollment.
-    // All prior key assurance is revoked; a new UV assertion is still required.
+    // Validate recovery without spending the code or revoking usable keys.
+    // Only successful replacement registration finalizes these changes.
     if (!actor.fresh_primary) return denied("fresh_login_required");
     const hash = recoveryHash(body.recovery_code);
     const code = hash ? (await tx.query(
-      `UPDATE auth_passkey_recovery_codes SET used_at=now()
-        WHERE subject_id=$1 AND code_hash=$2 AND used_at IS NULL AND revoked_at IS NULL RETURNING id`,
+      `SELECT id FROM auth_passkey_recovery_codes
+        WHERE subject_id=$1 AND code_hash=$2 AND used_at IS NULL AND revoked_at IS NULL`,
       [s.id, hash])).rows[0] : null;
     if (!code) return fail(tx, s, i);
-    await tx.query(`UPDATE auth_passkeys SET revoked_at=now() WHERE subject_id=$1 AND revoked_at IS NULL`, [s.id]);
-    await tx.query(`UPDATE auth_passkey_assurances SET revoked_at=now() WHERE subject_id=$1 AND revoked_at IS NULL`, [s.id]);
-    await tx.query(`UPDATE auth_passkey_challenges SET used_at=COALESCE(used_at,now()) WHERE subject_id=$1`, [s.id]);
-    await tx.query(`UPDATE auth_passkey_recovery_codes SET revoked_at=now() WHERE subject_id=$1 AND revoked_at IS NULL`, [s.id]);
-    return { ok: true, recovery_token: await issue(tx, s, i, "recovery", newToken()) };
+    return { ok: true, recovery_token: await issue(tx, s, i, "recovery", newToken(), null, code.id) };
   });
 }
