@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <title>Add another device — Fundhub</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/app/fundhub-font.css">
+  <link rel="stylesheet" href="/app/fundhub-brand.css">
+  <link rel="stylesheet" href="/app/fundhub-astra.css">
+  <link rel="stylesheet" href="/app/devices.css">
+  <script defer src="/app/fundhub-font.js"></script>
+  <script defer src="/funnel/device-destinations.js"></script>
+  <script defer src="/app/devices.js"></script>
+</head>
+<body class="fh-astra">
+  <main class="devices-page">
+    <a class="devices-brand" id="back-fundhub" href="/app/client-portal.html" aria-label="Back to Fundhub"><img src="/favicon.svg" width="32" height="32" alt=""><span>Back to Fundhub</span></a>
+    <header class="devices-heading">
+      <p class="devices-kicker">Your account, on both devices</p>
+      <h1>Add another device.</h1>
+      <p>Use Fundhub on your phone and your computer. Sign in with the same Fundhub account on each.</p>
+    </header>
+
+    <div class="devices-layout">
+      <section class="card devices-transfer" aria-labelledby="transfer-title">
+        <h2 id="transfer-title">Open this on your other device.</h2>
+        <p id="transfer-copy">Scan the code with your phone's camera, or open the link on your other device.</p>
+        <div class="devices-qr" id="qr-wrap">
+          <img id="device-qr" src="/assets/fundhub-devices-qr.svg" width="240" height="240" alt="QR code for fundhub.ai/devices.html">
+        </div>
+        <p class="devices-caption" id="qr-error" hidden>The QR code could not load. Use the link below.</p>
+        <label class="devices-link-label" for="device-link">Your device link</label>
+        <input id="device-link" class="devices-link" type="url" readonly value="https://fundhub.ai/devices.html" spellcheck="false" autocomplete="off" aria-describedby="device-link-note">
+        <div class="devices-actions">
+          <button type="button" class="fh-astra-action" id="share-link" hidden>Share link</button>
+          <button type="button" class="fh-astra-action" id="copy-link" hidden>Copy link</button>
+        </div>
+        <p id="transfer-status" class="devices-caption" role="status" aria-live="polite"></p>
+        <p class="devices-caption" id="device-link-note">You will sign in on the other device. This link does not share your sign-in.</p>
+      </section>
+
+      <section class="devices-current" aria-labelledby="current-title">
+        <h2 id="current-title">Keep going on this device.</h2>
+        <p>Your browser portal is ready. Open your file, documents and next steps here.</p>
+        <a class="fh-astra-action fh-astra-primary devices-browser" id="open-browser" href="/app/client-portal.html">Open Fundhub <span aria-hidden="true">↗</span></a>
+        <div class="devices-install" id="iphone-install" hidden>
+          <p id="app-status" class="devices-caption" role="status" aria-live="polite"></p>
+          <button type="button" class="fh-astra-action" id="iphone-choice" hidden>Get the iPhone app</button>
+          <div id="iphone-link-slot"></div>
+          <button type="button" class="fh-astra-action" id="retry-app" hidden>Try the app option again</button>
+        </div>
+      </section>
+    </div>
+    <noscript><p class="devices-caption">Open the device link above on your other device, or use the browser portal here.</p></noscript>
+  </main>
+</body>
+</html>

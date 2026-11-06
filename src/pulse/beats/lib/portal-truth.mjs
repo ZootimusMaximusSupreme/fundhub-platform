@@ -565,7 +565,7 @@ SELECT h.client_id::text AS client_id,
 
 
 /* ── portal:page-scripts-load ───────────────────────────────────────────────
-   The six pages a customer opens, as the live site serves them. `needs` are the
+   The customer pages as the live site serves them. `needs` are the
    few things the page cannot work without; `needsScripts` says the page is
    empty without its scripts (client-portal and FinanceOS draw everything from
    them). Nothing else about the page's words is pinned, so a copy change is not
@@ -577,6 +577,18 @@ export const CUSTOMER_PAGES = Object.freeze([
     needs: Object.freeze([
       { re: /<form\b/i, label: "its sign-in form" },
       { re: /type="email"/i, label: "its email box" }
+    ])
+  }),
+  Object.freeze({
+    path: "/devices.html",
+    needsScripts: true,
+    needs: Object.freeze([
+      { re: /<input\b(?=[^>]*\bvalue=["']https:\/\/fundhub\.ai\/devices\.html["'])[^>]*>/i, label: "its public device link" },
+      { re: /<a\b(?=[^>]*\bid=["']open-browser["'])(?=[^>]*\bhref=["'](?:https:\/\/fundhub\.ai)?\/app\/client-portal\.html["'])[^>]*>/i, label: "its browser portal link" },
+      { re: /<img\b[^>]*\bsrc=["']\/assets\/fundhub-devices-qr\.svg["']/i, label: "its QR image" }
+    ]),
+    requiredAssets: Object.freeze([
+      Object.freeze({ path: "/assets/fundhub-devices-qr.svg", kind: "image" })
     ])
   }),
   Object.freeze({
@@ -728,6 +740,11 @@ export async function checkPageScripts({
     if (why) problems.push(`${page.path} ${why}`);
     else pagesWhole += 1;
     const assets = pageAssets(got.body, url, origin);
+    // Only explicitly required images are read; this does not turn every client
+    // avatar or decorative image into a new pulse request.
+    for (const asset of page.requiredAssets || []) {
+      assets.push({ url: new URL(asset.path, url).href, kind: asset.kind, worker: false });
+    }
     // A service worker named in a line of code does not count as one of the
     // page's own scripts: a page with only that is still empty.
     if (page.needsScripts && !assets.some((a) => a.kind === "script" && !a.worker)) {
@@ -751,7 +768,10 @@ export async function checkPageScripts({
     else if (got.status !== 200) problems.push(`${where} answered ${got.status}`);
     else if (got.body.trim() === "") problems.push(`${where} is empty`);
     else if (/text\/html/i.test(got.type)) {
-      problems.push(`${where} came back as a web page, not a ${f.kind === "script" ? "script" : "style file"}`);
+      const kind = f.kind === "script" ? "script" : f.kind === "image" ? "QR image" : "style file";
+      problems.push(`${where} came back as a web page, not a ${kind}`);
+    } else if (f.kind === "image" && !/<svg\b[^>]*(?:\/>|>[\s\S]*<\/svg>)\s*$/i.test(got.body)) {
+      problems.push(`${where} is not a whole SVG image`);
     }
   }
 
@@ -779,7 +799,7 @@ export async function checkPageScripts({
   return check(
     id,
     "PASS",
-    `${pagesWhole} customer pages answered whole and all ${list.length} script and style files they name answered with content`
+    `${pagesWhole} customer pages answered whole and all ${list.length} script, style and required image files answered with content`
   );
 }
 

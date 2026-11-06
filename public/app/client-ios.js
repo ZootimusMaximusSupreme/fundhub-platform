@@ -185,6 +185,11 @@
       accountName.className = 'client-ios-account-name';
       accountName.textContent = session.staff && session.staff.name || 'Your account';
       accountPanel.appendChild(accountName);
+      var deviceLink = document.createElement('a');
+      deviceLink.href = '/devices.html';
+      deviceLink.setAttribute('data-fh-device-entry', '');
+      deviceLink.textContent = 'Add another device';
+      accountPanel.appendChild(deviceLink);
       var back = document.getElementById('money-back');
       if (back) accountPanel.appendChild(back);
 

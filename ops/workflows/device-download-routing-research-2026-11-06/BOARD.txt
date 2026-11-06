@@ -1,0 +1,290 @@
+DEVICE-AWARE FUNNEL DOWNLOADS — RESEARCH ONLY — 2026-11-06
+
+Owner: Codex chat 01a1b2a8-989f-7dd1-b9c0-b8abcf6fdbac.
+Scope: inspect current links and existing app availability; recommend only.
+No implementation, publishing, tracking, account or distribution changes.
+Plaid/passkey/security stay with chat 01a1b25b-b8b0-7e81-8d27-22ddb22acdbc
+and its plaid-approval-readiness worktree. No writes to that work.
+
+PARALLEL WORKFLOWS
+1. Parent: current funnel sources and read-only public HTTP GET evidence.
+2. app_availability: existing native/platform availability and exact destinations.
+No dependencies during discovery. Parent synthesizes after both finish.
+No browser/native screen actions used. If needed, use a lightweight model.
+
+SELF-CONTAINED PROMPTS
+1. Inspect the current Fundhub thank-you download card, related funnel links,
+   and browser fallback through source reads and public HTTP GET only. Record
+   exact URLs and current behavior. Do not edit product files, publish, change
+   tracking/accounts/distribution, or touch Plaid/passkey/security work. Return
+   concise findings and evidence; this is research, not an implementation task.
+2. Inspect Fundhub's existing iPhone, Android, Mac and Windows distribution
+   sources and public listings. Identify exact supported destinations, public
+   vs internal/review status and unknowns. No edits/builds/releases/account
+   changes or UI actions. Parent owns current funnel inspection. No new .md.
+
+CURRENT FUNNEL — PUBLIC GETs ALL HTTP 200, 2026-11-06
+https://apply.fundhub.ai/thank-you
+  Body loads thankyou-sort.js, funding-paths.js, fh-events.js and
+  fundhub-prompter-download.js from fundhub.ai/funnel/.
+  SHA256 fd6120e7ae77e2f4c8bc4f896bb34130e6b1576ca291a42841b9267de75efacd
+https://fundhub.ai/funnel/fundhub-prompter-download.json
+  app_store_url = https://apps.apple.com/us/app/fundhub-portal/id6823985032
+  SHA256 c34153b817e6d584172ae86442c134b3f92b31823007633bbe210e50a5960c5e
+https://fundhub.ai/funnel/fundhub-prompter-download.js
+  L36: Download the iPhone app and confirm your call there.
+  L38: primary Download for iPhone button always uses the Apple URL.
+  L39: secondary Android/computer note links to the browser portal.
+  No device detection in this card. CSS changes layout only.
+  SHA256 b140f022e4685e1b50c20456a71b1fca28d250beeb2f3dcf4975e3356d0a56e9
+https://fundhub.ai/funnel/funding-paths.js
+  L21,L73-L74: a separate Get the app link also always uses the Apple URL.
+  SHA256 f9bc2d62197d9a70a8ba829cce389b92b4ae7e2dfb9ac3baa8ac98c89f329957
+https://fundhub.ai/portal-login.html
+  Browser sign-in page is reachable. Its header/primary download button also
+  promote the iPhone app; the email form offers browser sign-in below it.
+  SHA256 23fe6e3e2b9e9f09d1a3658968d09432b75e9e91cbbb1badaa1a17ea00fd2709
+
+SUPPORTED DESTINATIONS
+iPhone: https://apps.apple.com/us/app/fundhub-portal/id6823985032
+  Fresh public Apple listing: Fundhub Portal 1.0.3, iOS 17+, Only for iPhone.
+Android: https://fundhub.ai/portal-login.html
+Mac: https://fundhub.ai/portal-login.html
+Windows/other laptops/unknown devices: https://fundhub.ai/portal-login.html
+  No verified Fundhub Google Play or Windows native destination found.
+  Existing manifest.webmanifest declares a standalone client browser app;
+  installation eligibility and device-specific install UX were not tested.
+
+FEASIBLE FUTURE SLICE — NOT AUTHORIZED FOR IMPLEMENTATION HERE
+Show Download for iPhone on iPhone and Open Fundhub in your browser elsewhere.
+Keep a visible browser option and alternate-device choice. Default uncertain
+device detection to the browser; do not force an automatic redirect.
+Use one destination decision for the card, the separate Get the app step and
+the portal entry page so a laptop does not hit another iPhone-only button.
+Use existing routes; no new app/distribution needed for this browser fallback.
+Do not change tracking or authentication as part of this research idea.
+
+LIMITS / UNKNOWNS
+HTTP source/link evidence only, not a rendered-device or signed-in journey test.
+New-account/passkey/bank-link handoff remains owned by the original chat.
+The historical Prompter/TestFlight intended journey is stale; the existing
+sorting-hat-pages-flow.md already records the drift. No journey edits made.
+Separate native Mac public availability is unverified. The existing native
+status board records official ASC GET results around 13:10 Phoenix today:
+Mac 1.0/build 6 IN_REVIEW, AFTER_APPROVAL. Fresh read-only ASC GET at 14:02
+Phoenix failed with DNS ENOTFOUND, so there is no fresh approval receipt.
+Apple's iPhone listing has M1+/macOS 14 compatibility but labels macOS not
+verified; this does not establish the separate native Mac release. No distinct
+public Mac app ID was confirmed. Do not offer the locally installed Dock or
+ad-hoc build as a public customer installer.
+
+STATUS: research complete. No implementation authorized in this chat.
+Only this research board was written; no product, journey, tracking, account,
+release or distribution changes. No PR or deployment created.
+
+FOLLOWUP — ADD FUNDHUB TO BOTH DEVICES / CERTAINTY REQUIREMENT
+Owner asks: an easy path from Mac to phone and phone to computer, with no
+Apple offers shown automatically to Android or non-Mac visitors. He wants
+certainty. This extends the research/design; product changes remain parked.
+
+Parallel research prompts for this followup:
+1. Parent: inspect existing native sharing/link support and primary Apple docs;
+   specify a small bidirectional install UX without implementing or sending.
+2. app_availability: verify browser device-detection limits using primary
+   Apple/WebKit, MDN and Chrome docs. Recommend conservative routing for
+   non-Apple, unknown, iPad desktop mode and spoofed/conflicting signals.
+
+RECOMMENDED USER FLOW
+One entry in both apps and portal: Add another device.
+Computer -> phone: Add to my phone opens a large QR code, a short public URL
+and Copy link. The QR opens the neutral Fundhub entry on the receiving phone;
+the receiving phone decides/chooses its destination, never the sending Mac.
+iPhone -> computer: Use on my computer opens the system Share sheet for a
+public Fundhub entry link. AirDrop is the nearby-Mac shortcut; Copy link and
+the standard Mail/Messages share choices remain available. A Windows computer
+opens the browser portal. No server email/SMS send is needed for this design.
+No device can silently install an app on the other device. Installation still
+uses the target device's normal store/browser action and the same Fundhub
+account. This proposal does not transfer sessions, bypass sign-in, or change
+the original owner's signup/passkey flow.
+
+STRICT DEFAULT FOR CHRIS'S CERTAINTY REQUIREMENT
+Browser OS signals are suggestions, not proof of physical hardware. UA and
+UA Client Hints can both be overridden; embedded WKWebView can set its own UA.
+Therefore do not promise 100% automatic device identification.
+Default public entry to Open in browser and a neutral Choose my device action.
+No automatic Apple badges/download links. Reveal iPhone/Mac download choices
+only after the visitor deliberately selects that target device. This also
+supports Windows users who actually want to add their separate iPhone.
+Detection may preselect/suggest a device inside that chooser, never force a
+redirect or reveal an Apple download before the deliberate selection.
+Android/Windows/Linux/ChromeOS, unknown and conflicting signals stay browser
+by default. Never infer Apple from Safari/AppleWebKit, screen width or !mobile.
+iPad may send a Mac-identical UA. Mac+touch is an ambiguity guard, not proof
+of iPad. Missing Client Hints is normal on browsers without that API.
+Even a self-declared Mac must not get a native download until the separate
+public Mac release URL and supported OS/architecture are verified.
+Native apps know their own build platform, but a Mac cannot infer whether the
+user's other phone is iPhone or Android, or which computer an iPhone owner has.
+
+IMPLEMENTATION / PROOF STILL REQUIRED IF OWNER ASKS TO BUILD
+Reuse a public, device-aware portal entry for QR/share links; no new live URL
+has been created. The current portal entry still promotes iPhone on Android.
+Apply the same rule to thank-you card, Get the app step and portal entry.
+Add native Add another device controls in their respective future releases.
+Source inspection found no existing ShareLink/Handoff/NSUserActivity or
+associated-domain setup in these native sources. iOS entitlements contain
+only aps-environment; no associated-domains entitlement is present.
+Core source: tools/fundhub-ios/Fundhub/App/FundhubApp.swift:512 (HomeView),
+tools/fundhub-mac/FundhubMac.swift:392 (ContentView), and both iOS entitlements.
+QR/share install links carry no account IDs, email addresses or login tokens.
+Verify iPhone Safari/Chrome, supported Mac browsers, Android Chrome, Windows
+Edge/Chrome, iPad desktop mode, embedded browsers, unavailable JS/signals and
+conflicting/spoofed signals; assert zero default Apple download links for all
+non-Apple and unknown cases. Then prove real QR/AirDrop fallback and install
+flows on devices. No such test or native build has run in this research task.
+
+OPTIONAL LATER
+Apple Handoff can continue an already supported activity across nearby Apple
+devices; it needs compatible apps, same Apple Account, Bluetooth/Wi-Fi and
+Handoff enabled. It is not a universal installer, and no support is claimed.
+Universal Links can open an installed app or fall back to a website, but would
+need domain association, native handlers and a new verified app release.
+Keep those enhancements outside the first QR/share-link slice.
+
+PRIMARY SOURCES
+QR scanning: https://support.apple.com/en-us/102680
+Native Share sheet: https://developer.apple.com/documentation/swiftui/sharelink
+AirDrop: https://support.apple.com/guide/iphone/use-airdrop-to-send-items-to-nearby-devices-iphcd8b9f0af/27/ios/27
+Handoff: https://support.apple.com/en-sg/102426
+Universal Links: https://developer.apple.com/documentation/xcode/allowing-apps-and-websites-to-link-to-your-content
+Associated domains: https://developer.apple.com/documentation/xcode/supporting-associated-domains
+UA+Hints overrides: https://developer.chrome.com/docs/devtools/device-mode/override-user-agent
+Client Hints API availability: https://developer.mozilla.org/en-US/docs/Web/API/Navigator/userAgentData
+UA reduction: https://www.chromium.org/updates/ua-reduction/
+iPad Mac-identical UA: https://webkit.org/blog/9674/new-webkit-features-in-safari-13/
+Touch capacity: https://developer.mozilla.org/en-US/docs/Web/API/Navigator/maxTouchPoints
+Embedded custom UA: https://developer.apple.com/documentation/webkit/wkwebview/customuseragent
+
+FOLLOWUP STATUS: proposed flow researched and saved; not built or published.
+
+BUILD AUTHORIZED — 2026-11-06, owner latest request
+Chris wants Add another device working inside signed-in Mac/iPhone/browser,
+including Facebook in-app browser, and Apple offers hidden on non-Apple.
+No further owner input needed to build this named scope. Publication follows
+the marked-draft rule; no production publication approval has been requested.
+Owner lane: native. Isolated worktree add-another-device, branch
+codex/add-another-device-20261106, based on origin/main9cdbcf25b.
+
+BUILDER PLAN
+Role: signed-in Fundhub client (same neutral tool usable by staff accounts).
+Job: open Fundhub on a second device using a public install/portal link.
+First question: How do I use Fundhub on my other phone or computer?
+Reuse: existing verified-session account menus in client-ios.js and shell.js;
+existing portal routes/native workspace WebViews; native browser Share API,
+clipboard/manual fallback; existing public app-store config. No new package.
+Data: public fixed URLs only. No API write, account query, auth/session transfer,
+email/SMS send, tracking change, database schema or app distribution change.
+Files: see exact lane manifests below. No edits outside them without board update.
+Risk: hidden offers/navigation/share failures; prove platform matrix, signed-in
+entry/exit, QR decode, share/copy fallbacks and unchanged auth/native navigation.
+
+INTENDED STEPS APPROVED BY OWNER REQUEST
+1. Signed-in account menu offers Add another device in existing portal.
+2. It opens /devices.html without carrying current URL/query/token/email.
+3. Computer visitor sees QR and copyable public https://fundhub.ai/devices.html.
+4. Phone visitor sees Share link when supported and always Copy link/manual link.
+5. Receiving device gets its supported app or browser option. Android/Windows,
+   iPad-like/unknown/conflicting devices never get automatic Apple download UI.
+6. A clear supported iPhone may reveal its existing iPhone store link after a
+   deliberate Get the iPhone app action. Browser route remains available.
+7. Unverified Mac download is never advertised. Mac uses browser route.
+8. Same Fundhub account signs in normally on each device; no session is shared.
+9. JS/config/share/clipboard failure leaves a usable ordinary portal link.
+
+LANES / EXACT FILE OWNERSHIP
+Parent claimed: public/funnel/device-destinations.js (new),
+public/funnel/fundhub-prompter-download.js, public/funnel/funding-paths.js,
+public/portal-login.html, public/app/device-entry.js (new),
+src/ui/device-destinations.test.mjs (new), workflow board, heartbeat proof/docs
+only after shared-file handoff. Parent integrates, checks preflight and delivery.
+Entry agent claimed: public/app/client-ios.js, public/app/shell.js,
+src/ui/device-entry-controls.test.mjs (new). No native/entitlement/auth edits.
+Page agent claimed: public/devices.html, public/app/devices.js,
+public/app/devices.css, public/assets/fundhub-devices-qr.svg,
+e2e/device-transfer.spec.mjs. New files only. No shared menu/policy edits.
+
+SHARED POLICY CONTRACT
+public/funnel/device-destinations.js exposes window.FHDeviceDestinations:
+- detect(navigatorLike) -> iphone|mac|android|windows|other|unknown.
+  iPad/touch-Mac/conflicting signals => unknown; known iOS<17 => unknown.
+- publicUrl = https://fundhub.ai/devices.html
+- webUrl = https://fundhub.ai/portal-login.html
+- iphoneUrl(config) -> exact approved Apple6823985032 URL or empty string.
+No Mac URL exposed while public availability is unverified. Consumers fall
+back to browser if policy/config unavailable. Android/Windows/unknown never
+create Apple links. iPhone install UI requires deliberate visitor action.
+
+DEPENDENCIES
+Page and entry lanes can build independently against the fixed policy contract.
+Parent supplies policy before composed browser proof. New page and all changed
+entry/funnel surfaces need a marked draft before production publication.
+Do not touch Plaid/security files. Current native wrappers load this shared
+portal, so prefer a web-delivered control over rebuilding stale installed apps.
+
+BUILD RECEIPT — source built, not deployed
+Parent/file manifest is change-manifest.json; exact new controls use fixed
+public links. All three implementation lanes are done. No native binary,
+entitlement, auth, account, send or tracking-sender source changed.
+Changed iPhone funnel/login store links still count only an actual deliberate
+Apple tap through existing delegated tracking. Non-Apple/unknown defaults have
+no Apple link. No automatic redirect or hardware identity guarantee is made.
+The initially proposed neutral funnel detour was refined to retain that true
+app-tap meaning; the separate device page still asks for a deliberate choice.
+
+Owned gates currently pass: policy/menu/native-source59; tracking103 after
+Meta433 merge; TypeScript; rule drift;9actualjourneys; new Chromium specs and
+signed-in flow/negative probes (see evidence). QR decoded exact public URL.
+Independent policy/menu review repaired a contradictory legacy-platform guard
+and independently rechecked41cases0skips; final review clear.
+Marked draft shown in chat before any publication. All display measurements
+reported no horizontal overflow,16pxbody/13pxcaptions/44pxtargets at statedsizes.
+WebKit: a new Back assertion lacked an actual navigation wait; real Back path
+proved correct. Spec owner is fixing synchronization without weaker checks.
+Three extra pre-existing portal Tab-focus assertions failed in WebKit; retain
+the receipts and isolate baseline instead of modifying unrelated product code.
+
+Pending:2sharedmonitoring registrations (exact pending patch). Registry and
+tripwires remain owned/unsaved in the active Plaid lane; no competing edit.
+Heartbeat100cases currently98pass/2red exclusively because of those missing
+registrations. Do not call registration or release complete. The existing
+client-portal deep reader now guards page/link/QR/script/style contents daily
+and hourly, with success/broken-page/wrong-public-link/QR/error proofs.
+Central journey CHANGELOG is owned by draft434; this board records the owner
+request and actual trace instead of competing with that file. Intended files
+were not silently changed. New actual device path is documented in the
+existing fundhub-ios-actual.md.
+
+Owner latest request is to make this work in the current app; after marked
+preview and required gates, continue normal protected GitHub delivery. No
+separate native app distribution change is part of this implementation.
+
+PRE-COMMIT UPDATE
+Inherited merged PR432 and433 via safe fast-forward to b53c30f05. The old
+tracking fixture patch was superseded by433; adapted only realistic supported
+iPhone/publiclisting fixture and added nonApple/unknown negative tap proofs.
+All103related source/tracking checks pass0skips on currentprivacycode.
+Sourcepolicy/menu/native-navigation59pass0skips; installed TypeScript, rule
+drift and9journey freshness checks pass. Full lint4768 parseclean receipt
+retained; final inherited-source CI remains required after publication.
+Added only exact cache-revalidate headers for newdevice page/policy and the
+two unversioned funnel scripts. Existing appJS already revalidates, so no
+blanket cache purge or native rebuild.
+Back spec now waits for the actual portal URL before its exact main-heading
+assertion. No sleeps/retries/weaker assertions; WebKit rerun pending.
+Preflight3: behind0, no blockers, only3inactive historical shell warnings.
+Required registry/tripwire gates explicitly18pass/2fail; exact missing paths
+devices.html/page:devices.html. Pending patch stays unapplied while Plaid
+owner is resolving its own current merge conflicts. No competing file edits.
+Local WIP commit preserves source and marked evidence while that external
+ownership prerequisite is unresolved. A local commit is not a release claim.

@@ -1,0 +1,106 @@
+{
+  "owner_lane": "native",
+  "scope": "Add another device from signed-in portal in existing native apps and browsers; device-appropriate public entry",
+  "route": "/devices.html",
+  "stored_effect": "none",
+  "public_transfer_url": "https://fundhub.ai/devices.html",
+  "credentials_or_customer_data_in_transfer": false,
+  "native_binary_changes": false,
+  "tracking_sender_changes": false,
+  "base": "b53c30f052b966017189052ecc063b3824674d30",
+  "publication": "not deployed; pending shared registration handoff",
+  "pending_shared_files": [
+    "src/pulse/registry.mjs",
+    "src/pulse/tripwires.mjs"
+  ],
+  "files": [
+    {
+      "path": "docs/journeys/fundhub-ios-actual.md",
+      "sha256": "1ee4fa48b5889422f7f01608790595cf5899a248c5c5aac9a94b0b7478dce9b9"
+    },
+    {
+      "path": "public/app/client-ios.js",
+      "sha256": "e7492c971289e266f30d5c4abd70a87f4b0db18cf97960e0534ca55da93347e7"
+    },
+    {
+      "path": "public/app/shell.js",
+      "sha256": "e638ccd4f842327f093a3724d7e6dcebcd9826d14774094d69462f49ff792482"
+    },
+    {
+      "path": "public/funnel/device-destinations.js",
+      "sha256": "8a5fa6dddf536d897b7fda2906c16c0282d68dc9dbb9fe6d68b7954acd1f39b6"
+    },
+    {
+      "path": "public/funnel/fundhub-prompter-download.js",
+      "sha256": "42ad7fd185f10494fffb3c3c8c45408a4262e0a92079da31d31b0e289301ab1c"
+    },
+    {
+      "path": "public/funnel/funding-paths.js",
+      "sha256": "0fa357428cc18a4fb6a28e037a66ee5456350c1395ad69a73fc9ca3683582b93"
+    },
+    {
+      "path": "public/portal-login.html",
+      "sha256": "3da0912c3e89ff655a54266dcb13dc4987650020d9a1604ab08cb7ddec3aa6d6"
+    },
+    {
+      "path": "public/app/device-entry.js",
+      "sha256": "88e155fbe3962184f2445583d71f7a98ab13c80b88793ae3b816ca232935d53f"
+    },
+    {
+      "path": "public/devices.html",
+      "sha256": "5caedd7ac3ebf22051e9463b59da010803f418b96762eab3cf00dc5b6f60b5b2"
+    },
+    {
+      "path": "public/app/devices.js",
+      "sha256": "bf04d2b590eceaa95235373af9b1015b72ce32785f4795be40f1adbf5f4030f3"
+    },
+    {
+      "path": "public/app/devices.css",
+      "sha256": "36f6fefeb4292c1d8cd186542378870b8bdb8589aae2905794fac99f27731cd9"
+    },
+    {
+      "path": "public/assets/fundhub-devices-qr.svg",
+      "sha256": "7dc8965566927fe2316003ade58a1f6044d1275663e3090b8d6985b75c71d631"
+    },
+    {
+      "path": "src/ui/device-destinations.test.mjs",
+      "sha256": "9dae93209e4c1be048d3a372b4dae6737faa5b802fef39f1ca6fe086640ea480"
+    },
+    {
+      "path": "src/ui/device-entry-controls.test.mjs",
+      "sha256": "0ae41651c40119b2f54d80f634071e4b4c87eb3f1f1571213880b5abf93af0bd"
+    },
+    {
+      "path": "src/ads/fh-events-cortana.test.mjs",
+      "sha256": "1121952cdffe609e258ac3c1eba2f22aae61ab660a62de0b77d9684db542e18f"
+    },
+    {
+      "path": "e2e/device-transfer.spec.mjs",
+      "sha256": "ed32fb38cc89cccc4b32e09697b7b58a8cb43a54b98046b92c5e3355d0c0f455"
+    },
+    {
+      "path": "e2e/device-funnel.spec.mjs",
+      "sha256": "f1aec1abfa92619dc241c4b55fbb0c3c72fb85b03480a71d1f7dc03bdf037390"
+    },
+    {
+      "path": "src/pulse/beats/lib/portal-truth.mjs",
+      "sha256": "6a609d733a6fb12fdc759b2e6f3f66916140cb17a92fa762137225b29cadbbed"
+    },
+    {
+      "path": "src/pulse/beats/beat-client-portal.mjs",
+      "sha256": "734fdc8ef68fb4dfe760413bc31490733808db9330b62c48b1575cd7148236f9"
+    },
+    {
+      "path": "src/pulse/coverage/gap-portal.test.mjs",
+      "sha256": "cd9924e318cac8c66c81ef8301617cd1d22ecccb5931af20df69c49b2da205fc"
+    },
+    {
+      "path": "src/pulse/beats/beat-client-portal.test.mjs",
+      "sha256": "3dedc921f4b425e4af8992c8717bd8cd817b4152772a0c4eb99dc7f761d9e01b"
+    },
+    {
+      "path": "public/_headers",
+      "sha256": "8b0e71fabe4282495fc16dc77bfc8554ce8846f17a1698d2712d160473109929"
+    }
+  ]
+}
