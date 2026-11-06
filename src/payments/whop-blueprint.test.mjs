@@ -48,6 +48,7 @@ function billingDb(initial = linkOf()) {
   const events = new Map();
   const writes = [];
   return { inbox, events, writes, get link() { return link; }, async query(sql, params = []) {
+    if (/FROM blueprint_client_services s JOIN paid_service_requests p/.test(sql)) return { rows: [] };
     if (/SELECT l\.\*, p\.code/.test(sql)) return { rows: link ? [{ ...link }] : [] };
     if (/SELECT org_id FROM payment_links/.test(sql)) return { rows: [{ org_id: ORG }] };
     if (/INSERT INTO whop_billing_inbox/.test(sql)) {
@@ -87,6 +88,22 @@ test('exact price range and Money parsing preserve cents without rounding', () =
     { amount: 7500, currency: 'usd', decimals: 2 }, { amount: '7500', currency: 'eur', decimals: 2 }]) {
     assert.throws(() => whopMoneyCents(money));
   }
+});
+
+test('full-package Whop receipt preserves the actual SKU, agreed price and package metadata', async () => {
+  const link = linkOf({product_code:'blueprint-self-funding',amount_cents:'2500000'});
+  const checkout = buildWhopBlueprintCheckout(link,cfg);
+  assert.equal(checkout.plan.initial_price,25000);
+  assert.equal(checkout.metadata.offer_key,'BLUEPRINT_SELF_FUNDING');
+  const payment = paymentOf(link,{total:{amount:'25000.00',currency:'usd',decimals:2}});
+  assert.equal(validateWhopBlueprintPayment(payment,link,cfg),true);
+  const db = billingDb(link);
+  const events = [];
+  await processWhopBillingInboxRow(rowOf(envelope('payment.succeeded',payment)),db,{env:ENV,emit:async(...args)=>{events.push(args);return {id:'fixture-full'};}});
+  assert.equal(events[0][2].amount,25000);
+  assert.equal(events[0][2].productName,'blueprint-self-funding');
+  assert.equal(events[0][2].productId,PRODUCT);
+  assert.throws(()=>validateWhopBlueprintPayment({...payment,metadata:whopBlueprintMetadata(linkOf())},link,cfg));
 });
 
 test('checkout uses only the canonical product/title, exact amount and server order metadata', () => {

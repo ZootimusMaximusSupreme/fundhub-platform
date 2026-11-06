@@ -21,7 +21,7 @@ flowchart TD
     CAN --> A_analytics[analytics — 4 routes]
     CAN --> A_auth[Signing in and out — 14 routes]
     CAN --> A_banking[banking — 7 routes]
-    CAN --> A_blueprint[blueprint — 2 routes]
+    CAN --> A_blueprint[blueprint — 4 routes]
     CAN --> A_brand[brand — 1 route]
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
@@ -58,10 +58,10 @@ flowchart TD
     CAN --> A_top_level[Everything else — 45 routes]
     CAN --> A_trials[trials — 4 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 16 routes]
+    WHO -->|Yes| CANT[Blocked — 18 routes]
     CANT --> B_affiliates[affiliates — 2 blocked]
     CANT --> B_auth[Signing in and out — 2 blocked]
-    CANT --> B_blueprint[blueprint — 3 blocked]
+    CANT --> B_blueprint[blueprint — 5 blocked]
     CANT --> B_chat[chat — 1 blocked]
     CANT --> B_native[native — 1 blocked]
     CANT --> B_push[push — 4 blocked]
@@ -72,7 +72,7 @@ flowchart TD
 
 ## What they can reach
 
-**336 of 352 routes.**
+**338 of 356 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -110,6 +110,8 @@ flowchart TD
 | `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager, closer |
 | `/api/banking/sync-transactions` | POST | owner, admin, sales_manager, closer |
 | `/api/blueprint/declines` | GET, POST | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
+| `/api/blueprint/funding` | GET, POST | employees: owner, admin, csm, funding_advisor<br>plus: client |
+| `/api/blueprint/services` | GET, POST | employees: owner, admin, csm<br>plus: client |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET, POST | staff, client |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
@@ -422,7 +424,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**16 of 352 routes.**
+**18 of 356 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -431,8 +433,10 @@ flowchart TD
 | `/api/auth/authorized-rep-file` | GET, POST | client |
 | `/api/auth/plaid-mfa` | POST | client, affiliate |
 | `/api/blueprint/business-plans` | GET, POST | client |
+| `/api/blueprint/inquiries` | GET, POST | client |
 | `/api/blueprint/letter-mailing` | — | client |
 | `/api/blueprint/plan` | — | client |
+| `/api/blueprint/repair` | GET, POST | client |
 | `/api/chat/portal-message` | GET, POST | client |
 | `/api/native/client-activity` | POST | client |
 | `/api/push/key` | GET | client |

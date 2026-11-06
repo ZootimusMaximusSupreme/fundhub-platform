@@ -384,7 +384,8 @@ const EXPECTED_TABS = {
   owner: "*", admin: "admin", funding_advisor: "funding_advisor", closer: "closer", inquiry_specialist: "staff",
   setter: "staff", sales_manager: "sales_manager", csm: "csm",
   outbound_rep: ["bank-outreach.html"],
-  client: ["client-portal.html", "affiliate.html", "financeos.html", "money.html", "money-accounts.html", "money-credit.html",
+  // November 6 full-package work adds the client's own secure report authorization form.
+  client: ["client-portal.html", "affiliate.html", "financeos.html", "soft-pull-approve.html", "money.html", "money-accounts.html", "money-credit.html",
     "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html", "money-banks.html", "money-strategy.html",
     "money-fundability.html", "money-next.html", "money-helper.html", "money-transfers.html", "money-declines.html", "money-alerts.html",
     "money-vault.html"],

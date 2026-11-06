@@ -32,6 +32,7 @@ function stubDb(t = {}) {
       if (/FROM subscriptions/.test(sql)) return { rows: t.entitled ? [{ id: "sub-1" }] : [] };
       // Ordinary setup fixture has no separate successful Blueprint purchase.
       if (/FROM entitlements e/.test(sql)) return { rows: [] };
+      if (/FROM blueprint_fulfillment_engagements/.test(sql)) return { rows: [] };
       throw new Error("unexpected sql: " + sql);
     }
   };
@@ -321,6 +322,7 @@ describe("ensureFinanceOsForSetupPayment", () => {
         if (/FROM subscriptions/.test(sql)) return { rows: typeof entitled === "function" ? entitled() : entitled };
         // No Blueprint purchase is present in this setup-payment fixture.
         if (/FROM entitlements e/.test(sql)) return { rows: [] };
+      if (/FROM blueprint_fulfillment_engagements/.test(sql)) return { rows: [] };
         if (/INSERT INTO subscriptions/.test(sql)) {
           if (typeof insert === "function") return insert(params);
           return { rows: [{ id: "sub-new" }] };

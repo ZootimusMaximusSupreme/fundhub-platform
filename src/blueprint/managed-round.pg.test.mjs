@@ -47,7 +47,7 @@ for (const existing of [false,true]) test("paid staff takeover "+(existing ? "pr
       SELECT $1,$2,id,3000,10 FROM products WHERE org_id=$1 AND code='card-stacking-dfy'`,[orgId,clientId]);
     const help=await requestBlueprintHelp(db,scope,{serviceKind:"funding_round",idempotencyKey:"test_takeover_"+clientId});
     await quoteBlueprintHelp(db,{...scope,staffId:staff.id},{requestId:help.request.id,priceCents:120000});
-    await checkoutBlueprintHelp(db,scope,{requestId:help.request.id,authorization:true},{mint:async()=>({ok:true,checkoutUrl:"https://pay.example.test/synthetic"})});
+    await checkoutBlueprintHelp(db,scope,{requestId:help.request.id,authorization:true,expectedPriceCents:120000},{mint:async()=>({ok:true,checkoutUrl:"https://pay.example.test/synthetic"})});
     const evt={orgId,clientId,payload:{ref:help.request.id,amountCents:120000,paymentId:"synthetic-"+help.request.id,currency:"USD"}};
     assert.equal((await getBlueprintFulfillmentAccess(db,scope)).executionOwner,"client");
     assert.equal((await onPaidServicePaymentReceived({...evt,payload:{...evt.payload,amountCents:200}},db)).done,false);

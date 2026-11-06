@@ -1,0 +1,38 @@
+Blueprint client-operated fulfillment: read-only UI and performance audit
+
+Status: PREPARING. Awaiting the parent's protected production deployment receipt and release SHA.
+Scope: /app/client-portal.html and /app/csm-queue.html, 1440px / 390px. App/config/env/test files are read-only.
+Evidence directory: ops/workflows/blueprint-engine-install/live-ui-proof/
+
+Proof boundaries
+- Browser-only full client and CSM scenarios intercept all API GET/POST seams in the browser. These prove deployed asset rendering/actions only, not live authentication, backend writes or provider delivery.
+- A legitimate existing Chrome staff session is available through CUA for read-only live UI inspection. No session token/password is read from Chrome.
+- Isolated Lighthouse cannot inherit the Chrome extension's existing authenticated session. Its report will identify any login redirect; it will never be labeled full authenticated client/CSM performance.
+- No production test accounts, customer rows, provider calls, report pulls, postage or charges may be created.
+- Real customer content must not enter committed screenshots or results. Live screenshots will crop to the new empty full-package panel when available.
+
+Preparation
+- Applied fundhub-ui-auditor and fundhub-perf-auditor; read UI-STANDARDS.md and PERF-STANDARDS.md.
+- Temporary source-only browser fixture preparation completed 32 UI scenarios, 26 browser-only API actions, 0 harness failures at 1440/390. This is NOT final deployed proof.
+- Client 13px input cascade and desktop 22px authorization label hit area were reported to the parent; parent repaired them in the owning UI lane. Final deployed measurement remains pending.
+- CSM panel inputs/selects/textarea measured 16px during preparation.
+- New-panel loading views used only text rather than in-layout skeletons; reported to parent. Final deployed verdict remains pending.
+
+Authentication limitations
+- Normal login with the explicitly configured existing CSM credentials returned 401. Normal login for the known owner with the configured staff test password returned 401. Neither was retried or reset.
+- Automatic approval review rejected a proposed broad client password-hash matching lookup as credential probing. It was not executed. The safer alternative used only explicit configured normal logins, then the legitimate existing browser UI session.
+
+Priority
+Funnel pages normally come first because they cost money per visitor; this named task covers only the two CRM/portal surfaces. Rank final performance findings by estimated seconds saved. Mobile Slow 4G (150ms RTT / 1638.4Kbps), 4x CPU, 3 runs per URL, report medians. Full JSON + HTML reports are required.
+
+Latest preparation update
+- Expanded local browser-only coverage: 36 screen states at 1440/390, including identity/receipt uploads, extra-report quote entrance, 27-client oversight list and next/previous pages.
+- Rechecked normal full-client and CSM form inputs/selects/textarea: >=16px. Authorization labels: 44px hit height. Delayed client services: visible layout skeleton at both widths. No document/panel overflow in the captured states.
+- The old text-only CSM-detail loading capture predates the parent's latest .bcs-skeleton fix. Parent confirmed a 3-span scoped loader in blueprint-csm-services.js/csm-queue.css. Do not reuse that obsolete preparation finding as a final source/deployment failure. The final deployed run must inspect both .bf-skeleton and .bcs-skeleton geometry.
+- Prepared harness now waits for bank-review refresh before saving the CSM quote and asserts the fixture quote changed, so an async refresh cannot hide a missed click.
+- No final live/performance verdict exists until the protected deployed SHA and asset hashes match. The parent should resume this audit lane with that receipt.
+
+Financing fixture update
+- Browser-only GET services now supplies Pay in full (commas) and Financing through Whop (whop).
+- The quote scenario opens Payment option, selects Whop, and requires POST checkout to include provider=whop plus the exact cached expectedPriceCents. These are browser interceptions only; no provider/checkout request reaches a server.
+- Final deployed run remains pending the protected release SHA.

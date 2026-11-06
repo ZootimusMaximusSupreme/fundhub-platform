@@ -18,7 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { build, stale, OUT_DIR } from "./generate.mjs";
-import { extractAll, routes, roleSets, code, gateFor, reaches, JOURNEYS, REPO } from "./extract.mjs";
+import { extractAll, routes, roleSets, code, gateFor, wrapperGates, reaches, JOURNEYS, REPO } from "./extract.mjs";
 
 const data = extractAll();
 const files = build();
@@ -161,6 +161,64 @@ describe("the extraction is faithful to the code", () => {
       assert.match(endpoint.gate.note, /own client session and active paid Blueprint/);
       assert.equal(reaches({ type: "principal", subject: "client" }, endpoint.gate).reachable, true);
       assert.equal(reaches({ type: "role", subject: "owner" }, endpoint.gate).reachable, false);
+    }
+  });
+
+  test("full Blueprint routes trace their own paid client scope and separate staff limits", () => {
+    for (const key of ["blueprint/inquiries", "blueprint/repair"]) {
+      const gate = data.endpoints.find(row => row.key === key).gate;
+      assert.equal(gate.kind, "wrapper");
+      assert.deepEqual(gate.principals, ["client"]);
+      assert.match(gate.note, /fulfillment-access\.mjs.*exact paid full Blueprint purchase\/grant\/engagement/);
+      assert.match(gate.note, /completed purchase readback only/);
+      assert.equal(reaches({type:"principal",subject:"client"},gate).reachable,true);
+      assert.equal(reaches({type:"role",subject:"owner"},gate).reachable,false);
+    }
+    for (const [key, roles] of [["blueprint/funding",["owner","admin","csm","funding_advisor"]],
+      ["blueprint/services",["owner","admin","csm"]]]) {
+      const gate=data.endpoints.find(row=>row.key===key).gate;
+      assert.equal(gate.kind,"explicit-roles");
+      assert.deepEqual(gate.roles,roles);
+      assert.ok(gate.principals.includes("client") && gate.principals.includes("staff"));
+      assert.match(gate.note,/requireClientInOrg/);
+      assert.match(gate.note,/saved engagement/);
+      assert.equal(reaches({type:"principal",subject:"client"},gate).reachable,true);
+      for(const role of roles) assert.equal(reaches({type:"role",subject:role},gate).reachable,true);
+      for(const role of ["closer","setter","sales_manager","inquiry_specialist"]) {
+        assert.equal(reaches({type:"role",subject:role},gate).reachable,false);
+      }
+      assert.equal(reaches({type:"principal",subject:"partner"},gate).reachable,false);
+      assert.equal(reaches({type:"principal",subject:"affiliate"},gate).reachable,false);
+    }
+    const funding=data.endpoints.find(row=>row.key==="blueprint/funding").gate;
+    assert.match(funding.note,/GET clientId and POST review_bank_evidence/);
+    const services=data.endpoints.find(row=>row.key==="blueprint/services").gate;
+    assert.match(services.note,/only staff may quote\/offer and only clients may request\/checkout/);
+    assert.match(services.note,/company-scoped oversight/);
+  });
+
+  test("full Blueprint gate extraction stays unverified if either scoped branch loses its real gate", () => {
+    const source = file => fs.readFileSync(path.join(REPO,file),"utf8");
+    const helper="src/blueprint/fulfillment-access.mjs";
+    for (const [from,to] of [
+      ["g.org_id=$1 AND g.client_id=$2","g.client_id=$2"],
+      ["engagement.status !== \"active\"","engagement.status !== \"other\""],
+      ["[\"client\"]","[\"staff\"]"]
+    ]) {
+      assert.ok(source(helper).includes(from));
+      const wrappers=wrapperGates({readSource:file=>file===helper ? source(file).replace(from,to) : source(file)});
+      assert.match(wrappers.requireBlueprintFulfillmentScope.unverified,/changed and must be traced/);
+    }
+    for (const [file,from,to] of [
+      ["api/blueprint/funding.mjs","(deps.requireClientInOrg || requireClientInOrg)","unscopedClient"],
+      ["api/blueprint/funding.mjs","![\"owner\",\"admin\",\"csm\",\"funding_advisor\"].includes(staff.role)","false"],
+      ["api/blueprint/services.mjs","(deps.requireClientInOrg || requireClientInOrg)","unscopedClient"],
+      ["api/blueprint/services.mjs","!STAFF_ROLES.has(String(staff.role || \"\").toLowerCase())","false"]
+    ]) {
+      assert.ok(source(file).includes(from));
+      const gate=gateFor(file,{sets:data.roleSets,wrappers:wrapperGates(),
+        readSource:target=>target===file ? source(target).replace(from,to) : source(target)});
+      assert.equal(gate.kind,"unverified");
     }
   });
 

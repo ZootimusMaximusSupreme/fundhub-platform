@@ -45,6 +45,7 @@ export const CONSENT_SECTION_NUMBERED = [
     send. The soft-pull authorization, staff and partner agreements are not client
     service agreements. Kept equal to DECK_CONTRACT_KEYS by the test. */
 export const CLIENT_AGREEMENT_KEYS = Object.freeze([
+  "BLUEPRINT-SELF-FUNDING-AGREEMENT",
   "CAPITAL-BLUEPRINT-AGREEMENT",
   "CREDIT-REPAIR-AGREEMENT",
   "FUNDING-AGREEMENT",
@@ -54,4 +55,4 @@ export const CLIENT_AGREEMENT_KEYS = Object.freeze([
 ]);
 
 /** The two executed documents use numbered sections; the rest use capitals headings. */
-export const NUMBERED_AGREEMENT_KEYS = Object.freeze(["CAPITAL-BLUEPRINT-AGREEMENT", "FUNDING-MASTERY-AGREEMENT"]);
+export const NUMBERED_AGREEMENT_KEYS = Object.freeze(["BLUEPRINT-SELF-FUNDING-AGREEMENT", "CAPITAL-BLUEPRINT-AGREEMENT", "FUNDING-MASTERY-AGREEMENT"]);

@@ -137,6 +137,10 @@ function principalsFromRequirePrincipal(src) {
   const clean = code(src);
   let m = /requirePrincipal\(\s*req\s*,\s*res\s*,\s*\[([^\]]*)\]/.exec(clean);
   if (!m) {
+    // A direct dependency-injection fallback is still the named production gate.
+    m = /\(deps\.requirePrincipal\s*(?:\?\?|\|\|)\s*requirePrincipal\)\(\s*req\s*,\s*res\s*,\s*\[([^\]]*)\]/.exec(clean);
+  }
+  if (!m) {
     // Dependency-injected handlers keep the production gate as the fallback:
     //   const auth = deps.requirePrincipal ?? requirePrincipal;
     //   await auth(req, res, ["staff"], ...)
@@ -153,18 +157,18 @@ function principalsFromRequirePrincipal(src) {
 }
 
 /** The gates of the shared wrappers, traced rather than assumed. */
-export function wrapperGates() {
+export function wrapperGates({ readSource = read } = {}) {
   const out = {};
 
   if (exists("src/http/partner-read-api.mjs")) {
-    const kinds = principalsFromRequirePrincipal(read("src/http/partner-read-api.mjs"));
+    const kinds = principalsFromRequirePrincipal(readSource("src/http/partner-read-api.mjs"));
     out.partnerReadHandler = kinds
       ? { principals: kinds, note: "via src/http/partner-read-api.mjs" }
       : { unverified: "partner-read-api.mjs has no requirePrincipal call this parser recognises" };
   }
 
   if (exists("src/http/dashboard-auth.mjs")) {
-    const src = code(read("src/http/dashboard-auth.mjs"));
+    const src = code(readSource("src/http/dashboard-auth.mjs"));
     const secretFallback = /DASHBOARD_SECRET/.test(src);
     out.requireDashboardAccess = {
       principals: ["staff"],
@@ -176,12 +180,31 @@ export function wrapperGates() {
   }
 
   if (exists("api/blueprint/business-plans.mjs")) {
-    const src = code(read("api/blueprint/business-plans.mjs"));
+    const src = code(readSource("api/blueprint/business-plans.mjs"));
     const kinds = principalsFromRequirePrincipal(src);
     const paidGate = /await \(deps\.isBlueprintCoachClient \|\| isBlueprintCoachClient\)/.test(src);
     out.requireBlueprintPlanScope = kinds && paidGate
       ? { principals: kinds, note: "via api/blueprint/business-plans.mjs — own client session and active paid Blueprint access" }
       : { unverified: "Blueprint plan session or paid-access gate changed and must be traced" };
+  }
+
+  if (exists("src/blueprint/fulfillment-access.mjs")) {
+    const src = code(readSource("src/blueprint/fulfillment-access.mjs"));
+    const kinds = principalsFromRequirePrincipal(src);
+    const scoped = /principal\.kind\s*!==\s*"client"/.test(src)
+      && /!principal\.orgId\s*\|\|\s*!principal\.clientId\s*\|\|\s*!principal\.accountId/.test(src)
+      && /getBlueprintFulfillmentAccess\)\(db,\s*\{\s*orgId,\s*clientId,\s*now\s*\}\)/.test(src)
+      && /if\s*\(!engagement\)/.test(src)
+      && /g\.org_id=\$1 AND g\.client_id=\$2/.test(src)
+      && /e\.org_id=g\.org_id AND e\.client_id=g\.client_id/.test(src)
+      && /t\.org_id=g\.org_id AND t\.client_id=g\.client_id/.test(src)
+      && /p\.code=\$3 AND e\.entitlement_code=\$4/.test(src)
+      && /lower\(btrim\(t\.status\)\)='succeeded'/.test(src)
+      && /engagement\.status\s*!==\s*"active"/.test(src)
+      && /engagement\.executionOwner\s*!==\s*"client"/.test(src);
+    out.requireBlueprintFulfillmentScope = kinds?.length === 1 && kinds[0] === "client" && scoped
+      ? { principals: kinds, note: "via src/blueprint/fulfillment-access.mjs — own client session and exact paid full Blueprint purchase/grant/engagement; completed purchase readback only; writes require active engagement and client operation unless managed writes are explicitly enabled" }
+      : { unverified: "Blueprint fulfillment session, purchase identity or active-write gate changed and must be traced" };
   }
 
   return out;
@@ -209,11 +232,11 @@ export function gateFor(file, ctx) {
   return narrowStaff(primaryGate(file, ctx), file, ctx);
 }
 
-function primaryGate(file, { sets, wrappers }) {
+function primaryGate(file, { sets, wrappers, readSource = read }) {
   if (!file || !exists(file)) {
     return { kind: "unverified", roles: null, principals: null, note: `handler file ${file || "?"} not found on disk` };
   }
-  const src = code(read(file));
+  const src = code(readSource(file));
 
   // An MFA challenge is not an open public route and not an existing staff
   // session. The token is minted only after a staff password check, expires,
@@ -231,7 +254,66 @@ function primaryGate(file, { sets, wrappers }) {
         note: "staff MFA challenge gate changed and must be traced again" };
   }
 
-  // Shared wrappers first: the handler delegates and has no gate of its own.
+  // These two Blueprint routes have separate client and staff branches. Trace
+  // both before the client wrapper; otherwise staff review disappears from the map.
+  if (["api/blueprint/funding.mjs", "api/blueprint/services.mjs"].includes(file)) {
+    const clientGate = wrappers.requireBlueprintFulfillmentScope;
+    const unresolved = note => ({ kind: "unverified", roles: null, principals: null, note });
+    if (!clientGate || clientGate.unverified) return unresolved(clientGate?.unverified || "Blueprint fulfillment wrapper could not be traced");
+    const kinds = principalsFromRequirePrincipal(src);
+    const scopedStaff = /\(deps\.requireClientInOrg\s*\|\|\s*requireClientInOrg\)\(res,\s*(?:database|db),\s*staff,\s*(?:scope\.clientId|clientId)\)/.test(src);
+    if (file === "api/blueprint/funding.mjs") {
+      const roles = /!\[([^\]]+)\]\.includes\(staff\.role\)/.exec(src);
+      const quoted = roles && [...roles[1].matchAll(/"([^"]+)"/g)].map(match => match[1]);
+      const routed = /return await staffReview\(req,res,deps\)/.test(src)
+        && /req\.body\?\.action===\s*"review_bank_evidence"/.test(src)
+        && /Object\.hasOwn\(req\.query\s*\|\|\s*\{\},"clientId"\)/.test(src)
+        && /await \(deps\.requireBlueprintFulfillmentScope\s*\|\|\s*requireBlueprintFulfillmentScope\)\(req,res,deps\)/.test(src)
+        && /getBlueprintFulfillmentAccess\)\(database,scope\)/.test(src)
+        && /if\s*\(!scope\.engagement\)/.test(src);
+      if (!scopedStaff || !routed || !quoted?.length || kinds?.join(",") !== "staff") {
+        return unresolved("Blueprint funding client/staff branch or same-company review gate changed and must be traced");
+      }
+      return { kind: "explicit-roles", roles: quoted, principals: ["client", "staff"],
+        note: `${clientGate.note}; staff GET clientId and POST review_bank_evidence use requirePrincipal(staff), ${quoted.join(", ")} roles, requireClientInOrg and that client's saved engagement` };
+    }
+    const roles = /const STAFF_ROLES\s*=\s*new Set\(\[([^\]]+)\]\)/.exec(src);
+    const quoted = roles && [...roles[1].matchAll(/"([^"]+)"/g)].map(match => match[1]);
+    const routed = /principal\.kind\s*===\s*"client"/.test(src)
+      && /scope\s*=\s*await access\.requireBlueprintFulfillmentScope\(req,\s*res,/.test(src)
+      && /allowManagedWrites:\s*true/.test(src)
+      && /!STAFF_ROLES\.has\(String\(staff\.role\s*\|\|\s*""\)\.toLowerCase\(\)\)/.test(src)
+      && /access\.getBlueprintFulfillmentAccess\(database,\s*\{\s*orgId:\s*staff\.org_id,\s*clientId\s*\}\)/.test(src)
+      && /if\s*\(!engagement\)/.test(src)
+      && /if\s*\(!isUuid\(staff\.org_id\)\)/.test(src)
+      && /scope\.engagement\.status\s*!==\s*"active"/.test(src)
+      && /\["quote",\s*"offer"\]\.includes\(input\.action\)\s*!==\s*!!scope\.staffId/.test(src);
+    if (!scopedStaff || !routed || !quoted?.length || kinds?.join(",") !== "staff,client") {
+      return unresolved("Blueprint services client/staff branch or same-company quote gate changed and must be traced");
+    }
+    return { kind: "explicit-roles", roles: quoted, principals: ["staff", "client"],
+      note: `${clientGate.note}; clients may request/checkout owned work including managed engagements; ${quoted.join(", ")} staff roles may quote/offer for requireClientInOrg clients with a saved engagement, or read company-scoped oversight; only staff may quote/offer and only clients may request/checkout` };
+  }
+
+  // A signed public door can coexist with staff actions and a paid client wrapper.
+  // Preserve that door before treating the whole handler as a single wrapper.
+  const signedToken = /verify\w*(Token|Url|Request)\s*\(/.test(src) && /\bsig\b/.test(src) && /\bexp\b/.test(src);
+  if (signedToken) {
+    const staffBranch = /require(Auth|Role|Principal)/.test(src);
+    return {
+      kind: "verified-other", roles: null, principals: null, verifiedBy: "signed link",
+      note: "no sign-in needed, and NOT open — the link carries a signature and an expiry, " +
+            "and the check fails closed when either is missing" +
+            (staffBranch
+              ? ". A SECOND DOOR on the same path is staff-only, behind the ordinary session gate"
+              : "") +
+            (/requireBlueprintFulfillmentScope/.test(src)
+              ? "; the Blueprint portal mode separately requires the signed-in client's own active paid full engagement"
+              : "")
+    };
+  }
+
+  // Shared wrappers: the handler delegates and has no other entry gate.
   for (const [name, gate] of Object.entries(wrappers)) {
     if (new RegExp(`\\b${name}\\b`).test(src)) {
       if (gate.unverified) return { kind: "unverified", roles: null, principals: null, note: gate.unverified };
@@ -312,25 +394,6 @@ function primaryGate(file, { sets, wrappers }) {
       principals: declared ? ["staff", ...declared] : null,
       note: `readHandler, roles ${resolved.label}` +
             (declared ? `, also open to ${declared.join(", ")} by principal kind` : "")
-    };
-  }
-
-  /* A SIGNED PUBLIC DOOR MAY SHARE ITS HANDLER WITH A STAFF-ONLY ACTION.
-     Read this before the ordinary staff gates below. Otherwise adding a
-     requireAuth branch for one action makes the extractor hide the signed
-     public door for every other method. api/soft-pull-approve.mjs is the
-     concrete case: GET and the consent POST use an expiring signed link, while
-     stamp_incorporated is a separate staff action in the same file. */
-  const signedToken = /verify\w*(Token|Url|Request)\s*\(/.test(src) && /\bsig\b/.test(src) && /\bexp\b/.test(src);
-  if (signedToken) {
-    const staffBranch = /require(Auth|Role|Principal)/.test(src);
-    return {
-      kind: "verified-other", roles: null, principals: null, verifiedBy: "signed link",
-      note: "no sign-in needed, and NOT open — the link carries a signature and an expiry, " +
-            "and the check fails closed when either is missing" +
-            (staffBranch
-              ? ". A SECOND DOOR on the same path is staff-only, behind the ordinary session gate"
-              : "")
     };
   }
 

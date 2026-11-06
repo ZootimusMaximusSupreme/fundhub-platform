@@ -18,6 +18,15 @@ function dependencies(principal, over = {}) {
       checkoutBlueprintHelp: operation, requestBlueprintReport: operation }, ...over };
 }
 
+test("the client checkout route forwards the exact displayed price in cents", async () => {
+  const deps = dependencies({ kind: "client" });
+  const res = response();
+  const body = { action: "checkout", requestId: engagement.id, authorization: true, expectedPriceCents: 127500, provider: "whop" };
+  await handler({ method: "POST", body }, res, deps);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(deps.calls[0].input, body);
+});
+
 test("a client cannot quote a service or substitute a different client", async () => {
   const deps = dependencies({ kind: "client" });
   for (const body of [{ action: "quote", requestId: engagement.id, priceCents: 100 },
@@ -36,7 +45,7 @@ test("CSM can read and quote its client but cannot purchase as that client", asy
   assert.equal(res.statusCode, 200);
   assert.equal(deps.calls[0].scope.staffId, "staff");
   const denied = response();
-  await handler({ method: "POST", query: { client_id: clientId }, body: { action: "checkout", requestId: engagement.id, authorization: true } }, denied, deps);
+  await handler({ method: "POST", query: { client_id: clientId }, body: { action: "checkout", requestId: engagement.id, authorization: true, expectedPriceCents: 3200 } }, denied, deps);
   assert.equal(denied.statusCode, 403);
   assert.equal(deps.calls.length, 1);
 });

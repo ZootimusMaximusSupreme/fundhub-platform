@@ -163,7 +163,7 @@
       } else if (state.mode === "knowledge") {
         addMsg("Ask about company SOPs, scripts, and Drive knowledge. Same rules as Company Brain.");
       } else if (isPortal) {
-        addMsg(hadCall
+        addMsg(hadCall || document.body.dataset.blueprintFulfillment
           ? "Message your Fundhub team. Replies show in their inbox."
           : PRECALL_GREETING);
       } else {
@@ -576,6 +576,7 @@
     }
 
     fab.onclick = function () {
+      delete panel.dataset.autoPrecall;
       panel.classList.toggle("open");
       if (panel.classList.contains("open")) {
         paintModes();
@@ -596,6 +597,7 @@
       }
     };
     document.getElementById("fh-chat-close").onclick = function () {
+      delete panel.dataset.autoPrecall;
       panel.classList.remove("open");
       syncPoll();
     };
@@ -610,7 +612,9 @@
       var popMs = Number(opts.popAfterMs);
       if (!Number.isFinite(popMs) || popMs < 0) popMs = 1400;
       setTimeout(function () {
+        if (document.body.dataset.blueprintFulfillment) return;
         if (panel.classList.contains("open")) return;
+        panel.dataset.autoPrecall = "true";
         panel.classList.add("open");
         paintModes();
         paintFoot();

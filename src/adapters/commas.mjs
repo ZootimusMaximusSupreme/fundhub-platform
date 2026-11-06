@@ -1,3 +1,4 @@
+import { lookupBlueprintServiceReceipt } from '../blueprint/service-payment-identity.mjs';
 // Commas (formerly FanBasis) payment adapter — Master Rebuild Spec Phase 1 (B2).
 //
 // Commas IS the payment processor. In the platform model an adapter does exactly
@@ -416,7 +417,8 @@ export const PURPOSE_PRODUCT = Object.freeze({
 const PRODUCT_CODE_BUCKET = Object.freeze({
   diagnostic: "crs",
   "card-stacking-dfy": "deposit",
-  "consulting-package": "diy"
+  "consulting-package": "diy",
+  "blueprint-self-funding": "diy"
 });
 
 // Product bucket from a normalized event: "crs" | "deposit" | "success_fee" | "diy" | "unmatched".
@@ -840,6 +842,7 @@ export async function processCommasInboxRow(row, db) {
     evt.paymentLinkId = link.id || null;
     evt.productId = link.product_id || null;
     evt.productCode = link.product_code || null;
+    if (evt.productCode === "blueprint-self-funding") evt.name = evt.productCode;
     evt.saleId = link.sale_id || null;
     evt.saleMotion = link.sale_motion || null;
     evt.closerId = link.closer_staff_id || null;
@@ -896,11 +899,25 @@ export async function processCommasInboxRow(row, db) {
       dueBy: evt.dueBy, // dispute response deadline, when the event carries one
       source: "commas"
     };
+    let recipientClientId = clientId;
+    if (c.name === "payment.received") {
+      const service = await lookupBlueprintServiceReceipt(db, {
+        orgId: row.org_id, clientId, payload
+      });
+      if (service?.matched) {
+        if (!service.valid) throw new Error("The paid service receipt does not match its saved request");
+        payload.productName = service.productName;
+        payload.productCode = service.productCode;
+        payload.productId = null;
+        payload.paidServiceRequestId = service.requestId;
+        recipientClientId = service.clientId;
+      }
+    }
     const res = await emit(db, c.name, payload, {
       orgId: row.org_id,
       /* WHOSE payment this is. May be null — an unattributable payment must
          stay unattributed rather than be attached to a guess. */
-      clientId,
+      clientId: recipientClientId,
       idempotencyKey: `commas:${row.dedupe_key}:${c.name}`
     });
     emitted.push({ name: c.name, id: res.id, deduped: res.deduped });

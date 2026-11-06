@@ -37,7 +37,7 @@ export const OUTBOUND_ROUTE_TEST = "src/http/s2-message-routes-outbound.test.mjs
 export const STAFF_UI_RUNNER_TEST = "src/pulse/catalog/proofs/display-batch-staff-ui.test.mjs";
 
 /** The four offers the deck sells without a sale motion (src/sales/closer-deck.mjs sendDeckPayLink). */
-export const PRIMARY_PAY_OFFER_KEYS = Object.freeze(["FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY"]);
+export const PRIMARY_PAY_OFFER_KEYS = Object.freeze(["FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY", "BLUEPRINT_SELF_FUNDING"]);
 
 const sqlText = (value) => `'${String(value).replace(/'/g, "''")}'`;
 const softPullCents = getOffer("SOFT_PULL").priceCents;

@@ -76,6 +76,10 @@ flowchart TD
 - **Reading data** (7 routes) — should stay blocked.
 - **Everything else** (4 routes) — should stay blocked.
 
+## Full Blueprint funding review — owner-approved November 6, 2026
+
+A funding advisor may read a named same-company full Blueprint file and review its submitted bank evidence through `blueprint/funding`. The staff session, explicit funding-review role, company/client match and saved engagement are required. This branch does not grant access to client-only inquiry/repair actions, client checkout, or the owner/admin/CSM services quote/offer branch. A client-reported approval remains unverified until its exact scoped bank evidence is accepted.
+
 ## Comparing this against reality
 
 Run `npm run journeys` and read [`role-funding-advisor-actual.md`](./role-funding-advisor-actual.md). There is no automated

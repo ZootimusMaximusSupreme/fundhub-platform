@@ -24,8 +24,8 @@ test("paid help only releases its customer when the exact inquiry case or repair
     const scope={orgId,clientId,accountId,engagement:await getBlueprintFulfillmentAccess(db,{orgId,clientId}),now:new Date()};
     async function buy(kind,targetId) {
       const help=await requestBlueprintHelp(db,scope,{serviceKind:kind,targetId,idempotencyKey:"synthetic_"+randomUUID()});
-      if (!help.request.priceCents) await quoteBlueprintHelp(db,{...scope,staffId},{requestId:help.request.id,priceCents:99000});
-      const link=await checkoutBlueprintHelp(db,scope,{requestId:help.request.id,authorization:true},{mint:async()=>({ok:true,checkoutUrl:"https://checkout.example.test"})});
+      const quote=help.request.priceCents ? help : await quoteBlueprintHelp(db,{...scope,staffId},{requestId:help.request.id,priceCents:99000});
+      const link=await checkoutBlueprintHelp(db,scope,{requestId:help.request.id,authorization:true,expectedPriceCents:quote.request.priceCents},{mint:async()=>({ok:true,checkoutUrl:"https://checkout.example.test"})});
       const amount=link.request.priceCents;
       const event={orgId,clientId,payload:{ref:help.request.id,amountCents:amount,paymentId:"help-"+help.request.id,currency:"USD"}};
       const payment=await onPaidServicePaymentReceived(event,db);
@@ -49,6 +49,12 @@ test("paid help only releases its customer when the exact inquiry case or repair
     const repairCase=(await db.query("INSERT INTO dispute_cases(org_id,client_id,bureau,round) VALUES($1,$2,'EX','R1') RETURNING id",[orgId,clientId])).rows[0].id;
     const repairItem=(await db.query("INSERT INTO dispute_items(org_id,client_id,case_id,rule_id,severity,round,status) VALUES($1,$2,$3,'synthetic','medium','R1','open') RETURNING id",[orgId,clientId,repairCase])).rows[0].id;
     const program=(await db.query("INSERT INTO repair_programs(org_id,client_id,program,rounds_cap,price_total,status) VALUES($1,$2,'full',6,1000,'active') RETURNING id",[orgId,clientId])).rows[0].id;
+    const history=(await db.query(`INSERT INTO dispute_cases(org_id,client_id,bureau,round,status,created_at,updated_at)
+      VALUES($1,$2,'EQ','R3','cancelled',now()-interval '2 days',now()-interval '1 day'),
+            ($1,$2,'TU','R2','closed',now()-interval '2 days',now()-interval '1 day') RETURNING id,status`,[orgId,clientId])).rows;
+    // A leftover item in an already cancelled case cannot enroll that case in this purchase.
+    await db.query("INSERT INTO dispute_items(org_id,client_id,case_id,rule_id,severity,round,status) VALUES($1,$2,$3,'synthetic-old','medium','R3','open')",
+      [orgId,clientId,history.find(c=>c.status==="cancelled").id]);
     const roundHelp=await buy("repair_round",repairCase);
     const fullHelp=await buy("repair_full",clientId);
     await db.query(`INSERT INTO dispute_letters(org_id,client_id,case_id,bureau,round,status,body_text,send_claimed_at,mailed_at,postgrid_letter_id)
@@ -72,9 +78,17 @@ test("paid help only releases its customer when the exact inquiry case or repair
     await db.query("UPDATE dispute_items SET status='deleted' WHERE id=$1",[repairItem]);
     const finishedRound=await reconcile(roundHelp); assert.equal(finishedRound.completed,1,JSON.stringify(finishedRound));
     assert.deepEqual(await receipt(roundHelp),{status:"fulfilled",produced_kind:"dispute_response",produced_ref:response});
+    await db.query("UPDATE dispute_cases SET status='stalled', updated_at=clock_timestamp() WHERE id=$1",[repairCase]);
+    const stalled=await reconcile(fullHelp);
+    assert.equal(stalled.completed,0);assert.equal(stalled.waiting,1,"a current stalled case still holds the full program");
+    await db.query("UPDATE dispute_cases SET status='round_complete', updated_at=clock_timestamp() WHERE id=$1",[repairCase]);
     const finishedFull=await reconcile(fullHelp); assert.equal(finishedFull.completed,1,JSON.stringify(finishedFull));
     assert.deepEqual(await receipt(fullHelp),{status:"fulfilled",produced_kind:"repair_program",produced_ref:program});
     assert.equal((await db.query("SELECT status FROM repair_programs WHERE id=$1",[program])).rows[0].status,"complete");
+    const completedCases=(await db.query("SELECT produced->'completion'->'cases' AS cases FROM paid_service_requests WHERE id=$1",[fullHelp])).rows[0].cases;
+    assert.deepEqual(completedCases.map(c=>c.caseId),[repairCase]);
+    const oldCases=(await db.query("SELECT id,status FROM dispute_cases WHERE id=ANY($1::uuid[]) ORDER BY id",[history.map(c=>c.id)])).rows;
+    assert.deepEqual(oldCases,history.sort((a,b)=>a.id.localeCompare(b.id)));
     const active=await readActiveBlueprintServices(db,{orgId,clientId,engagementId:scope.engagement.id});
     assert.equal(active.length,0);
     assert.equal((await reconcile(fullHelp)).checked,0,"replay never repeats completion");

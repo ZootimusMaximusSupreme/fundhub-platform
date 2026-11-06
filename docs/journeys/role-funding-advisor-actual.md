@@ -20,7 +20,7 @@ flowchart TD
     CAN --> A_analytics[analytics — 4 routes]
     CAN --> A_auth[Signing in and out — 7 routes]
     CAN --> A_banking[banking — 1 route]
-    CAN --> A_blueprint[blueprint — 2 routes]
+    CAN --> A_blueprint[blueprint — 3 routes]
     CAN --> A_campaigns[Campaigns — 10 routes]
     CAN --> A_chat[chat — 3 routes]
     CAN --> A_climate[climate — 2 routes]
@@ -47,11 +47,11 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 174 routes]
+    WHO -->|Yes| CANT[Blocked — 177 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_auth[Signing in and out — 9 blocked]
     CANT --> B_banking[banking — 6 blocked]
-    CANT --> B_blueprint[blueprint — 3 blocked]
+    CANT --> B_blueprint[blueprint — 6 blocked]
     CANT --> B_brand[brand — 1 blocked]
     CANT --> B_chat[chat — 1 blocked]
     CANT --> B_company_brain[company-brain — 2 blocked]
@@ -81,7 +81,7 @@ flowchart TD
 
 ## What they can reach
 
-**178 of 352 routes.**
+**179 of 356 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -102,6 +102,7 @@ flowchart TD
 | `/api/auth/session` | — | anyone |
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/blueprint/declines` | GET, POST | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
+| `/api/blueprint/funding` | GET, POST | employees: owner, admin, csm, funding_advisor<br>plus: client |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET, POST | staff, client |
 | `/api/campaigns/action-log` | GET | partner, staff |
@@ -273,7 +274,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**174 of 352 routes.**
+**177 of 356 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -299,8 +300,11 @@ flowchart TD
 | `/api/banking/sync-liabilities` | POST | owner, admin, sales_manager, closer |
 | `/api/banking/sync-transactions` | POST | owner, admin, sales_manager, closer |
 | `/api/blueprint/business-plans` | GET, POST | client |
+| `/api/blueprint/inquiries` | GET, POST | client |
 | `/api/blueprint/letter-mailing` | — | client |
 | `/api/blueprint/plan` | — | client |
+| `/api/blueprint/repair` | GET, POST | client |
+| `/api/blueprint/services` | GET, POST | employees: owner, admin, csm<br>plus: client |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
 | `/api/call-outcomes` | POST | owner, admin, closer, sales_manager |
 | `/api/chat/portal-message` | GET, POST | client |

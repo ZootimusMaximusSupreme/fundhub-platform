@@ -40,3 +40,12 @@ test("repair gateway rejects arbitrary rounds, staff flags, client clear and for
   const res = response(); await handler({ method: "POST", body: { action: "generate", idempotencyKey: "prepare-1" } }, res, deps);
   assert.equal(calls, 1); assert.equal(res.statusCode, 200);
 });
+
+test("repair API permits managed funding without granting ownership of repair services", async () => {
+  const managed = { ...scope, engagement: { ...scope.engagement, executionOwner: "fundhub" } };
+  const deps = { requireBlueprintFulfillmentScope: async (_req, _res, options) => {
+    assert.equal(options.allowManagedWrites, true); return managed;
+  }, services: { generate: async (_db, received) => { assert.equal(received, managed); return { ok: true }; } } };
+  const res = response(); await handler({ method: "POST", body: { action: "generate" } }, res, deps);
+  assert.equal(res.statusCode, 200);
+});

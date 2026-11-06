@@ -42,3 +42,12 @@ test("saved-evidence check accepts request metadata without granting client proo
   await handler({ method: "POST", body: { action: "check_evidence", caseId: "case", idempotencyKey: "saved-check-1", verified: true } }, forbidden, deps);
   assert.equal(forbidden.statusCode, 400); assert.equal(calls, 1);
 });
+
+test("inquiry API scopes managed funding writes to the case service", async () => {
+  const managed = { ...scope, engagement: { ...scope.engagement, executionOwner: "fundhub" } };
+  const deps = { requireBlueprintFulfillmentScope: async (_req, _res, options) => {
+    assert.equal(options.allowManagedWrites, true); return managed;
+  }, services: { checkEvidence: async (_db, received) => { assert.equal(received, managed); return { ok: true }; } } };
+  const res = response(); await handler({ method: "POST", body: { action: "check_evidence", caseId: "case" } }, res, deps);
+  assert.equal(res.statusCode, 200);
+});

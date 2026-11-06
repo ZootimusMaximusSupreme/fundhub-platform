@@ -71,18 +71,30 @@ export function parseDueBy(value) {
  * Reversals never change the original financial ledger here. */
 export async function knownReversalClient(db, event) {
   const orgId = event?.orgId;
-  const ref = event?.payload?.paymentId || event?.payload?.providerRef || null;
+  const ref = event?.payload?.originalProviderRef || event?.payload?.paymentId || event?.payload?.providerRef || null;
+  const provider = event?.payload?.source || 'commas';
+  if (!['commas','whop'].includes(provider)) return null;
   if (!orgId || !ref) return null;
   const original = await db.query(
     `SELECT t.client_id
        FROM transactions t
        JOIN clients c ON c.id = t.client_id AND c.org_id = t.org_id
       WHERE t.org_id = $1 AND t.provider_ref = $2
-        AND t.provider = 'commas' AND t.status = 'succeeded'
+        AND t.provider = $3 AND t.status = 'succeeded'
       LIMIT 1`,
-    [orgId, String(ref)]
+    [orgId, String(ref), provider]
   );
-  return original.rows[0]?.client_id || null;
+  if (original.rows[0]?.client_id) return original.rows[0].client_id;
+  const requestId = event?.payload?.paidServiceRequestId;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId || '')) return null;
+  const service = await db.query(`SELECT p.client_id FROM paid_service_requests p
+    JOIN blueprint_client_services s ON s.id=p.id AND s.org_id=p.org_id AND s.client_id=p.client_id
+    JOIN clients c ON c.id=p.client_id AND c.org_id=p.org_id
+    WHERE p.id=$1 AND p.org_id=$2 AND p.payment_ref=$3 AND s.payment_ref=p.payment_ref
+      AND s.checkout_provider=$4 AND p.status IN ('paid','staged','fulfilled','refunded')
+      AND p.paid_at IS NOT NULL AND p.amount_paid_cents=p.price_total_cents
+      AND ($4<>'whop' OR s.whop_payment_id=$3) LIMIT 1`, [requestId, orgId, String(ref), provider]);
+  return service.rows[0]?.client_id || null;
 }
 
 function requireReversalClient(event, clientId) {
@@ -102,7 +114,7 @@ export async function onPaymentDisputed(event, db) {
 
   const deadline = dueAt
     ? `Respond by ${dueAt.toISOString().slice(0, 10)}.`
-    : "NO DEADLINE WAS SUPPLIED by the processor — check the Commas dashboard for the response date before assuming there is time.";
+    : "NO DEADLINE WAS SUPPLIED by the processor — check the payment provider dashboard for the response date before assuming there is time.";
 
   const title = `URGENT — payment disputed: ${money(p.amount)}${p.productName ? ` (${p.productName})` : ""}`;
 
@@ -117,7 +129,7 @@ export async function onPaymentDisputed(event, db) {
     body: [
       `A chargeback was opened against ${money(p.amount)}.`,
       p.email ? `Customer: ${p.email}.` : null,
-      p.paymentId ? `Commas payment id: ${p.paymentId}.` : null,
+      p.paymentId ? `${p.source === 'whop' ? 'Whop' : 'Commas'} payment id: ${p.paymentId}.` : null,
       deadline,
       "Missing the deadline forfeits the money automatically. The ledger has NOT been adjusted — do that only once the dispute is resolved."
     ].filter(Boolean).join(" ")
@@ -142,7 +154,7 @@ export async function onPaymentRefunded(event, db) {
     body: [
       `${money(p.amount)} was refunded.`,
       p.email ? `Customer: ${p.email}.` : null,
-      p.paymentId ? `Commas payment id: ${p.paymentId}.` : null,
+      p.paymentId ? `${p.source === 'whop' ? 'Whop' : 'Commas'} payment id: ${p.paymentId}.` : null,
       "Commission and entitlements were NOT adjusted — clawback policy is undecided (src/commissions/commission-model-open-questions.md)."
     ].filter(Boolean).join(" ")
   });

@@ -33,7 +33,7 @@ function bookTables({ lenders = [], inquiries = [], businesses = [], custom_fiel
     [/^\s*SELECT entity_data\s+FROM businesses/i, (s, p) => rowsWhere(biz, s, p)],
     [/^\s*SELECT addresses\s+FROM pii_identity/i, (s, p) => (addresses ? rowsWhere([{ org_id: ORG_ID, client_id: CLIENT, addresses }, { org_id: OTHER_ORG_ID, client_id: CLIENT, addresses: [{ address_state: "NV" }] }], s, p) : [])],
     [/^\s*SELECT result, outcome_tier, created_at\s+FROM crs_results/i, []],
-    [/^\s*SELECT bureau, status, created_at\s+FROM inquiry_log/i, (s, p) => rowsWhere(inq, s, p)],
+    [/^\s*SELECT bureau, status, created_at,\s+removal_verified_at,\s+removal_verified_report_id,\s+removal_verified_document_id\s+FROM inquiry_log/i, (s, p) => rowsWhere(inq, s, p)],
     [/^\s*SELECT demo_mode_enabled FROM orgs WHERE id = \$1/i, [{ demo_mode_enabled: demoMode }]],
     [/FROM lenders\s+WHERE/i, (s, p) => {
       let rows = rowsWhere(lenders, s, p);

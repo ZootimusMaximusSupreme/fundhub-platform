@@ -89,7 +89,12 @@ export const TRIPWIRES = Object.freeze({
   "route:auth/magic-link-verify": { impact: "customer", checks: ["gap:auth-magic-link-dead", "gap:auth-signin-no-session"] },
   "route:auth/send-portal-link": { impact: "customer", checks: ["gap:auth-magic-link-dead"] },
   "page:portal-login.html": { impact: "customer", checks: ["gap:auth-magic-link-dead", "portal:paid-client-never-signed-in"] },
-  "desk:client-portal.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:paid-entitlement", "portal:next-step", "blueprint:preparation-evidence", "blueprint:letter-mailing", "blueprint:response-validation"] },
+  "desk:client-portal.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:paid-entitlement", "portal:next-step", "blueprint:preparation-evidence", "blueprint:letter-mailing", "blueprint:response-validation", "blueprint-full:paid-installation", "blueprint-full:round-access", "blueprint-full:report-delivery"] },
+  "route:blueprint/funding": { impact: "customer", checks: ["blueprint-full:paid-installation", "blueprint-full:round-access", "blueprint-full:funding-evidence"] },
+  "route:blueprint/inquiries": { impact: "customer", checks: ["blueprint-full:inquiry-evidence", "blueprint-full:inquiry-calls"] },
+  "route:blueprint/repair": { impact: "customer", checks: ["blueprint-full:repair-evidence"] },
+  "route:blueprint/services": { impact: "money", checks: ["blueprint-full:paid-help", "blueprint-full:report-delivery"] },
+  "job:blueprint-bank-evidence": { impact: "customer", checks: ["blueprint-full:funding-evidence", "blueprint-full:round-access", "blueprint-full:paid-help", "blueprint-full:report-delivery"] },
   "route:blueprint/plan": { impact: "customer", checks: ["blueprint:preparation-evidence", "blueprint:response-validation"] },
   "route:blueprint/business-plans": { impact: "customer", checks: ["blueprint:preparation-evidence"] },
   "route:blueprint/letter-mailing": { impact: "money", checks: ["blueprint:letter-mailing"] },
@@ -186,7 +191,7 @@ export const TRIPWIRES = Object.freeze({
   "route:pipeline-clients": { impact: "customer", checks: ["pipeline:count-true", "pipeline:nobody-lost"] },
   "route:inquiry-cases": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:dead-stage"] },
   "desk:inquiry-remover.html": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:two-records"] },
-  "desk:csm-queue.html": { impact: "customer", checks: ["csm:overdue-unassigned", "csm:missing-step", "blueprint:real-advisor"] },
+  "desk:csm-queue.html": { impact: "customer", checks: ["csm:overdue-unassigned", "csm:missing-step", "blueprint:real-advisor", "blueprint-full:paid-help", "blueprint-full:inquiry-calls", "blueprint-full:report-delivery"] },
   "desk:sales-floor.html": { impact: "money", checks: ["sales-manager:totals", "pipeline:two-records"] },
   // W4 messages truth, 2026-10-10 (ops/workflows/coverage-every-surface-2026-10-10.md). What a customer reads
   // and whether the path worked: the nine msg:* rows in src/pulse/coverage/gap-msg.mjs and the alert texts

@@ -7,7 +7,10 @@ import { priceDisputeRound } from "../waypoints/pricing.mjs";
 import { softPullBaseCents } from "../finance/soft-pull-pricing.mjs";
 import { requestSoftPull } from "../finance/soft-pulls.mjs";
 import { mintCheckoutLink, checkoutExpiresAt } from "../paid-services/checkout.mjs";
+import { readBlueprintReportSetup } from "./report-setup.mjs";
 import { readBlueprintReportAllowance } from "./report-allowance.mjs";
+import { whopConfig } from "../payments/whop-blueprint.mjs";
+import { blueprintServiceCheckoutProviders, mintBlueprintServiceWhopCheckout } from "./service-whop.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const KINDS = ["inquiry_removal", "repair_round", "repair_full", "funding_round", "credit_pull"];
@@ -39,7 +42,7 @@ function publicRequest(row) {
     status: terminal ? row.payment_status : paidWaiting ? "paid" : row.state,
     priceCents: row.price_total_cents == null ? null : Number(row.price_total_cents),
     checkoutUrl: row.payment_status === "awaiting_payment" && row.state === "awaiting_payment" ? row.checkout_url || null : null,
-    paymentState: row.payment_status,
+    paymentState: row.payment_status, checkoutProvider: row.checkout_provider || null,
     note: row.note || null, requestedAt: row.created_at,
     taskId: row.fulfillment_task_id || null, reportRequestId: row.soft_pull_request_id || null
   };
@@ -75,10 +78,10 @@ export async function readBlueprintServiceOversight(db, { orgId }, { limit = 50,
     lastActivityAt: row.last_activity_at })), limit: pageSize, offset: start, hasMore: result.rows.length > pageSize };
 }
 
-export async function readBlueprintClientServices(db, scope) {
+export async function readBlueprintClientServices(db, scope, { env = process.env } = {}) {
   const result = await db.query(`${SERVICE_SELECT} WHERE s.org_id=$1 AND s.client_id=$2 AND s.engagement_id=$3
     ORDER BY s.created_at DESC LIMIT 100`, [scope.orgId, scope.clientId, scope.engagement.id]);
-  const allowance = await readBlueprintReportAllowance(db, scope);
+  const [allowance, reportSetup] = await Promise.all([readBlueprintReportAllowance(db, scope), readBlueprintReportSetup(db, scope)]);
   const targets = await blueprintServiceTargets(db, scope);
   let oversight = null;
   if (scope.staffId) {
@@ -88,7 +91,7 @@ export async function readBlueprintClientServices(db, scope) {
     oversight = { openSteps: progress.rows.map(row => ({ id: row.id, title: row.title, status: row.state, reason: row.state_reason, dueAt: row.due_at })) };
   }
   return { ok: true, engagement: { id: scope.engagement.id, status: scope.engagement.status, roundId: scope.engagement.roundId },
-    allowance, serviceTypes: blueprintServiceTypes().map(type => ({ ...type, targets: targets[type.key] })), requests: result.rows.map(publicRequest), oversight,
+    allowance, reportSetup, checkoutProviders: blueprintServiceCheckoutProviders(env), serviceTypes: blueprintServiceTypes().map(type => ({ ...type, targets: targets[type.key] })), requests: result.rows.map(publicRequest), oversight,
     capabilities: { requestHelp: scope.engagement.status === "active" && !scope.staffId,
       requestReport: scope.engagement.status === "active" && !scope.staffId, quote: !!scope.staffId } };
 }
@@ -203,30 +206,45 @@ export async function offerBlueprintHelp(db, scope, input, deps = {}) {
   return quoteBlueprintHelp(db, scope, { requestId: requested.request.id, priceCents: input.priceCents });
 }
 
-export async function checkoutBlueprintHelp(db, scope, input, { mint = mintCheckoutLink } = {}) {
+export async function checkoutBlueprintHelp(db, scope, input, { mint = mintCheckoutLink, mintWhop = mintBlueprintServiceWhopCheckout, env = process.env, fetchImpl = fetch } = {}) {
+  const provider = input.provider === undefined ? "commas" : input.provider;
+  if (!["commas", "whop"].includes(provider)) fail("invalid_checkout_provider", "Choose a saved payment option.", 400);
+  const cfg = provider === "whop" ? whopConfig(env) : null;
   if (!scope.accountId || input.authorization !== true) fail("authorization_required", "Confirm the saved service and its exact one-time price.", 400);
   const reservation = await withTransaction(db, async tx => {
     const current = await ownedRequest(tx, scope, input.requestId, true);
+    if (!Number.isSafeInteger(input.expectedPriceCents) || input.expectedPriceCents <= 0
+        || input.expectedPriceCents !== Number(current.price_total_cents)) {
+      fail("quote_changed", "Refresh the quote and confirm its current one-time price.", 409);
+    }
+    if (current.checkout_provider && current.checkout_provider !== provider) fail("checkout_provider_locked", "This service already has a checkout with its saved payment option.", 409);
     if (current.checkout_url || current.state === "checkout_pending") return { row: current, claimed: false };
+    if (provider === "whop" && !cfg.ok) fail("whop_not_configured", "Financing is not available for this checkout.", 503);
     if (current.state !== "quoted" || !Number(current.price_total_cents)) fail("quote_required", "The Fundhub team must save a price for this work first.");
     await serviceTarget(tx, scope, current.service_kind, current.target_id);
     await tx.query(`UPDATE blueprint_client_services SET state='checkout_pending',checkout_claimed_at=now(),
-      authorized_account_id=$2,authorized_at=now(),updated_at=now() WHERE id=$1 AND state='quoted'`, [current.id, scope.accountId]);
-    return { row: current, claimed: true };
+      authorized_account_id=$2,authorized_at=now(),checkout_provider=$3,accepted_price_cents=$4,checkout_currency='USD',
+      whop_account_id=$5,whop_product_id=$6,updated_at=now() WHERE id=$1 AND state='quoted'`,
+    [current.id, scope.accountId, provider, Number(current.price_total_cents), cfg?.accountId || null, cfg?.productId || null]);
+    return { row: await ownedRequest(tx, scope, current.id), claimed: true };
   });
   let row = reservation.row;
   if (!reservation.claimed) return { ok: true, request: publicRequest(row) };
   let result;
-  try { result = await mint({ requestId: row.id, orgId: scope.orgId, clientId: scope.clientId, amountCents: Number(row.price_total_cents) }); }
+  try { result = provider === "whop" ? await mintWhop({ service: row, env, fetchImpl })
+    : await mint({ requestId: row.id, orgId: scope.orgId, clientId: scope.clientId, amountCents: Number(row.price_total_cents) }); }
   catch { result = { ok: false, reason: "checkout_outcome_unknown" }; }
-  if (!result?.ok || !result.checkoutUrl) {
+  if (!result?.ok || !result.checkoutUrl || (provider === "whop"
+    && (!/^ch_[A-Za-z0-9]+$/.test(result.checkoutId || "") || !/^plan_[A-Za-z0-9]+$/.test(result.planId || "")))) {
     await db.query(`UPDATE blueprint_client_services SET state='needs_review',updated_at=now() WHERE id=$1 AND state='checkout_pending'`, [row.id]);
     fail("checkout_needs_review", "The checkout needs a team review before another attempt.");
   }
   await withTransaction(db, async tx => {
     await tx.query(`UPDATE paid_service_requests SET checkout_url=$2,status='awaiting_payment',checkout_expires_at=$3 WHERE id=$1 AND status='quoted'`,
       [row.id, result.checkoutUrl, checkoutExpiresAt(scope.now || new Date())]);
-    await tx.query(`UPDATE blueprint_client_services SET state='awaiting_payment',updated_at=now() WHERE id=$1 AND state='checkout_pending'`, [row.id]);
+    await tx.query(`UPDATE blueprint_client_services SET state='awaiting_payment',whop_checkout_configuration_id=$2,
+      whop_plan_id=$3,updated_at=now() WHERE id=$1 AND state='checkout_pending'`,
+    [row.id, result.checkoutId || null, result.planId || null]);
   });
   row = await ownedRequest(db, scope, row.id);
   return { ok: true, request: publicRequest(row) };

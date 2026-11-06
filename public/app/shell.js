@@ -438,8 +438,9 @@
        card whose link this list does not name. Same as affiliate.html above: NAVIGATION, NOT A GATE. The money
        pages load no shell.js; each endpoint behind them pins a client session to
        its own file (api/money/overview.mjs, api/money/setup.mjs). */
+    // The secure report form pins identity to the signed-in client at its API.
     client: ["client-portal.html", "affiliate.html",
-      "financeos.html", "money.html", "money-accounts.html", "money-credit.html",
+      "financeos.html", "soft-pull-approve.html", "money.html", "money-accounts.html", "money-credit.html",
       "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html", "money-banks.html",
       "money-strategy.html", "money-fundability.html", "money-next.html", "money-helper.html",
       "money-transfers.html", "money-declines.html", "money-alerts.html", "money-vault.html"],

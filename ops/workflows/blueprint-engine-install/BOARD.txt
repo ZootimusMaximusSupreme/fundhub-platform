@@ -1,0 +1,110 @@
+Blueprint — client-operated fulfillment action plan
+
+LATEST OWNER REQUIREMENTS
+Prep package $5K-$10K. Full package $20K-$30K. The purchased package determines access and included work. UnderwriteIQ determines the actual next action from the client file.
+Full-package buyers operate the existing repair, inquiry-removal and funding system for themselves. Applications use the client's own device and connection.
+The system verifies their work. Clients submit documents, disputes and lender applications and supply receipts/results. They cannot self-certify an inquiry removal, readiness, or actual funding.
+Apply is limited to the correct lenders and allowed times. Removal waiting periods schedule a result check. Recorded evidence determines whether the relevant bureau/lender is ready.
+Provide the dispute packet and verified official bureau portal links, plus scoped access to the existing bureau-call agents for the client's own file.
+CSMs watch progress and exceptions and sell optional help. Supported takeover scopes include inquiry removal, one repair round, a full repair program, and funding. Negotiated funding-takeover quotes may use the existing financing options. The owner's additional-$20K example is a configurable quote, not a mandatory fixed price.
+One soft pull is included per monthly access window. Extra report pulls require a paid authorization. All request entrances share the same allowance ledger.
+Optimize -> apply -> optimize repeats inside the purchased funding engagement. Once its funding round is complete, that engagement is done. Do not automatically create further funding rounds or keep its monthly pull schedule active. Retain the history and any independently purchased service.
+Exact add-on prices and remaining package inclusions are configurable until the owner settles them. No new prices or guarantees are invented in this plan.
+
+BUILD ORDER AND COMPLETION PROOF
+
+1. Package access and purchased engagement
+Deliver prep/full capability, agreed sale amount, purchased funding-round identity, active/completed status, and execution ownership per service. Reuse the same client/company/case/application records through self-operated and team-operated work.
+Proof — paid access is granted once from the verified canonical receipt, another client's record cannot open, and full features require the correct active purchased service.
+
+2. Client-operated repair and inquiry removal
+Expose the existing case/packet/letter workflow through client-scoped services. Show missing documents, official bureau upload links, submission instructions, actual reference/receipt capture, follow-up date and the relevant bureau agent action. Calls retain requester, case, provider call ID, status and transcript, with a durable dispatch claim.
+Add evidence-backed removal verification using the attributable bureau result or a complete newer report. Ambiguous/unreadable/missing evidence remains pending and enters the CSM queue. Keep client submission separate from verified case outcome. Connect full derogatory repair and per-round services through their actual generated letters, delivery and response results.
+Proof — a client cannot self-clear, an upload/call/timer alone cannot clear, incomplete reports cannot clear, and duplicate submissions/calls do not repeat external work. Verified clearance affects only the matching items/bureaus.
+
+3. Controlled self-funding and results
+Before every bank handoff, check package/engagement, current UnderwriteIQ decision, the selected lender/business, current holds, permitted application slot and bureau-specific timing/evidence. Return the allowed direct lender URL. Record actual submission separately from opening the bank site. Save bank requests, declines/reconsideration, approvals and actual funding against the exact application and purchased round.
+Proof — wrong/early/ineligible bank attempts are refused on the server, stale tabs recheck, concurrent/repeated requests have one result, and unresolved bureau work remains protected. A clean eligible bureau can proceed when existing rules permit. Approval alone is not recorded as funded.
+
+4. Personalized client view and CSM oversight
+Extend the current paid Blueprint workspace. Show the next permitted action, why, exact steps, required papers, saved result, waiting date and next check. Show a waiting state while the system verifies. CSMs see progress, stalled/missed steps, failed calls, missing evidence, readiness issues and the shared conversation/file. Reuse the current CSM queue for follow-through and help offers.
+Proof — the client and CSM read the same underlying file. Refresh retains progress. Each visible action has a working permitted outcome on desktop and phone. Client cannot see team queues or another file.
+
+5. Paid help and extra reports
+Add self-operated -> quoted help -> accepted terms/payment -> team-owned work transitions for the selected service scope. Use the current checkout/financing rails with the correct product, scope, contract and price. The CSM gets a narrow quote/takeover action for these services. Paid takeover continues the same case/application/round. Extra report purchases use an exact quote -> verified payment -> one provider request -> saved result -> updated plan path. Share the included-report allowance across monthly scheduling, client requests and all other pull entrances.
+Proof — no takeover or paid extra starts on an unpaid quote or browser state, payment replay creates one assignment/pull, parallel requests cannot spend the same included allowance twice, and provider failure is recorded for recovery rather than treated as a delivered report. Per-round repair delivery ends with a real service receipt.
+
+6. Completion and full verification/release
+Reconcile the purchased round's results and mark the engagement complete once. Stop only that engagement's new applications, automatic next-round sales tasks and included-report scheduling. Preserve records and unrelated purchased services.
+After implementation, run one complete buyer path through needed repair/optimization -> dispute submission -> bureau agent/follow-up -> system-verified result -> permitted bank application -> new inquiry -> waiting/verification -> next allowed application -> final round completion. Also exercise decline/reconsideration, paid takeover, paid extra report and CSM intervention.
+Proof — complete relevant unit/database/browser checks, race/replay and cross-client tests, UI states/phone/desktop, heartbeat coverage, independent review, preflight and ship-change. Require current-main CI and release receipts plus authenticated live client/CSM verification. Real paid/provider work needs its own receipt before it is called delivered.
+
+PARALLEL LANES
+Parent owns shared journey, interfaces, board and integration.
+Engine/access owner defines the package/engagement and current-action contract first. Inquiry/repair owner then owns case actions, verification and agent dispatch. Application owner owns permitted lender handoffs and saved bank results. CSM/payment owner owns monitor/quote/takeover/allowance work. Client UI wiring uses those agreed contracts and integrates after the services are ready. Distinct files or explicit handoffs prevent overlapping edits.
+The three research agents returned the minimal changes and proof cases for this plan. No product edits were delegated or made during planning.
+
+BUILDER PLAN BLOCK
+Role — client is the primary operator. CSM uses its existing role-scoped oversight view for exceptions and sales follow-through.
+One job — client completes the next permitted action for the purchased service, while the system verifies the result.
+First question — client: What can I do now? CSM: Who needs help and what is blocking them?
+Reuse — UnderwriteIQ and fulfillment next action, paid Blueprint plan, existing repair/inquiry cases and letters, document uploads/readers, bureau agents, lender matcher, applications/funding rounds, current CSM queue, canonical payments/entitlements and paid-service requests.
+Data — existing /api/blueprint/plan, document upload, letter/response, paid-services and CSM reads cover the base. Proposed client gateways /api/blueprint/inquiries, /api/blueprint/funding and /api/blueprint/services provide scoped actions, with the shared report allowance applied to current pull routes. No generic staff permissions are granted to clients. CSM quote permission is limited to the named help services.
+Files — planned new modules/gateways: src/blueprint/engagement.mjs, src/blueprint/client-readiness.mjs, src/inquiry-ops/verify-removal.mjs, api/blueprint/inquiries.mjs, api/blueprint/funding.mjs, api/blueprint/services.mjs. Existing touchpoints: src/config/offers.mjs, src/blueprint/client-plan.mjs, api/blueprint/plan.mjs, api/blueprint/business-plans.mjs, src/inquiry-ops/bureau-call.mjs, src/inquiry-ops/call-scheduler.mjs, src/pulse/beats/lib/lender-match.mjs, src/blueprint/closer-ready.mjs, src/blueprint/next-funding-sequence.mjs, src/applications/status.mjs, src/funding/card-stacking-rounds.mjs, src/paid-services/round.mjs, src/paid-services/checkout.mjs, src/handlers/paid-service-payment.mjs, src/finance/soft-pulls.mjs, api/finance/soft-pull.mjs, src/workflows/finance-os-pull-sweeper.mjs, src/finance/finance-os-pull-fulfil.mjs, api/read/csm-queue.mjs, public/app/csm-queue.html, public/app/blueprint-plan.js, public/app/blueprint-plan.css, netlify/functions/api.mjs, existing relevant tests and capital-blueprint/heartbeat journey files. Schema migrations for engagement, actor/verification evidence and allowance use the next available numbers after checking the PR queue. Freeze each lane's exact file list before edits and record any required dependency addition here.
+Risk — premature Apply/clearance, duplicate paid calls/pulls/takeovers, wrong service ownership and work continuing after completion. Evidence/replay/scope/completion tests prove these outcomes stay consistent.
+
+SOURCE FINDINGS THAT DRIVE THE BUILD
+Source snapshot refreshed from main: 387c9bda31cf2014e176ee1768f038a1429b72ba. This is source research, distinct from live buyer/provider proof.
+- Existing client plan and scope are api/blueprint/{plan,business-plans}.mjs, src/blueprint/client-plan.mjs and public/app/blueprint-plan.js/.css.
+- src/underwrite/engine.mjs, src/finance/fundability.mjs, src/fulfillment/next-action.mjs and src/underwrite/funding-sequence.mjs provide the current eligibility/optimization/sequence foundations.
+- src/handlers/inquiry-gate.mjs, src/inquiry-ops/{doc-gate,send,bureau-call,call-scheduler}.mjs and the current cases/documents provide the inquiry process. Current clearance writes accept staff confirmation. The client path needs system-verifiable evidence and real client actor attribution. The existing 15-minute call scheduler records queued work. Durable dispatch and provider receipt are required to claim a call ran.
+- Current lender sensitivity protects recent inquiry rows by age even after a staff clear. The client path needs removal-evidence-aware release while preserving unresolved bureau protection. Source: src/pulse/beats/lib/lender-match.mjs.
+- Current staff proxy launch contains hold and bureau checks but does not run full UnderwriteIQ or enforce a purchased client slot. Extract/reuse those relevant rules for direct client handoff. The client application path uses their own connection.
+- Repair uses src/repair/{analyze,send,response-agent,parse-loop}.mjs and the existing round state. Current Blueprint selected mailing is limited to funding inquiry/personal-info letter types. Full repair client operations must connect to the actual repair engine.
+- api/paid-services.mjs and src/paid-services/{round,checkout}.mjs support paid dispute work, but the full paid-round delivery and a paid-extra-report fulfiller need completion. service_kind credit_pull exists as a representation.
+- src/workflows/finance-os-pull-sweeper.mjs currently schedules the included refresh every30days. The direct client soft-pull path does not enforce a shared monthly allowance. Add that shared accounting before offering client pull actions.
+- api/read/csm-queue.mjs already shows progress/help context, entitlements and balances. Current general payment-link/closer routes exclude CSM. Add only a service-scoped quote action for the intended CSM sales role.
+- Current round/next-sequence logic assumes continuing funding work and team/closer handoffs. New full-package completion must end its purchased engagement and related scheduling.
+
+STATUS
+Owner approved the full build, tests and release on November 6. Worktree codex/blueprint-client-fulfillment-20261105 owns integration. Core, inquiry/repair, services/financing, client/CSM and package checkout UI are integrated. Final normal-router real PostgreSQL desktop/phone browser paths passed 6/6, including first-report setup. Independent final review rechecked legal-name, full identity and dual-entitlement scheduling repairs: 38 focused checks passed, zero skips, including three real PostgreSQL cases and both form widths; no remaining P1/P2 blocker. Final repository regression, protected exact-main CI, release and authenticated deployed proof remain required. No live customer charge, bureau call, postage or credit pull has been executed.
+
+
+BUILD LANES — NOVEMBER 6
+Core: paid full engagement, permitted direct applications, actual bank evidence, same-round takeover, terminal completion.
+Inquiry/repair: current letters, receipt taxonomy, strict client actions, identity/authorization, durable AI call claim and system removal verification.
+Services: shared report allowance, exact accepted quotes, payment receipt identity, same-case assignment, paid service completion.
+Parent: package/contract/payment rails, client and CSM UI, integrated checks and protected release.
+Heartbeat: read-only route/worker integrity and journey registration proof.
+Independent proof: real restricted PostgreSQL + normal router + signed-in desktop/phone browser paths; actual provider delivery is separate.
+
+INTEGRATION REVIEW FIXES
+Resolved: strict action metadata, real-upload subtypes, blank reference handling, CSM quote scope, report claim race, refunded paid-report gate.
+Resolved in core follow-up: full product machine-code resolution, pre-application paid takeover round binding, negated/uncertain bank wording.
+Resolved with focused real PostgreSQL proof: evidence-backed non-report service completion, verified managed bank outcomes, exact canonical bureau-response taxonomy and funding-only ownership without freezing independent repair/inquiry work. Complete buyer/CSM normal-router HTTP/browser paths passed on desktop and phone. Report setup now writes the typed legal name used by the actual bureau loader and requires complete identity/current consent across full, prep and subscription eligibility. Remaining: current-head regression and release/live proof.
+
+PROOF RECEIPTS
+Full price/Whop checks: 49 passed, 0 skipped.
+Concurrent report-worker/CRS regressions: 26 passed, 0 skipped, including real restricted PostgreSQL race and uncertain-result holds.
+Receipt upload/strict API owner proof: 64 passed, 0 skipped, including normal multipart route and real PostgreSQL.
+Compatibility checks (contracts/finance/chat/lender reads) rerun after integration repairs; final consolidated result pending.
+Final first-report/regression bundle: 93 passed, 0 skipped, including actual bureau identity loader and mixed entitlement/subscription monthly eligibility. Independent final recheck: 38 passed, 0 skipped.
+Independent funding/repair/inquiry ownership source proof: 28 passed, 0 skipped, including signed-in real PostgreSQL APIs; completed/refunded purchase and exact delegated service scopes remain refused.
+Final normal-router browser: 6 passed at 1440px/390px, 0 skipped; real restricted PostgreSQL, canonical synthetic purchase and receipts, multipart upload, first report, CSM quote, exact paid help and completion. Provider transports were isolated; result.json states that boundary. Twenty marked screenshots include the empty secure authorization form and queued result, not real identity data.
+Navigation/journey follow-up: 42 passed, 0 skipped. The signed-link report door remains mapped alongside the scoped paid-client mode; the shell allows the secure form without changing FinanceOS navigation.
+Financed-help heartbeat: 31 passed, 0 skipped, including real restricted PostgreSQL exact frozen payment identity.
+Final syntax gate: 4745 files/inline scripts parse clean; TypeScript passed; generated journeys and diagrams are current; preflight completed with archived-branch warnings and no active overlap blocker.
+Full regression run: unit 31387 total, 31342 passed, 11 failed, 34 skipped; default no-database half 1396 total, 90 passed, 1306 skipped. These skipped DB cases are not evidence. The 11 failures were the signed-link journey classification, exact client navigation snapshot/FinanceOS list, and their dependent role/flow proofs. Corrected source mapping and the one newly authorized form entry, preserving all CRM-denial checks. Reran every failed file and dependent proofs: 164 passed, 0 failed, 0 skipped. Current-head full protected CI remains required before production.
+
+LEFTOVERS OUTSIDE THIS RELEASE
+Legacy prep-only direct-pull pricing/allowance behavior stays outside the new full-engagement shared allowance contract until package details are fixed. No new marketing campaign or external provider order is authorized by a source test.
+
+
+SERVICE FINANCING — NOVEMBER 6
+Scope: optional same-work Blueprint help now supports the existing Whop financing rail alongside Commas pay-in-full. Reuses the configured Consulting Services Package product, current API/version and shared payment inbox; creates no external product.
+API: GET /api/blueprint/services adds checkoutProviders [{id:commas,label:Pay in full},{id:whop,label:Financing through Whop}] (Whop appears only with complete configuration). POST action=checkout accepts provider=commas|whop, authorization=true and exact expectedPriceCents; absent provider keeps legacy Commas. Each public request exposes checkoutProvider. A frozen different provider returns checkout_provider_locked (409).
+Identity: migration 563 stores immutable provider, accepted amount/USD, authorized account, Whop account/product/checkout/plan/payment IDs on the same saved service. Exact work, org/client, accepted price, metadata, provider account/product/line item and settled receipt are checked before any canonical payment. Help receipt productName is blueprint-help-<service_kind>, productId is null and ref/paidServiceRequestId are the saved service ID. Existing money handlers skip full/base entitlement and sales grants; lifecycle records the help financial receipt once.
+Recovery: uncertain creation stays held and cannot create another provider checkout. A signed paid callback recovers missing local IDs only after independent GET checkout+variant matches. Existing bounded GET reconciliation also recovers dropped service payment/refund callbacks into the same durable inbox. No POST occurs during recovery. Reversals bind the original exact help receipt, hold/refund its existing work and cannot reactivate it. A valid payment after local expiry is saved as money received, held in needs_review and assigned to one CSM review task; the client is not asked to repay.
+Files owned by service-financing lane: db/migrations/563_blueprint_service_financing.sql; db/expected-migrations.mjs (563 entry only); src/blueprint/service-whop.mjs; src/blueprint/service-whop.test.mjs; src/blueprint/service-whop.pg.test.mjs; src/blueprint/client-services.mjs (provider dispatch/read fields only); api/blueprint/services.mjs (checkout provider whitelist only); src/adapters/whop-billing.mjs (narrow service receipt branch, existing parent full-SKU changes preserved); src/payments/whop-billing-reconcile.mjs (service GET recovery); src/payments/whop-blueprint.test.mjs (legacy fake empty service lookup); src/blueprint/service-payment-identity.mjs (provider/exact saved receipt guard); src/handlers/paid-service-payment.mjs (provider guard and late-money review); src/handlers/commas-disputes.mjs (exact saved-service reversal fallback, parent provider/ref binding preserved); src/http/blueprint-services.test.mjs (provider contract).
+Proof: fresh local fundhub_financing_test database migrated through 563 (442 migration files), all application operations as fundhub_app. Final focused unit/HTTP bundle: 43 passed, 0 skipped. Final focused PostgreSQL bundle: 11 passed, 0 skipped (8 new financing cases, 2 existing service cases, 1 existing root Whop reversal case). Proved signed callback->durable inbox->real financial/service handlers, same existing funding round, exact scope/amount/account/IDs and wrong-rail rejection before money, replay, two-provider race both directions, unknown-result hold, independent GET recovery both interrupted states, dropped callback/refund recovery, original-receipt reversal ownership, immutable saved IDs/price, and late-expiry paid receipt held for review. npm run lint: 4742 parse clean; npx tsc --noEmit passed; scoped git diff --check passed.
+No live provider request, customer charge, external product change or production database write was made. Parent owns UI/browser, heartbeat, independent review and protected release. Lane source is ready for that integration; no separate commit was made.

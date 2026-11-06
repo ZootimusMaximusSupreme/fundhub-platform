@@ -44,7 +44,9 @@ test("each clause says what the owner asked for, in a sentence the heartbeat can
 
 test("the migration adds the section to all six client agreements and nothing else", () => {
   const sql = code(MIGRATION);
-  for (const key of CLIENT_AGREEMENT_KEYS) {
+  const originalAgreements = CLIENT_AGREEMENT_KEYS.filter(key => key !== 'BLUEPRINT-SELF-FUNDING-AGREEMENT');
+  assert.equal(originalAgreements.length,6);
+  for (const key of originalAgreements) {
     const section = NUMBERED_AGREEMENT_KEYS.includes(key) ? CONSENT_SECTION_NUMBERED : CONSENT_SECTION_PLAIN;
     const statement = sql.split("UPDATE contract_templates").find((s) => s.includes(`WHERE template_key = '${key}'`))?.trim();
     assert.ok(statement, `${key} has no statement`);
@@ -54,6 +56,14 @@ test("the migration adds the section to all six client agreements and nothing el
   assert.ok(sql.includes(CONSENT_SECTION_PLAIN));
   assert.doesNotMatch(sql, /UPDATE contracts\b|DELETE|ALTER TABLE|INSERT INTO|DROP /i);
   assert.doesNotMatch(sql, /EMPLOYEE-|PARTNER-LICENSE|SOFT-PULL-CONSENT/);
+});
+
+test('the new full agreement inherits the approved consent without modifying sent contracts', () => {
+  const sql = code(fs.readFileSync(path.join(ROOT,'db/migrations/558_blueprint_full_agreement.sql'),'utf8'));
+  assert.match(sql,/SELECT org_id, 'BLUEPRINT-SELF-FUNDING-AGREEMENT'/);
+  assert.match(sql,/FROM contract_templates\s+WHERE template_key = 'CAPITAL-BLUEPRINT-AGREEMENT'/);
+  assert.match(sql,/replace\(body,/);
+  assert.doesNotMatch(sql,/UPDATE contracts\b|UPDATE contract_templates\b|DELETE|DROP /i);
 });
 
 test("the seed repeats the two statements whose rows only seeds create on a fresh database", () => {

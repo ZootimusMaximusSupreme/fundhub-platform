@@ -22,11 +22,17 @@ async function inquiryProof(tx,row) {
 
 async function repairFacts(tx,row) {
   const args=[row.org_id,row.client_id];
-  const cases=(await tx.query("SELECT id,bureau,round,status FROM dispute_cases WHERE org_id=$1 AND client_id=$2 ORDER BY id FOR SHARE",args)).rows;
-  const items=(await tx.query("SELECT id,case_id,round,status FROM dispute_items WHERE org_id=$1 AND client_id=$2 ORDER BY id FOR SHARE",args)).rows;
+  // A full-program takeover inherits unresolved work, including a stalled case.
+  // Cases already closed or cancelled before payment belong to earlier work.
+  const cases=(await tx.query(`SELECT id,bureau,round,status FROM dispute_cases
+    WHERE org_id=$1 AND client_id=$2
+      AND ($3::text<>'repair_full' OR status NOT IN ('closed','cancelled') OR updated_at >= $4::timestamptz)
+    ORDER BY id FOR SHARE`,[...args,row.service_kind,row.paid_at])).rows;
+  const caseArgs=[...args,cases.map(c=>c.id)];
+  const items=(await tx.query("SELECT id,case_id,round,status FROM dispute_items WHERE org_id=$1 AND client_id=$2 AND case_id=ANY($3::uuid[]) ORDER BY id FOR SHARE",caseArgs)).rows;
   const letters=(await tx.query(`SELECT l.id,l.case_id,l.round,l.status,COALESCE(l.mailed_at,s.submitted_at) AS sent_at
     FROM dispute_letters l LEFT JOIN blueprint_repair_submissions s ON s.letter_id=l.id AND s.org_id=l.org_id AND s.client_id=l.client_id
-    WHERE l.org_id=$1 AND l.client_id=$2 ORDER BY l.created_at,l.id`,args)).rows;
+    WHERE l.org_id=$1 AND l.client_id=$2 AND l.case_id=ANY($3::uuid[]) ORDER BY l.created_at,l.id`,caseArgs)).rows;
   const responses=(await tx.query(`SELECT r.id,r.case_id,r.parse_json,r.confirmed,r.created_at,d.id AS document_id,
     d.current_version_id,d.metadata
     FROM dispute_responses r JOIN documents d ON d.org_id=r.org_id AND d.client_id=r.client_id
@@ -34,7 +40,7 @@ async function repairFacts(tx,row) {
       AND d.current_version_id::text=r.parse_json->'document_validation'->>'version_id'
     WHERE r.org_id=$1 AND r.client_id=$2 AND ((d.kind='bureau_response' AND d.subtype='bureau_letter') OR
             (d.kind='client_upload' AND d.subtype='bureau_response'))
-      AND r.confirmed ORDER BY r.created_at DESC,r.id`,args)).rows;
+      AND r.confirmed AND r.case_id=ANY($3::uuid[]) ORDER BY r.created_at DESC,r.id`,caseArgs)).rows;
   return {cases,items,letters,responses};
 }
 

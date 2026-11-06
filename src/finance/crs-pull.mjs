@@ -610,7 +610,7 @@ export async function runCrsPull(db, {
   if (ledger.status !== "queued") {
     throw new SoftPullError(`soft pull request is already ${ledger.status}`, {
       status: 409,
-      code: ledger.status === "processing" && ledger.requested_by_kind === "system"
+      code: ledger.status === "processing"
         ? "request_already_claimed" : null
     });
   }
@@ -618,7 +618,7 @@ export async function runCrsPull(db, {
   if (!claim.claimed) {
     throw new SoftPullError(`soft pull request is already ${claim.reason}`, {
       status: 409,
-      code: claim.reason === "already_claimed" && ledger.requested_by_kind === "system"
+      code: claim.reason === "already_claimed"
         ? "request_already_claimed" : null
     });
   }

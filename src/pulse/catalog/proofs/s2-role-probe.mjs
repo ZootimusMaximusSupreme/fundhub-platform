@@ -65,8 +65,8 @@ async function oneCall(handler, path, method, rules, anonymous) {
 }
 
 /** What happened to one person on one route key. */
-export async function probeRoute(handler, key, principalName) {
-  const path = PATH_FOR[key] || key;
+export async function probeRoute(handler, key, principalName, { blueprintPaid = true, targetClientId = CLIENT_ID } = {}) {
+  let path = PATH_FOR[key] || key;
   const rules = principalName ? PRINCIPALS[principalName]() : [];
   // This client-only door checks that the signed-in client has a file before
   // returning the saved switch. Give the probe that one file; other roles get none.
@@ -82,6 +82,33 @@ export async function probeRoute(handler, key, principalName) {
       /^SELECT id,org_id,name,email,role FROM staff WHERE id=\$1 AND org_id=\$2 AND status='active' AND COALESCE\(\(to_jsonb\(staff\)->>'active'\)::boolean,true\)$/,
       (_sql, params) => params[0] === staff.id && params[1] === staff.org_id ? [staff] : [],
     ]);
+  }
+  // A full Blueprint route tests paid access after its real session gate. Give
+  // the stand-in one exact owned purchase; an empty DB cannot prove that gate's
+  // client branch. Staff GETs select that same client through the real org check.
+  if (["blueprint/funding", "blueprint/inquiries", "blueprint/repair", "blueprint/services"].includes(key) && principalName) {
+    const staff = principalName.startsWith("role-") ? rules[0][1]()[0] : null;
+    const account = principalName === "client" ? rules[1][1]()[0] : null;
+    const orgId = staff?.org_id || account?.org_id;
+    if (staff && ["blueprint/funding", "blueprint/services"].includes(key)) {
+      path += `?${key === "blueprint/funding" ? "clientId" : "client_id"}=${encodeURIComponent(targetClientId)}`;
+    }
+    if (orgId) {
+      rules.push([
+        /^SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2$/,
+        (_sql, params) => params[0] === CLIENT_ID && params[1] === orgId ? [{exists:1}] : []
+      ]);
+      rules.push([
+        /FROM blueprint_fulfillment_engagements g/,
+        (_sql, params) => blueprintPaid && params[0] === orgId && params[1] === CLIENT_ID
+          && params[2] === "blueprint-self-funding" && params[3] === "blueprint-client-fulfillment"
+          ? [{ id:"b1000000-0000-4000-8000-000000000002",orgId,clientId:CLIENT_ID,
+            transactionId:"b1000000-0000-4000-8000-000000000003",
+            entitlementId:"b1000000-0000-4000-8000-000000000004", productCode:"blueprint-self-funding",
+            roundId:null,opensAt:new Date().toISOString(),status:"active",executionOwner:"client" }]
+          : []
+      ]);
+    }
   }
   const get = await oneCall(handler, path, "GET", rules, !principalName);
   const post = await oneCall(handler, path, "POST", rules, !principalName);

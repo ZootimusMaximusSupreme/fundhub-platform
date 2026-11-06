@@ -819,7 +819,7 @@ test("a pre-claimed processing request never starts another bureau order", async
     () => runCrsPull(raceDb, {
       orgId: ORG, clientId: CLIENT, requestId, client: bureau, bureaus: ["TU"]
     }),
-    (error) => error.status === 409 && error.code === null && /processing/.test(error.message)
+    (error) => error.status === 409 && error.code === 'request_already_claimed' && /processing/.test(error.message)
   );
   assert.deepEqual(bureau.calls, []);
   assert.equal(raceDb.requests.get(requestId).status, "processing", "preserve manual reconciliation evidence");

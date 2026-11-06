@@ -91,8 +91,12 @@ export async function financeOsEntitlement(conn = db, { orgId, clientId, asOf = 
     [orgId, clientId, asOf, BLUEPRINT_PRODUCT_CODE]
   );
   if (!grant.rows[0]) {
-    const engagement = await conn.query(`SELECT id FROM blueprint_fulfillment_engagements
-      WHERE org_id=$1 AND client_id=$2 AND status='active' ORDER BY created_at DESC LIMIT 1`, [orgId, clientId]);
+    const engagement = await conn.query(`SELECT g.id FROM blueprint_fulfillment_engagements g
+      JOIN entitlements ent ON ent.id=g.source_entitlement_id AND ent.org_id=g.org_id AND ent.client_id=g.client_id
+      JOIN transactions paid ON paid.id=g.source_transaction_id AND paid.org_id=g.org_id AND paid.client_id=g.client_id
+      WHERE g.org_id=$1 AND g.client_id=$2 AND g.status='active' AND ent.revoked_at IS NULL
+        AND (ent.expires_at IS NULL OR ent.expires_at>$3) AND lower(btrim(paid.status))='succeeded'
+      ORDER BY g.created_at DESC LIMIT 1`, [orgId, clientId, asOf]);
     if (engagement.rows[0]) return { entitled: true, subscriptionId: engagement.rows[0].id, reason: null, source: "blueprint_engagement" };
     return { entitled: false, subscriptionId: null, reason: "no active finance-os subscription or paid Blueprint engagement" };
   }

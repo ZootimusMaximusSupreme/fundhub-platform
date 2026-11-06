@@ -48,7 +48,9 @@ export async function authorizeBlueprintReportExecution(db, ledger) {
   const paid = ledger.blueprint_report_kind === "paid" && current?.payment_ref && ["paid", "in_progress"].includes(current.service_status)
     && ["paid", "staged"].includes(current.payment_status) && Number(current.price_total_cents) === Number(current.amount_paid_cents);
   const included = current?.status === "active" && !current.revoked_at && (!current.expires_at || new Date(current.expires_at) > new Date()) && current.purchase_status === "succeeded";
-  if (!current || (!paid && ledger.blueprint_report_kind !== "diagnostic" && !included)) {
+  const allowed = ledger.blueprint_report_kind === "paid" ? paid
+    : ledger.blueprint_report_kind === "diagnostic" || included;
+  if (!current || !allowed) {
     throw new SoftPullError("This report request no longer has active purchased access.", {
       status: 409, code: "blueprint_report_access_ended"
     });

@@ -11,14 +11,14 @@ const BODY = "The tuition for this program is {{field.package_fee}} United State
   "Tuition is {{field.package_fee}}, charged one time. There is no recurring billing and no subscription.";
 const args = { orgId: "org", staffId: "staff", clientId: "client", templateId: "template", id: "contract" };
 
-function fakeDb({ values = {}, body = BODY, status = "draft", sourceKind = "text" } = {}) {
+function fakeDb({ values = {}, body = BODY, status = "draft", sourceKind = "text", templateKey = KEY } = {}) {
   const contract = {
     id: "contract", org_id: "org", client_id: "client", template_id: "template",
-    template_key: KEY, title: "Blueprint", kind: "contract", subtype: "capital_blueprint",
+    template_key: templateKey, title: "Blueprint", kind: "contract", subtype: "capital_blueprint",
     status, source_kind: sourceKind, merge_values: values
   };
   const template = {
-    id: "template", template_key: KEY, body, active: true, manual_fields: [],
+    id: "template", template_key: templateKey, body, active: true, manual_fields: [],
     kind: "contract", name: "Blueprint", source_kind: sourceKind
   };
   const writes = [];
@@ -63,6 +63,27 @@ for (const amountCents of [500000, 750000, 1000000]) {
 test("a fresh draft with no amount uses the $5,000 default", async () => {
   const db = fakeDb();
   assert.equal((await createDraft(db, args)).merge_values.package_fee, "$5,000");
+});
+
+for (const amountCents of [2000000,2500000,3000000]) {
+  test(`full package freezes its own agreement and exact ${amountCents} cent price`, async () => {
+    const db = fakeDb({templateKey:'BLUEPRINT-SELF-FUNDING-AGREEMENT'});
+    const draft = await createDraft(db,{...args,amountCents});
+    assert.equal(draft.merge_values.package_fee,`$${(amountCents/100).toLocaleString('en-US')}`);
+    const rendered = await preview(db,{...args,values:draft.merge_values});
+    assert.equal(rendered.body.split(draft.merge_values.package_fee).length-1,2);
+    const agreement = {...draft,status:'sent',rendered_body:rendered.body,body_sha:bodyHash(rendered.body)};
+    let checkedSql;
+    await assertBlueprintAgreementPrice({query:async sql=>{checkedSql=sql;return {rows:[agreement]};}}, {orgId:'org',clientId:'client',amountCents,offerKey:'BLUEPRINT_SELF_FUNDING'});
+    assert.match(checkedSql,/template_key = 'BLUEPRINT-SELF-FUNDING-AGREEMENT'/);
+    await assert.rejects(createDraft(fakeDb(),{...args,amountCents}),{code:'invalid_blueprint_amount'});
+  });
+}
+
+test('full default price still requires a current dynamically priced agreement', async () => {
+  for (const body of ['Tuition is $30,000.',BODY+' Old tuition $5,000.']) {
+    await assert.rejects(createDraft(fakeDb({templateKey:'BLUEPRINT-SELF-FUNDING-AGREEMENT',body}),args),{code:'blueprint_price_template_outdated'});
+  }
 });
 
 for (const amountCents of [499999, 1000001, "750000", 750000.5, 750001, null]) {

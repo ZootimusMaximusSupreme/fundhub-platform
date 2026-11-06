@@ -50,12 +50,22 @@ test("Blueprint paid services preserve exact scope, payments and one shared incl
     const replay = await requestBlueprintHelp(db, scope, { serviceKind: "repair_full", idempotencyKey: "request_full_repair_fixture" });
     assert.equal(replay.request.id, help.request.id);
     await assert.rejects(quoteBlueprintHelp(db, scope, { requestId: help.request.id, priceCents: 100000 }), { code: "forbidden" });
-    await quoteBlueprintHelp(db, { ...scope, staffId }, { requestId: help.request.id, priceCents: 100000 });
+    const shownQuote = await quoteBlueprintHelp(db, { ...scope, staffId }, { requestId: help.request.id, priceCents: 125000 });
+    const currentQuote = await quoteBlueprintHelp(db, { ...scope, staffId }, { requestId: help.request.id, priceCents: 100000 });
     let checkouts = 0;
     const mint = async () => { checkouts++; return { ok: true, checkoutUrl: "https://pay.example.com/fixture-service" }; };
-    await checkoutBlueprintHelp(db, scope, { requestId: help.request.id, authorization: true }, { mint });
-    await checkoutBlueprintHelp(db, scope, { requestId: help.request.id, authorization: true }, { mint });
-    assert.equal(checkouts, 1);
+    for (const expectedPriceCents of [shownQuote.request.priceCents, undefined, null, "100000", 100000.5, 0, Number.MAX_SAFE_INTEGER + 1]) {
+      await assert.rejects(checkoutBlueprintHelp(db, scope, { requestId: help.request.id, authorization: true, expectedPriceCents }, { mint }),
+        { code: "quote_changed", status: 409 });
+    }
+    assert.equal(checkouts, 0, "a stale or missing price cannot mint a checkout");
+    const untouched = (await db.query("SELECT state,authorized_at,authorized_account_id,checkout_claimed_at FROM blueprint_client_services WHERE id=$1", [help.request.id])).rows[0];
+    assert.deepEqual(untouched, { state: "quoted", authorized_at: null, authorized_account_id: null, checkout_claimed_at: null });
+    await checkoutBlueprintHelp(db, scope, { requestId: help.request.id, authorization: true, expectedPriceCents: currentQuote.request.priceCents }, { mint });
+    await checkoutBlueprintHelp(db, scope, { requestId: help.request.id, authorization: true, expectedPriceCents: currentQuote.request.priceCents }, { mint });
+    await assert.rejects(checkoutBlueprintHelp(db, scope, { requestId: help.request.id, authorization: true, expectedPriceCents: shownQuote.request.priceCents }, { mint }),
+      { code: "quote_changed" });
+    assert.equal(checkouts, 1, "a stale acceptance cannot return an existing checkout");
     await assert.rejects(quoteBlueprintHelp(db, { ...scope, staffId }, { requestId: help.request.id, priceCents: 50000 }), { code: "quote_locked" });
     const wrongPayment = await onPaidServicePaymentReceived({ orgId, payload: { ref: help.request.id, amountCents: 99999, paymentId: "fixture_short" } }, db);
     assert.equal(wrongPayment.done, false);
@@ -80,7 +90,7 @@ test("Blueprint paid services preserve exact scope, payments and one shared incl
     const extra = await requestBlueprintReport(db, scope, { idempotencyKey: "paid_extra_report_fixture" });
     assert.equal(extra.requiresPayment, true);
     assert.equal(extra.request.priceCents, 3200);
-    await checkoutBlueprintHelp(db, scope, { requestId: extra.request.id, authorization: true }, { mint });
+    await checkoutBlueprintHelp(db, scope, { requestId: extra.request.id, authorization: true, expectedPriceCents: extra.request.priceCents }, { mint });
     const extraEvent = { orgId, payload: { ref: extra.request.id, amountCents: 3200, paymentId: `fixture-extra-${extra.request.id}` } };
     await onPaidServicePaymentReceived(extraEvent, db);
     await onPaidServicePaymentReceived(extraEvent, db);

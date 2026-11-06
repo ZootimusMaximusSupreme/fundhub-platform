@@ -31,6 +31,7 @@ export const CLOCK_JOBS = Object.freeze([
   ["bank-outreach-automation", "*/15 * * * *"],
   ["bank-outreach-checkins", "TZ=America/Phoenix 0 7 * * *"],
   ["blake-lead-watch", "*/5 * * * *"],
+  ["blueprint-bank-evidence", "17 * * * *"],
   ["blueprint-closer-ready-sweeper", "0 * * * *"],
   ["blueprint-finance-os-alerts", "30 7 * * *"],
   ["blueprint-letter-mailing", "*/5 * * * *"],

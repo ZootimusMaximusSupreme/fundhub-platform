@@ -127,3 +127,6 @@
   .csm-queue-page .q-count .cmp{font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){.csm-queue-page .q-skel{animation:none}.csm-queue-page .btn{transition:none}}
+#blueprint-csm-services .bcs-skeleton { display: grid; gap: 16px; padding: 8px 0; }
+#blueprint-csm-services .bcs-skeleton span { display: block; height: 16px; border-radius: 4px; background: var(--soft); }
+#blueprint-csm-services .bcs-skeleton span:last-child { width: 60%; }

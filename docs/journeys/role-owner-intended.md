@@ -66,6 +66,10 @@ flowchart TD
 
 _Nothing — every route admitted this journey when this was written._
 
+## Full Blueprint oversight — owner-approved November 6, 2026
+
+The owner, admin and CSM may read a named same-company full Blueprint file at `blueprint/funding`, review its saved bank evidence, and quote or offer work through `blueprint/services`. The funding advisor also gets the funding read/review branch, but not the services quote/offer branch. Services oversight stays inside the signed-in staff company. Each named-file action requires `requireClientInOrg` and the actual saved engagement. The inquiries and repair client routes remain client-only; staff work uses the existing staff tools. Staff cannot use client checkout or self-run actions through these client branches.
+
 ## Comparing this against reality
 
 Run `npm run journeys` and read [`role-owner-actual.md`](./role-owner-actual.md). There is no automated

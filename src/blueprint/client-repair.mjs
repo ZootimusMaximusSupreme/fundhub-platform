@@ -23,8 +23,8 @@ function requireScope(scope, write = false) {
   if (![scope?.orgId, scope?.clientId, scope?.accountId].every(value => UUID.test(String(value || "")))) {
     fail("repair_scope_required", "Sign in to your client file.", 403);
   }
-  if (write && (scope.engagement?.status !== "active" || scope.engagement?.executionOwner !== "client")) {
-    fail("client_repair_inactive", "The Fundhub team is handling this work or this engagement has ended.", 409);
+  if (write && scope.engagement?.status !== "active") {
+    fail("client_repair_inactive", "This engagement has ended.", 409);
   }
 }
 async function programFor(db, scope) {
@@ -111,21 +111,21 @@ export async function readClientRepair(db, scope, deps = {}) {
   ]);
   const currentRound = await permittedRepairRound(db, scope, data);
   const currentLetters = data.letters.filter(letter => letter.round === currentRound);
-  const canGenerate = scope.engagement.status === "active" && scope.engagement.executionOwner === "client"
+  const canGenerate = scope.engagement.status === "active"
     && !teamOwnsRepair(services, currentRound) && authorization.signed && authorization.packetComplete
     && authorization.identityReviewed && Boolean(currentRound)
     && (!currentLetters.length || currentLetters.some(letter => !letter.document_id));
   return { ok: true, program: program ? { id: program.id, kind: program.program, status: program.status, roundsCap: program.rounds_cap } : null,
-    authorization, stage, currentRound, executionOwner: teamOwnsRepair(services, currentRound) ? "fundhub" : scope.engagement.executionOwner,
+    authorization, stage, currentRound, executionOwner: teamOwnsRepair(services, currentRound) ? "fundhub" : "client",
     cases: data.cases.map(row => ({ id: row.id, bureau: row.bureau, round: row.round, status: row.status,
       responseDueAt: row.response_due_at || null, portalUrl: INQUIRY_PORTALS[row.bureau] || null,
-      executionOwner: teamOwnsRepair(services, row.round) ? "fundhub" : scope.engagement.executionOwner,
+      executionOwner: teamOwnsRepair(services, row.round) ? "fundhub" : "client",
       items: data.items.filter(item => item.case_id === row.id).map(item => ({ id: item.id, creditor: item.creditor,
         accountLast4: item.account_last4, round: item.round, status: item.status, outcome: item.outcome })),
       letters: data.letters.filter(letter => letter.case_id === row.id).map(letter => ({
         id: letter.id, documentId: letter.document_id || null, bureau: letter.bureau, round: letter.round,
         target: letter.target, status: letter.status,
-        canRecordSubmission: scope.engagement.status === "active" && scope.engagement.executionOwner === "client"
+        canRecordSubmission: scope.engagement.status === "active"
           && !teamOwnsRepair(services, letter.round) && authorization.signed && authorization.packetComplete
           && authorization.identityReviewed && !letter.submitted_at && ["generated", "ready"].includes(letter.status),
         submission: letter.submitted_at ? { reference: letter.submission_reference, receiptDocumentId: letter.receipt_document_id,

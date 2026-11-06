@@ -152,6 +152,33 @@ describe("the probe and the written gates", () => {
     }
   });
 
+  test("full Blueprint client routes require that client's exact paid engagement and retain separate staff branches", async () => {
+    const all=["blueprint/funding","blueprint/inquiries","blueprint/repair","blueprint/services"];
+    for(const key of all) {
+      assert.equal(verdictFor(await probeRoute(api,key,"client")),"reach",key);
+      const unpaid=await probeRoute(api,key,"client",{blueprintPaid:false});
+      assert.equal(unpaid.GET.status,403,`${key}: an account alone grants no full Blueprint access`);
+      for(const outside of [undefined,"affiliate","white-label","role-closer","role-setter","role-sales-manager","role-inquiry-remover"]) {
+        assert.equal(verdictFor(await probeRoute(api,key,outside)),"blocked",`${key}: ${outside || "anonymous"}`);
+      }
+    }
+    for(const key of ["blueprint/funding","blueprint/services"]) {
+      for(const staff of ["role-owner","role-admin","role-csm"]) {
+        assert.equal(verdictFor(await probeRoute(api,key,staff)),"reach",`${key}: ${staff}`);
+        const foreign=await probeRoute(api,key,staff,{targetClientId:"c1000000-0000-4000-8000-000000000099"});
+        assert.equal(foreign.GET.status,404,`${key}: ${staff} cannot read a foreign file`);
+        assert.equal(foreign.GET.code,"not_found");
+      }
+    }
+    assert.equal(verdictFor(await probeRoute(api,"blueprint/funding","role-funding-advisor")),"reach");
+    assert.equal(verdictFor(await probeRoute(api,"blueprint/services","role-funding-advisor")),"blocked");
+    for(const key of ["blueprint/inquiries","blueprint/repair"]) {
+      for(const staff of ["role-owner","role-admin","role-csm","role-funding-advisor"]) {
+        assert.equal(verdictFor(await probeRoute(api,key,staff)),"blocked",`${key}: client-only ${staff}`);
+      }
+    }
+  });
+
   test("only a signed-in client with a file reaches the marketing push switch", () => {
     assert.equal(state.verdicts.client["push/preferences"], "reach");
     assert.equal(state.verdicts.client["read/affiliates"], "reach");

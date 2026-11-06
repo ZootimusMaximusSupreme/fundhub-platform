@@ -21,6 +21,10 @@ OffersIQ uses those same setter doors and the existing private closer read. It m
 
 The `apply-links` beat's 991 historical `pulse_bank_links` hashes are being reconciled after the owner-approved October 24 lender catalog cutover; the root lane owns the migration and beat repair, and live proof is still pending.
 
+The hourly `blueprint-client-fulfillment` beat watches the full Blueprint purchase, its client portal and team queue, and the funding, inquiries, repair and services routes. It reads the saved full-price payment/grant/engagement, purchased-round closure and revoked access, scoped funding evidence and bank totals, inquiry and repair submission proof, verified removals, uncertain or stale bureau calls, report allowance and delivery, and paid-help handoff. A paid installation or help handoff overdue by 15 minutes, a report claim stuck beyond 15 minutes (or a queue untouched for 75 minutes, allowing its hourly worker turn), missing scoped receipts, or an unknown call outcome stays red. Normal client submission, checkout and bureau waiting stays green. Its counts are saved-data integrity proof; they do not establish provider delivery and never order a report, charge, call or letter.
+
+The `blueprint-bank-evidence` job runs at minute 17 each hour. Its regular job receipt goes red after three missed hours. The same worker stages paid help and processes authorized queued Blueprint reports, while the heartbeat only reads the saved outcomes. Uncertain reports preserve their processing claim for staff review before another order.
+
 ## Kinds of check
 
 | Kind | What it proves | Where it lives | Example |

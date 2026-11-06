@@ -7,12 +7,14 @@ import {
   quoteBlueprintHelp, checkoutBlueprintHelp, requestBlueprintReport, readBlueprintServiceOversight, offerBlueprintHelp
 } from "../../src/blueprint/client-services.mjs";
 
+import { readBlueprintReportSetup } from "../../src/blueprint/report-setup.mjs";
+
 const STAFF_ROLES = new Set(["owner", "admin", "csm"]);
 const FIELDS = {
   request_help: ["action", "serviceKind", "targetId", "note", "idempotencyKey"],
   request_report: ["action", "idempotencyKey"],
   quote: ["action", "requestId", "priceCents"],
-  checkout: ["action", "requestId", "authorization"],
+  checkout: ["action", "requestId", "authorization", "expectedPriceCents", "provider"],
   offer: ["action", "client_id", "serviceKind", "targetId", "priceCents", "note", "idempotencyKey"]
 };
 
@@ -60,6 +62,11 @@ export default async function handler(req, res, deps = {}) {
       return res.status(400).json({ ok: false, error: "invalid_service_action" });
     }
     if (["quote", "offer"].includes(input.action) !== !!scope.staffId) return res.status(403).json({ ok: false, error: "forbidden" });
+    if (input.action === "request_report") {
+      const reportSetup = await readBlueprintReportSetup(database, scope);
+      if (reportSetup.required) return res.status(409).json({ ok: false, error: "report_setup_required",
+        message: "Authorize your soft pull and enter your identity to request a report.", reportSetup });
+    }
     const operation = { request_help: services.requestBlueprintHelp, request_report: services.requestBlueprintReport,
       quote: services.quoteBlueprintHelp, offer: services.offerBlueprintHelp, checkout: services.checkoutBlueprintHelp }[input.action];
     return res.status(200).json(await operation(database, scope, input, deps.serviceDependencies || {}));

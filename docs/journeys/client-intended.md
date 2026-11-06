@@ -74,6 +74,10 @@ flowchart TD
 - **Reading data** (25 routes) — should stay blocked.
 - **Everything else** (12 routes) — should stay blocked.
 
+## Full Blueprint fulfillment — owner-approved November 6, 2026
+
+The paid full Blueprint buyer may use `blueprint/funding`, `blueprint/inquiries`, `blueprint/repair` and `blueprint/services` only for the company, client and account on their own authenticated session and their exact full purchase, grant and engagement. A generic client account or preparation-only Blueprint grant does not unlock these routes. Active client-operated engagements allow self-run work; completed purchases retain readback and refuse new work. Paid help keeps the original case/round identity, uses explicit client checkout authorization and never gives the client staff quoting or bank-proof review powers.
+
 ## Comparing this against reality
 
 Run `npm run journeys` and read [`client-actual.md`](./client-actual.md). There is no automated

@@ -10,7 +10,7 @@ export default async function handler(req, res, deps = {}) {
   try {
     const gate = deps.requireBlueprintFulfillmentScope
       || (await import("../../src/blueprint/fulfillment-access.mjs")).requireBlueprintFulfillmentScope;
-    const scope = await gate(req, res, deps);
+    const scope = await gate(req, res, { ...deps, allowManagedWrites: true });
     if (!scope) return;
     const database = deps.db || db;
     const services = deps.services || { read: readClientRepair, generate: generateClientRepairLetters, recordSubmission: recordClientRepairSubmission };

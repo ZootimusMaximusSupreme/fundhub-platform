@@ -98,16 +98,27 @@ test("real staff eligibility excludes demo, disabled and suspended rows and miss
 });
 
 test("a saved successful pull with failed delivery creates owner work and is not pulled again", options, async () => {
-  await fixture(["soft_pull_requests", "tasks"], async (db) => {
+  await fixture(["soft_pull_requests", "tasks", "subscriptions", "client_consents"], async (db) => {
     const org = randomUUID();
     const client = randomUUID();
     const credit = randomUUID();
+    const sub = (await db.query(`INSERT INTO subscriptions
+      (org_id,client_id,tier,status,current_period_start,current_period_end,effective_from)
+      VALUES ($1,$2,'finance-os','active',now()-interval '2 days',now()+interval '28 days',now()-interval '2 days')
+      RETURNING id`, [org, client])).rows[0].id;
+    await db.query(`INSERT INTO client_consents
+      (org_id,client_id,kind,consent_text,granted_by_kind,granted_by_account_id,capture_method,granted_at)
+      VALUES ($1,$2,'soft_pull_consent','Saved monthly report authorization','client',$3,'checkbox',now()-interval '1 day')`,
+      [org, client, randomUUID()]);
     const request = (await db.query(`INSERT INTO soft_pull_requests
-      (org_id, client_id, requested_by_kind, reason, status)
-      VALUES ($1,$2,'system','Included monthly refresh','queued') RETURNING id`, [org, client])).rows[0].id;
+      (org_id,client_id,requested_by_kind,reason,status,subscription_id,idempotency_key)
+      VALUES ($1,$2,'system','Included monthly refresh','queued',$3,$4) RETURNING id`,
+      [org, client, sub, `finance-os-monthly:${sub}:0:real`])).rows[0].id;
     let calls = 0;
     const input = {
-      runPull: async () => {
+      env: { CRS_ALLOW_LIVE: "1", FINANCE_OS_SYSTEM_PULL_LIVE: "1" },
+      runPull: async (_db, { simulate }) => {
+        assert.equal(simulate, false);
         calls += 1;
         await db.query(`UPDATE soft_pull_requests SET status='fulfilled', resolved_at=now(), crs_result_id=$2 WHERE id=$1`, [request, credit]);
         return { ok: true, crsResultId: credit };

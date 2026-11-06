@@ -47,11 +47,11 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 153 routes]
+    WHO -->|Yes| CANT[Blocked — 157 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_auth[Signing in and out — 9 blocked]
     CANT --> B_banking[banking — 2 blocked]
-    CANT --> B_blueprint[blueprint — 3 blocked]
+    CANT --> B_blueprint[blueprint — 7 blocked]
     CANT --> B_brand[brand — 1 blocked]
     CANT --> B_chat[chat — 1 blocked]
     CANT --> B_company_brain[company-brain — 2 blocked]
@@ -81,7 +81,7 @@ flowchart TD
 
 ## What they can reach
 
-**199 of 352 routes.**
+**199 of 356 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -294,7 +294,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**153 of 352 routes.**
+**157 of 356 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -316,8 +316,12 @@ flowchart TD
 | `/api/banking/revoke` | GET, POST | owner, admin |
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
 | `/api/blueprint/business-plans` | GET, POST | client |
+| `/api/blueprint/funding` | GET, POST | employees: owner, admin, csm, funding_advisor<br>plus: client |
+| `/api/blueprint/inquiries` | GET, POST | client |
 | `/api/blueprint/letter-mailing` | — | client |
 | `/api/blueprint/plan` | — | client |
+| `/api/blueprint/repair` | GET, POST | client |
+| `/api/blueprint/services` | GET, POST | employees: owner, admin, csm<br>plus: client |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
 | `/api/chat/portal-message` | GET, POST | client |
 | `/api/commission-rules` | GET, POST | owner, admin, sales_manager |

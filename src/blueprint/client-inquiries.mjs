@@ -27,8 +27,8 @@ function requireScope(scope) {
 }
 function writable(scope) {
   requireScope(scope);
-  if (scope.engagement?.status !== "active" || scope.engagement?.executionOwner !== "client") {
-    fail("client_work_inactive", "The Fundhub team is handling this work or this engagement has ended.", 409);
+  if (scope.engagement?.status !== "active") {
+    fail("client_work_inactive", "This engagement has ended.", 409);
   }
 }
 async function activeServices(db, scope, deps) {
@@ -129,8 +129,8 @@ export async function readClientInquiries(db, scope, deps = {}) {
     const evidence = await evidenceRow(db, scope, row.id);
     const inquiries = await caseInquiries(db, scope, row.id);
     const completed = row.case_status === "Completed";
-    const isActive = scope.engagement.status === "active" && scope.engagement.executionOwner === "client";
-    const executionOwner = teamOwnsCase(services, row.id) ? "fundhub" : scope.engagement.executionOwner;
+    const isActive = scope.engagement.status === "active";
+    const executionOwner = teamOwnsCase(services, row.id) ? "fundhub" : "client";
     const clientCanAct = isActive && executionOwner === "client" && !completed;
     const callState = evidence?.call_state || "idle";
     const canLaunch = clientCanAct && packet.complete === true && identityReviewed && ["idle", "failed"].includes(callState);

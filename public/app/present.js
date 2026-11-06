@@ -178,6 +178,18 @@
         watch: "Two rounds, then their decision. Do not describe it as the full program. Never promise a deletion, a score, or a result."
       }
     },
+    BLUEPRINT_SELF_FUNDING: {
+      "S-23": CLOSE_LOGISTICS,
+      "S-24": {
+        title: "Wrap",
+        lines: [
+          "Your full Blueprint opens your own repair, inquiry and funding workspace. Let's open the next step from your file.",
+          "The system checks the evidence and shows which bank is available next. You submit applications from your own device.",
+          "The Fundhub team follows your progress. Any separately priced help is offered and accepted through your service requests."
+        ],
+        watch: "Show the purchased funding engagement and current action. Its completion ends that engagement."
+      }
+    },
     UWIQ_DELIVERABLES: {
       "S-23": CLOSE_LOGISTICS,
       "S-24": {
@@ -268,7 +280,7 @@
     checks: {}, costNum: "", obj: null, showRef: false, showMoney: false, showRevenue: false, toast: "", clientOnly: audienceOnly,
     survey: {}, engine: { available: false, reason: "engine data unavailable", fico: {}, reasons: [] },
     offers: [], softPull: null, saleMotion: "", paymentLinkId: null, loaded: false, error: null,
-    contractLink: "", contractMsg: "", blueprintAmountDollars: null, blueprintProvider: "commas",
+    contractLink: "", contractMsg: "", blueprintAmountDollars: null, blueprintPackage: "", blueprintProvider: "commas",
     /* One entry per send control: whether it is in flight, when it last went
        out, and how many times. F24 — see sendBtn below. */
     sends: {}, moreOpen: false, repairReferral: false,
@@ -319,14 +331,18 @@
   }
   function price(key) {
     var o = offer(key);
-    if (key === "UWIQ_DELIVERABLES" && state.blueprintAmountDollars != null) {
+    if (isBlueprintOffer(key) && key === selectedOfferKey() && state.blueprintAmountDollars != null) {
       var cents = blueprintAmountCents();
       if (cents !== null) return money(cents / 100);
     }
     return (o && o.priceDisplay) ? o.priceDisplay : "—";
   }
+  function isBlueprintOffer(key) {
+    return key === "UWIQ_DELIVERABLES" || key === "BLUEPRINT_SELF_FUNDING";
+  }
   function blueprintAmountCents() {
-    var o = offer("UWIQ_DELIVERABLES");
+    var key = selectedOfferKey();
+    var o = offer(isBlueprintOffer(key) ? key : "UWIQ_DELIVERABLES");
     if (!o) return null;
     var raw = state.blueprintAmountDollars;
     var dollars = raw == null ? Number(o.priceCents) / 100 : Number(raw);
@@ -339,7 +355,7 @@
      limited here rather than read off the flag alone. */
   function financingNote(key) {
     var o = offer(key);
-    return o && o.financing && key === "UWIQ_DELIVERABLES" ? '<div class="fin">Financing available</div>' : "";
+    return o && o.financing && isBlueprintOffer(key) ? '<div class="fin">Financing available</div>' : "";
   }
   function sharedContextPanel() {
     var handoff = state.setterHandoff || (state.sharedContext && state.sharedContext.setter_handoff);
@@ -367,13 +383,15 @@
     render();
   }
   function contents() {
-    var o = offer("UWIQ_DELIVERABLES");
+    var o = offer(selectedOfferKey() === 'BLUEPRINT_SELF_FUNDING' ? 'BLUEPRINT_SELF_FUNDING' : 'UWIQ_DELIVERABLES');
     return (o && o.contents) || [];
   }
   function isFunding() {
     return (state.tier === "FULL_FUNDING" || state.tier === "FUNDING_PLUS_REPAIR") && !state.forceRepair;
   }
   function selectedOfferKey() {
+    if (state.blueprintPackage === "full") return "BLUEPRINT_SELF_FUNDING";
+    if (state.blueprintPackage === "prep") return "UWIQ_DELIVERABLES";
     if (state.edu) return state.rung === 1 ? "UWIQ_DELIVERABLES" : "FUNDING_MASTERY";
     if (!isFunding()) {
       if (state.rung === 1) return "REPAIR_TRIAL";
@@ -383,7 +401,7 @@
     return "FUNDING_DFY";
   }
   function isPrimaryPayOffer(key) {
-    return key === "FUNDING_DFY" || key === "REPAIR_DFY" || key === "REPAIR_TRIAL" || key === "FUNDING_MASTERY";
+    return key === "BLUEPRINT_SELF_FUNDING" || key === "FUNDING_DFY" || key === "REPAIR_DFY" || key === "REPAIR_TRIAL" || key === "FUNDING_MASTERY";
   }
   function selectedSaleMotion() {
     return isPrimaryPayOffer(selectedOfferKey()) ? null : (state.saleMotion || null);
@@ -912,6 +930,7 @@
       return slide("S-18", "Where do you fall", '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + kicker("Scale of 1 to 10") + h1("Where do you feel like you fall?", "clamp(24px,3.6vw,44px)") + '<div style="margin-top:18px;display:flex;align-items:center;gap:12px;max-width:480px"><span class="mono" style="color:var(--gray2)">1</span><div style="flex:1"><div class="hair"></div></div><span class="mono">10</span></div><div style="display:flex;justify-content:space-between;max-width:480px;margin-top:6px"><span class="mono" style="color:var(--gray2)">Not for me</span><span class="mono" style="color:var(--gray)">Exactly what I need</span></div></div>');
     }
     if (c === "S-19") {
+      if (selectedOfferKey() === 'BLUEPRINT_SELF_FUNDING') return slide('S-19','Full implementation',kicker('Capital Blueprint Full') + h1(price('BLUEPRINT_SELF_FUNDING')) + sub('Your repair, inquiry removal and purchased funding round in one guided workspace. Complete each permitted step while Fundhub tracks and verifies the results.'));
       if (!edu) return slide("S-19", "Your plan", kicker("The four doors") + h1("This is the plan built for your file.") + (visualHtml("doorMatrix") || unavail()));
       if (edu) {
         if (rung === 0) return slide("S-19", "The investment", fill(kicker("Funding Mastery, A to Z") + h1(price("FUNDING_MASTERY"), "clamp(28px,4.4vw,52px)") + '<div style="margin-top:8px;max-width:560px">' + row("The full Fundhub program", "A to Z", "Credit, optimization, and funding execution, start to finish") + row("Your own file", "Included data", "You work on your real reports, not examples") + "</div>" + financingNote("FUNDING_MASTERY")));
@@ -925,6 +944,7 @@
       return slide("S-19", "The investment", fill(kicker("Capital Blueprint") + h1(price("UWIQ_DELIVERABLES"), "clamp(24px,3.8vw,44px)") + '<div style="margin-top:6px;max-width:580px">' + deliverableRows() + "</div>" + financingNote("UWIQ_DELIVERABLES")));
     }
     if (c === "S-20") {
+      if (selectedOfferKey() === 'BLUEPRINT_SELF_FUNDING') return slide('S-20','Your purchased service',kicker('Full implementation') + h1(price('BLUEPRINT_SELF_FUNDING') + ' for the purchased service.') + sub('One monthly soft pull while the funding engagement is active. Team-run help and additional reports require a separate accepted quote. The engagement ends when the purchased funding round is complete.'));
       if (!edu && (funding || selectedOfferKey() === "UWIQ_DELIVERABLES")) return slide("S-20", "How the payment works", kicker("The investment") + h1(funding ? price("FUNDING_DFY") + " today is credited once against your success fee when funding is secured." : "The Capital Blueprint is " + price("UWIQ_DELIVERABLES") + " for 12 months.") + (visualHtml("moneyStrip") || unavail()) + (!funding && costN > 0 ? sub("You said waiting costs " + money(costN) + " a month. Over a year, that is " + money(costN * 12) + " based on what you said earlier on this call.") : ""));
       if (edu) return slide("S-20", "Two courses", fill(kicker("Side by side") + h1("Two courses. One skill set.") + '<div style="margin-top:10px;max-width:620px">' + row("Course 1 — UWIQ deliverables + bank list", price("UWIQ_DELIVERABLES"), "Everything from your file. You execute it with the how-to course.") + row("Course 2 — Funding Mastery, A to Z", price("FUNDING_MASTERY"), "The complete program, start to finish, on your own data", true) + "</div>"));
       if (funding) return slide("S-20", "The math", fill(kicker("Illustration · not a bill") + h1("See how the deposit is credited.") + '<div style="margin-top:10px;max-width:560px">' + row("Today's file estimate", money(d.total), "A planning figure. A lender decides actual approvals.") + row("Illustrative success fee, " + feePct + " percent", money(fee), "Based on this estimate only") + row("Deposit credited once", deposit != null ? ("- " + money(deposit)) : "—") + row("Illustrative remaining fee", money(backEnd), "Actual fee uses approved limits or amounts, including unused access", true) + "</div>" + sub("If no funding is secured, no back-end success fee is due. The agreement sets the final terms.")));
@@ -1720,7 +1740,7 @@
         html += '</div><div style="font-size:10.5px;color:var(--gray2);margin-top:6px">' + eduHint + "</div>";
         /* The Blueprint rung opens the full 06 stack: every piece, FinanceOS,
            the price build-up, and the FinanceOS downsell. */
-        if (selectedOfferKey() === "UWIQ_DELIVERABLES") {
+        if (isBlueprintOffer(selectedOfferKey())) {
           html += '<div style="margin-top:7px">' + ckBtn("Show the full Blueprint stack", "stack-open") +
             '<div class="stk-why">Opens section 06: every piece, FinanceOS live, the price, and the FinanceOS downsell.</div></div>';
         }
@@ -1739,13 +1759,15 @@
            disposition button on screen at once. Now the money action for the
            chosen offer leads, its own fulfilment step sits directly under it,
            and everything else is one click deeper (UI-STANDARDS section 9). */
+        html += '<label class="mono" for="fh-blueprint-package">Service package</label>';
+        html += '<select id="fh-blueprint-package" class="fh-blueprint-price"><option value=""' + (!state.blueprintPackage ? ' selected' : '') + '>Offer from this call</option><option value="prep"' + (state.blueprintPackage === 'prep' ? ' selected' : '') + '>Capital Blueprint Prep · $5,000–$10,000</option><option value="full"' + (state.blueprintPackage === 'full' ? ' selected' : '') + '>Capital Blueprint Full · $20,000–$30,000</option></select>';
         var offerKey = selectedOfferKey();
         var chosen = offer(offerKey);
         html += '<div><span class="mono">Do this now</span>';
         html += '<div id="fh-chosen-offer" style="font-size:10.5px;color:var(--gray2);margin:4px 0 6px">Chosen: '
           + esc((chosen && chosen.name) || offerKey) + " · " + esc(price(offerKey)) + "</div>";
         html += '<div style="margin-top:2px;display:flex;flex-direction:column;gap:5px">';
-        if (offerKey === "UWIQ_DELIVERABLES" && chosen) {
+        if (isBlueprintOffer(offerKey) && chosen) {
           html += '<label class="mono" for="fh-blueprint-amount">Capital Blueprint price (whole dollars)</label>';
           html += '<input id="fh-blueprint-amount" class="fh-blueprint-price" type="number" inputmode="numeric" min="'
             + esc(chosen.priceMinCents / 100) + '" max="' + esc(chosen.priceMaxCents / 100)
@@ -1937,12 +1959,20 @@
       saleMotion.addEventListener("change", function (e) { state.saleMotion = e.target.value; });
       saleMotion.addEventListener("keydown", function (e) { e.stopPropagation(); });
     }
+    var blueprintPackage = document.getElementById("fh-blueprint-package");
+    if (blueprintPackage) blueprintPackage.addEventListener("change", function (event) {
+      state.blueprintPackage = event.target.value;
+      state.blueprintAmountDollars = null;
+      state.contractLink = "";
+      state.contractMsg = "";
+      render();
+    });
     var blueprintAmount = document.getElementById("fh-blueprint-amount");
     if (blueprintAmount) {
       blueprintAmount.addEventListener("input", function (e) {
         state.blueprintAmountDollars = e.target.value;
         var label = document.getElementById("fh-chosen-offer");
-        if (label) label.textContent = "Chosen: " + offer("UWIQ_DELIVERABLES").name + " · " + price("UWIQ_DELIVERABLES");
+        if (label) label.textContent = "Chosen: " + offer(selectedOfferKey()).name + " · " + price(selectedOfferKey());
       });
       blueprintAmount.addEventListener("keydown", function (e) { e.stopPropagation(); });
     }
@@ -2068,7 +2098,7 @@
     if (!window.FHContractSend || !contactId) { toast("No contact on this deck."); return; }
     var wantKey = resolveContractTemplateKey();
     var amountCents;
-    if (selectedOfferKey() === "UWIQ_DELIVERABLES") {
+    if (isBlueprintOffer(selectedOfferKey())) {
       amountCents = blueprintAmountCents();
       if (amountCents === null) { toast("Choose a valid whole-dollar Capital Blueprint price first."); return; }
     }
@@ -2302,9 +2332,9 @@
      Actions with no button — nothing today — pass nothing and behave as before. */
   async function fire(action, extra, act) {
     if (!window.FHData || !contactId) { toast("No contact on this deck."); return; }
-    if (action === "send_pay_link" && selectedOfferKey() === "UWIQ_DELIVERABLES") {
+    if (action === "send_pay_link" && isBlueprintOffer(selectedOfferKey())) {
       var blueprintCents = blueprintAmountCents();
-      if (blueprintCents === null) { toast("Choose a whole-dollar Capital Blueprint price from " + money(offer("UWIQ_DELIVERABLES").priceMinCents / 100) + " to " + money(offer("UWIQ_DELIVERABLES").priceMaxCents / 100) + "."); return; }
+      if (blueprintCents === null) { toast("Choose a whole-dollar Capital Blueprint price from " + money(offer(selectedOfferKey()).priceMinCents / 100) + " to " + money(offer(selectedOfferKey()).priceMaxCents / 100) + "."); return; }
       extra = Object.assign({}, extra || {}, { amount_cents: blueprintCents, provider: state.blueprintProvider });
     }
     if (act) markSending(act);

@@ -1,8 +1,9 @@
 import { verifyWhopSignature } from '../merchant/normalize.mjs';
 import { emit, dispatch } from '../events/bus.mjs';
 import { whopConfig, whopBlueprintMetadata, whopMoneyCents, blueprintAmountCents,
-  WHOP_BLUEPRINT_PRODUCT, WHOP_BLUEPRINT_TITLE } from '../payments/whop-blueprint.mjs';
+  WHOP_BLUEPRINT_PRODUCT, WHOP_BLUEPRINT_TITLE, isWhopBlueprintProduct } from '../payments/whop-blueprint.mjs';
 import { enqueueWhopBilling } from '../payments/whop-billing-inbox.mjs';
+import { findWhopServiceReceipt, processWhopServiceReceipt } from '../blueprint/service-whop.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAYMENT_ID = /^pay_[a-zA-Z0-9]+$/;
@@ -12,13 +13,15 @@ const originalPaymentId = (data) => data.payment_id || data.payment?.id;
 
 export async function findWhopBillingLink(db, body) {
   const data = body?.data || {};
+  if (data.metadata?.fh_service_request_id) return findWhopServiceReceipt(db, body);
   const id = data.metadata?.fh_payment_link_id;
   const paymentId = body?.type?.startsWith('payment.') ? data.id : originalPaymentId(data);
-  return (await db.query(`SELECT l.*, p.code AS product_code FROM payment_links l
+  const link = (await db.query(`SELECT l.*, p.code AS product_code FROM payment_links l
     JOIN products p ON p.id = l.product_id AND p.org_id = l.org_id
     WHERE l.provider = 'whop' AND (($1::uuid IS NOT NULL AND l.id = $1)
       OR ($2::text IS NOT NULL AND l.whop_payment_id = $2)) LIMIT 1`,
   [UUID.test(id || '') ? id : null, PAYMENT_ID.test(paymentId || '') ? paymentId : null])).rows[0] || null;
+  return link || await findWhopServiceReceipt(db, body);
 }
 
 export async function handleWhopBillingWebhook({ db, rawBody, headers = {}, env = process.env,
@@ -53,9 +56,9 @@ export async function handleWhopBillingWebhook({ db, rawBody, headers = {}, env 
 }
 
 export function validateWhopBlueprintPayment(data, link, cfg) {
-  if (!link || link.provider !== 'whop' || link.product_code !== WHOP_BLUEPRINT_PRODUCT
+  if (!link || link.provider !== 'whop' || !isWhopBlueprintProduct(link.product_code)
     || link.currency !== 'USD') throw new Error('Whop order does not match Capital Blueprint');
-  blueprintAmountCents(Number(link.amount_cents));
+  blueprintAmountCents(Number(link.amount_cents), link.product_code);
   if (!PAYMENT_ID.test(data.id || '') || data.account_id !== cfg.accountId
     || data.checkout_configuration_id !== link.whop_checkout_configuration_id
     || data.plan_id !== link.whop_plan_id || data.product_id !== cfg.productId
@@ -97,6 +100,8 @@ export async function processWhopBillingInboxRow(row, db, { env = process.env, .
   }
   const link = await findWhopBillingLink(db, body);
   if (!link || link.org_id !== row.org_id) throw new Error('Whop order not found; retry after reconciliation');
+  if (link.blueprint_service) return processWhopServiceReceipt(db, body, link, cfg,
+    (tx, name, payload, opts) => emitRetryable(tx, name, payload, opts, deps), { env, fetchImpl: deps.fetchImpl });
   let name;
   let amountCents;
   let providerRef = data.id;
@@ -115,7 +120,7 @@ export async function processWhopBillingInboxRow(row, db, { env = process.env, .
   } else {
     if (!PAYMENT_ID.test(originalPaymentId(data) || '') || originalPaymentId(data) !== link.whop_payment_id
       || link.status !== 'paid') throw new Error('Whop reversal waits for its original settled payment');
-    if (link.product_code !== WHOP_BLUEPRINT_PRODUCT) throw new Error('Whop reversal product mismatch');
+    if (!isWhopBlueprintProduct(link.product_code)) throw new Error('Whop reversal product mismatch');
     amountCents = whopMoneyCents(body.type === 'dispute.created'
       ? { amount: String(data.amount), currency: data.currency, decimals: 2 } : data.amount);
     if (amountCents > Number(link.amount_cents)) throw new Error('Whop reversal exceeds original payment');
@@ -124,8 +129,8 @@ export async function processWhopBillingInboxRow(row, db, { env = process.env, .
     name = body.type.startsWith('refund.') ? 'payment.refunded' : 'payment.disputed';
     originalProviderRef = originalPaymentId(data);
   }
-  const payload = { product: 'diy', productName: WHOP_BLUEPRINT_TITLE,
-    productId: link.product_id, productCode: WHOP_BLUEPRINT_PRODUCT,
+  const payload = { product: 'diy', productName: link.product_code === 'blueprint-self-funding' ? link.product_code : WHOP_BLUEPRINT_TITLE,
+    productId: link.product_id, productCode: link.product_code,
     amount: amountCents / 100, source: 'whop', providerRef, paymentId: originalPaymentId(data) || data.id,
     originalProviderRef, paymentLinkId: link.id, ref: link.link_ref,
     purpose: link.purpose, saleId: link.sale_id, saleMotion: link.sale_motion,
