@@ -1,0 +1,34 @@
+# Apply with git apply --unidiff-zero after shared rule ownership is resolved.
+diff --git a/.ai/rules/model-by-job.md b/.ai/rules/model-by-job.md
+index c934c25cb..56a1b64a7 100644
+--- a/.ai/rules/model-by-job.md
++++ b/.ai/rules/model-by-job.md
+@@ -2 +2 @@
+-description: Which model runs which job (owner calls on Sonnet and Opus)
++description: Which model runs which job, including lightweight screen operation
+@@ -9,0 +10,2 @@ alwaysApply: true
++- **Screen operation uses a lightweight model (2026-11-06).** Chris: "when an operating screen is used a lightweight model for typing in information ... save tokens." Delegate browser and native-app clicking, typing, and other mechanical UI actions to an available lightweight model. The planning/review model supplies precise actions and checks the results; it does not spend the larger model's tokens operating the screen. Prefer a dedicated connector or API when it can do the task. The screen operator still observes current UI state and honors all permission, confirmation, and access boundaries; unexpected results return to the planner. If a lightweight screen operator is unavailable, continue independent API/read work and state that limitation instead of silently using a larger model for screen actions.
++
+@@ -34 +36 @@ Raise thinking effort — not just the tier — for debugging and architecture.
+-Overshooting is fine. If in doubt, ask for the higher tier.
++Outside mechanical screen operation, overshooting is fine. If in doubt about reasoning work, ask for the higher tier; keep actual screen actions on the lightweight operator.
+diff --git a/AGENTS.md b/AGENTS.md
+index 11e5f49e6..4c0b3547d 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -17,0 +18 @@ Before reading code or planning a new task, state the parallel workflows, what c
++- Use a lightweight model for actual browser/native screen actions, especially typing and clicking; the planning model supplies the steps and reviews the result. Prefer available APIs, keep permission boundaries, and report an unavailable lightweight operator. Owner-set 2026-11-06; law: `.ai/rules/model-by-job.md`.
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 81997d364..aec009e22 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -111 +111 @@ Owner calls already settled (owner-set 2026-10-09 to 2026-10-31). Same law: `.ai
+-Model by job (owner-set 2026-10-06 and 2026-10-23). Same law: `.ai/rules/model-by-job.md`
++Model by job (owner-set 2026-10-06, 2026-10-23 and 2026-11-06). Use a lightweight model for actual browser/native screen clicking and typing; the planner supplies actions and reviews results. Prefer APIs and keep existing permission boundaries. Same law: `.ai/rules/model-by-job.md`
+diff --git a/docs/rules/RULES-INDEX.md b/docs/rules/RULES-INDEX.md
+index 27c69c390..e08fc778f 100644
+--- a/docs/rules/RULES-INDEX.md
++++ b/docs/rules/RULES-INDEX.md
+@@ -53 +53 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
+-- `model-by-job` (both homes): Which model runs which job (owner calls on Sonnet and Opus).
++- `model-by-job` (both homes): Model by job, including lightweight browser/native screen operation with planner review and unchanged permission boundaries (owner-set 2026-11-06).

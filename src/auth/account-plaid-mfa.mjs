@@ -6,7 +6,7 @@ import { hashToken, newToken } from "./session.mjs";
 import { bankPasskeyAssurance } from "./passkey-stepup.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
 
-export const CONSENT_VERSION = "plaid-link-2026-11-02";
+export const CONSENT_VERSION = "plaid-link-2026-11-06";
 export const PRIVACY_URL = "https://fundhub.ai/privacy/";
 export const CONSENT_TEXT = Object.freeze({
   client_bank: "I agree that Fundhub may collect, process, use, and store my bank account, balance, and transaction data obtained through Plaid for Finance OS. I can disconnect my bank later.",
@@ -28,9 +28,9 @@ export async function authorizeAccountPlaidLink(db, {
     const receipt = (await tx.query(
       `INSERT INTO account_plaid_link_grants
          (token_hash,org_id,account_id,account_session_id,target_kind,target_id,
-          consent_scope,consent_version,consent_text,privacy_url,mfa_verified_at)
+          consent_scope,consent_version,consent_text,privacy_url,mfa_verified_at,passkey_assurance_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,
-         (SELECT verified_at FROM auth_passkey_assurances WHERE id=$11))
+         (SELECT verified_at FROM auth_passkey_assurances WHERE id=$11),$11)
        RETURNING id,consent_granted_at,expires_at`,
       [hashToken(token), orgId, accountId, sessionId, targetKind, targetId,
         JSON.stringify(scope), CONSENT_VERSION, CONSENT_TEXT[targetKind], PRIVACY_URL, proof.id]

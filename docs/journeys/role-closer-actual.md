@@ -47,9 +47,9 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 158 routes]
+    WHO -->|Yes| CANT[Blocked — 159 routes]
     CANT --> B_affiliates[affiliates — 4 blocked]
-    CANT --> B_auth[Signing in and out — 9 blocked]
+    CANT --> B_auth[Signing in and out — 10 blocked]
     CANT --> B_banking[banking — 2 blocked]
     CANT --> B_blueprint[blueprint — 7 blocked]
     CANT --> B_brand[brand — 1 blocked]
@@ -81,7 +81,7 @@ flowchart TD
 
 ## What they can reach
 
-**200 of 358 routes.**
+**200 of 359 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -295,7 +295,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**158 of 358 routes.**
+**159 of 359 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -309,6 +309,7 @@ flowchart TD
 | `/api/auth/authorized-rep` | GET, POST | owner, admin |
 | `/api/auth/authorized-rep-file` | GET, POST | client |
 | `/api/auth/invite` | POST | owner, admin |
+| `/api/auth/passkey` | POST | employees: owner<br>plus: client, affiliate |
 | `/api/auth/plaid-mfa` | POST | client, affiliate |
 | `/api/auth/send-portal-link` | POST | owner, admin |
 | `/api/auth/staff-role` | POST | owner, admin |

@@ -17,7 +17,7 @@ flowchart TD
     WHO -->|No| DENY[Refused — 403 forbidden]
     WHO -->|Yes| CAN[Can reach]
     CAN --> A_affiliates[affiliates — 2 routes]
-    CAN --> A_auth[Signing in and out — 7 routes]
+    CAN --> A_auth[Signing in and out — 8 routes]
     CAN --> A_climate[climate — 2 routes]
     CAN --> A_content[content — 1 route]
     CAN --> A_contracts[contracts — 1 route]
@@ -72,7 +72,7 @@ flowchart TD
 
 ## What they can reach
 
-**49 of 358 routes.**
+**50 of 359 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -82,6 +82,7 @@ flowchart TD
 | `/api/auth/logout` | — | anyone |
 | `/api/auth/magic-link` | — | anyone |
 | `/api/auth/magic-link-verify` | — | anyone |
+| `/api/auth/passkey` | POST | employees: owner<br>plus: client, affiliate |
 | `/api/auth/plaid-mfa` | POST | client, affiliate |
 | `/api/auth/reset` | POST | anyone |
 | `/api/auth/session` | — | anyone |
@@ -133,7 +134,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**309 of 358 routes.**
+**309 of 359 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

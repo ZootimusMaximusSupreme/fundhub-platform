@@ -73,12 +73,17 @@
             btn.textContent = "Saving your bank…";
             var inst = metadata && metadata.institution ? { name: metadata.institution.name || null } : null;
             var acct = metadata && metadata.accounts && metadata.accounts.length === 1 ? metadata.accounts[0].id : null;
-            post({ action: "exchange", public_token: publicToken, institution: inst,
-              account_id: acct, plaid_grant_token: grantToken }).then(function (r2) {
+            root.FHPlaidStepUp.verify("affiliate_payout").then(function () {
+              return post({ action: "exchange", public_token: publicToken, institution: inst,
+                account_id: acct, plaid_grant_token: grantToken });
+            }).then(function (r2) {
               done();
               if (!r2 || !r2.ok) { say((r2 && r2.message) || "The bank did not save. Try again."); return; }
               say("Bank linked. Your next payout goes here.");
               paint(r2.account);
+            }).catch(function (err) {
+              done();
+              if (!err || err.message !== "cancelled") say((err && err.message) || "Bank verification did not work. Try again.");
             });
           },
           onExit: function (err) { done(); if (err) say("The bank window closed before it finished. Nothing was saved."); }
