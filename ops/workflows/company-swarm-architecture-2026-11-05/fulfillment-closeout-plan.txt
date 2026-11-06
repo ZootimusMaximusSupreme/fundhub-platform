@@ -1,0 +1,50 @@
+CURRENT CLOSEOUT PLAN — 2026-11-05, read-only discovery; no tests run
+
+Scope: isolated fictional funding, full/trial repair, Blueprint and A/R. No live sends/pulls/charges/customer writes or integration changes. Plaid + Twilio restoration tomorrow; isolated tests can run today. No heartbeat. Claude owns animations; Codex owns verification.
+
+ORDER
+1 Confirm migrated disposable PostgreSQL (fundhub_app) + local fixture browser target, outbound stubs and current SHA. Record exact run/profile/role/org. PG tests skipped without safe DB do not count.
+2 Run four paths below independently, separate scratch DB/schema/test-org/output. Funding and A/R share money code; Blueprint/repair share underwriting: parallel tests okay on isolated data, shared-file repairs need one owner.
+3 Join paid receipt -> purchased fulfillment -> client/team readback -> invoice/balance -> exception/recovery with same saved IDs. Desktop + phone + refresh + loading/empty/error/auth checks. Queued is not sent.
+4 Report current-head isolated PASS/FAIL; all external receipts remain NOT LIVE PROVED. Named fixes separately. Tomorrow verify restored provider/connection receipts only where authorized; restoration alone is not delivery.
+
+FUNDING
+Intent/order: docs/journeys/funding-round-flow.md; role-funding-advisor-intended.md is role access, not execution. Detailed acceptance: ops/workflows/fulfillment-execution-e2e-2026-10-28.md (historical OPEN, some CI-only rows).
+Simulate paid purchase -> intake/advisor/doc hold -> fixture credit/UnderwriteIQ -> applications -> bank approval + amount -> funded -> closeout/fee -> next round + portal.
+Negatives: no confirmed approval, missing amount, nonexistent round2, foreign org/client, stale report, duplicate event/fee, denial/action-required; round closure is not whole engagement completion.
+Candidates: src/verification/journeys/funding.mjs; src/funding/{card-stacking-rounds.pg.test.mjs,approval-amount-guard.pg.test.mjs,closeout.test.mjs}; src/workflows/{f-01-funding-intake.test.mjs,f-07-funding-locked.test.mjs,f-09-paid-funding-path.pg.test.mjs}; src/handlers/money-chain*.test.mjs.
+Command: node --test src/workflows/f-01-funding-intake.test.mjs src/workflows/f-07-funding-locked.test.mjs src/funding/closeout.test.mjs
+Limit: stored approval/funded state cannot prove lender deposit or actual notifications.
+
+CREDIT REPAIR (full + trial separately)
+Intent: docs/journeys/repair-floor-flow.md contains owner rule and event/refusal order; docs/journeys/{repair-documents-actual.md,repair-letter-send-actual.md,paid-round-actual.md} are actual/code accounts. Acceptance: fulfillment-execution-e2e-2026-10-28.md; fulfillment-execution-{repair-mail-proof,bureau-response-owner-e2e}-2026-10-29.md under ops/workflows.
+Simulate paid program -> enrollment -> accepted ID/address evidence -> round letters/PDF -> quote/authorized mailing fixture -> tracking fixture -> bureau response -> fresh credit -> next eligible round -> staff/client readback.
+Negatives: no authorization, unread ID, missing address/no invented claim, no credit, stale round2, duplicate generation, inactive paid program, trial/full cap, foreign letter/client, double mail/concurrent/stuck claim, wrong-owner response. Time passing does not verify proof.
+Candidates: src/repair/{analyze.test.mjs,round-plan.test.mjs,round-clock.test.mjs,active-paid-program.pg.test.mjs,send-foreign-letter.pg.test.mjs,send-double-mail.pg.test.mjs,response-agent-owner-guard.pg.test.mjs}; src/workflows/repair-start-tasks-unique.pg.test.mjs; e2e/fin-b01-inquiry-remover-repair.spec.mjs.
+Command: node --test src/repair/analyze.test.mjs src/repair/round-plan.test.mjs src/repair/round-clock.test.mjs
+Limit: src/verification/journeys/diy.mjs proves DIY sale/entitlement assertions, not full/trial paid repair, real mail/tracking or bureau response.
+
+BLUEPRINT
+Intent: docs/journeys/capital-blueprint-intended.md CB01-10. Acceptance: ops/workflows/blueprint-product-acceptance-2026-10-29.md. Historical preview/evidence: ops/workflows/blueprint-client-simulation-2026-11-02.txt; source/fixture vs live distinction: capital-blueprint-actual.md.
+Simulate exact-price agreement -> checkout/receipt -> 12-month entitlement -> personal + separate-business plans/checklist -> current action -> evidence upload/review -> support/CSM exception -> day30/90/365 jumps -> stored eligible monthly result -> updated files/download. Use fictional saved bureau/bank data, no live Plaid/CRS.
+Negatives: unpaid/mismatched amount/agreement, duplicate receipt, tenant/session switch, refund/access policy, month13, simulated credit cannot suppress real-mode due request, queued/failed/ambiguous provider not redialed, upload/download/coach timeout, promises don't verify proof.
+Candidates: src/payments/whop-blueprint{,.pg}.test.mjs; src/blueprint/{client-plan.test.mjs,coach.test.mjs,coach-call.test.mjs,monthly-pull-aftercare.test.mjs,assign-csm.test.mjs}; src/workflows/blueprint-delivery.pg.test.mjs; src/finance/blueprint-finance-os-collision.pg.test.mjs; e2e/{blueprint-price-context,blueprint-client-plan}.spec.mjs.
+Commands: node --test src/payments/whop-blueprint.test.mjs src/blueprint/client-plan.test.mjs src/blueprint/monthly-pull-aftercare.test.mjs
+npx playwright test e2e/blueprint-client-plan.spec.mjs e2e/blueprint-price-context.spec.mjs
+Limit: browser API routes are fixtures using actual plan aggregator; not live payment/refresh/coach/Plaid proof. Existing preview receipt is historical, not actual production service.
+
+A/R
+Intent/order: docs/journeys/{clarity-payments-flow.md,funding-round-flow.md}; detailed owner acceptance: ops/workflows/accounts-receivable-e2e-2026-10-28.md. Refund ownership: ops/workflows/ar-refund-dispute-identity-2026-10-29.md.
+Simulate agreed fee -> invoice -> exact matching verified receipt -> partial/full allocation -> remaining-balance link/notice -> collections/human handoff -> correction/void/overpayment -> refund/dispute original-payment identity -> missing webhook reconciliation/replay.
+Negatives: foreign tenant/client, unknown explicit checkout plus valid fallback ref, wrong email, duplicate/contradictory PSP replay, overpayment, void bill late receipt, stale demand after partial payment, unknown reversal cannot create lead, duplicate urgent tasks, unresolved ownership. Reversal event alone does not authorize every entitlement/invoice/commission outcome.
+Candidates: src/invoices/allocate-{owned-client,replay-identity,tenant-boundary,checkout-id,issuance}.pg.test.mjs; src/workflows/ar-collections{,-payment-identity,-handoff-race}.test.mjs and *handoff*.pg.test.mjs; src/handlers/{commas-disputes.test.mjs,commas-disputes-owned-client.pg.test.mjs,money-chain-reversal.pg.test.mjs}; src/payments/commas-inbox.pg.test.mjs.
+Command: node --test src/workflows/ar-collections.test.mjs src/workflows/ar-collections-payment-identity.test.mjs src/workflows/ar-collections-handoff-race.test.mjs src/handlers/commas-disputes.test.mjs
+Limit: historical matrix merged/CI-only rows are not current merchant/task/customer receipts. Do not manufacture a refund or chargeback.
+
+HARNESS / PROOF LIMITS
+- src/verification/run-all.mjs: real scratch DB/handlers, dry-run adapters, live-company/privileged guard; shared setup/cleanup modifies test-company sending. npm run verify:e2e adds broad role/security UI and rewrites docs/END-TO-END-VERIFICATION.md. Do not start that broad audit now. Target path tests first; never point scratch harness at production or run same DB concurrently.
+- src/demo/simulate-client.mjs + pg test: sample/credit loaders; scripts/sim/crs-scenarios{,.pg}.test.mjs: credit scenarios. Use test-local fixtures only.
+- DO NOT run scripts/sim/seed-fulfillment-client.mjs, push-credit.mjs, push-payment.mjs or with-prod-env.sh here. Seed uses owner identity + provider checkout key, leaves synthetic/is_demo OFF and mints real open checkout; sim name is not isolation. Its documented seed -> credit -> payment order is research evidence only.
+- docs/END-TO-END-VERIFICATION.md generated 2026-08-22 reports 368 PASS/44 FAIL/60 UNVERIFIED/2 silent no-ops. None is a current status.
+- Missing system-map skill reference ops/workflows/system-map-2026-08-26.md: absent in this worktree, no replacement found by rg. No sequence PASS claimed; obtain existing map from owning checkout before certification. Ground truth lacking event order stays UNVERIFIED rather than invented.
+- This discovery neither reran tests nor established current live defects. Need actual test logs, current SHA, isolated read-after-refresh assertions and explicit receipt limits for closeout. No new .md or product changes.

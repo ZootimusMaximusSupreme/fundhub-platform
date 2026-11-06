@@ -1,30 +1,51 @@
-Fundhub finish list — November 5, 2026
-Scope: current cross-chat closeout. This is a source-backed handoff, not a new production audit.
-Goal: close existing Fundhub gaps and extract proven systems toward a 30-minute company launch. Reuse existing work.
+Fundhub closeout — November 5, 2026, updated owner direction
+Goal: finish existing operating flows, prove that staff can run them, then extract proven skills toward the 30-minute company factory.
+Scope today: a consolidated plan plus the first isolated funding regression check. No production customer/money/send actions, feature builds or heartbeat work.
 
-SAVED
-- Private recovery checkpoint: credentials/work-saves/2026-11-05-closeout/.
-- Five dirty worktrees snapshotted; 243 file copies verified against SHA-256 hashes (zero mismatches).
-- Registered worktree heads, local Git refs and all 21 stash heads included in history bundle; bundle verified by Git.
-- Chat index holds 1,182 source pointers, including archived Codex and local Claude/Cursor listings. Eleven recent lanes reviewed. Original chats remain intact. This is not a full transcript export or an off-device backup.
+OWNERS / WHAT CAN RUN TOGETHER
+- Codex: testing, evidence, bounded audits, exact repairs in a separate stage, independent repeat verification, release receipt checks.
+- Claude: animations and creative production. Ownership is assigned; this plan does not claim a Claude job is currently running.
+- Four fulfillment paths can run independently on isolated scratch data: funding, repair, Blueprint and AR. Their paid-client and accounting boundaries must then be joined and checked. Shared-file repairs have one owner.
+- Apple status and source/build comparison run alongside fulfillment. Agent roleplay checks run from the same intended contracts after the underlying operating path is mapped.
 
-CLOSED / DO NOT REBUILD
-- Portal named four-tab jump: owning chat reports live proof for #407/#413.
-- Bank-decision tracking: owning chat reports #416 deployed and verified; real outcome entry remains an operating task.
-- 60-minute phone-call offer copy: fresh GitHub read confirms #415 merged on 2026-11-05 at 22:23:29Z, commit a942bc8b968cc65dfd5490b6ee05d3f6926049f4. This confirms merge only; the file is a draft offer page and this is not a live funnel publication receipt.
+INITIAL EXECUTION RECEIPT
+Existing funding intake, funded/fee guards and closeout tests: 24 passed, 0 failed, 0 skipped. Initial clean-worktree dependency failure was corrected by installing locked packages with lifecycle scripts disabled; the same checks were rerun. These tests use fake database/workflow steps, not PostgreSQL or provider receipts. Full client simulation remains unverified. Summary: initial-funding-check.json.
 
-NEXT TECHNICAL WORK — COMPLETE EXISTING APPROVED WORK
-1. Preserve and reconcile shared rule edits so the tested quiet-startup change can pass preflight. Existing source: .claude/worktrees/quiet-session-reminders, branch claude/quiet-split-model-line, commit c2c24aea8. Root shared rule edits are saved privately and remain in place. No source was discarded or deployed during this save pass.
-2. Prove return from a valid signed-email booking-resume link; inspect current owning code/evidence first. Do not send new messages or use another customer's link just to manufacture proof.
-3. Check actual current Twilio billing/delivery receipt. Last owning chat reports suspended billing; code tests are not delivery proof. This preservation pass made no provider changes or spend.
-4. Capture real lender outcomes through the already shipped decision-tracking flow; do not call model learning or provider imports complete.
-5. Verify signed-in Dock feed and current bank-link initiation only where the owner lanes still lack receipts. Preserve ownership; do not reopen completed portal/navigation repairs.
+PRIORITY 1 — FUNDING SIMULATION, THEN REPAIR / BLUEPRINT / AR
+Use one coherent fictional client profile copied into isolated test cases. Keep its documents, credit numbers, offer, agreement and payment references consistent. Use migrated disposable PostgreSQL and local browser fixtures; do not use production client rows or old scripts that create real checkout links.
+Funding: paid handoff -> intake/advisor/documents -> UnderwriteIQ fixture -> applications -> confirmed bank decision/amount -> funded guard -> fee/closeout -> staff/client readback.
+Repair: paid full and trial paths separately -> document review -> letters/PDF -> authorized mailing/tracking fixtures -> bureau response -> next eligible round -> client/staff readback.
+Blueprint: exact-price agreement/payment -> access -> plans/checklist -> evidence and current action -> coaching/support -> monthly eligibility and refreshed documents.
+AR: agreed fee/invoice -> partial/full allocation -> balance -> collections/human handoff -> correction/overpayment -> refund/dispute identity -> missed receipt/replay recovery.
+Test success plus missing inputs, refusal, timeout/failure, duplicate/reordered events, wrong-company access and human handoff. A fake provider result proves internal handling, not external delivery. Source-based plan: fulfillment-closeout-plan.txt.
 
-NEXT OWNER WORK — BANK-DATA OUTREACH HIRING
-Existing hiring research and role pitch are saved in chat 01a1ad48-cd54-77a3-a276-ef6e7292f631. The next concrete business deliverable is a ready-to-post bank-outreach job and screening questions. Role pay and advertising cap remain undecided; setter compensation is not automatically this role's compensation. Do not publish or spend as part of this save request.
+PRIORITY 2 — APPLE AND INSTALLED APP
+Fresh authenticated Apple receipt: Fundhub Portal 1.0.3/build 9 is READY_FOR_SALE; review COMPLETE; public lookup independently shows 1.0.3. No newer binary upload exists.
+Recent web-hosted page/API updates do not automatically require a new binary. Classify recent changes first; verify the signed-in customer flow on actual public iPhone app separately. Native Swift/bridge/widget/bundled-resource changes need their own build/submission receipt. TestFlight tester delivery and real-device flow have not been proved in this pass. Details: apple-release-status.txt.
 
-NOT A CURRENT FAILURE WITHOUT FRESH PROOF
-Claude's older survey/OffersIQ/setter-pay blocker list; pending status from already merged PRs; failure claims copied from old memory.
+PRIORITY 3 — ACTIVE SKILLS / AGENTIC FLOWS
+Audit the actually used customer/money skills first, rather than every installed third-party media tool. Each needs: owner/version, intended journey, trigger/non-trigger, required inputs, allowed tools, expected output and stored effect, failure/recovery behavior, regression cases and independent proof.
+Conversation agents: load the actual active prompt; run a full client conversation using the real model path; score prompt fulfillment AND event order. Use existing roleplay tooling, distinguish live-model from stub/rules results, and rerun twice after a named fix.
+For each defect: expected vs observed + evidence -> one owning repair -> regression case -> independent rerun -> required release/live receipts where relevant. Audit and repair remain separate stages. Do not claim repeatability from prompt wording alone. Details: skill-flow-closeout-plan.txt.
 
-SEPARATE RESEARCH, NOT LAUNCH BLOCKERS
-Quiz funnel, challenge funnel, company-launch orchestration platform selection, hosted 24/7 Apple signing. Keep recorded; do not expand the Fundhub closeout scope automatically.
+PRIORITY 4 — STAFF + MONDAY AD READINESS
+Setter/closer onboarding: role access, assigned work, client context, qualification, booking, saved handoff, correct offer/payment links and decision/outcome logging. Verify drills with fictional data before relying on real staff work.
+Claude animations: confirm the current approved scripts/finished videos and accepted outputs in that lane; no Codex animation edits here.
+Ad/funnel acceptance: correct offer and destination, survey/booking continuity, visible saved lead/handoff and tracking. No new ad publication or spend under this planning pass.
+
+OTHER EXISTING LEFTOVERS — VERIFY CURRENT STATUS BEFORE FIXING
+- Enrichment: confirm CRS numeric vs rule-only fields and requested credit-age/limit/history/income/assets/property data, then verify sample routing for 620+/750+/800+ models. No further vendor email authorized here.
+- Valid signed-email booking-resume proof.
+- Signed-in installed Mac Dock work-feed proof.
+- Bank-outreach hiring draft/screens are saved; finish compensation/application/budget decisions in its lane when ready. Current setter/closer onboarding takes priority over inventing another role.
+- Shared quiet-startup rule-file handoff is a separate low-priority coordination leftover, not a fulfillment gate.
+
+TOMORROW / EXCLUDED
+Plaid owner-account access and Twilio restoration/provider delivery proof wait until tomorrow per owner. Do not count restored billing or a code test as delivery. No heartbeat work. Hosted 24/7 Apple signing is not added to this closeout scope. No new outbound contact platform until the owner chooses the purchased system.
+"Acorn squasher" has no located task match; clarification is pending. Other work continues independently.
+
+FINISH LINE / SKILL EXTRACTION
+A flow is ready when the client and correct staff role can complete it, required stored effects match, known failure paths recover or reach a named human owner, and independent regression evidence is saved for the tested version. Preserve explicit unverified/deferred provider/device checks. Then package its inputs, rules, tools, outputs, tests and recovery procedure; reproduce it in a clean workspace before calling it reusable.
+
+SAVED WORK
+Original chats remain intact. PR #417 merged the prior planning/handoff/hiring draft. Private recovery files, Git history/stashes and 243 hash-verified working-file copies remain in the original checkout's gitignored credentials/work-saves/2026-11-05-closeout/. Chat index is retrieval pointers, not a full transcript export or off-device private backup. Customer artifacts were not published.

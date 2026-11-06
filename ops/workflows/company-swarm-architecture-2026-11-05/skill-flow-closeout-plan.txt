@@ -1,0 +1,45 @@
+Fundhub skill/flow closeout — read-only inventory, 2026-11-05
+No tests run, no live writes, no PASS claimed.
+
+Recommended approach: close existing Fundhub capabilities through bounded audit -> exact named fix -> independent repeat proof -> skill promotion. Do not build another orchestration platform. Codex owns testing; Claude owns animations. No heartbeat work. Plaid/Twilio tomorrow; setter/closer onboarding and ads Monday.
+
+Existing skill groups (.agents/skills/*/SKILL.md):
+- Discovery/proof: system-map, auditor, ui-auditor, perf-auditor.
+- Repair/build/release: fixer, builder, orchestrator, version-control, repo-hygiene.
+- Agent behavior: agent-tester, live Agent Editor prompt/runtime.
+- Marketing: ad-writer, ad-editor, video-animation-overlay (Claude), testimonial-thumbnails, ClickFunnels developer/push.
+- Data/provider: supabase and actual ClickFunnels integrations.
+- Media production: Higgsfield generate/websites/brandkit/photoshoot/cards/soul-id/thumbnail/explainer. Qualify only actually used skills.
+
+Flow register categories (src/workflows): lead intake/qualification/booking and no-show (s-*, ai-set-*, precall-*); payment/onboarding/portal/documents; CRS/underwriting/routing (u-*, c-*); paid funding/advisor ownership/inquiry gates/submission/recovery/funded (f-*); repair bureau responses; Blueprint delivery/letters; Finance helper and receivables; retention/referral/affiliates; hiring/onboarding; native portal/Dock/release. Discovery must check actual registered triggers and live enabled state, not infer activation from file existence.
+
+Existing eval tooling:
+1 .agents/skills/fundhub-agent-tester/SKILL.md: two independent conversation seats, exact live prompt, full intended event order, per-turn scoring; twice after named fix. No real Bland call or extra SMS.
+2 scripts/money-agent-roleplay.mjs / npm run money:roleplay: reads in BEGIN READ ONLY, closes DB before models, dry helper actions, default prompt=row; supports prompt=code and bridge/stub/rules distinctions. Passing a stub is not live-model proof.
+3 src/finance/money-agent-sim.mjs: persona cases and deterministic scoreRun. Its line 502 claims no money-helper-intended.md, BUT docs/journeys/money-helper-flow.md EXISTS and contains ordered message/decline flow, allowed actions, shadow behavior, fallback and orphan recovery. Therefore report comment drift / contract mapping gap, NOT 'intended journey missing'. Also check money-transfers-flow.md and clarity-payments-flow.md. Determine whether existing documented order satisfies intended proof contract; do not invent new behavior.
+4 src/agents/drill.mjs/tests: internal closer coach from existing call outcomes; ops/internal agents, AG-04/AG-09 protected. Can write shadow runs; do not invoke as read-only discovery or treat as customer conversation proof.
+5 Runtime/select/context/model/gate-respect/blueprint/repair response tests; registry PG tests; Agent Editor browser save/promotion/authority tests. Editor save is not full journey proof.
+6 package.json test, test:e2e, test:e2e:live, verify:e2e. Inspect side effects before run; PG skipped without scratch DATABASE_URL remains unproved.
+7 system-map skill's ops/workflows/system-map-2026-08-26.md was not found in this worktree. Search/recover canonical source before relying on it.
+
+Minimum per-skill AND flow acceptance contract:
+ID/version + owner; authoritative intended journey; exact trigger + non-trigger; inputs/required fields and org scope; allowed tools/actions and authority limits; output artifact; actual expected persisted/provider effect; event order; independent receipt; failure/recovery cases; repeat-event/idempotency behavior; regression case IDs; prompt/config/source version; environment/time; PASS/FAIL/UNVERIFIED/DEFERRED + exact blocker.
+A roleplay proves conversation; a delivered-provider receipt proves delivery. Keep simulation, source, browser, stored-state and external effect evidence separate.
+
+Recommended order:
+1 Today inventory approved intended contracts and owner lanes; map active skills to actual workflow code and existing tests. Missing sequence means explicit unverified cases, not invented steps.
+2 Today bounded safe audits: intake/booking -> paid-client onboarding/portal/documents -> underwriting/advisor/funding and repair/Blueprint. Prepare Monday onboarding/ad acceptance without launching or touching Claude animations.
+3 Each failure: exact expected/observed, evidence, owning file, smallest repair, regression case. Audit and fix remain separate stages; continue already-authorized repair scope without repeated permission.
+4 Tomorrow provider-specific Plaid/Twilio proof; preserve deferred state until actual evidence.
+5 Before Monday practical setter/closer permissions, qualification, handoff, outcomes and follow-up; ad funnel/assets/tracking readiness.
+6 After named fixes rerun positive, negative, duplicate/reordered, missing-input, wrong-tenant, opt-out and provider-failure cases; roleplay twice; required CI/release/live proof. Only then mark skill reusable.
+
+Regression prevention: preserve prior failure cases beside existing tests; record live prompt/config hashes; invalidate proof on affected dependency change; use scratch state for mutations; independent verifier checks actual effects; bounded repeat runs for stochastic conversations. State tested coverage and gaps, never perfection. Use existing checks; no heartbeat scope.
+
+Other candidate unfinished items from historical boards, not current verified failures:
+- portal-tab-jump-2026-11-04.txt: recorded authenticated visual/release evidence gaps.
+- mac-edge-dock-2026-11-01/BOARD.txt: recorded signed-in installed visual gap.
+- ios-release-handoff-2026-11-04.txt: local awake/session dependence, external 24/7 signing infrastructure and future release receipt are separate; no automatic expansion into hosted signing.
+- funding-handoff-gates-2026-11-02.txt: historical scratch DB gap; explicit leftovers application-action capture/AI training and staff fraud resolution.
+- lead-abandonment-followup-2026-11-02.txt: historical ownership/release notes need current check.
+No authoritative single current owner-to-do list established. Search exact 'acorn squasher'/'squasher' found no match; do not equate to AcornFinance. Root clarifies with owner.

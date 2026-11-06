@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-11-06T01:00:59.706834+00:00",
+  "sourceHead": "cf94ad001f0d1bbba90632b7d03241adee1a4b32",
+  "command": "node --test src/workflows/f-01-funding-intake.test.mjs src/workflows/f-07-funding-locked.test.mjs src/funding/closeout.test.mjs",
+  "result": {
+    "tests": 24,
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0
+  },
+  "evidenceType": "Existing automated tests with in-memory fake database and fake workflow steps; no real PostgreSQL or live provider effects proved.",
+  "initialAttempt": {
+    "passed": 9,
+    "failedToLoadFiles": 2,
+    "reason": "Missing inngest package in clean worktree; locked dependencies installed with npm ci --ignore-scripts --no-audit --no-fund, then same command rerun."
+  },
+  "logs": [
+    "/private/tmp/fundhub-closeout-funding-regressions-20261105.log",
+    "/private/tmp/fundhub-closeout-funding-regressions-20261105-rerun.log"
+  ],
+  "notProved": [
+    "Complete fictional-client browser/staff simulation",
+    "PostgreSQL-backed effects",
+    "External messages, lender money movement, payments or device behavior"
+  ],
+  "productionWrites": false
+}
