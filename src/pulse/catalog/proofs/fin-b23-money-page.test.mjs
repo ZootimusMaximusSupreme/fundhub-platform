@@ -31,13 +31,21 @@ const BANK_WINDOW = "window.Plaid={create:function(c){return{open:function(){set
 const EMPTY_OVERVIEW = { ...SANDBOX, accounts: [] };
 
 function plaidRoutes({ script = "serves", linkToken = { status: 200, body: { ok: true, link_token: "fake-link-token" } } } = {}) {
-  const log = { posts: [], authPosts: [], scriptRequests: [], overviewReads: 0 };
+  const log = { posts: [], authPosts: [], passkeyPosts: [], events: [], scriptRequests: [], overviewReads: 0 };
   const handlers = {
     "/api/money/overview": async (route) => { log.overviewReads += 1; return json(route, EMPTY_OVERVIEW); },
     "/api/money/trends": async (route) => json(route, { ok: true, range: "90d", daily: {}, monthly: { months: [] } }),
+    "/api/auth/passkey": async (route) => {
+      const body = bodyOf(route);
+      log.passkeyPosts.push(body);
+      log.events.push({ endpoint: "passkey", action: body.action, target_kind: body.target_kind });
+      if (body.action !== "status") return json(route, { ok: false, error: "unexpected_passkey_action" }, 400);
+      return json(route, { ok: true, enrolled: true, assured: true, recovery_required: false });
+    },
     "/api/auth/plaid-mfa": async (route) => {
       const body = bodyOf(route);
       log.authPosts.push(body);
+      log.events.push({ endpoint: "consent", action: body.action, target_kind: body.target_kind });
       return json(route, body.action === "consent_details"
         ? { ok: true,
           consent_text: "I agree that Fundhub may collect, process, use, and store my bank account, balance, and transaction data obtained through Plaid for Finance OS. I can disconnect my bank later.",
@@ -45,11 +53,15 @@ function plaidRoutes({ script = "serves", linkToken = { status: 200, body: { ok:
         : { ok: true, grant_token: "grant-token" });
     },
     "/api/banking/link-token": async (route) => {
-      log.posts.push({ path: "link-token", body: bodyOf(route) });
+      const body = bodyOf(route);
+      log.posts.push({ path: "link-token", body });
+      log.events.push({ endpoint: "bank", path: "link-token" });
       return json(route, linkToken.body, linkToken.status);
     },
     "/api/banking/link-exchange": async (route) => {
-      log.posts.push({ path: "link-exchange", body: bodyOf(route) });
+      const body = bodyOf(route);
+      log.posts.push({ path: "link-exchange", body });
+      log.events.push({ endpoint: "bank", path: "link-exchange" });
       return json(route, { ok: true });
     },
   };
@@ -63,15 +75,39 @@ function plaidRoutes({ script = "serves", linkToken = { status: 200, body: { ok:
   return { log, handlers, before };
 }
 
-async function authorizeLink(page) {
+function assertPasskeyBeforeConsent(log) {
+  const status = log.events.findIndex((event) => event.endpoint === "passkey" && event.action === "status");
+  const details = log.events.findIndex((event) => event.endpoint === "consent" && event.action === "consent_details");
+  assert(status >= 0 && details >= 0 && status < details, "passkey status runs before consent details");
+  assert.deepEqual(log.passkeyPosts[0], { action: "status", target_kind: "client_bank" });
+}
+
+function assertPasskeyBeforeExchange(log) {
+  const statuses = log.events.map((event, index) => event.endpoint === "passkey" && event.action === "status" ? index : -1).filter((index) => index >= 0);
+  const details = log.events.findIndex((event) => event.endpoint === "consent" && event.action === "consent_details");
+  const authorize = log.events.findIndex((event) => event.endpoint === "consent" && event.action === "authorize");
+  const linkToken = log.events.findIndex((event) => event.endpoint === "bank" && event.path === "link-token");
+  const exchange = log.events.findIndex((event) => event.endpoint === "bank" && event.path === "link-exchange");
+  assert.equal(statuses.length, 2, "passkey status gates both the consent flow and the exchange");
+  assert(statuses[0] < details && details < authorize && authorize < linkToken && linkToken < statuses[1] && statuses[1] < exchange,
+    "post-Plaid passkey status completes before the exchange");
+  assert.deepEqual(log.passkeyPosts, [
+    { action: "status", target_kind: "client_bank" },
+    { action: "status", target_kind: "client_bank" },
+  ]);
+}
+
+async function authorizeLink(page, log) {
   await page.locator('[data-act="connect"]').first().click();
+  await page.locator('.fh-plaid-stepup [name="consent"]').waitFor();
+  assertPasskeyBeforeConsent(log);
   await page.locator('.fh-plaid-stepup [name="consent"]').check();
   await page.locator('.fh-plaid-stepup [data-continue]').click();
 }
 
 test("consent dialog has review screenshots at desktop and phone widths", { timeout: 60_000 }, async (t) => {
   const { open } = await startPages(t);
-  const { handlers, before } = plaidRoutes();
+  const { log, handlers, before } = plaidRoutes();
   const { page } = await open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers, before });
   const evidence = path.join(ROOT, "ops/workflows/build-evidence/plaid-security-link");
   fs.mkdirSync(evidence, { recursive: true });
@@ -82,6 +118,7 @@ test("consent dialog has review screenshots at desktop and phone widths", { time
       await page.locator('[data-act="connect"]').first().click();
     }
     await page.locator(".fh-plaid-stepup").waitFor();
+    assertPasskeyBeforeConsent(log);
     assert.equal(await page.locator('.fh-plaid-stepup-consent a').getAttribute("href"),
       "https://fundhub.ai/privacy/");
     await page.evaluate(() => {
@@ -136,8 +173,11 @@ test("Connect a bank waits for a checked consent box before asking for Plaid Lin
   const { log, handlers, before } = plaidRoutes();
   const { page } = await open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers, before });
   await page.locator('[data-act="connect"]').first().click();
+  await page.locator('.fh-plaid-stepup [data-continue]').waitFor();
+  assertPasskeyBeforeConsent(log);
   await page.locator('.fh-plaid-stepup [data-continue]').click();
   assert.deepEqual(log.authPosts.map((p) => p.action), ["consent_details"]);
+  assert.deepEqual(log.passkeyPosts, [{ action: "status", target_kind: "client_bank" }]);
   assert.deepEqual(log.posts, []);
   assert.deepEqual(log.scriptRequests, []);
   await page.locator('.fh-plaid-stepup [data-cancel]').click();
@@ -153,9 +193,12 @@ test("Connect a bank loads the bank script only when it is pressed, then runs to
   await page.waitForTimeout(250);
   assert.deepEqual(log.scriptRequests, [], "the bank script is not fetched before Connect is pressed");
   assert.deepEqual(log.posts, []);
+  assert.deepEqual(log.passkeyPosts, [], "passkey status is not requested before Connect is pressed");
+  assert.deepEqual(log.authPosts, []);
 
-  await authorizeLink(page);
+  await authorizeLink(page, log);
   await waitFor(() => log.posts.some((p) => p.path === "link-exchange"), "the exchange");
+  assertPasskeyBeforeExchange(log);
   assert.deepEqual(log.scriptRequests, [PLAID_URL], "exactly the bank's own script, once");
   assert.deepEqual(log.posts, [
     { path: "link-token", body: { client_id: CLIENT_ID, plaid_grant_token: "grant-token" } },
@@ -173,9 +216,10 @@ test("when the bank script cannot load, nothing is exchanged and the page says s
   const { log, handlers, before } = plaidRoutes({ script: "blocked" });
   const { page } = await open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers, before });
   await page.waitForSelector('[data-act="connect"]');
-  await authorizeLink(page);
+  await authorizeLink(page, log);
   await page.waitForFunction(() => /The bank sign-in window did not load\./.test(document.body.innerText));
   assert.deepEqual(log.scriptRequests, [PLAID_URL]);
+  assert.deepEqual(log.passkeyPosts, [{ action: "status", target_kind: "client_bank" }]);
   assert.deepEqual(log.posts.map((p) => p.path), ["link-token"], "no exchange without the bank's window");
   assert.equal(await page.locator('[data-act="connect"]').first().isDisabled(), false, "the button is usable again");
   await page.close();
@@ -186,9 +230,10 @@ test("when no link token can be made, the bank script is never fetched", { timeo
   const { log, handlers, before } = plaidRoutes({ linkToken: { status: 503, body: { ok: false, error: "not_configured" } } });
   const { page } = await open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers, before });
   await page.waitForSelector('[data-act="connect"]');
-  await authorizeLink(page);
+  await authorizeLink(page, log);
   await page.waitForFunction(() => /Bank connections are not set up yet\./.test(document.body.innerText));
   assert.deepEqual(log.scriptRequests, []);
+  assert.deepEqual(log.passkeyPosts, [{ action: "status", target_kind: "client_bank" }]);
   assert.deepEqual(log.posts.map((p) => p.path), ["link-token"]);
   await page.close();
 });
