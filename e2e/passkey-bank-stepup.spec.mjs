@@ -9,6 +9,7 @@ const RP_ID = "fundhub.ai";
 const FIXTURE_PATH = "/__e2e__/passkey-bank-stepup";
 const RECOVERY_CODE = "SYNTHETIC-RECOVERY-CODE";
 const RECOVERY_CODES = Array.from({ length: 10 }, (_, i) => `SYNTHETIC-${String(i + 1).padStart(2, "0")}-RECOVERY`);
+const EVIDENCE = "ops/workflows/build-evidence/passkey-bank-stepup-2026-11-06";
 const SCRIPT = fs.readFileSync("public/app/plaid-stepup.js", "utf8");
 const CSS = fs.readFileSync("public/app/plaid-stepup.css", "utf8");
 
@@ -195,6 +196,65 @@ async function expectOutcome(page, expected) {
   await expect.poll(() => page.evaluate(() => window.flowOutcome)).toEqual(expected);
 }
 
+async function captureMarkedSetup(page, filename) {
+  await page.evaluate(() => {
+    document.querySelector("#passkey-review-overlay")?.remove();
+    const dialog = document.querySelector(".fh-plaid-stepup");
+    if (!dialog.hasAttribute("data-review-overflow")) dialog.dataset.reviewOverflow = dialog.style.overflow;
+    dialog.style.overflow = "visible";
+    const dialogBox = dialog.getBoundingClientRect();
+    const titleNode = document.querySelector(".fh-plaid-stepup h2");
+    const range = document.createRange(); range.selectNodeContents(titleNode);
+    const title = range.getBoundingClientRect();
+    const action = document.querySelector(".fh-plaid-stepup [data-continue]").getBoundingClientRect();
+    const overlay = document.createElement("div");
+    overlay.id = "passkey-review-overlay";
+    Object.assign(overlay.style, { position: "absolute", inset: "0", zIndex: "2147483647", pointerEvents: "none", overflow: "visible" });
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    Object.assign(svg.style, { position: "absolute", inset: "0", width: `${dialogBox.width}px`, height: `${dialogBox.height}px`, overflow: "visible" });
+    const addArrow = (x1, y1, x2, y2) => {
+      const makeLine = (color, width) => {
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", String(x1)); line.setAttribute("y1", String(y1));
+        line.setAttribute("x2", String(x2)); line.setAttribute("y2", String(y2));
+        line.setAttribute("stroke", color); line.setAttribute("stroke-width", String(width));
+        line.setAttribute("stroke-linecap", "round"); svg.appendChild(line);
+      };
+      makeLine("#181818", 8); makeLine("#ffd21f", 4);
+      const angle = Math.atan2(y2 - y1, x2 - x1), length = 12, half = 7;
+      const bx = x2 - Math.cos(angle) * length, by = y2 - Math.sin(angle) * length;
+      const points = `${x2},${y2} ${bx - Math.sin(angle) * half},${by + Math.cos(angle) * half} ${bx + Math.sin(angle) * half},${by - Math.cos(angle) * half}`;
+      const head = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      head.setAttribute("points", points); head.setAttribute("fill", "#ffd21f"); head.setAttribute("stroke", "#181818"); head.setAttribute("stroke-width", "2");
+      svg.appendChild(head);
+    };
+    const addMark = (rect, number, placement) => {
+      const size = 34, left = rect.left - dialogBox.left, top = rect.top - dialogBox.top;
+      const x = placement === "right" ? left + rect.width + 20 : left + rect.width / 2 - size / 2;
+      const y = placement === "right" ? top + rect.height / 2 - size / 2 : top - size - 12;
+      const badge = document.createElement("div");
+      badge.textContent = String(number);
+      Object.assign(badge.style, { position: "absolute", left: `${x}px`, top: `${y}px`, width: `${size}px`, height: `${size}px`,
+        display: "grid", placeItems: "center", borderRadius: "50%", boxSizing: "border-box", border: "3px solid #fff", outline: "2px solid #bd1717",
+        background: "#d52222", color: "#fff", font: "bold 18px Arial,sans-serif", boxShadow: "0 1px 4px #333" });
+      overlay.appendChild(badge);
+      if (placement === "right") addArrow(x, y + size / 2, left + rect.width + 4, top + rect.height / 2);
+      else addArrow(x + size / 2, y + size, left + rect.width / 2, top + 2);
+    };
+    addMark(title, 1, "right"); addMark(action, 2, "above");
+    overlay.appendChild(svg);
+    const caption = document.createElement("div");
+    caption.textContent = "Existing account; passkey setup before bank connection";
+    Object.assign(caption.style, { position: "absolute", bottom: "-42px", left: "50%", transform: "translateX(-50%)", maxWidth: "calc(100vw - 24px)",
+      padding: "7px 10px", borderRadius: "4px", background: "#181818", color: "#fff", font: "bold 13px Arial,sans-serif", textAlign: "center", boxShadow: "0 1px 5px #555" });
+    overlay.appendChild(caption); dialog.appendChild(overlay);
+  });
+  fs.mkdirSync(EVIDENCE, { recursive: true });
+  await page.screenshot({ path: `${EVIDENCE}/${filename}`, fullPage: true });
+  await page.locator("#passkey-review-overlay").evaluate(node => node.remove());
+  await page.locator(".fh-plaid-stepup").evaluate(dialog => { dialog.style.overflow = dialog.dataset.reviewOverflow || ""; delete dialog.dataset.reviewOverflow; });
+}
+
 test.describe("Plaid bank passkey step-up on the exact Fundhub origin", () => {
   test("waits for a click, registers, verifies with user verification, saves codes, then asks consent", async ({ page }) => {
     const { cdp, authenticatorId } = await addAuthenticator(page);
@@ -204,8 +264,13 @@ test.describe("Plaid bank passkey step-up on the exact Fundhub origin", () => {
     expect(api.timeline).toEqual([]);
     expect(await page.evaluate(() => window.__credentialCalls)).toEqual([]);
 
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.locator("#start").click();
     await expect(page.locator(".fh-plaid-stepup h2")).toHaveText("Set up a passkey");
+    await expect(page.locator("[data-continue]")).toHaveText("Set up passkey");
+    await captureMarkedSetup(page, "passkey-setup-mobile-390.png");
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await captureMarkedSetup(page, "passkey-setup-desktop.png");
     expect(api.timeline.map(x => x.action)).toEqual(["status"]);
     await page.locator("[data-continue]").click();
     await expect(page.locator("[data-continue]")).toHaveText("Verify and continue");
@@ -356,9 +421,9 @@ test.describe("Plaid bank passkey step-up on the exact Fundhub origin", () => {
   });
 
   for (const target of [
-    { kind: "client_bank", href: `${ORIGIN}/portal-login.html` },
-    { kind: "affiliate_payout", href: `${ORIGIN}/login.html?next=%2Fapp%2Faffiliate.html` },
-    { kind: "company_bank", href: `${ORIGIN}/login.html?next=%2Fapp%2Fcompany-cash.html` }
+    { kind: "client_bank", href: `${ORIGIN}/portal-login.html`, browserHref: "https://www.fundhub.ai/portal-login.html" },
+    { kind: "affiliate_payout", href: `${ORIGIN}/login.html?next=%2Fapp%2Faffiliate.html`, browserHref: "https://www.fundhub.ai/login.html?next=%2Fapp%2Faffiliate.html" },
+    { kind: "company_bank", href: `${ORIGIN}/login.html?next=%2Fapp%2Fcompany-cash.html`, browserHref: "https://www.fundhub.ai/login.html?next=%2Fapp%2Fcompany-cash.html" }
   ]) {
     test(`${target.kind} prompt uses its fresh sign-in URL at mobile and desktop widths`, async ({ page }, testInfo) => {
       const { api, pageErrors } = await openFixture(page, { targetKind: target.kind, failRegisterOptions: true });
@@ -367,6 +432,13 @@ test.describe("Plaid bank passkey step-up on the exact Fundhub origin", () => {
       await page.locator("[data-continue]").click();
       await expect(page.locator("[data-passkey-signin]")).toBeVisible();
       expect(new URL(await page.locator("[data-passkey-signin]").getAttribute("href"), ORIGIN).href).toBe(target.href);
+      const browserLink = page.locator("[data-passkey-browser]");
+      await expect(browserLink).toBeVisible();
+      expect(await browserLink.getAttribute("href")).toBe(target.browserHref);
+      await expect(browserLink).toHaveAttribute("target", "_blank");
+      await expect(browserLink).toHaveAttribute("rel", /noopener/);
+      expect(new URL(target.browserHref).origin).toBe("https://www.fundhub.ai");
+      expect(target.browserHref).not.toMatch(/token|session|bearer|secret/i);
       const mobileBox = await page.locator(".fh-plaid-stepup").boundingBox();
       expect(mobileBox.x).toBeGreaterThanOrEqual(0);
       expect(mobileBox.x + mobileBox.width).toBeLessThanOrEqual(390);
