@@ -1,0 +1,25 @@
+Fundhub Apple/native — fresh read-only verification 2026-11-06 ~01:00 UTC (Nov 5 Phoenix)
+
+APPLE RECEIPTS
+- Authenticated App Store Connect app 6823985032: version 1.0.3 READY_FOR_SALE, AFTER_APPROVAL; attached build 9 VALID, uploaded 2026-11-04T04:43:28-08:00.
+- Version ID dec763b2-4d6e-4a77-b8af-00d375e078bb; build ID ed50a585-803c-4268-8055-1672b150d3f0.
+- Review submission e5402413-fb68-4704-8b99-b5e2c677020e COMPLETE, submitted 2026-11-04T20:59:28.106Z.
+- Public US iTunes lookup independently returns 1.0.3, released 2026-11-05T06:13:23Z: https://apps.apple.com/us/app/fundhub-portal/id6823985032
+- All 11 uploaded builds listed (no pagination remaining); newest upload is build 9. No newer binary found.
+- Older duplicate 1.0/build 6 row remains IN_REVIEW; submission 737825b6-5353-48b0-b541-fe6120b08589 from Nov 2. It is not the public 1.0.3 release; no change made.
+- TestFlight: build processing VALID/nonexpired established; beta-group access, beta review and tester delivery were not queried/proven.
+
+SOURCE AND LOCAL RELEASE AUTOMATION
+- Owning chat 01a1a64d-8370-7ef3-9968-67ef17d6329b compact snapshot completed; prior final said 1.0.3 public, app 2FA removed, Mac-only automatic submission and no 24/7 runner. Fresh Apple receipts above independently reconfirm release.
+- Local origin/main cf94ad001f0d1bbba90632b7d03241adee1a4b32; app/widget project 1.0.3 build 9. Latest native-source commit in this ref be7963cab, Nov 4, Remove Fundhub app two-factor prompts (#395). No fetch/mutations performed.
+- Installed LaunchAgent ai.fundhub.ios-release-watchdog: 426 runs, last exit 0. Not running between scheduled ticks is normal.
+- Private watchdog status checked 2026-11-06T00:54:55.677Z: pending/busy/failed all zero, auto idle, blockedReason null. Auto-start baseline same cf94ad SHA, version 1.0.3/build 9.
+- scripts/ios-release-auto.mjs detects tools/fundhub-ios native changes and requires BOTH newer version and build, exact CI/Ship gates and exact Apple receipt. Web-only changes do not trigger binary release.
+- tools/fundhub-ios/Fundhub/UI/WorkspaceWebView.swift loads paths relative to FundhubAPI.base; Core/FundhubAPI.swift base https://fundhub.ai. Hosted page/API-only fixes normally need web deployment, not a new binary. Swift, native navigation/bridge, permissions, widget or bundled-resource changes require native release.
+- 24/7 submission still needs always-on hosted macOS signing/runner and authorized Apple/GitHub credential setup; local Mac cannot operate off/asleep or without user session. No watcher or heartbeat work done.
+
+EXACT NEXT ACTION
+Run the requested signed-in portal/tab/customer flow on a real iPhone using public 1.0.3 build 9. Classify observed defects as hosted web versus native before deciding on 1.0.4. Recent web changes alone do not establish a need for another binary. Real-device behavior is still unverified; public release receipts do not prove that flow.
+
+METHOD / LIMITS
+Existing makeAppleClient helper and existing private credentials used securely; only authenticated GET and public lookup requests. Initial sandbox DNS failed; authorized network escalation succeeded. Unsupported builds sort returned 400; corrected existing list endpoint succeeded. No builds, submissions, credential changes, sends, deployments, Git mutations, heartbeat/Plaid/Twilio actions or animation changes.
