@@ -1,7 +1,7 @@
 import { db } from "../../src/db.mjs";
 import { ClientRepairError, readClientRepair, generateClientRepairLetters, recordClientRepairSubmission } from "../../src/blueprint/client-repair.mjs";
 
-const FIELDS = { generate: ["action"], record_submission: ["action", "letterId", "reference", "receiptDocumentId", "channel", "idempotencyKey"] };
+const FIELDS = { generate: ["action", "idempotencyKey"], record_submission: ["action", "letterId", "reference", "receiptDocumentId", "channel", "idempotencyKey"] };
 
 export default async function handler(req, res, deps = {}) {
   if (!["GET", "POST"].includes(req.method)) {

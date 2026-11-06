@@ -7,7 +7,7 @@ import {
 const FIELDS = {
   record_submission: ["action", "caseId", "reference", "receiptDocumentId", "idempotencyKey"],
   launch_call: ["action", "caseId", "authorization", "idempotencyKey"],
-  check_evidence: ["action", "caseId"]
+  check_evidence: ["action", "caseId", "idempotencyKey"]
 };
 
 export default async function handler(req, res, deps = {}) {
