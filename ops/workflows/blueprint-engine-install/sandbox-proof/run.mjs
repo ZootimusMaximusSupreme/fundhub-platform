@@ -24,7 +24,7 @@ const env = Object.assign(process.env, {
   CRS_API_PASSWORD:'synthetic-only', CRS_ACTIVE_BUREAUS:'TU,EX,EQ'
 });
 const receipt={ startedAt:new Date().toISOString(), databaseRole:'fundhub_app', externalProviderRequests:0, liveCustomerActions:0,
-  providerSandboxDelivery:'unavailable: no verified dedicated vendor sandbox credentials in local project or linked preview',
+  providerSandboxDelivery:'This HTTP rehearsal used fixture transports. See crs-vendor-three-bureau.json for the separate external TransUnion, Experian and Equifax sandbox run.',
   transport:{http:'real loopback HTTP to production Netlify router', payments:'synthetic signed event bytes and simulated Whop checkout responses', reports:'real CRS sandbox client, published per-bureau identities, synthetic HTTP response bytes; no actual vendor network'}, checks:[], orders:{}, wire:[] };
 let origin;
 const nativeFetch = globalThis.fetch;

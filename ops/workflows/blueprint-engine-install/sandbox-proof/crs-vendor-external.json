@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-11-06T17:21:01.371Z",
+  "provider": "CRS / Stitch Credit",
+  "environment": "vendor sandbox",
+  "host": "api-sandbox.stitchcredit.com",
+  "input": "published legacy Equifax synthetic fixture, matching the bundled vendor capture by legal name, DOB and never-issued synthetic SSN",
+  "source": "distinct Fundhub sandbox account in vendor Postman collection",
+  "productionRequests": 0,
+  "authRequests": 1,
+  "bureauOrderRequests": 1,
+  "realConsumerData": false,
+  "storedTokens": false,
+  "observations": [
+    {
+      "operation": "sandbox_authentication",
+      "httpStatus": 200,
+      "tokenIssued": true
+    },
+    {
+      "operation": "canonical_equifax_order",
+      "httpStatus": 200,
+      "vendorRequestIdPresent": true
+    }
+  ],
+  "currentSupplierCollection": {
+    "consumerProduct": "efx-prequal-fico9-cvie",
+    "matchesCurrentFundhubStandardPath": false,
+    "matchesCurrentFundhubSyntheticIdentity": false
+  },
+  "standardRuntime": {
+    "ok": true,
+    "returnCode": null
+  },
+  "storage": {
+    "ledger_status": "fulfilled",
+    "allowance_kind": "included",
+    "persisted": true,
+    "provider": "crs_softview",
+    "report_environment": "sandbox",
+    "eq_status": "file_returned",
+    "tradeline_count": 13,
+    "inquiry_count": 51
+  },
+  "status": "verified_sandbox_report",
+  "completedAt": "2026-11-06T17:21:03.729Z"
+}

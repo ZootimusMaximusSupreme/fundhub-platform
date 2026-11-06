@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-11-06T17:19:25Z",
+  "provider": "Whop",
+  "host": "sandbox.whop.com",
+  "status": "authenticated_terms_approval_pending",
+  "login": "existing owner account, normal email and requested one-time sign-in code",
+  "sessionCopiedFromProduction": false,
+  "termsAccepted": false,
+  "approval": "One action-time approval requested under the browser tool's confirmation rules; no answer inferred.",
+  "gate": ["Terms of Service", "Seller Terms", "Spend Card Terms", "Wallet Terms"],
+  "sandboxKeysCreated": 0,
+  "sandboxCheckouts": 0,
+  "providerDeliveredWebhooks": 0,
+  "productionRecordsChanged": false,
+  "credentialsOrCodesInReceipt": false,
+  "earlierSignedCallbacks": "local fixture transport only, recorded separately in result.json"
+}
