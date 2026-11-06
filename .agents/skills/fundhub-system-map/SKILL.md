@@ -3,7 +3,7 @@ name: fundhub-system-map
 description: >-
   Discovery-only index of how Fundhub actually works. Use before claiming a
   journey PASS, e2e done, call sequence, or “we tested it.” Read
-  ops/workflows/system-map-2026-08-26.md. Forbids desk-load, API-write, and
+  the historical map from Git and verify current sources. Forbids desk-load, API-write, and
   0.13s Bland as sequence. Does not fix product code.
 ---
 
@@ -15,7 +15,8 @@ You find the real order. You do not fix the app.
 
 ## Before you say PASS or done
 
-1. Read `ops/workflows/system-map-2026-08-26.md` end to end.
+1. Read the historical map with `git show 3ba3e42f38a0e3e6db1a746ee3e3cb3e6b0db604:ops/workflows/system-map-2026-08-26.md`. It is a 2026-08-26 snapshot. Verify current claims against intended journeys, current source, and live configuration where authorized.
+   If a shallow clone lacks that commit, fetch it from origin by its exact hash before reading, or mark the historical reference unavailable and continue checks that do not depend on it.
 2. Cite the intended file **and** say if it has event order or only doors.
 3. Walk **live fire** (`src/workflows/`) for that path. Editor trees in `src/journeys/seed-journeys.mjs` are the story, not proof.
 4. Voice agents: load `.cursor/skills/fundhub-agent-tester/SKILL.md`. Use the **live** Agent Editor prompt. Count letters. A short stub that is “ready” still beats a long unused file on disk.
@@ -35,4 +36,4 @@ Write **UNVERIFIED**. Overall cannot be PASS. Do not invent steps. Do not edit `
 
 ## Output
 
-Path to the map, the event list you walked, prompt source + letter count, PASS / FAIL / UNVERIFIED. Stop. No product edits.
+Map revision and path, the event list you walked, prompt source + hash + letter count, PASS / FAIL / UNVERIFIED. Stop. No product edits.

@@ -10,7 +10,7 @@ description: >-
 
 # Fundhub Version Control
 
-You keep git from eating Chris’s work. Law: github-push (.ai/rules/github-push.md) - commit finished work locally in the same session, then push main or a PR branch with git push origin <branch>; the repo is public. Claude Code: CLAUDE.md section 8 and "Commit locally, every session" are the commit and PR steps.
+You keep git from eating Chris’s work. Law: github-push (.ai/rules/github-push.md) - commit finished work locally in the same session and keep it on GitHub; the repo is public. Before a PR or ship, run `npm run preflight`, then use `npm run ship-change` with the exact files and owner lane, following `.ai/rules/ship-in-order.md`. Claude Code: CLAUDE.md section 8 and "Commit locally, every session" are the commit and PR steps.
 
 Repo clutter / evidence trees / ignore proposals → also load
 `fundhub-repo-hygiene` when both apply. Prefer hygiene for “organize the mess,”
@@ -60,7 +60,7 @@ If unsure: propose on the board; wait.
 
 ## How not to lose work (order)
 
-1. **Named board** — `ops/workflows/<batch>.md` with status + claim (CLAUDE.md §5).
+1. **Named board** — use the assigned or an existing board, or create `ops/workflows/<batch>.txt` with status + claim (CLAUDE.md §5). Create new Markdown only when explicitly requested.
 2. **Named branch** — one concern per branch; push it to GitHub.
 3. **Commit every session** — small, green-enough units.
 4. **Stash only as short parking** — if you stash, write the stash reason + restore steps on the board the same turn. Stash is not the archive.
