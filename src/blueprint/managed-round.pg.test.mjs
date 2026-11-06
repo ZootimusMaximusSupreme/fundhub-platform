@@ -9,6 +9,7 @@ import { requestBlueprintHelp,quoteBlueprintHelp,checkoutBlueprintHelp } from ".
 import { onPaidServicePaymentReceived } from "../handlers/paid-service-payment.mjs";
 import { onPaymentReceivedMoney,onRoundStartedMoney,closePurchasedBlueprintRound } from "../handlers/money-chain.mjs";
 import { reconcilePaidBlueprintHelpCompletion } from "./service-completion.mjs";
+import { readBlueprintFunding } from "./client-funding.mjs";
 import { getBlueprintFulfillmentAccess } from "./fulfillment-access.mjs";
 import { logBankDecision } from "../applications/status.mjs";
 
@@ -65,6 +66,10 @@ for (const existing of [false,true]) test("paid staff takeover "+(existing ? "pr
     assert.equal((await db.query("SELECT count(*)::int AS n FROM funding_round_sales WHERE funding_round_id=$1",[round.id])).rows[0].n,0);
     const lender=(await db.query("INSERT INTO lenders(org_id,lender_table,name,product_name,is_demo) VALUES($1,'PersonalCC',$2,'Synthetic product',true) RETURNING id",[orgId,"Team "+randomUUID()])).rows[0];
     await logBankDecision(db,{orgId,clientId,lenderId:lender.id,status:"Denied",staff});
+    const view=await readBlueprintFunding(db,{...scope,engagement:after});
+    assert.equal(view.state,"managed"); assert.equal(view.applications.length,1);
+    assert.equal(view.applications[0].lenderId,lender.id); assert.equal(view.applications[0].status,"Denied");
+    assert.equal(view.applications[0].handoffId,null); assert.equal(view.applications[0].outcomeVerified,true);
     const ended=await closePurchasedBlueprintRound({orgId,clientId,payload:{stage:"closed",fundingRoundId:round.id,roundNumber:round.round_number}},db);
     assert.equal(ended.done,true);assert.equal((await getBlueprintFulfillmentAccess(db,scope)).status,"completed");
     const completed=await reconcilePaidBlueprintHelpCompletion(db,{orgId,requestId:help.request.id});
