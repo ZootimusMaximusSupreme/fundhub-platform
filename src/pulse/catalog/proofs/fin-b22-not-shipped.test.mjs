@@ -161,7 +161,7 @@ const EXPECTED = Object.freeze([
   { needle: "#4-form", page: CLIMATE, markers: ["climate-match", "climate_match", "Show my number", "website:climate"] },
   { needle: "#6-gate", page: CLIMATE, markers: ["Business Financial Assessment", "Get the full list", "more names are in the full list", "/api/public/optimize"] },
   { needle: "#2-education-only", page: CONSULTING, markers: ["education for business operations", "education only", "not a lender"] },
-  { needle: "#3-three-prices", page: CONSULTING, markers: ["$5,000", "$10,000", "Operations Foundations", "Operations Systems", "Operations Intensive"] },
+  { needle: "#3-three-prices", page: CONSULTING, markers: ["$5,000", "Operations Foundations", "Operations Systems", "Operations Intensive"] },
   { needle: "ops-admin outbound mail panel", page: OPS, markers: ["alert_email", "alertEmail", "alert-email", "alert address", "alert email"] },
 ]);
 
@@ -190,6 +190,13 @@ test("a consulting page that posts a price turns only the price step back to not
   assert.equal(statusOf(map, "#3-three-prices"), "NOT_PROVED");
   assert.equal(statusOf(map, "#2-education-only"), "na");
   assert.match(map.get(idFor("#3-three-prices")).detail, /No check yet judges/);
+});
+
+// Owner-set 2026-11-06: the AI packages post $10,000, $20,000 and $30,000. Those prices are not the old courses.
+test("the new AI package prices alone leave the old course-price step at nothing to judge", async () => {
+  const map = await rows(appended(CONSULTING, "<p>AI Outbound Launch $10,000</p><p>AI Growth System $20,000</p><p>AI Full Stack $30,000</p>"));
+  assert.equal(statusOf(map, "#3-three-prices"), "na");
+  assert.equal(statusOf(map, "#2-education-only"), "na");
 });
 
 test("a consulting page that says it is not a lender turns only the education step back to not proved", async () => {
