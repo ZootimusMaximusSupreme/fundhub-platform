@@ -1,0 +1,67 @@
+BLUEPRINT DEMO — RELEASE / DEPENDENCY RECEIPTS
+Checked 2026-11-06 19:23–19:25 UTC. Read-only; no service/customer/provider mutation.
+Ground truth: docs/journeys/capital-blueprint-intended.md (required CB event order and November6 full implementation); screen availability is only a subset of that journey.
+
+CURRENT MAIN
+f332f1df904a1f2771212645243a122cd43e88d6 — Add Blueprint direct offer ad and SBA / MCA ad (#428).
+Read using gh branch API at19:23 UTC; same as origin/main worktree baseline.
+Exact-main tests https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/42277340745
+At19:23 UTC 12/14 jobs completed success. Remaining: screens(real browser) and suite(no database—unit shard2/6), both running. Therefore latest-main all14 is NOT YET PROVED. The status-combined connector returns an empty statuses list (it does not expose these check-runs); workflow jobs were inspected directly.
+
+LAST VERIFIED SUCCESSFUL SHIP
+https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/42271449259
+Source6c9a10d7a5c094166342018026ff15f4e94fa48d; completed success2026-11-06T18:43:54Z. Both release_gate and ship jobs success.
+This is the deployed prior Blueprint paid-service registration/native-hosted-script repair, not PR429.
+
+LATER SHIP FAILED BEFORE PUBLISH
+https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/42275331310
+Source9a53f9ab09fb06f832b8776a5b22ec6771979584; completed failure2026-11-06T19:02:34Z.
+release_gate passed14/14; ship failed at Ship; subsequent Verify published CRM and portal assets step skipped.
+Downloaded read-only run logs: checkout-doors5041ms; required under half9000ms=4500ms; SHIP STOPPED hourly pulse bundle proof failed. No threshold weakened or retry triggered here. Existing peer release owner is diagnosing.
+
+LIVE READ-ONLY RECEIPTS
+https://fundhub.ai/api/health at2026-11-06T19:23:06.908Z: HTTP200 {ok:true,db:up,state:up,migrations:470,expected:443,pending:0,error:null}.
+/api/version returned404; no documented public version route exists in inspected source. Do not call health a full SHA/version receipt.
+At19:24 UTC the following published assets returned200 and SHA256 matched BOTH last successful6c9 source and currentf332 main:
+/app/client-portal.html 751873d40b99b879541258824c2e7fe27538ec852a9ed84e91723ef948309631
+/app/present.html 0c4b882e97573643b138f106942b2b4fe06f2e1d0b237af7721b81da7c10d650
+/app/csm-queue.html 3b9bd5a0814e618552fce8bc5b8af3698dffa80b8bd20a6a14bae30e742b68e1
+/app/blueprint-fulfillment.js fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81
+Asset fetches are not authenticated navigation, saved progress, checkout, payment, provider or native-device proof. Root owns actual screen walk.
+
+PENDING BLUEPRINT / BLAKE DEPENDENCIES
+PR429 https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/429
+Open at e54ac25b32fde33b96373304e9e5ad981f0f91e7, basef332; metadata-v2/approved provider copy, immutable migration565, explicit isolated Whop sandbox transport. Its exact-head run42277509194 remains running at19:25 UTC;7/14 passed. Not merged/deployed and not actual vendor checkout/webhook proof.
+Blake owner worktree/board: /Users/chrisstanbridge/.codex/worktrees/blake-blueprint-piping/fundhub-platform/ops/workflows/blake-blueprint-financing-2026-11-06/BOARD.txt.
+Latest lines68–70 confirm owner approval for migration566 actual affiliated contract actor, automatic scoped agreement issuance and negotiated full-package $20K–$30K price/default$30K; still in implementation/review. The peer Whop helper extension was saved and removed for older metadata-v2 owner, and must be recombined preserving exact metadata/strict selected+effective financing-array validation. No new seller/contract live proof exists here.
+Current main already contains exact order/client/product/price matching and normal payment-to-entitlement code; existence is not current external receipt.
+Peer live Whop webhook failure account_mismatch was reported in Tether notes18:21 UTC and remains with Whop owner. This lane has not independently read private provider delivery logs or replayed a webhook. Keep it UNVERIFIED/OPEN, not a new independent witnessed production failure.
+
+DEMO CONSEQUENCE
+Published Present/client/CSM assets can be walked now without waiting for pending PR429; their four checked files are unchanged between deployed6c9 and currentmain. Root must verify signed-in navigation and scenario data.
+Do not claim the upcoming affiliate/seller variable-price automatic agreement flow, PR429 naming repair, live financing approval, paid onboarding, new provider delivery or latest-main deployment ready. All remain separate owned dependencies and require receipts.
+
+ROOT REFRESH 2026-11-06 ~19:29 UTC: connected GitHub fetch_workflow_run_jobs for42277340745 now returns all14 named jobs completed/success, including realbrowser and all13database/unit jobs. Thus f332f1df9 exact-main CI is GREEN. This is a newer check receipt only; no newer successful Ship or livefinancing is inferred. Prior12/14 snapshot retained above as dated history.
+
+INDEPENDENT D1 ADAPTER REVIEW — full $30,000 dashboard follow-up
+Reviewer: release_proof agent; independent of D1 adapter/data/generator/unit implementation. This reviewer authored separate D2 wiring and makes NO independent claim about those own files.
+Frozen adapter reviewed SHA2564ba9cba14363d8fa8fafd45590d2a08bff9850e2bae3a181a8d7a7174596f123; seed e08ef9c06cca79d65b5949bbcd3740aa87e4705fb2801f240693c4ce0079ffe0; generator2929c62f29d084266e1fd1fbe63f2e66d1db6f33cbc52b36cce31cc176f54c9c; source test f6780d876a326ff5fd9f7bfa53dbaa053b6276c1d52394250dfda64dab217625.
+Executed existing src/ui/blueprint-dashboard-demo.test.mjs:12passed/0failed/0skipped. Generated-data --check passed through that suite.
+Observed: no fetch/XHR/beacon/socket/file-content read in adapter; shared real lesson/debt helpers embedded as pure functions; generator uses explicitly supplied fictional DB-shaped reader only. Seed contains Alex Sample, separate fictional businesses, Sample Community/Neighborhood banks and synthetic UUIDs, no owner bank source. Adapter reads fh_token only to compare captured identity; writes/removes only fh_blueprint_full_demo_v1. No cookie/auth key creation or replacement. Unknown API routes, unsupported method/actions and foreign documents are refused. Preview URL builder always uses current origin+same client-portal path+explicit demo markers, and preview text is assigned with textContent.
+Executed independent isolated VM preview checks (not authored tests; no live provider/DB): change captured token before Bank submit or Payment record => both refuse,0local writes,0network, message Your demo session changed. Reload to continue. Initial incomplete DOM stub lacked setAttribute and was corrected; that harness error is not a product finding.
+
+P2 FINDING D1-DEMO-READONLY-01 — local sample state only
+Ground truth: completed scenario is read-only; unsupported actions fail closed. Direct same-origin preview routes still offered mutations outside request() fences.
+Adapter lines614–641: completed-scenario bank preview with unknown item appended an application(before1,after2,status Sample submitted,1localwrite/0network). Completed-scenario payment preview for sample-help-quote changed quoted→paid(1localwrite/0network) without awaiting_payment/quote handoff. This is a synthetic demo permission/sequence defect, not actual bank submission, real charge or customer harm.
+Owner root and independent D1 implementer notified with exact proof. Repair belongs to D1: current active engagement plus known eligible application for preview submission; exact awaiting-payment service/order before sample payment. Keep red until author repair and independent retest. No app edits made as part of this independent review.
+P2 corroboration using only legitimate adapter controls (no hand-edited saved scene): request exact authorized50000-cent Whop sample checkout for sample-help-quote; then setScenario(completed) cancels that awaiting-payment quote; press the existing sample payment preview action => cancelled→paid,0network. This confirms the stale preview bypass also occurs from an ordinary sample state transition. Original red frozen4ba9 retained; author is repairing.
+
+P2 D1-DEMO-READONLY-01 — AUTHOR REPAIR + INDEPENDENT RETEST
+Author froze adapter SHA256b190d581575b0a8ef45afed9d4eea9902d27a8b3b83f8d92ea938fcc1d2dbdc5; unit source2650f388f409133dff6cab552b49080c8c67f83c086f340bb54a5d6f8d86140e. Data/generator hashes unchanged. Reviewer read the actual repaired guard code and independently ran the unchanged previously red VM probes against this exact adapter.
+PASS bank changed-token preview:0localwrites/0network and session-changed refusal.
+PASS payment changed-token preview:0localwrites/0network and session-changed refusal.
+PASS completed-scene unknown bank preview:0localwrites/0network; state byte-for-byte unchanged, completed refusal.
+PASS completed-scene payment preview:0localwrites/0network; state byte-for-byte unchanged, completed refusal.
+PASS legitimate exact50000-cent authorized sample checkout→completed/cancelled→stale payment action:cancelled unchanged,0additionalwrites/0network.
+Existing plus author's two focused regressions independently rerun:14passed/0failed/0skipped; reproducible generated data check passed.
+Independent D1 source/local-VM verdict:PASS, no remaining P1/P2 in this adapter review. Original red proof retained above. This verdict covers only synthetic local adapter privacy/action fences; it does not certify own-authored D2 wiring, real bank/provider/payment delivery, production deployment or native signed-in UI. Root/D3 retain browser and live release proof.

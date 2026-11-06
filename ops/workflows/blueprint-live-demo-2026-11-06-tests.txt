@@ -1,0 +1,113 @@
+BLUEPRINT DEMO TEST LANE — 2026-11-06
+Baseline: f332f1df904a1f2771212645243a122cd43e88d6 (fresh origin/main checkout).
+Scope: read-only app/test source; existing tests against isolated local static server and mocked HTTP responses. No production DB/provider/customer writes. This is NOT live customer, real payment, bureau result, or provider-delivery proof.
+Ground truth: docs/journeys/capital-blueprint-intended.md has required event order CB-01..CB-10 and real-buyer R01..R34. Historical system map read via git show 3ba3e42f38a0e3e6db1a746ee3e3cb3e6b0db604:ops/workflows/system-map-2026-08-26.md; not current configuration proof.
+
+EXECUTED
+1. node --test src/ui/present-blueprint-demo.test.mjs src/ui/present-framework.test.mjs src/ui/present-journey.test.mjs src/ui/present-visuals.test.mjs src/ui/present-proof-wall.test.mjs
+   PASS: 98 tests, 0 failed, 0 skipped, 15 suites. Includes no-pull/hold/sample states, interactive progress, reminders, cash plan and honest source-derived amounts.
+2. E2E_PORT=49623 ./node_modules/.bin/playwright test e2e/present-blueprint-demo.spec.mjs e2e/blueprint-price-context.spec.mjs e2e/present-journey.spec.mjs --reporter=list
+   PASS: 24/24, 0 skipped, 33.9 seconds. Real Chromium, isolated fixture APIs, desktop 1440 and mobile 390. Walked interactive preview steps, responsive tap targets, redraw state, sample/no-report/hold, full/preparation exact contract + price, shared context.
+3. node --test src/http/present-blueprint-stack.test.mjs
+   PASS: 40 tests, 0 failed, 0 skipped, 7 suites. B-01..B-06 navigation, file-specific content, chosen price, sample FinanceOS links and roles.
+4. E2E_PORT=49624 ./node_modules/.bin/playwright test e2e/blueprint-client-plan.spec.mjs e2e/blueprint-client-fulfillment.spec.mjs --reporter=list
+   PASS: 91/91, 0 failed, 0 skipped, 2.0 minutes. Preparation/full-buyer controls, one-question setup, saved refresh, lessons, cash/bank planning, evidence upload/recovery, letter downloads, payment authorization, inquiry/repair/verification gates, private identity fencing, stale session scrubbing and safe signed document/bank navigation at desktop/mobile. All mocked local HTTP, no live saved state.
+Database tests executed: none. Database tests skipped: zero in the executed selections. The opt-in e2e/blueprint-fulfillment-real.spec.mjs was not selected; no guarded scratch database was provisioned in this lane.
+Prerequisite: new worktree had no node_modules; used gitignored symlink to existing installed main workspace dependencies. Unique ports prevent collision.
+
+EXACT EXISTING ROUTES / CLICKS
+- /app/client-portal.html?demo=1: existing public sample-only portal, all legacy product cards unlocked and sample documents. It does NOT initialize the new paid Blueprint workspace.
+- Signed-in Present for an appropriate report/file: /app/present.html?contact=<client-id>. For a repair-file deck, phase 6 opens B-01; ArrowRight twice opens B-03 "Your dashboard" with in-slide Blueprint interactive preview. Alternatively "Show the full Blueprint stack" opens B-01 from the offer ladder. Taps send/save/charge nothing; sample state is explicitly labelled.
+- FinanceOS sample fallback links (only if in-slide visual is unavailable): /app/financeos.html?client_id=f1cb9c27-f858-4db1-b6bb-4eddc898bb8e#<tab>. Source list in public/app/present.js:1083-1099 and 1229-1231; requires allowed authenticated staff role. These links alone do not prove current live data or new Blueprint buyer workspace.
+- Offline harness /e2e-harness/present-blueprint-demo.html is fulfilled by e2e/present-blueprint-demo.spec.mjs page.route() with fixture context. It is not a deployed production entry point.
+
+SOURCE-CONFIRMED DEMO GAP
+Expected: show the actual paid-buyer Blueprint preparation + full implementation workspace in a safe live demo.
+Observed:
+- public/app/blueprint-plan.js:6 hides/returns immediately on demo=1.
+- public/app/blueprint-fulfillment.js:5 returns immediately on demo=1; :6-7 additionally requires a non-demo fh_token.
+- blueprint-plan.js:202+ and blueprint-fulfillment.js:433+ initialize only authenticated client principal with account/client/org IDs. Staff preview cannot initialize either.
+- api/blueprint/business-plans.mjs:9-18 authenticates a real client then checks paid Blueprint scope.
+- src/demo/client-portal-sample-bundle.json contains no /api/blueprint/* reads. src/demo/client-portal-samples.mjs only decorates already-covered successful reads and blocks writes for the pinned sample account; it does not furnish a full Blueprint demo.
+- Therefore neither ?demo=1 nor the signed-in client sample switch proves the current purchased Blueprint workspace. Existing production-safe alternative is the Present B-03 interactive preview; the full workspace can be rehearsed through isolated local existing test fixtures, not represented as live paid-buyer proof.
+No app source, test, config, auth gate, live mode, provider or database changed by this lane.
+
+FINAL LANE RESULT: 138/138 source tests and 115/115 isolated Chromium tests PASS, zero skipped. New paid-workspace production demo route remains unavailable by the source-confirmed guards above. Existing tests generated temporary/historical screenshots; six historical tracked price/context images were restored to baseline after the run. Only this evidence text is this lane's retained change.
+
+D3 NAMED REPAIR TESTER — owner requested full $30,000 dashboard A-to-Z
+Owned acceptance: e2e/blueprint-dashboard-demo.spec.mjs (syntax check PASS; browser execution waits for data/wiring readiness).
+Required gate: DEMO01..DEMO10 at 1440 and 390 pixels = 20 required cases. Per run score = passed_required / 20 * 100. Generic demo exclusion is one additional regression case.
+DEMO01: $30,000 full implementation sample banner + actual renderer + prominent next action.
+DEMO02: all 6 actual full workspace tabs and preparation help/business/timeline navigation, desktop/mobile overflow.
+DEMO03: inquiry receipt metadata + pending verification + explicitly simulated authorized AI call.
+DEMO04: repair generation, app-owned document preview and metadata-only response upload.
+DEMO05: included report request, scoped help, required quote acceptance and app-owned payment preview.
+DEMO06: three independent business plans, edit/reload, payoff plan save/reload.
+DEMO07: preparation letter downloads and metadata-only uploaded replies pending review.
+DEMO08: explicitly fictional sample bank/lender/application, app-owned bank preview, reported approval separate from verified funding, close submissions.
+DEMO09: initial one-question setup, completed engagement read-only, reset only own state.
+DEMO10: pre-existing synthetic bearer/HttpOnly cookie preserved; bank canary never read/rendered; native fetch unchanged; unknown external/API/action refused with unchanged local state; changed token invalidates/scrubs captured workspace.
+Every required case independently asserts zero /api requests, zero external navigation, no uncaught browser errors, native fetch unchanged and no bank-canary disclosure. Any API attempt receives a fictional canary response through a test guard and fails the run; no real API request is forwarded. The demo adapter/actual renderer itself supplies all data, not a mocked workspace API.
+Local command once ready: E2E_PORT=49625 ./node_modules/.bin/playwright test e2e/blueprint-dashboard-demo.spec.mjs --reporter=list
+Deployed command after publication: BLUEPRINT_DEMO_BASE_URL=https://fundhub.ai E2E_PORT=49625 ./node_modules/.bin/playwright test e2e/blueprint-dashboard-demo.spec.mjs --reporter=list
+All test page URLs become the deployed host when BLUEPRINT_DEMO_BASE_URL is set. No assets or data are intercepted to manufacture live product behavior; only forbidden API/external requests are guarded. Run twice after deployment, then independent human-like live walk by root.
+
+D3 INDEPENDENT IMPLEMENTATION REVIEW / EXECUTION
+- Reviewed the demo route/transport boundary, real authentication branch preservation, native fetch, same-origin preview allowlists, upload metadata-only handling, staged evidence vs reported outcomes, reset isolation and cross-tab state synchronization.
+- Found and handed off two interop problems before final proof: document/window change-event target mismatch, and preview pages unable to notify the main dashboard after the real renderer nulls popup.opener. Owners aligned all change events on window and added validated own-key storage synchronization. Browser tests click the actual sample bank submission/payment buttons and require updated state in the main renderer, so source assertions alone cannot claim this repaired.
+- First actual run: 8/20 required PASS = score 40, 12 RED from an external Google Fonts stylesheet attempt. Zero full-route API calls or bank/provider data reads observed. The existing font link was removed only on explicit full-demo route by wiring owner; zero-external assertion was preserved. Error evidence remains under test-results/run-60956/blueprint-dashboard-demo-F-c7d1d-ample-next-step-are-visible-chromium/error-context.md (automatically generated, untracked diagnostic).
+- The extra generic-demo regression initially applied the full-demo zero-API rule outside its explicit scope, incorrectly flagging the unchanged generic shell's auth/health reads. Corrected only that extra regression to use a canonical local shell fixture and check that the full adapter stays absent and both paid workspaces stay hidden. This was a test-scoping mistake, not a proven product defect; all twenty required full-demo isolation assertions remained unchanged.
+- A later green run (21/21, 28.1s) and first stable attempt (21/21, 34.5s) overlapped final owner source changes, so they are retained as intermediate evidence only.
+- FINAL FROZEN-SOURCE LOCAL RUN: 21/21 PASS in 30.4 seconds; DEMO01..10 at both viewports = 20/20 required, score 100. Zero skipped. Exact adapter hash before/after: 4ba9cba14363d8fa8fafd45590d2a08bff9850e2bae3a181a8d7a7174596f123. All other UI/test hashes below stayed unchanged during this run. Executed command: E2E_PORT=49627 ./node_modules/.bin/playwright test e2e/blueprint-dashboard-demo.spec.mjs --reporter=list. Log: /private/tmp/blueprint-demo-final-independent-20261106.log.
+- Bank/application proof uses only Sample Community Bank and fictional prior application data. Open-bank preview actually submits a local sample application; approval remains client-reported/pending, never verified funding until a labelled staged sample completion. Pre-existing synthetic bearer/HttpOnly cookie stay unchanged, native fetch is unchanged, unsupported routes/actions reject without writing local state, and a changed token scrubs the captured workspace.
+- A duplicate 91-case existing-browser run was interrupted intentionally at root's request after 33 PASS so the root's identical run could complete alone. One in-flight case is interrupted, 57 did not run; this partial run is neither an assertion failure nor complete regression proof. Root owns the complete 91-case receipt.
+- No unresolved source review blocker remains in the named demo scope. Production deployment, the two deployed 20-case gates and human-like live walk are still REQUIRED and not claimed from this local result.
+
+FROZEN SOURCE HASHES (SHA256)
+public/app/blueprint-demo.js 4ba9cba14363d8fa8fafd45590d2a08bff9850e2bae3a181a8d7a7174596f123
+public/app/blueprint-demo-data.json e08ef9c06cca79d65b5949bbcd3740aa87e4705fb2801f240693c4ce0079ffe0
+public/app/client-portal.html 7ed763cd42f9d336f14a8c06845ab995d7557a05a809bc9e2a470f6da3402671
+public/app/blueprint-plan.js a18b737a7e4bbdcdeffc2c12c8e9b61bf49013ccf1893b7458fa46efaa0f5449
+public/app/blueprint-fulfillment.js 39a3016b35cd931d26e424650936cd834b5f0d73d23a9e9894d7d42eef6c94d6
+public/app/blueprint-fulfillment.css 416dd9707565f71d91a42239d131431c667e1c5befab971e29beecc712f54eb1
+e2e/blueprint-dashboard-demo.spec.mjs ef61b7c90287a80eeefaabb2e338ca6d3717c650be58d16450f6e685750ccd64
+
+LIVE GATE (after protected publication, run twice)
+BLUEPRINT_DEMO_BASE_URL=https://fundhub.ai E2E_PORT=49627 ./node_modules/.bin/playwright test e2e/blueprint-dashboard-demo.spec.mjs --grep 'DEMO[0-9]' --reporter=list
+Required count 20; generic regression excluded. No workspace data is mocked. Live page URLs and app-owned previews must be https://fundhub.ai, every /api request/external destination remains a guarded failure. Live run 1: NOT RUN. Live run 2: NOT RUN.
+
+FOLLOW-UP WITHIN SAME DEMO BOUNDARY
+Root's human-like local review found legacy payment/booking overlays using opacity only, leaving their controls in the accessibility/focus surface. DEMO01 now additionally requires #unlock-modal and #book-modal truly hidden and rejects focus entering either legacy dialog. This preserves the same 20 required IDs. Wiring owner is applying a scoped full-demo CSS hide; the preceding 30.4s/100 result is intermediate until this final CSS and the stronger guard pass together.
+
+FINAL BOUNDARY REPAIR RECEIPT — supersedes earlier local-only green snapshots
+Local frozen-source command (unique port, no shared lifecycle): E2E_PORT=49627 ./node_modules/.bin/playwright test e2e/blueprint-dashboard-demo.spec.mjs --reporter=list
+Result: 21/21 PASS in 28.2 seconds; 20/20 required = score 100; 0 failed, 0 skipped. Log: /private/tmp/blueprint-demo-final-boundary-20261106.log.
+Exact before/after SHA256:
+- public/app/blueprint-demo.js b190d581575b0a8ef45afed9d4eea9902d27a8b3b83f8d92ea938fcc1d2dbdc5
+- public/app/blueprint-fulfillment.css 5bbfc19653e2806db8d4dde1c978e1c775d928aa516043b671c8251fa2ca2b4b
+- e2e/blueprint-dashboard-demo.spec.mjs c15a12123e491886533fc7bd5909ddd058d5032fcc243408c94681dcc671250b
+Other portal/renderer/data JSON hashes remain as listed above.
+New boundary assertions passed at both desktop/mobile widths: legacy payment/booking overlays are truly hidden and cannot accept focus; stale bank-preview action cannot modify a completed round; exact newly opened fictional bank application receives its own reported approval; popup/preview JavaScript has no uncaught error. All twenty cases still require zero API calls/external navigation and unchanged native fetch. The no-real-bank-data, existing bearer/cookie, metadata-only upload and reset/session fences all passed.
+Independent source review of final preview guards: sample payment requires the exact active pending accepted quote/order URL; stale cancelled/completed payment refuses; sample bank submit requires active client-owned engagement, eligible available lender, existing Apply application and open submissions. No fallback application creation. Real authentication/provider branches unchanged.
+Parent's interrupted baseline browser run on49625 was an infrastructure lifecycle issue: my earlier 21-case managed static server on49625 closed on successful completion while the root's later 91-case runner had reused it. The only explicit stop command was kill -INT69073 for my separate duplicate91 on49626; no root CLI was killed. Root retains the connection-refused receipt and owns its complete rerun on a distinct stable server. Do not call that receipt an application assertion failure.
+Production demo gate still NOT RUN at this point: wait for protected publication, then run the same20 required cases twice against https://fundhub.ai with BLUEPRINT_DEMO_BASE_URL. Local 100 does not mean deployed100 or real provider/payment proof.
+
+SLOW-ADAPTER LOADING REGRESSION — final local gate update
+Root observed a blank content area while only /app/blueprint-demo.js was delayed: the existing skeleton was attached but inherited portal-state CSS hid it. Wiring owner changed only the explicit public demo frame readiness marker; no real authentication behavior changed.
+DEMO01 now opens a separate actual page and holds only the static adapter script response. It requires the existing Loading your plan status and skeleton visibly rendered while FHBlueprintDemo is still undefined, zero real API/external traffic, and the actual full renderer visibly available after releasing the original script unchanged. This is a real intermediate-state check, not a mocked response or final screenshot alone. Same20 gate IDs.
+Affected-first command: E2E_PORT=49627 ./node_modules/.bin/playwright test e2e/blueprint-dashboard-demo.spec.mjs --grep 'DEMO01|generic demo' --reporter=list
+Affected result: 3/3 PASS in2.3s (loading transition at1440/390 plus generic-mode regression). Log /private/tmp/blueprint-demo-loading-regression-20261106.log.
+Final full required command: E2E_PORT=49627 ./node_modules/.bin/playwright test e2e/blueprint-dashboard-demo.spec.mjs --grep 'DEMO[0-9]' --reporter=list
+Final result: 20/20 PASS in29.7s = score100/100; zero failures/skips. Log /private/tmp/blueprint-demo-final-loading-gate-20261106.log.
+Exact before/after stable hashes:
+public/app/client-portal.html f26be435fadc90c0b6cf724258c0449ec714ba8d623f6508202689ecf1926961
+public/app/blueprint-demo.js b190d581575b0a8ef45afed9d4eea9902d27a8b3b83f8d92ea938fcc1d2dbdc5
+public/app/blueprint-fulfillment.css 5bbfc19653e2806db8d4dde1c978e1c775d928aa516043b671c8251fa2ca2b4b
+e2e/blueprint-dashboard-demo.spec.mjs caa8bdb9b3cc254a76aee43c4ea47c9c1d219873980393f9bb7def25e89ba4d4
+All prior required privacy, sample bank/application, exact outcome, save/reload/reset, stale completed preview and hidden legacy-dialog guards remain. Two deployed runs still await protected publication; no deployed-readiness or live provider/customer receipt claimed from this result.
+
+INDEPENDENT REQUIRED-CI HARNESS REPAIR REVIEW
+Reviewed root's exact diffs in src/http/portal-loading-line.test.mjs and src/http/portal-staff-greeting.test.mjs. The conditional document.write bootstrap no longer contains the old contiguous closing tag; both extractors now anchor on the unchanged data.js opening tag and select the following complete inline portal handler. Only that anchor, explanatory comments and missing-anchor diagnostic wording changed. The DOMContentLoaded/main-handler guard remains. All describe/test definitions and behavior assertion sections are byte-identical to HEAD, checked directly; no assertion removed, weakened, skipped or retried.
+Independent run: node --test src/http/portal-loading-line.test.mjs src/http/portal-staff-greeting.test.mjs
+Result: 13/13 PASS, 2 suites, 0 failed, 0 skipped, 77.8ms. The files need no DB and none was used. Real loading refusal cases, authenticated client naming, staff preview identity, unauthenticated refusal and both query aliases all executed. No app code changed for this CI repair.
+Confirmed application source remains exactly HTML f26be435fadc90c0b6cf724258c0449ec714ba8d623f6508202689ecf1926961 and adapter b190d581575b0a8ef45afed9d4eea9902d27a8b3b83f8d92ea938fcc1d2dbdc5. Existing 20/20 UI proof is still on these exact app assets; no duplicate UI run is needed for the test-only extractor repair. Fresh exact-head CI is still required. Live20x2 remains pending publication.
