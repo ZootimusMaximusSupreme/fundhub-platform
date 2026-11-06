@@ -91,3 +91,17 @@ New boundary assertions passed at both desktop/mobile widths: legacy payment/boo
 Independent source review of final preview guards: sample payment requires the exact active pending accepted quote/order URL; stale cancelled/completed payment refuses; sample bank submit requires active client-owned engagement, eligible available lender, existing Apply application and open submissions. No fallback application creation. Real authentication/provider branches unchanged.
 Parent's interrupted baseline browser run on49625 was an infrastructure lifecycle issue: my earlier 21-case managed static server on49625 closed on successful completion while the root's later 91-case runner had reused it. The only explicit stop command was kill -INT69073 for my separate duplicate91 on49626; no root CLI was killed. Root retains the connection-refused receipt and owns its complete rerun on a distinct stable server. Do not call that receipt an application assertion failure.
 Production demo gate still NOT RUN at this point: wait for protected publication, then run the same20 required cases twice against https://fundhub.ai with BLUEPRINT_DEMO_BASE_URL. Local 100 does not mean deployed100 or real provider/payment proof.
+
+SLOW-ADAPTER LOADING REGRESSION — final local gate update
+Root observed a blank content area while only /app/blueprint-demo.js was delayed: the existing skeleton was attached but inherited portal-state CSS hid it. Wiring owner changed only the explicit public demo frame readiness marker; no real authentication behavior changed.
+DEMO01 now opens a separate actual page and holds only the static adapter script response. It requires the existing Loading your plan status and skeleton visibly rendered while FHBlueprintDemo is still undefined, zero real API/external traffic, and the actual full renderer visibly available after releasing the original script unchanged. This is a real intermediate-state check, not a mocked response or final screenshot alone. Same20 gate IDs.
+Affected-first command: E2E_PORT=49627 ./node_modules/.bin/playwright test e2e/blueprint-dashboard-demo.spec.mjs --grep 'DEMO01|generic demo' --reporter=list
+Affected result: 3/3 PASS in2.3s (loading transition at1440/390 plus generic-mode regression). Log /private/tmp/blueprint-demo-loading-regression-20261106.log.
+Final full required command: E2E_PORT=49627 ./node_modules/.bin/playwright test e2e/blueprint-dashboard-demo.spec.mjs --grep 'DEMO[0-9]' --reporter=list
+Final result: 20/20 PASS in29.7s = score100/100; zero failures/skips. Log /private/tmp/blueprint-demo-final-loading-gate-20261106.log.
+Exact before/after stable hashes:
+public/app/client-portal.html f26be435fadc90c0b6cf724258c0449ec714ba8d623f6508202689ecf1926961
+public/app/blueprint-demo.js b190d581575b0a8ef45afed9d4eea9902d27a8b3b83f8d92ea938fcc1d2dbdc5
+public/app/blueprint-fulfillment.css 5bbfc19653e2806db8d4dde1c978e1c775d928aa516043b671c8251fa2ca2b4b
+e2e/blueprint-dashboard-demo.spec.mjs caa8bdb9b3cc254a76aee43c4ea47c9c1d219873980393f9bb7def25e89ba4d4
+All prior required privacy, sample bank/application, exact outcome, save/reload/reset, stale completed preview and hidden legacy-dialog guards remain. Two deployed runs still await protected publication; no deployed-readiness or live provider/customer receipt claimed from this result.
