@@ -31,6 +31,7 @@ import { requestSoftPull, SoftPullError } from "../finance/soft-pulls.mjs";
 import { FINANCE_OS_TIER } from "../finance/finance-os-entitlement.mjs";
 import { BLUEPRINT_PRODUCT_CODE } from "../waypoints/purchase.mjs";
 import { fulfilQueuedSystemPulls, systemPullUsesSimulation, MONTHLY_PROVIDER_EXCEPTION_SOURCE } from "../finance/finance-os-pull-fulfil.mjs";
+import { processBlueprintClientServices } from "../blueprint/report-requests.mjs";
 
 export const SWEEP_CRON = "0 6 * * *"; // 06:00 UTC daily — matches the other daily sweepers' quiet-hours-safe slot
 export const SOURCE_WORKFLOW = "finance-os-pull-sweeper";
@@ -88,6 +89,15 @@ export async function dueClients(conn, now, { realPull = false } = {}) {
              AND (paid.current_period_start IS NULL OR paid.current_period_start <= $2)
              AND (paid.current_period_end IS NULL OR paid.current_period_end > $2)
         )
+       UNION ALL
+       SELECT e.id AS subscription_id,e.org_id,e.client_id,e.created_at AS current_period_start
+         FROM blueprint_fulfillment_engagements e
+        WHERE e.status='active' AND e.created_at<=$2
+          AND NOT EXISTS (SELECT 1 FROM blueprint_access b WHERE b.org_id=e.org_id AND b.client_id=e.client_id)
+          AND NOT EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.org_id=e.org_id AND sub.client_id=e.client_id
+            AND sub.tier=$1 AND sub.status='active' AND sub.effective_from<=$2
+            AND (sub.effective_to IS NULL OR sub.effective_to>$2)
+            AND (sub.current_period_end IS NULL OR sub.current_period_end>$2))
       )
       SELECT s.subscription_id, s.org_id, s.client_id, s.current_period_start
         FROM entitled s
@@ -95,7 +105,7 @@ export async function dueClients(conn, now, { realPull = false } = {}) {
           SELECT 1 FROM soft_pull_requests r
            WHERE r.client_id = s.client_id
              AND r.org_id = s.org_id
-             AND r.requested_by_kind = 'system'
+             AND (r.requested_by_kind = 'system' OR r.blueprint_report_kind = 'included')
              AND r.requested_at > $2::timestamptz - ($3::int * interval '1 day')
              AND (
                NOT $4::boolean OR r.status <> 'fulfilled' OR NOT EXISTS (
@@ -141,7 +151,7 @@ export function monthlyPullKey(row, now, { realPull = false } = {}) {
 
 /** sweep — one pass. `db` and the clock are arguments so tests drive it
     without Inngest. Returns a tally rather than throwing. */
-export async function sweep(conn = db, { now = new Date(), env = process.env, fulfil = fulfilQueuedSystemPulls } = {}) {
+export async function sweep(conn = db, { now = new Date(), env = process.env, fulfil = fulfilQueuedSystemPulls, clientServices = processBlueprintClientServices } = {}) {
   const tally = { checked: 0, requested: 0, skipped: [], errored: [], fulfil: null };
   const realPull = !systemPullUsesSimulation(env);
   const rows = await dueClients(conn, now, { realPull });
@@ -168,8 +178,8 @@ export async function sweep(conn = db, { now = new Date(), env = process.env, fu
     } catch (e) {
       // consent_required is the expected, common refusal — a client with no
       // valid soft_pull_consent on file is skipped, not logged as a fault.
-      if (e instanceof SoftPullError && e.code === "consent_required") {
-        tally.skipped.push({ clientId: row.client_id, reason: "consent_required" });
+      if (e instanceof SoftPullError && ["consent_required", "blueprint_report_payment_required", "blueprint_engagement_completed"].includes(e.code)) {
+        tally.skipped.push({ clientId: row.client_id, reason: e.code });
       } else {
         tally.errored.push({ clientId: row.client_id, error: e?.message || String(e) });
       }
@@ -184,10 +194,12 @@ export async function sweep(conn = db, { now = new Date(), env = process.env, fu
     }
   }
 
+  try { tally.clientServices = await clientServices(conn, { env }); }
+  catch (error) { tally.errored.push({ phase: "blueprint_client_services", error: error.message }); }
   return {
     ...tally,
     ok: tally.errored.length === 0 && Number(tally.fulfil?.failed || 0) === 0
-      && !(tally.fulfil?.errored?.length) && tally.fulfil?.ok !== false
+      && !(tally.fulfil?.errored?.length) && tally.fulfil?.ok !== false && tally.clientServices?.ok !== false
   };
 }
 
