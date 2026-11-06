@@ -1649,7 +1649,7 @@
     var room = stage && stage.clientHeight ? stage.clientHeight * 0.5 : 0;
     return readingLineTop(safeTopPx(), h, pitch, room);
   }
-  /* A rolling frame writes ONE thing, the place of the words, to a hundredth of a pixel. The red
+  /* A rolling frame writes ONE thing, the full-precision position of the words. The red
      line moves only when its place changes. The time text and the progress bar are redrawn four
      times a second while rolling, and at once for anything else (a tap, a drag, a speed change). */
   var lineTopShown = "", uiAt = 0, UI_EVERY_MS = 250;
@@ -1658,7 +1658,7 @@
     if (!kf.length) { content.style.transform = ""; return; }
     var read = readPx();
     var off = yAt(t) - read;
-    content.style.transform = "translate3d(0," + (-off).toFixed(2) + "px,0)";
+    content.style.transform = "translate3d(0," + (-off) + "px,0)";
     var top = read + "px";
     if (top !== lineTopShown) { line.style.top = top; lineTopShown = top; }
     if (fromFrame) {

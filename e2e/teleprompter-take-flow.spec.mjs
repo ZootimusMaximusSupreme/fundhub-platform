@@ -1455,6 +1455,42 @@ test("scroll failure diagnostics preserve stationary, reverse and invalid-timest
   expect(context.allSpeedsFinite).toBe(true);
 });
 
+test("215 WPM stays steady across short animation-frame intervals with the camera overlay", async ({ page }) => {
+  await open(page, { wpm: 215 });
+  const points = await page.evaluate(() => {
+    const content = document.getElementById("content");
+    const play = document.getElementById("play");
+    const nativeFrame = window.requestAnimationFrame;
+    let pending = [];
+    const points = [];
+    // Replay the 0.068 ms gap observed between a render callback and the next
+    // regular tick in Chromium. The real play button and scroll loop still run.
+    window.requestAnimationFrame = callback => { pending.push(callback); return pending.length; };
+    try {
+      play.click();
+      const start = performance.now() + 1;
+      function present(at) {
+        const callbacks = pending;
+        pending = [];
+        for (const callback of callbacks) callback(at);
+        points.push({ at, y: content.getBoundingClientRect().top });
+      }
+      for (let i = 1; i <= 60; i++) {
+        const regular = start + i * 1000 / 60;
+        if (i % 10 === 0) present(regular - 0.068);
+        present(regular);
+      }
+      play.click();
+      return points;
+    } finally { window.requestAnimationFrame = nativeFrame; }
+  });
+  const speeds = points.slice(1).map((p, i) => (points[i].y - p.y) * 1000 / (p.at - points[i].at));
+  const average = speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
+  const diagnostic = JSON.stringify({ slowest: Math.min(...speeds), fastest: Math.max(...speeds), average });
+  expect(speeds.every(speed => speed > 0), diagnostic).toBe(true);
+  expect(Math.max(...speeds) - Math.min(...speeds), diagnostic).toBeLessThan(average * 0.05);
+});
+
 for (const wpm of [200, 205, 210, 215]) {
   test(`smooth forward scroll at ${wpm} WPM with the camera overlay`, async ({ page }) => {
     const { server } = await open(page, { wpm });
@@ -1464,7 +1500,10 @@ for (const wpm of [200, 205, 210, 215]) {
       const points = [];
       const started = performance.now();
       function tick(at) {
-        const y = new DOMMatrix(el.style.transform).m42;
+        // Reading the CSS string rounds this translation before the speed check.
+        // Use its numeric value, or the rendered position when Typed OM is unavailable.
+        const translation = el.attributeStyleMap?.get("transform")?.[0]?.y;
+        const y = translation?.value ?? el.getBoundingClientRect().top;
         const last = points[points.length - 1];
         // requestAnimationFrame can observe a new timestamp a few microseconds
         // after the scroll loop's preceding callback, before the transform moves.
