@@ -8,6 +8,7 @@ import { emit } from "../events/bus.mjs";
 import { requestBlueprintHelp,quoteBlueprintHelp,checkoutBlueprintHelp } from "./client-services.mjs";
 import { onPaidServicePaymentReceived } from "../handlers/paid-service-payment.mjs";
 import { onPaymentReceivedMoney,onRoundStartedMoney,closePurchasedBlueprintRound } from "../handlers/money-chain.mjs";
+import { reconcilePaidBlueprintHelpCompletion } from "./service-completion.mjs";
 import { getBlueprintFulfillmentAccess } from "./fulfillment-access.mjs";
 import { logBankDecision } from "../applications/status.mjs";
 
@@ -66,5 +67,9 @@ for (const existing of [false,true]) test("paid staff takeover "+(existing ? "pr
     await logBankDecision(db,{orgId,clientId,lenderId:lender.id,status:"Denied",staff});
     const ended=await closePurchasedBlueprintRound({orgId,clientId,payload:{stage:"closed",fundingRoundId:round.id,roundNumber:round.round_number}},db);
     assert.equal(ended.done,true);assert.equal((await getBlueprintFulfillmentAccess(db,scope)).status,"completed");
+    const completed=await reconcilePaidBlueprintHelpCompletion(db,{orgId,requestId:help.request.id});
+    assert.equal(completed.completed,1,JSON.stringify(completed));
+    const proof=(await db.query("SELECT produced_ref,produced_kind,status FROM paid_service_requests WHERE id=$1",[help.request.id])).rows[0];
+    assert.deepEqual(proof,{produced_ref:round.id,produced_kind:"funding_round",status:"fulfilled"});
   } finally { await db.query("ROLLBACK");db.release();await pool.end(); }
 });
