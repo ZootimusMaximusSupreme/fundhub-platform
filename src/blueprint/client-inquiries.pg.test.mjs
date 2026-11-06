@@ -53,7 +53,8 @@ test("client inquiry receipts, call claims and verified per-bureau release persi
     await addReport([{ creditorName: "Bank One", date: "2026-10-12" }], "2026-11-01T12:00:00Z");
     const scope = { orgId, clientId, accountId, now: new Date("2026-11-05T12:00:00Z"),
       engagement: { id: randomUUID(), status: "active", executionOwner: "client" } };
-    const deps = { readActiveServices: async () => [], evaluateDocGate: async () => ({ complete: true, missing: [] }) };
+    const deps = { readActiveServices: async () => [], evaluateDocGate: async () => ({ complete: true, missing: [] }),
+      verifiedIdentity: async () => ({ legalName: "Fixture Buyer", address: "1 Fixture St", verifiedAt: new Date() }) };
     await db.query("SET LOCAL ROLE fundhub_app");
     const submitted = await recordClientInquirySubmission(db, scope,
       { caseId, reference: "EX-fixture-reference", receiptDocumentId: receiptId }, deps);
