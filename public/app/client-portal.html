@@ -2471,6 +2471,7 @@ document.addEventListener("DOMContentLoaded", async function () {
      Walk finding F33, 2026-09-03. The facts now come from the four tables that
      own them; the words below are the only thing this file decides. */
   var stage = null;
+  var assessmentSummary = null;
 
   var STAGE_COPY = {
     booked: {
@@ -2532,7 +2533,17 @@ document.addEventListener("DOMContentLoaded", async function () {
     var subPre = document.getElementById("greeting-sub-pre");
     if (subPre) subPre.textContent = c ? c.sub : "Welcome to your Fundhub portal.";
     setText("sb-pre-eyebrow", c ? c.eyebrow : "Your file");
-    if (c) setText("sb-pre-main", c.main);
+    // Identity and summary reads can finish in either order. Every repaint
+    // uses the saved assessment so a late identity read cannot replace it.
+    var main = c ? c.main : null;
+    if (assessmentSummary) {
+      main = assessmentSummary.sample
+        ? "This is a sample estimate. No real soft pull has been run."
+        : document.body.classList.contains("fh-astra-portal")
+        ? "Your soft-pull assessment is in."
+        : "Your soft-pull assessment is in. You're pre-qualified for approximately " + assessmentSummary.amount + ".";
+    }
+    if (main) setText("sb-pre-main", main);
     if (c) {
       setText("own-empty-note", c.ownNote);
       setText("own-empty-foot", c.ownFoot);
@@ -3414,6 +3425,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         paintStaffPays("due", data.invoice_due);
       }
       setInquiryCaseOpen(data.inquiry_open);
+      assessmentSummary = data.prequal_display
+        ? { amount: data.prequal_display, sample: data.prequal_sample === true } : null;
       stage = data.stage || null;
       paintStage();
       /* THIS READ CHANGES THREE THINGS THE OTHER READ ALREADY PAINTED.
@@ -3442,14 +3455,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       paintPortalScores(data.scores || {});
       paintPrequal(amt, data.prequal_sample === true);
       if (!amt) return "live pre-qual · none yet";
-      var preMain = document.getElementById("sb-pre-main");
-      if (preMain) {
-        preMain.textContent = data.prequal_sample === true
-          ? "This is a sample estimate. No real soft pull has been run."
-          : document.body.classList.contains("fh-astra-portal")
-          ? "Your soft-pull assessment is in."
-          : "Your soft-pull assessment is in. You're pre-qualified for approximately " + amt + ".";
-      }
       return (data.prequal_sample === true ? "sample estimate · " : "live pre-qual · ") + amt;
     });
 

@@ -95,6 +95,40 @@ for (const width of [1440,390]) test(`staff without a selected client sees a cle
  await expect(page).toHaveURL(/\/app\/client-control-panel\.html$/);
 });
 
+for (const first of ['summary','identity']) for (const sample of [false,true]) test(`staff preview assessment stays stable when ${first} arrives first (${sample?'sample':'saved'})`,async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.addInitScript(()=>{localStorage.setItem('fh_token','safe-mock-token');localStorage.setItem('fh_role','owner');});
+ let releaseSummary,releaseIdentity;
+ const summaryReady=new Promise(resolve=>{releaseSummary=resolve;});
+ const identityReady=new Promise(resolve=>{releaseIdentity=resolve;});
+ const summary={...sampleBundle.reads['/api/read/portal-summary'],prequal_sample:sample};
+ const headline=sample?'This is a sample estimate. No real soft pull has been run.':'Your soft-pull assessment is in.';
+ await page.route('**/api/**',async route=>{
+  const url=route.request().url();
+  if(url.includes('/api/auth/session'))return json(route,{ok:true,principal:'staff',staff:{id:'safe-staff',role:'owner',name:'Safe Staff',status:'active'}});
+  if(url.includes('/api/health'))return json(route,{ok:true,db:'up',migrations:1});
+  if(url.includes('/api/dashboard/client?')){await identityReady;return json(route,{ok:true,client:{first_name:'Dana',last_name:'Whitfield',custom_fields:{}},latest_booking:null,messages:[],transactions:[]});}
+  if(url.includes('/api/read/portal-summary')){await summaryReady;return json(route,summary);}
+  return json(route,{ok:true,items:[]});
+ });
+ await page.goto(`/app/client-portal.html?client_id=${CLIENT_ID}`);
+ if(first==='summary'){
+  releaseSummary();
+  await expect(page.locator('#sb-pre-main')).toHaveText(headline);
+  releaseIdentity();
+ }else{
+  releaseIdentity();
+  await expect(page.locator('#greeting')).toHaveText('Previewing Dana Whitfield’s portal');
+  releaseSummary();
+ }
+ await expect(page.locator('#greeting')).toHaveText('Previewing Dana Whitfield’s portal');
+ await expect(page.locator('.cp-current-stage')).toHaveText('Current: Credit pull received');
+ await expect(page.locator('#sb-pre-main')).toHaveText(headline);
+ await expect(page.locator('#sb-prequal-amt')).toHaveText(summary.prequal_display);
+ await expect(page.locator('#sb-score-ex')).toHaveText(String(summary.scores.experian));
+ await expect(page.locator('.client-ios-nav')).toHaveCount(0);
+});
+
 for (const width of [1440,390]) test(`selected staff preview uses the portal workspace hierarchy at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:900});
  await page.addInitScript(()=>{localStorage.setItem('fh_token','safe-mock-token');localStorage.setItem('fh_role','owner');});

@@ -214,6 +214,8 @@ test.describe('Blueprint normal-router real app-role PostgreSQL buyer proof', ()
     await api(f.otherToken,'/api/blueprint/funding',null,403);
     await api(f.token,'/api/blueprint/funding?clientId='+f.otherId,null,403);
     await host.getByRole('button',{name:'Inquiry removal',exact:true}).click();
+    await expect(host.getByRole('link',{name:'Open EX portal ↗',exact:true})).toHaveAttribute('href','https://www.experian.com/help/dispute-credit/');
+    await expect(host.getByRole('link',{name:'Upload documents for a pending EX request ↗',exact:true})).toHaveAttribute('href','https://www.experian.com/consumer/upload/');
     await expect(host.getByText('Synthetic Inquiry Bank · Open',{exact:true})).toBeVisible();
     await marked(page,width,'content-bureau-held');
     await host.getByText('Save my dispute submission',{exact:true}).click();
