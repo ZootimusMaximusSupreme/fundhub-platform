@@ -1,0 +1,4187 @@
+{
+  "checkedAt": "2026-11-06T12:37:58.519Z",
+  "base": "https://fundhub.ai",
+  "sourceSha": "f0ffcc0e0be39b807f512bc1996c555c9c1ea23f",
+  "mode": "synthetic browser-only fixture over fetched static assets; no authenticated live backend proof",
+  "serverWrites": 0,
+  "scenarios": [
+    {
+      "number": 1,
+      "width": 1440,
+      "label": "client-today-held",
+      "shot": "shots/01-1440-client-today-held-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1150,
+      "hostScrollWidth": 1150,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 1292.828125,
+          "y": 212.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 77.875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 282.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 125.015625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 366.875,
+          "y": 282.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 147.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.890625,
+          "y": 282.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 125.359375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 655.6875,
+          "y": 282.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 159.578125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 789.046875,
+          "y": 282.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 162.671875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 956.625,
+          "y": 282.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open my bureau work",
+          "width": 195.78125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 469.796875,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nReview your saved file\n\nReview balances before the permitted bank step.\n\nOpen my bureau work\nApplications tracked\n0\nBureau cases\n1\nNext bureau check\nNov 9, 5:00 AM\n\nYour saved report, bureau results and current holds determine which bank can open next."
+    },
+    {
+      "number": 2,
+      "width": 1440,
+      "label": "client-repair-open-controls",
+      "shot": "shots/02-1440-client-repair-open-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1150,
+      "hostScrollWidth": 1150,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 1292.828125,
+          "y": 212.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 77.875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 125.015625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 366.875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 147.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.890625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 125.359375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 655.6875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 159.578125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 789.046875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 162.671875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 956.625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Prepare my current repair letters",
+          "width": 271.3125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 479.890625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Open Experian portal ↗",
+          "width": 206.515625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 588.890625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Upload documents for a pending Experian request ↗",
+          "width": 416.25,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.515625,
+          "y": 588.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open repair letter",
+          "width": 163.6875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 822.390625,
+          "disabled": false
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Save my letter submission",
+          "width": 1052,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 306,
+          "y": 868.390625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Mail\nBureau portal",
+          "width": 1052,
+          "height": 48,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 955.890625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "reference",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1047.390625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "file",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1136.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save letter submission",
+          "width": 198.59375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1198.890625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "file",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1410.390625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Upload response for review",
+          "width": 234.875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1456.390625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nWaiting on a required step\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour credit repair work\n\nready\n\nPrepare my current repair letters\nExperian · 1 · prepared\nOpen Experian portal ↗\nUpload documents for a pending Experian request ↗\n\nUse the portal to start or manage a dispute. Document upload adds files to a request already open.\n\nSynthetic Creditor · Open\n\nExperian\n\nPrepared\n\nOpen repair letter\nSave my letter submission\nHow did you submit it?\nMail\nBureau portal\nSubmission reference\nSubmission receipt\nSave letter submission\nUpload a bureau response\nResponse document\nUpload response for review\nYour current repair letters were prepared from the saved file."
+    },
+    {
+      "number": 3,
+      "width": 1440,
+      "label": "client-inquiry-open-controls",
+      "shot": "shots/03-1440-client-inquiry-open-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1150,
+      "hostScrollWidth": 1150,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 1292.828125,
+          "y": 212.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 77.875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 125.015625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 366.875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 147.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.890625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 125.359375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 655.6875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 159.578125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 789.046875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 162.671875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 956.625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "file",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 643.390625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Upload document",
+          "width": 163.890625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 689.390625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Open Experian portal ↗",
+          "width": 206.515625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 864.390625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Upload documents for a pending Experian request ↗",
+          "width": 416.25,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.515625,
+          "y": 864.390625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open dispute packet",
+          "width": 184.109375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 945.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Check saved bureau evidence",
+          "width": 248.03125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 477.109375,
+          "y": 945.890625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "authorization",
+          "width": 22,
+          "height": 22,
+          "labelHitHeight": 44,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1052.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Call bureau with my AI agent",
+          "width": 247.296875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1100.890625,
+          "disabled": false
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Save my dispute submission",
+          "width": 1052,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 306,
+          "y": 1220.890625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "reference",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1308.390625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "receipt",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1397.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save submission receipt",
+          "width": 208.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1459.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open letters and responses",
+          "width": 234.46875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1683.890625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nWaiting on a required step\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour bureau work\n\nUse your own bureau account to submit the packet. Save its receipt here so the system can follow the result.\n\nExperian · In progress\n\nRequired identity documents are on file.\n\nIdentity document\nUpload document\nSynthetic Bank inquiry · Waiting for verification\n\nNext check: Nov 9, 5:00 AM\n\nBureau call: not_requested\n\nOpen Experian portal ↗\nUpload documents for a pending Experian request ↗\n\nUse the portal to start or manage a dispute. Document upload adds files to a request already open.\n\nOpen dispute packet\nCheck saved bureau evidence\nI authorize my AI agent to contact Experian about the inquiries in this case.\nCall bureau with my AI agent\nSave my dispute submission\nPortal confirmation or mailing reference\nSubmission receipt\nSave submission receipt\nRepair letters and responses\n\nYour saved letters, mailing choices and response uploads are in your preparation workspace.\n\nOpen letters and responses"
+    },
+    {
+      "number": 4,
+      "width": 1440,
+      "label": "client-removal-verified-browser-only",
+      "shot": "shots/04-1440-client-removal-verified-browser-only-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1150,
+      "hostScrollWidth": 1150,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 1292.828125,
+          "y": 212.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 77.875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 125.015625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 366.875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 147.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.890625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 125.359375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 655.6875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 159.578125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 789.046875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 162.671875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 956.625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "file",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 643.390625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Upload document",
+          "width": 163.890625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 689.390625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Open Experian portal ↗",
+          "width": 206.515625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 904.390625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Upload documents for a pending Experian request ↗",
+          "width": 416.25,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.515625,
+          "y": 904.390625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open dispute packet",
+          "width": 184.109375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 985.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Check saved bureau evidence",
+          "width": 248.03125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 477.109375,
+          "y": 985.890625,
+          "disabled": false
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Save my dispute submission",
+          "width": 1052,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 306,
+          "y": 1080.890625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "reference",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1168.390625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "receipt",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1257.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "submit",
+          "width": 208.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1319.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open letters and responses",
+          "width": 234.46875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1302.890625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nYour next bank is ready\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour bureau work\n\nUse your own bureau account to submit the packet. Save its receipt here so the system can follow the result.\n\nExperian · In progress\n\nRequired identity documents are on file.\n\nIdentity document\nUpload document\nSynthetic Bank inquiry · Removal verified\n\nNext check: Nov 9, 5:00 AM\n\nSubmission reference: SYNTHETIC-PORTAL-42\n\nBureau call: queued\n\nOpen Experian portal ↗\nUpload documents for a pending Experian request ↗\n\nUse the portal to start or manage a dispute. Document upload adds files to a request already open.\n\nOpen dispute packet\nCheck saved bureau evidence\nSave my dispute submission\nRepair letters and responses\n\nYour saved letters, mailing choices and response uploads are in your preparation workspace.\n\nOpen letters and responses\nSaved evidence checked. Your case shows the result."
+    },
+    {
+      "number": 5,
+      "width": 1440,
+      "label": "client-bank-response-controls",
+      "shot": "shots/05-1440-client-bank-response-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1150,
+      "hostScrollWidth": 1150,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 1292.828125,
+          "y": 212.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 77.875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 125.015625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 366.875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 147.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.890625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 125.359375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 655.6875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 159.578125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 789.046875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 162.671875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 956.625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open bank application",
+          "width": 198.046875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 622.890625,
+          "disabled": false
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Report a bank response",
+          "width": 1052,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 306,
+          "y": 884.890625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Submitted or pending\nApproved\nDeclined",
+          "width": 1052,
+          "height": 48,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 972.390625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "reference",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1063.890625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "evidence",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1153.390625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "approvedAmount",
+          "width": 1052,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1242.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save bank response",
+          "width": 179.4375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1304.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "I’m done applying for this round",
+          "width": 266.3125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1439.890625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nYour next bank is ready\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour permitted banks\n\nYour saved file permits Synthetic Community Bank.\n\nSynthetic Community Bank · Business card\n\nExperian is waiting for verification.\n\nNext check: Nov 9, 5:00 AM\n\nOpen bank application\nYour applications\nSynthetic Community Bank\n\nRecorded status: Apply\n\nReport a bank response\nWhat did the bank say?\nSubmitted or pending\nApproved\nDeclined\nBank reference\nBank response document\nApproval amount, if stated\nSave bank response\n\nWhen you have finished sending applications for this round, close new submissions. The system will continue checking bank outcomes and funding.\n\nI’m done applying for this round"
+    },
+    {
+      "number": 6,
+      "width": 1440,
+      "label": "client-reports-help-controls",
+      "shot": "shots/06-1440-client-reports-help-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1150,
+      "hostScrollWidth": 1150,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 1292.828125,
+          "y": 212.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 77.875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 125.015625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 366.875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 147.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.890625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 125.359375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 655.6875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 159.578125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 789.046875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 162.671875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 956.625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Request included report",
+          "width": 209.578125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 555.890625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Funding takeover · request a quote\nInquiry removal · request a quote",
+          "width": 1052,
+          "height": 48,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 746.390625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Use the current eligible case or round\nPurchased funding round",
+          "width": 1052,
+          "height": 48,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 837.890625,
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "label": "note",
+          "width": 1052,
+          "height": 94,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 929.390625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Request help and pricing",
+          "width": 215.328125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 1039.390625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nWaiting for bank responses\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nReports and help\nYour credit report\n\nYour included monthly report is available.\n\nRequest included report\nAsk Fundhub to run a service\nWhat would you like help with?\nFunding takeover · request a quote\nInquiry removal · request a quote\nCase or round\nUse the current eligible case or round\nPurchased funding round\nTell the team which step needs help\nRequest help and pricing\nYour service requests\n\nYou have no extra service requests."
+    },
+    {
+      "number": 7,
+      "width": 1440,
+      "label": "client-preparation-visible",
+      "shot": "shots/07-1440-client-preparation-visible-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1150,
+      "hostScrollWidth": 1150,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 74.59375,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 308.625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Businesses",
+          "width": 112.296875,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 361.59375,
+          "y": 308.625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Step-by-step help",
+          "width": 165.265625,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 479.890625,
+          "y": 308.625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Letters and responses",
+          "width": 193.46875,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 651.15625,
+          "y": 308.625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Timeline",
+          "width": 94.828125,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 850.625,
+          "y": 308.625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Get help",
+          "width": 93.640625,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 951.453125,
+          "y": 308.625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Open this step →",
+          "width": 157.65625,
+          "height": 48,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 304,
+          "y": 528.359375,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open businesses",
+          "width": 155.421875,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 788.953125,
+          "y": 680.359375,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Find my next steps",
+          "width": 170.796875,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 773.578125,
+          "y": 774.140625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Review local banking",
+          "width": 183.203125,
+          "height": 71.59375,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 761.171875,
+          "y": 867.921875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Review cash and income",
+          "width": 210.921875,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 991.375,
+          "y": 642.171875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "View business evidence",
+          "width": 206.3125,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 991.375,
+          "y": 843.96875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open letters and responses",
+          "width": 234.109375,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 991.375,
+          "y": 1045.765625,
+          "disabled": false
+        }
+      ],
+      "text": "Your 12-month Capital Blueprint\nYour next steps, Synthetic.\nSaved to your client file\nToday\nBusinesses\nStep-by-step help\nLetters and responses\nTimeline\nGet help\nDo now\nReview your saved file\n\nReview balances before the permitted bank step.\n\nOpen this step →\nCan do alongside this\nYour separate businesses\n\n0 of 3 preparation records saved.\n\nOpen businesses\nCredit, business and banking lessons\n\nClear actions, useful links, proof and review dates.\n\nFind my next steps\nYour local banking candidates\n\nUse your ZIP code, eligibility and available cash to plan the next relationship.\n\nReview local banking\nYour starting information\nAvailable cash\nNot provided\nMonthly income\nNot provided\nHome ZIP\n85004\nBusiness target\n3 separate plans\nReview cash and income\nWaiting for review\n\nYour submitted business evidence will be tracked here. No evidence is marked reviewed just because time has passed.\n\nView business evidence\nYour credit letters\n\nDownload current letters, choose mailing, and upload bureau replies for review.\n\nOpen letters and responses\nA document upload records evidence received. Staff review and a changed credit report are separate checks.\n\nFinanceOS is not live yet. Your current plan uses saved updates, real documents and available reviews."
+    },
+    {
+      "number": 8,
+      "width": 1440,
+      "label": "client-loading-services",
+      "shot": "shots/08-1440-client-loading-services-MARKED.png",
+      "skeletons": 1,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1150,
+      "hostScrollWidth": 1150,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 1292.828125,
+          "y": 212.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 77.875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 125.015625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 366.875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 147.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.890625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 125.359375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 655.6875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 159.578125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 789.046875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 162.671875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 956.625,
+          "y": 317.890625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nWaiting for bank responses\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\n\nLoading your report and help options…"
+    },
+    {
+      "number": 9,
+      "width": 1440,
+      "label": "client-inquiries-empty",
+      "shot": "shots/09-1440-client-inquiries-empty-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1150,
+      "hostScrollWidth": 1150,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 1292.828125,
+          "y": 212.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 77.875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 125.015625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 366.875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 147.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.890625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 125.359375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 655.6875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 159.578125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 789.046875,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 162.671875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 956.625,
+          "y": 317.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open letters and responses",
+          "width": 234.46875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 306,
+          "y": 631.890625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nWaiting for bank responses\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour bureau work\n\nUse your own bureau account to submit the packet. Save its receipt here so the system can follow the result.\n\nYour file has no inquiry cases waiting for action.\n\nRepair letters and responses\n\nYour saved letters, mailing choices and response uploads are in your preparation workspace.\n\nOpen letters and responses"
+    },
+    {
+      "number": 10,
+      "width": 1440,
+      "label": "client-completed-history",
+      "shot": "shots/10-1440-client-completed-history-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1150,
+      "hostScrollWidth": 1150,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 1292.828125,
+          "y": 212.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 77.875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 281,
+          "y": 282.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 125.015625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 366.875,
+          "y": 282.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 147.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 499.890625,
+          "y": 282.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 125.359375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 655.6875,
+          "y": 282.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 159.578125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 789.046875,
+          "y": 282.796875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 162.671875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 956.625,
+          "y": 282.796875,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour purchased funding round is complete\n\nYour saved file permits Synthetic Community Bank.\n\nYour application and bureau history remain available here.\n\nApplications tracked\n0\nBureau cases\n0\nNext bureau check\nNo pending case\n\nYour saved report, bureau results and current holds determine which bank can open next."
+    },
+    {
+      "number": 11,
+      "width": 1440,
+      "label": "csm-detail-loading",
+      "shot": "shots/11-1440-csm-detail-loading-MARKED.png",
+      "skeletons": 1,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1376,
+      "hostScrollWidth": 1376,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh clients",
+          "width": 119.78125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 440.921875,
+          "y": 478.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Back to clients",
+          "width": 118.25,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 56,
+          "y": 530.390625,
+          "disabled": false
+        }
+      ],
+      "text": "Full-package clients\n\nProgress, current holds and separately priced help.\n\nRefresh clients\nBack to clients\nSynthetic Buyer\n\nLoading this client’s saved work…"
+    },
+    {
+      "number": 12,
+      "width": 1440,
+      "label": "csm-client-detail-controls",
+      "shot": "shots/12-1440-csm-client-detail-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1376,
+      "hostScrollWidth": 1376,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh clients",
+          "width": 119.78125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 440.921875,
+          "y": 23.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Back to clients",
+          "width": 118.25,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 56,
+          "y": 75.390625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "SYNTHETIC-BANK-42",
+          "width": 330,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 80,
+          "y": 399.640625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open selected bank evidence",
+          "width": 204.8125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 80,
+          "y": 451.640625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Approved\nDeclined\nIssued or funded",
+          "width": 330,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 80,
+          "y": 533.140625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "approvedAmount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 231.765625,
+          "y": 595.140625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "fundedAmount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 324.828125,
+          "y": 657.140625,
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "label": "note",
+          "width": 800,
+          "height": 92,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 80,
+          "y": 738.640625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save reviewed bank outcome",
+          "width": 204.734375,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 80,
+          "y": 838.640625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "amount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 201.015625,
+          "y": 1042.515625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save quote for client review",
+          "width": 196.78125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 80,
+          "y": 1094.515625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Funding takeover\nInquiry removal",
+          "width": 330,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 56,
+          "y": 1222.953125,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Use current eligible case or round\nPurchased funding round",
+          "width": 330,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 56,
+          "y": 1304.453125,
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "label": "note",
+          "width": 800,
+          "height": 92,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 56,
+          "y": 1385.953125,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "amount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 177.015625,
+          "y": 1495.953125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save offer for client review",
+          "width": 190.46875,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 56,
+          "y": 1547.953125,
+          "disabled": false
+        }
+      ],
+      "text": "Full-package clients\n\nProgress, current holds and separately priced help.\n\nRefresh clients\nBack to clients\nSynthetic Buyer\nCurrent work\nVerify saved bureau result · waiting · Experian response is pending.\nCurrent applications and bank evidence\nSynthetic Community Bank\n\nApply · client reported approved\n\nSaved bank evidence\nSYNTHETIC-BANK-42\nOpen selected bank evidence\nOutcome supported by the document\nApproved\nDeclined\nIssued or funded\nApproved amount in USD\nActually issued or funded amount in USD\nEvidence review note\nSave reviewed bank outcome\nHelp requests and offers\nFunding takeover\n\nrequested · Quote needed\n\nSynthetic request for team-run funding help.\n\nQuoted price in USD\nSave quote for client review\nOffer team-run help\nService\nFunding takeover\nInquiry removal\nCase or round\nUse current eligible case or round\nPurchased funding round\nAgreed service scope or case reference\nQuoted price in USD\nSave offer for client review"
+    },
+    {
+      "number": 13,
+      "width": 1440,
+      "label": "csm-saved-quote-controls",
+      "shot": "shots/13-1440-csm-saved-quote-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1376,
+      "hostScrollWidth": 1376,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh clients",
+          "width": 119.78125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 440.921875,
+          "y": 23.890625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Back to clients",
+          "width": 118.25,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 56,
+          "y": 75.390625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "SYNTHETIC-BANK-42",
+          "width": 330,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 80,
+          "y": 399.640625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open selected bank evidence",
+          "width": 204.8125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 80,
+          "y": 451.640625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Approved\nDeclined\nIssued or funded",
+          "width": 330,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 80,
+          "y": 533.140625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "approvedAmount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 231.765625,
+          "y": 595.140625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "fundedAmount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 324.828125,
+          "y": 657.140625,
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "label": "note",
+          "width": 800,
+          "height": 92,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 80,
+          "y": 738.640625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save reviewed bank outcome",
+          "width": 204.734375,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 80,
+          "y": 838.640625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Funding takeover\nInquiry removal",
+          "width": 330,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 56,
+          "y": 1108.953125,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Use current eligible case or round\nPurchased funding round",
+          "width": 330,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 56,
+          "y": 1190.453125,
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "label": "note",
+          "width": 800,
+          "height": 92,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 56,
+          "y": 1271.953125,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "amount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 177.015625,
+          "y": 1381.953125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save offer for client review",
+          "width": 190.46875,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 56,
+          "y": 1433.953125,
+          "disabled": false
+        }
+      ],
+      "text": "Full-package clients\n\nProgress, current holds and separately priced help.\n\nRefresh clients\nBack to clients\nSynthetic Buyer\nCurrent work\nVerify saved bureau result · waiting · Experian response is pending.\nCurrent applications and bank evidence\nSynthetic Community Bank\n\nApply · client reported approved\n\nSaved bank evidence\nSYNTHETIC-BANK-42\nOpen selected bank evidence\nOutcome supported by the document\nApproved\nDeclined\nIssued or funded\nApproved amount in USD\nActually issued or funded amount in USD\nEvidence review note\nSave reviewed bank outcome\nHelp requests and offers\nFunding takeover\n\nquoted · $500.00\n\nSynthetic saved service quote.\n\nOffer team-run help\nService\nFunding takeover\nInquiry removal\nCase or round\nUse current eligible case or round\nPurchased funding round\nAgreed service scope or case reference\nQuoted price in USD\nSave offer for client review\n\nOffer saved. The client can review and accept it in their own workspace."
+    },
+    {
+      "number": 14,
+      "width": 1440,
+      "label": "csm-empty-overview",
+      "shot": "shots/14-1440-csm-empty-overview-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1376,
+      "hostScrollWidth": 1376,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh clients",
+          "width": 119.78125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 440.921875,
+          "y": 664.890625,
+          "disabled": false
+        }
+      ],
+      "text": "Full-package clients\n\nProgress, current holds and separately priced help.\n\nRefresh clients\n\nNo active full-package clients are in this view.\n\nOffer saved. The client can review and accept it in their own workspace."
+    },
+    {
+      "number": 15,
+      "width": 1440,
+      "label": "csm-error",
+      "shot": "shots/15-1440-csm-error-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 1440,
+      "viewport": 1440,
+      "hostWidth": 1376,
+      "hostScrollWidth": 1376,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Try again",
+          "width": 86.703125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 56,
+          "y": 720.390625,
+          "disabled": false
+        }
+      ],
+      "text": "Full-package clients\n\nThe saved service request could not be loaded. Try again.\n\nTry again"
+    },
+    {
+      "number": 16,
+      "width": 390,
+      "label": "client-today-held",
+      "shot": "shots/16-390-client-today-held-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 356,
+      "hostScrollWidth": 356,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 247.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 317.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 317.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 371.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 371.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 425.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 425.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open my bureau work",
+          "width": 195.78125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 652.0625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nReview your saved file\n\nReview balances before the permitted bank step.\n\nOpen my bureau work\nApplications tracked\n0\nBureau cases\n1\nNext bureau check\nNov 9, 5:00 AM\n\nYour saved report, bureau results and current holds determine which bank can open next."
+    },
+    {
+      "number": 17,
+      "width": 390,
+      "label": "client-repair-open-controls",
+      "shot": "shots/17-390-client-repair-open-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 356,
+      "hostScrollWidth": 356,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 282.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Prepare my current repair letters",
+          "width": 271.3125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 646.5625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Open Experian portal ↗",
+          "width": 206.515625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 755.5625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Upload documents for a pending Experian request ↗",
+          "width": 324,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 813.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open repair letter",
+          "width": 163.6875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1082.5625,
+          "disabled": false
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Save my letter submission",
+          "width": 290,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 50,
+          "y": 1128.5625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Mail\nBureau portal",
+          "width": 290,
+          "height": 48,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1216.0625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "reference",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1307.5625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "file",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1397.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save letter submission",
+          "width": 198.59375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1459.0625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "file",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1654.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Upload response for review",
+          "width": 234.875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1700.5625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nWaiting on a required step\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour credit repair work\n\nready\n\nPrepare my current repair letters\nExperian · 1 · prepared\nOpen Experian portal ↗\nUpload documents for a pending Experian request ↗\n\nUse the portal to start or manage a dispute. Document upload adds files to a request already open.\n\nSynthetic Creditor · Open\n\nExperian\n\nPrepared\n\nOpen repair letter\nSave my letter submission\nHow did you submit it?\nMail\nBureau portal\nSubmission reference\nSubmission receipt\nSave letter submission\nUpload a bureau response\nResponse document\nUpload response for review\nYour current repair letters were prepared from the saved file."
+    },
+    {
+      "number": 18,
+      "width": 390,
+      "label": "client-inquiry-open-controls",
+      "shot": "shots/18-390-client-inquiry-open-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 356,
+      "hostScrollWidth": 356,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 282.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "file",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 850.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Upload document",
+          "width": 163.890625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 896.0625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Open Experian portal ↗",
+          "width": 206.515625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 1087.0625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Upload documents for a pending Experian request ↗",
+          "width": 324,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 1145.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open dispute packet",
+          "width": 184.109375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 1270.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Check saved bureau evidence",
+          "width": 248.03125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 1328.0625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "authorization",
+          "width": 22,
+          "height": 22,
+          "labelHitHeight": 44,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1427.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Call bureau with my AI agent",
+          "width": 247.296875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1475.0625,
+          "disabled": false
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Save my dispute submission",
+          "width": 290,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 50,
+          "y": 1579.0625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "reference",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1666.5625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "receipt",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1756.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save submission receipt",
+          "width": 208.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1818.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open letters and responses",
+          "width": 234.46875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 2074.0625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nWaiting on a required step\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour bureau work\n\nUse your own bureau account to submit the packet. Save its receipt here so the system can follow the result.\n\nExperian · In progress\n\nRequired identity documents are on file.\n\nIdentity document\nUpload document\nSynthetic Bank inquiry · Waiting for verification\n\nNext check: Nov 9, 5:00 AM\n\nBureau call: not_requested\n\nOpen Experian portal ↗\nUpload documents for a pending Experian request ↗\n\nUse the portal to start or manage a dispute. Document upload adds files to a request already open.\n\nOpen dispute packet\nCheck saved bureau evidence\nI authorize my AI agent to contact Experian about the inquiries in this case.\nCall bureau with my AI agent\nSave my dispute submission\nPortal confirmation or mailing reference\nSubmission receipt\nSave submission receipt\nRepair letters and responses\n\nYour saved letters, mailing choices and response uploads are in your preparation workspace.\n\nOpen letters and responses"
+    },
+    {
+      "number": 19,
+      "width": 390,
+      "label": "client-removal-verified-browser-only",
+      "shot": "shots/19-390-client-removal-verified-browser-only-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 356,
+      "hostScrollWidth": 356,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 282.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "file",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 850.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Upload document",
+          "width": 163.890625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 896.0625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Open Experian portal ↗",
+          "width": 206.515625,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 1127.0625,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Upload documents for a pending Experian request ↗",
+          "width": 324,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 1185.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open dispute packet",
+          "width": 184.109375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 1310.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Check saved bureau evidence",
+          "width": 248.03125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 1368.0625,
+          "disabled": false
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Save my dispute submission",
+          "width": 290,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 50,
+          "y": 1455.0625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "reference",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1542.5625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "receipt",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1632.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "submit",
+          "width": 208.796875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1694.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open letters and responses",
+          "width": 234.46875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1709.0625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nYour next bank is ready\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour bureau work\n\nUse your own bureau account to submit the packet. Save its receipt here so the system can follow the result.\n\nExperian · In progress\n\nRequired identity documents are on file.\n\nIdentity document\nUpload document\nSynthetic Bank inquiry · Removal verified\n\nNext check: Nov 9, 5:00 AM\n\nSubmission reference: SYNTHETIC-PORTAL-42\n\nBureau call: queued\n\nOpen Experian portal ↗\nUpload documents for a pending Experian request ↗\n\nUse the portal to start or manage a dispute. Document upload adds files to a request already open.\n\nOpen dispute packet\nCheck saved bureau evidence\nSave my dispute submission\nRepair letters and responses\n\nYour saved letters, mailing choices and response uploads are in your preparation workspace.\n\nOpen letters and responses\nSaved evidence checked. Your case shows the result."
+    },
+    {
+      "number": 20,
+      "width": 390,
+      "label": "client-bank-response-controls",
+      "shot": "shots/20-390-client-bank-response-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 356,
+      "hostScrollWidth": 356,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 282.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open bank application",
+          "width": 198.046875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 840.5625,
+          "disabled": false
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Report a bank response",
+          "width": 290,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 50,
+          "y": 1094.5625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Submitted or pending\nApproved\nDeclined",
+          "width": 290,
+          "height": 48,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1182.0625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "reference",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1273.5625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "evidence",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1363.0625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "approvedAmount",
+          "width": 290,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1452.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save bank response",
+          "width": 179.4375,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1514.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "I’m done applying for this round",
+          "width": 266.3125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1697.5625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nYour next bank is ready\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour permitted banks\n\nYour saved file permits Synthetic Community Bank.\n\nSynthetic Community Bank · Business card\n\nExperian is waiting for verification.\n\nNext check: Nov 9, 5:00 AM\n\nOpen bank application\nYour applications\nSynthetic Community Bank\n\nRecorded status: Apply\n\nReport a bank response\nWhat did the bank say?\nSubmitted or pending\nApproved\nDeclined\nBank reference\nBank response document\nApproval amount, if stated\nSave bank response\n\nWhen you have finished sending applications for this round, close new submissions. The system will continue checking bank outcomes and funding.\n\nI’m done applying for this round"
+    },
+    {
+      "number": 21,
+      "width": 390,
+      "label": "client-reports-help-controls",
+      "shot": "shots/21-390-client-reports-help-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 356,
+      "hostScrollWidth": 356,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 282.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Request included report",
+          "width": 209.578125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 738.5625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Funding takeover · request a quote\nInquiry removal · request a quote",
+          "width": 290,
+          "height": 48,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 913.0625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Use the current eligible case or round\nPurchased funding round",
+          "width": 290,
+          "height": 48,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1004.5625,
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "label": "note",
+          "width": 290,
+          "height": 94,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1096.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Request help and pricing",
+          "width": 215.328125,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 1206.0625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nWaiting for bank responses\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nReports and help\nYour credit report\n\nYour included monthly report is available.\n\nRequest included report\nAsk Fundhub to run a service\nWhat would you like help with?\nFunding takeover · request a quote\nInquiry removal · request a quote\nCase or round\nUse the current eligible case or round\nPurchased funding round\nTell the team which step needs help\nRequest help and pricing\nYour service requests\n\nYou have no extra service requests."
+    },
+    {
+      "number": 22,
+      "width": 390,
+      "label": "client-preparation-visible",
+      "shot": "shots/22-390-client-preparation-visible-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 356,
+      "hostScrollWidth": 356,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 61.03125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 14,
+          "x": 37,
+          "y": 338.203125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Businesses",
+          "width": 94.015625,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 14,
+          "x": 100.03125,
+          "y": 338.203125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Step-by-step help",
+          "width": 140.359375,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 14,
+          "x": 196.046875,
+          "y": 338.203125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Letters and responses",
+          "width": 165.03125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 14,
+          "x": 338.40625,
+          "y": 338.203125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Timeline",
+          "width": 78.71875,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 14,
+          "x": 505.4375,
+          "y": 338.203125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Get help",
+          "width": 77.6875,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 14,
+          "x": 586.15625,
+          "y": 338.203125,
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "label": "Open this step →",
+          "width": 157.65625,
+          "height": 48,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 56,
+          "y": 575.9375,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open businesses",
+          "width": 155.421875,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 37,
+          "y": 794.71875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Find my next steps",
+          "width": 170.796875,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 37,
+          "y": 949.296875,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Review local banking",
+          "width": 187.6875,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 37,
+          "y": 1125.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Review cash and income",
+          "width": 210.921875,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 56,
+          "y": 1457.109375,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "View business evidence",
+          "width": 206.3125,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 56,
+          "y": 1670.40625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open letters and responses",
+          "width": 234.109375,
+          "height": 46.796875,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 56,
+          "y": 1864.203125,
+          "disabled": false
+        }
+      ],
+      "text": "Your 12-month Capital Blueprint\nYour next steps, Synthetic.\nSaved to your client file\nToday\nBusinesses\nStep-by-step help\nLetters and responses\nTimeline\nGet help\nDo now\nReview your saved file\n\nReview balances before the permitted bank step.\n\nOpen this step →\nCan do alongside this\nYour separate businesses\n\n0 of 3 preparation records saved.\n\nOpen businesses\nCredit, business and banking lessons\n\nClear actions, useful links, proof and review dates.\n\nFind my next steps\nYour local banking candidates\n\nUse your ZIP code, eligibility and available cash to plan the next relationship.\n\nReview local banking\nYour starting information\nAvailable cash\nNot provided\nMonthly income\nNot provided\nHome ZIP\n85004\nBusiness target\n3 separate plans\nReview cash and income\nWaiting for review\n\nYour submitted business evidence will be tracked here. No evidence is marked reviewed just because time has passed.\n\nView business evidence\nYour credit letters\n\nDownload current letters, choose mailing, and upload bureau replies for review.\n\nOpen letters and responses\nA document upload records evidence received. Staff review and a changed credit report are separate checks.\n\nFinanceOS is not live yet. Your current plan uses saved updates, real documents and available reviews."
+    },
+    {
+      "number": 23,
+      "width": 390,
+      "label": "client-loading-services",
+      "shot": "shots/23-390-client-loading-services-MARKED.png",
+      "skeletons": 1,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 356,
+      "hostScrollWidth": 356,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 282.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 460.5625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nWaiting for bank responses\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\n\nLoading your report and help options…"
+    },
+    {
+      "number": 24,
+      "width": 390,
+      "label": "client-inquiries-empty",
+      "shot": "shots/24-390-client-inquiries-empty-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 356,
+      "hostScrollWidth": 356,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 282.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 352.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 406.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 460.5625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open letters and responses",
+          "width": 234.46875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 50,
+          "y": 910.5625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\n\nWaiting for bank responses\n\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour bureau work\n\nUse your own bureau account to submit the packet. Save its receipt here so the system can follow the result.\n\nYour file has no inquiry cases waiting for action.\n\nRepair letters and responses\n\nYour saved letters, mailing choices and response uploads are in your preparation workspace.\n\nOpen letters and responses"
+    },
+    {
+      "number": 25,
+      "width": 390,
+      "label": "client-completed-history",
+      "shot": "shots/25-390-client-completed-history-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 356,
+      "hostScrollWidth": 356,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh",
+          "width": 90.171875,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 247.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Today",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 317.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Credit repair",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 317.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inquiry removal",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 371.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Applications",
+          "width": 158,
+          "height": 46,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 371.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Reports and help",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 33,
+          "y": 425.0625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Preparation steps",
+          "width": 158,
+          "height": 70,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 199,
+          "y": 425.0625,
+          "disabled": false
+        }
+      ],
+      "text": "My funding workspace\nRefresh\nToday\nCredit repair\nInquiry removal\nApplications\nReports and help\nPreparation steps\nYour purchased funding round is complete\n\nYour saved file permits Synthetic Community Bank.\n\nYour application and bureau history remain available here.\n\nApplications tracked\n0\nBureau cases\n0\nNext bureau check\nNo pending case\n\nYour saved report, bureau results and current holds determine which bank can open next."
+    },
+    {
+      "number": 26,
+      "width": 390,
+      "label": "csm-detail-loading",
+      "shot": "shots/26-390-csm-detail-loading-MARKED.png",
+      "skeletons": 1,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 358,
+      "hostScrollWidth": 358,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh clients",
+          "width": 119.78125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 34,
+          "y": 488.078125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Back to clients",
+          "width": 118.25,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 34,
+          "y": 532.078125,
+          "disabled": false
+        }
+      ],
+      "text": "Full-package clients\n\nProgress, current holds and separately priced help.\n\nRefresh clients\nBack to clients\nSynthetic Buyer\n\nLoading this client’s saved work…"
+    },
+    {
+      "number": 27,
+      "width": 390,
+      "label": "csm-client-detail-controls",
+      "shot": "shots/27-390-csm-client-detail-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 358,
+      "hostScrollWidth": 358,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh clients",
+          "width": 119.78125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 34,
+          "y": 115.078125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Back to clients",
+          "width": 118.25,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 34,
+          "y": 159.078125,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "SYNTHETIC-BANK-42",
+          "width": 286,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 52,
+          "y": 505.328125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open selected bank evidence",
+          "width": 204.8125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 52,
+          "y": 557.328125,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Approved\nDeclined\nIssued or funded",
+          "width": 286,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 52,
+          "y": 638.828125,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "approvedAmount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 52,
+          "y": 720.328125,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "fundedAmount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 52,
+          "y": 801.828125,
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "label": "note",
+          "width": 286,
+          "height": 92,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 52,
+          "y": 883.328125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save reviewed bank outcome",
+          "width": 204.734375,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 52,
+          "y": 983.328125,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "amount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 52,
+          "y": 1226.703125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save quote for client review",
+          "width": 196.78125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 52,
+          "y": 1278.703125,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Funding takeover\nInquiry removal",
+          "width": 322,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 34,
+          "y": 1405.140625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Use current eligible case or round\nPurchased funding round",
+          "width": 322,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 34,
+          "y": 1486.640625,
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "label": "note",
+          "width": 322,
+          "height": 92,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 34,
+          "y": 1568.140625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "amount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 155.015625,
+          "y": 1678.140625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save offer for client review",
+          "width": 190.46875,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 34,
+          "y": 1730.140625,
+          "disabled": false
+        }
+      ],
+      "text": "Full-package clients\n\nProgress, current holds and separately priced help.\n\nRefresh clients\nBack to clients\nSynthetic Buyer\nCurrent work\nVerify saved bureau result · waiting · Experian response is pending.\nCurrent applications and bank evidence\nSynthetic Community Bank\n\nApply · client reported approved\n\nSaved bank evidence\nSYNTHETIC-BANK-42\nOpen selected bank evidence\nOutcome supported by the document\nApproved\nDeclined\nIssued or funded\nApproved amount in USD\nActually issued or funded amount in USD\nEvidence review note\nSave reviewed bank outcome\nHelp requests and offers\nFunding takeover\n\nrequested · Quote needed\n\nSynthetic request for team-run funding help.\n\nQuoted price in USD\nSave quote for client review\nOffer team-run help\nService\nFunding takeover\nInquiry removal\nCase or round\nUse current eligible case or round\nPurchased funding round\nAgreed service scope or case reference\nQuoted price in USD\nSave offer for client review"
+    },
+    {
+      "number": 28,
+      "width": 390,
+      "label": "csm-saved-quote-controls",
+      "shot": "shots/28-390-csm-saved-quote-controls-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 358,
+      "hostScrollWidth": 358,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh clients",
+          "width": 119.78125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 34,
+          "y": 115.078125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Back to clients",
+          "width": 118.25,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 34,
+          "y": 159.078125,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "SYNTHETIC-BANK-42",
+          "width": 286,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 52,
+          "y": 505.328125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Open selected bank evidence",
+          "width": 204.8125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 52,
+          "y": 557.328125,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Approved\nDeclined\nIssued or funded",
+          "width": 286,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 52,
+          "y": 638.828125,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "approvedAmount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 52,
+          "y": 720.328125,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "fundedAmount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 52,
+          "y": 801.828125,
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "label": "note",
+          "width": 286,
+          "height": 92,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 52,
+          "y": 883.328125,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save reviewed bank outcome",
+          "width": 204.734375,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 52,
+          "y": 983.328125,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Funding takeover\nInquiry removal",
+          "width": 322,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 34,
+          "y": 1247.640625,
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "Use current eligible case or round\nPurchased funding round",
+          "width": 322,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 34,
+          "y": 1329.140625,
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "label": "note",
+          "width": 322,
+          "height": 92,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 34,
+          "y": 1410.640625,
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "amount",
+          "width": 195,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 16,
+          "x": 155.015625,
+          "y": 1520.640625,
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Save offer for client review",
+          "width": 190.46875,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 34,
+          "y": 1572.640625,
+          "disabled": false
+        }
+      ],
+      "text": "Full-package clients\n\nProgress, current holds and separately priced help.\n\nRefresh clients\nBack to clients\nSynthetic Buyer\nCurrent work\nVerify saved bureau result · waiting · Experian response is pending.\nCurrent applications and bank evidence\nSynthetic Community Bank\n\nApply · client reported approved\n\nSaved bank evidence\nSYNTHETIC-BANK-42\nOpen selected bank evidence\nOutcome supported by the document\nApproved\nDeclined\nIssued or funded\nApproved amount in USD\nActually issued or funded amount in USD\nEvidence review note\nSave reviewed bank outcome\nHelp requests and offers\nFunding takeover\n\nquoted · $500.00\n\nSynthetic saved service quote.\n\nOffer team-run help\nService\nFunding takeover\nInquiry removal\nCase or round\nUse current eligible case or round\nPurchased funding round\nAgreed service scope or case reference\nQuoted price in USD\nSave offer for client review\n\nOffer saved. The client can review and accept it in their own workspace."
+    },
+    {
+      "number": 29,
+      "width": 390,
+      "label": "csm-empty-overview",
+      "shot": "shots/29-390-csm-empty-overview-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 358,
+      "hostScrollWidth": 358,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Refresh clients",
+          "width": 119.78125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 34,
+          "y": 626.078125,
+          "disabled": false
+        }
+      ],
+      "text": "Full-package clients\n\nProgress, current holds and separately priced help.\n\nRefresh clients\n\nNo active full-package clients are in this view.\n\nOffer saved. The client can review and accept it in their own workspace."
+    },
+    {
+      "number": 30,
+      "width": 390,
+      "label": "csm-error",
+      "shot": "shots/30-390-csm-error-MARKED.png",
+      "skeletons": 0,
+      "inlineStyles": 0,
+      "renderBlockingHeadScripts": [],
+      "documentWidth": 390,
+      "viewport": 390,
+      "hostWidth": 358,
+      "hostScrollWidth": 358,
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "label": "Try again",
+          "width": 86.703125,
+          "height": 44,
+          "labelHitHeight": null,
+          "fontPx": 13,
+          "x": 34,
+          "y": 722.078125,
+          "disabled": false
+        }
+      ],
+      "text": "Full-package clients\n\nThe saved service request could not be loaded. Try again.\n\nTry again"
+    }
+  ],
+  "assets": [
+    {
+      "path": "app/client-portal.html",
+      "status": 200,
+      "sha256": "751873d40b99b879541258824c2e7fe27538ec852a9ed84e91723ef948309631",
+      "bytes": 252773
+    },
+    {
+      "path": "app/csm-queue.html",
+      "status": 200,
+      "sha256": "3b9bd5a0814e618552fce8bc5b8af3698dffa80b8bd20a6a14bae30e742b68e1",
+      "bytes": 42288
+    },
+    {
+      "path": "app/csm-queue.css",
+      "status": 200,
+      "sha256": "544ed3029499810ef194d4d5e27cc3dad4e4ac32ff1a0863b16e93608af9535f",
+      "bytes": 10790
+    },
+    {
+      "path": "app/blueprint-fulfillment.js",
+      "status": 200,
+      "sha256": "d48d19bb2a396cf629336d74486c478a1a3f82f6207aded1109b3462ea8f1da7",
+      "bytes": 33425
+    },
+    {
+      "path": "app/blueprint-fulfillment.css",
+      "status": 200,
+      "sha256": "e317aa0fb4677cfcb69bc581f6eeda9c87c9682a7a9d769877d4408a16fe4afd",
+      "bytes": 4566
+    },
+    {
+      "path": "app/blueprint-csm-services.js",
+      "status": 200,
+      "sha256": "704f36c85c58246418f3d2a87768929bc16b938adc20b2180c2a49cb2e09410f",
+      "bytes": 12498
+    }
+  ],
+  "failures": [
+    {
+      "label": "1440 repair",
+      "error": "locator.selectOption: Timeout 8000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#blueprint-fulfillment').locator('form[data-bf-form=repair-submission]').locator('[name=channel]')\u001b[22m\n\u001b[2m    - locator resolved to <select name=\"channel\">…</select>\u001b[22m\n\u001b[2m  - attempting select option action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    16 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m     - retrying select option action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+    },
+    {
+      "label": "1440 services",
+      "error": "locator.selectOption: Timeout 8000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#blueprint-fulfillment').getByLabel('Payment option', { exact: true })\u001b[22m\n"
+    },
+    {
+      "label": "390 repair",
+      "error": "locator.selectOption: Timeout 8000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#blueprint-fulfillment').locator('form[data-bf-form=repair-submission]').locator('[name=channel]')\u001b[22m\n\u001b[2m    - locator resolved to <select name=\"channel\">…</select>\u001b[22m\n\u001b[2m  - attempting select option action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    16 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m     - retrying select option action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+    },
+    {
+      "label": "390 services",
+      "error": "locator.selectOption: Timeout 8000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#blueprint-fulfillment').getByLabel('Payment option', { exact: true })\u001b[22m\n"
+    }
+  ],
+  "actions": [
+    {
+      "role": "client",
+      "path": "/api/blueprint/repair",
+      "action": "generate"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/inquiries",
+      "action": "record_submission"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/inquiries",
+      "action": "launch_call"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/inquiries",
+      "action": "check_evidence"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/funding",
+      "action": "open_lender"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/funding",
+      "action": "report_application"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/funding",
+      "action": "finish_submissions"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/services",
+      "action": "request_report"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/services",
+      "action": "request_help"
+    },
+    {
+      "role": "csm",
+      "path": "/api/blueprint/funding",
+      "action": "review_bank_evidence"
+    },
+    {
+      "role": "csm",
+      "path": "/api/blueprint/services",
+      "action": "quote"
+    },
+    {
+      "role": "csm",
+      "path": "/api/blueprint/services",
+      "action": "offer"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/repair",
+      "action": "generate"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/inquiries",
+      "action": "record_submission"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/inquiries",
+      "action": "launch_call"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/inquiries",
+      "action": "check_evidence"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/funding",
+      "action": "open_lender"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/funding",
+      "action": "report_application"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/funding",
+      "action": "finish_submissions"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/services",
+      "action": "request_report"
+    },
+    {
+      "role": "client",
+      "path": "/api/blueprint/services",
+      "action": "request_help"
+    },
+    {
+      "role": "csm",
+      "path": "/api/blueprint/funding",
+      "action": "review_bank_evidence"
+    },
+    {
+      "role": "csm",
+      "path": "/api/blueprint/services",
+      "action": "quote"
+    },
+    {
+      "role": "csm",
+      "path": "/api/blueprint/services",
+      "action": "offer"
+    }
+  ]
+}

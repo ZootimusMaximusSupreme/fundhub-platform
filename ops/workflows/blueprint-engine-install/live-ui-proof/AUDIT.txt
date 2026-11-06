@@ -1,38 +1,39 @@
-Blueprint client-operated fulfillment: read-only UI and performance audit
+Blueprint final read-only UI and performance audit
 
-Status: PREPARING. Awaiting the parent's protected production deployment receipt and release SHA.
-Scope: /app/client-portal.html and /app/csm-queue.html, 1440px / 390px. App/config/env/test files are read-only.
-Evidence directory: ops/workflows/blueprint-engine-install/live-ui-proof/
+SOURCE AND RECEIPT BOUNDARY
+Audited production source: f0ffcc0e0be39b807f512bc1996c555c9c1ea23f.
+All six fetched UI assets are HTTP 200 and SHA256-match that exact Git source; see verification-summary.json and ui-result.json. Parent separately owns the protected-main CI, Ship, Netlify and health receipts in release-proof/.
+Verdict: no P1/P2 defect found in the NEW full-fulfillment UI exercised below. Anonymous SIGN-IN PAGE performance has the existing P2 leftovers listed below. This is not a full live paid-buyer/provider PASS.
 
-Proof boundaries
-- Browser-only full client and CSM scenarios intercept all API GET/POST seams in the browser. These prove deployed asset rendering/actions only, not live authentication, backend writes or provider delivery.
-- A legitimate existing Chrome staff session is available through CUA for read-only live UI inspection. No session token/password is read from Chrome.
-- Isolated Lighthouse cannot inherit the Chrome extension's existing authenticated session. Its report will identify any login redirect; it will never be labeled full authenticated client/CSM performance.
-- No production test accounts, customer rows, provider calls, report pulls, postage or charges may be created.
-- Real customer content must not enter committed screenshots or results. Live screenshots will crop to the new empty full-package panel when available.
+DEPLOYED-ASSET BROWSER PROOF — SYNTHETIC READ SEAMS
+36 states, 30 intercepted Blueprint actions, 0 harness failures; 1440x900 and 390x900. All API GET/POST seams are fulfilled inside isolated Chromium. No production row/account, real checkout, report pull, bureau call, mail or customer message was created.
+Covers Today, credit repair, inquiry removal, applications, reports/help, preparation; loading, empty, error/retry, full and completed history. Includes identity/receipt uploads, packet/letter destinations, reported bank response, closing submissions, report allowance/extra quote, CSM bank review/quote/offer and 27-client More/Previous oversight pagination.
+Inquiry AND repair links open separate exact destinations: https://www.experian.com/help/dispute-credit/ and https://www.experian.com/consumer/upload/. Official-page contents are intercepted, so this proves the deployed destination wiring, not third-party fulfillment.
+Both Whop checkout actions include provider=whop and expectedPriceCents=100000, matching the displayed $1,000.00 quote. Payment itself is browser-only and never reaches a provider.
+No page/panel overflow was measured in the 36 states. Normal full-client/CSM inputs/selects/textarea are >=16px. Authorization labels have 44px hit height. Client and CSM delayed views contain visible layout skeleton boxes at both widths.
+Evidence: ui-result.json contains each control measurement and numbered screenshot path. Key marked shots: 02/20 repair; 03/21 inquiry; 05/23 bank response; 07/25 Whop quote; 11/29 client loader; 14/32 CSM loader; 15/33 CSM controls; 17/35 empty; 18/36 CSM error.
+Earlier failed harness runs are retained as ui-initial-harness-run.json and ui-label-selector-run.json. Their duplicate disclosure click/exact wrapped-label matcher were corrected in the audit harness only. No product code, test, config or environment file was changed in this lane.
+The final deliverable includes the 36 marked screenshots referenced by ui-result.json. Intermediate/raw synthetic captures were preserved in a local temporary archive instead of being published as final evidence; historical failed-run JSON may reference those earlier captures.
 
-Preparation
-- Applied fundhub-ui-auditor and fundhub-perf-auditor; read UI-STANDARDS.md and PERF-STANDARDS.md.
-- Temporary source-only browser fixture preparation completed 32 UI scenarios, 26 browser-only API actions, 0 harness failures at 1440/390. This is NOT final deployed proof.
-- Client 13px input cascade and desktop 22px authorization label hit area were reported to the parent; parent repaired them in the owning UI lane. Final deployed measurement remains pending.
-- CSM panel inputs/selects/textarea measured 16px during preparation.
-- New-panel loading views used only text rather than in-layout skeletons; reported to parent. Final deployed verdict remains pending.
+AUTHENTICATED LIVE STAFF SCOPE
+The existing signed-in Chrome staff session displayed the actual new full-package panel with “No active full-package clients are in this view.” Its Refresh clients control is present. No token or password was read from Chrome.
+FINAL CROPPED AUTHENTICATED CAPTURE AND REFRESH RECEIPT: COMPLETE in ../release-proof/live-staff-empty.json and live-staff-empty-MARKED.png. Parent reloaded the actual deployed staff page, clicked Refresh clients and read the empty full-package panel at 13:05 UTC using the existing legitimate sign-in, with no intercepted backend responses. Actual viewport was 1966x704 CSS px; the marked 600px crop excludes the real customer call queue. This is authenticated staff empty-list proof, not a paid buyer cohort or live phone/performance claim. No actual paid full-package client cohort was created for this audit.
+Earlier CUA CDP calls stalled despite timeout options and were interrupted. Last failed attempt: Emulation.setDeviceMetricsOverride on agent-created Chrome tab 1302008254. No staff crop is stored in this folder; the final parent receipt is under release-proof/. The earlier viewport attempt measured 823 CSS px despite a requested 1440, so it is not claimed as 1440px live proof. Parent completed the simple UI reload/click/read/screenshot without CDP. This lane has stopped CUA work.
+Secure first-report form/provider delivery and authenticated client/CSM performance are not certified by this audit. Parent owns the six normal-router restricted-PostgreSQL browser journeys separately.
 
-Authentication limitations
-- Normal login with the explicitly configured existing CSM credentials returned 401. Normal login for the known owner with the configured staff test password returned 401. Neither was retried or reset.
-- Automatic approval review rejected a proposed broad client password-hash matching lookup as credential probing. It was not executed. The safer alternative used only explicit configured normal logins, then the legitimate existing browser UI session.
+LIGHTHOUSE — SIX LIVE ANONYMOUS ENTRY RUNS
+Lighthouse 12.8.2, mobile 390x844, simulated Slow 4G: 150ms RTT, 1638.4Kbps, 4x CPU. Three runs per requested URL; figures below are medians. TBT is only an INP proxy, not measured interaction latency.
+Requested /app/client-portal.html -> /portal-login.html in all 3 runs: score 91, LCP 3.307s, TBT 0ms, CLS 0, TTFB 78ms, Speed Index 1.876s, total 384157 bytes, external JS 122890 bytes.
+Requested /app/csm-queue.html -> /login.html?next=/app/csm-queue.html in all 3 runs: score 79, LCP 3.688s, TBT 0ms, CLS 0.173762, TTFB 119ms, Speed Index 2.232s, total 322573 bytes, external JS 70932 bytes.
+These are LOGIN REDIRECT measurements, not authenticated full-fulfillment page performance. Full JSON and HTML: lighthouse/client-portal-entry-{1,2,3}.{json,html} and lighthouse/csm-queue-entry-{1,2,3}.{json,html}. Aggregates: lighthouse/summary.json, page-metadata.json and verification-summary.json.
 
-Priority
-Funnel pages normally come first because they cost money per visitor; this named task covers only the two CRM/portal surfaces. Rank final performance findings by estimated seconds saved. Mobile Slow 4G (150ms RTT / 1638.4Kbps), 4x CPU, 3 runs per URL, report medians. Full JSON + HTML reports are required.
+EXISTING SIGN-IN PAGE LEFTOVERS — OUTSIDE THE NEW FULFILLMENT UI
+P2 LOGIN-LCP — login/entry budget <1.5s; client login 3.307s (+1.807s), staff login 3.688s (+2.188s). LCP elements are portal login p#lede and staff login h1#login-title. Representative run 2 attributes 79%/75% of LCP to render delay. Evidence: the respective *-entry-2.json largest-contentful-paint-element audit and all three runs for medians. Budget gap is not a guaranteed optimization saving.
+P2 LOGIN-CLS — staff login budget <0.1; median 0.173762. Client login is 0. Evidence: csm-queue-entry-{1,2,3}.json cumulative-layout-shift.
+P2 LOGIN-BLOCKING — staff sign-in has a blocking Google Fonts stylesheet (1027 bytes, 809ms estimated blocking in run 2) and fh.js (6029 bytes, 150ms). These are waterfall estimates, not additive guaranteed savings. Metadata counts zero synchronous external scripts in head; fh.js remains a Lighthouse render-blocking resource. Evidence: csm-queue-entry-2.json render-blocking-resources and lighthouse/page-metadata.json.
+LOW LOGIN-INLINE — final DOM has 7 inline style attributes on staff login, 0 on client login. Evidence: lighthouse/page-metadata.json. No sign-in source edits were made.
+Representative run 2 transfer breakdown: client login JS 122890 / CSS 58702 / fonts 121917 / images 0 bytes; staff login JS 70800 / CSS 56243 / fonts 121942 / images 868 bytes. Third-party requests are the Google Fonts CSS (client 983 bytes; staff 1027 bytes), plus non-network data URLs; complete lists and top blocking resources are in lighthouse/summary.json/full reports. Body/page totals include redirect-chain resources.
 
-Latest preparation update
-- Expanded local browser-only coverage: 36 screen states at 1440/390, including identity/receipt uploads, extra-report quote entrance, 27-client oversight list and next/previous pages.
-- Rechecked normal full-client and CSM form inputs/selects/textarea: >=16px. Authorization labels: 44px hit height. Delayed client services: visible layout skeleton at both widths. No document/panel overflow in the captured states.
-- The old text-only CSM-detail loading capture predates the parent's latest .bcs-skeleton fix. Parent confirmed a 3-span scoped loader in blueprint-csm-services.js/csm-queue.css. Do not reuse that obsolete preparation finding as a final source/deployment failure. The final deployed run must inspect both .bf-skeleton and .bcs-skeleton geometry.
-- Prepared harness now waits for bank-review refresh before saving the CSM quote and asserts the fixture quote changed, so an async refresh cannot hide a missed click.
-- No final live/performance verdict exists until the protected deployed SHA and asset hashes match. The parent should resume this audit lane with that receipt.
-
-Financing fixture update
-- Browser-only GET services now supplies Pay in full (commas) and Financing through Whop (whop).
-- The quote scenario opens Payment option, selects Whop, and requires POST checkout to include provider=whop plus the exact cached expectedPriceCents. These are browser interceptions only; no provider/checkout request reaches a server.
-- Final deployed run remains pending the protected release SHA.
+PRIORITY AND FREEZE
+Funnel pages normally come first because they cost money per visitor; this named audit covers portal/CRM entry and fulfillment only. Existing sign-in findings are ranked by the LCP budget gap first, then CLS and measured blocking; no new product work is implied.
+FOLDER FROZEN after this audit write. Parent may publish this evidence and add its own authenticated receipt under release-proof/. No additional browser or source changes are pending from this lane.

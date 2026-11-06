@@ -1,0 +1,66 @@
+{
+  "source": "f0ffcc0e0be39b807f512bc1996c555c9c1ea23f",
+  "site": "https://fundhub.ai",
+  "checkedAt": "2026-11-06T12:40:36.116Z",
+  "production": true,
+  "readOnly": true,
+  "ci": {
+    "runId": 42214529700,
+    "passed": 14,
+    "total": 14,
+    "url": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/42214529700"
+  },
+  "ship": {
+    "runId": 42216794221,
+    "conclusion": "success",
+    "url": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/42216794221"
+  },
+  "netlify": {
+    "deployId": "6aedc89588900e70f6531778",
+    "url": "https://6aedc89588900e70f6531778--transcendent-wisp-888771.netlify.app"
+  },
+  "health": {
+    "status": 200,
+    "ok": true,
+    "expected": 443,
+    "migrations": 470,
+    "pending": 0
+  },
+  "gateways": [
+    {
+      "path": "/api/blueprint/funding",
+      "status": 401
+    },
+    {
+      "path": "/api/blueprint/inquiries",
+      "status": 401
+    },
+    {
+      "path": "/api/blueprint/repair",
+      "status": 401
+    },
+    {
+      "path": "/api/blueprint/services",
+      "status": 401
+    }
+  ],
+  "publishedAssets": {
+    "passed": 19,
+    "total": 19,
+    "receipt": "crm-live-assets.json"
+  },
+  "providerActionsExecuted": false,
+  "scheduling": {
+    "clockFunction": "cron-clock",
+    "packagedInDeploy": true,
+    "clockInterval": "every five minutes",
+    "newJob": {
+      "id": "blueprint-bank-evidence",
+      "cron": "17 * * * *"
+    },
+    "proof": "successful deploy packaging plus source registry and exact-main checks",
+    "newJobExecutionObserved": false,
+    "workerFunction": "cron-worker-background",
+    "workerPackagedInDeploy": true
+  }
+}
