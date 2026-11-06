@@ -161,7 +161,10 @@ test('paid help requires accepting its exact quote and monthly request becomes p
   await app.getByRole('button',{name:'Request included report'}).click();
   await expect(app.getByText('A report request is already in progress.')).toBeVisible();
   await app.getByLabel('Tell the team which step needs help').fill('Please run the remaining funding steps.');
+  const helpSaved = page.waitForResponse(response => new URL(response.url()).pathname === '/api/blueprint/services' && response.request().method() === 'POST' && response.request().postDataJSON().action === 'request_help');
   await app.getByRole('button',{name:'Request help and pricing'}).click();
+  expect((await helpSaved).ok()).toBe(true);
+  await expect(app.getByText('Waiting for a quote',{exact:true})).toBeVisible();
   services.requests[0].status = 'quoted'; services.requests[0].priceCents = 2200000;
   await app.getByRole('button',{name:'Refresh',exact:true}).click();
   await app.getByRole('button',{name:'Review payment options'}).click();
