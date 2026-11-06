@@ -6,7 +6,7 @@
 //
 // THE HEAD comes from the push manifest, not from here:
 // marketing/landing-pages/tracking-manifest.mjs wrapCustomHtmlDocument() puts in
-// the Meta pixel with its one PageView (eventID window.__fhPv), Clarity and GA4
+// the reviewed Meta guard (private forms use first-party tracking), Clarity and GA4
 // when their ids are set, the ClickFunnels page token and SDK, and at the end of
 // the body fh-attribution.js (UTMs, fbclid, fbc/fbp onto every form) and
 // fh-events.js (page views, presses, scroll, the framed calendar's booking).
@@ -31,7 +31,7 @@
 // number. The tag never rides in a UTM.
 
 import {
-  wrapCustomHtmlDocument, metaPixelId, FH_ATTRIBUTION_SRC, FH_EVENTS_SRC, hasScriptSrc
+  wrapCustomHtmlDocument, metaPixelId, metaTrackingState, FH_ATTRIBUTION_SRC, FH_EVENTS_SRC, hasScriptSrc
 } from "../../marketing/landing-pages/tracking-manifest.mjs";
 import { FUNNEL_ROLES } from "./funnel-paths.mjs";
 
@@ -137,7 +137,7 @@ export function trackingGaps(html, tag) {
   const head = h.split(/<\/head>/i)[0] || "";
   if (!head.includes(tagMeta(tag))) out.push(`the funnel tag ${tag} is not in the page head`);
   if (!head.includes("window.FH_FUNNEL=")) out.push("the tracking config (window.FH_FUNNEL) is not in the page head");
-  if (!head.includes("fbq('init'")) out.push("the Meta pixel is not in the page head");
+  if (metaTrackingState(h) !== "guarded") out.push("the approved Meta privacy guard is missing or another Meta sender is present");
   if (!hasScriptSrc(h, FH_ATTRIBUTION_SRC)) out.push("fh-attribution.js is not on the page");
   if (!hasScriptSrc(h, FH_EVENTS_SRC)) out.push("fh-events.js is not on the page");
   return out;

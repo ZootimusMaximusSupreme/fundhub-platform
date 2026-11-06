@@ -37,7 +37,6 @@ import {
   nextHeadCode,
   hasScriptSrc,
   metaPixelHeadHtml,
-  directRoasHeadHtml,
 } from "../../marketing/landing-pages/tracking-manifest.mjs";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -595,12 +594,12 @@ describe("the fragments and the push manifest load the scripts once", () => {
 
   test("nextHeadCode keeps one pixel, and drops page pixels when the funnel head already has one", () => {
     const pixel = metaPixelHeadHtml("2403674420141513");
-    const roas = directRoasHeadHtml();
+    const roas = '<!-- Direct ROAS (Fundhub) -->\n<script async src="https://app.directroas.com/api/hub/v1/test"></script>';
     const framed = "<!-- fh-framed:start v1 -->\n<style>html.fh-framed{margin:0}</style>\n<!-- fh-framed:end -->";
     const head = `${pixel}\n${roas}\n${framed}\n${pixel}\n${roas}`;
     const kept = nextHeadCode(head, { funnelHead: "" });
     assert.equal(kept.changed, true);
-    assert.equal(kept.next, `${pixel}\n${roas}\n${framed}`);
+    assert.equal(kept.next.trim().replace(/\n+/g, "\n"), `${pixel}\n${framed}`);
     assert.equal((kept.next.match(/fbq\('init'/g) || []).length, 1);
     assert.ok(kept.next.includes("fh-framed:start"));
     assert.ok(kept.next.includes("fh-framed:end"));

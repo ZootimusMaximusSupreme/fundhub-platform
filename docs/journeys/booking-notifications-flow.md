@@ -323,14 +323,7 @@ expired or timed-out calendar visit returns to `/apply`. The `/apply` and paid
 roadmap frames keep their existing paths. A deduped homepage submit can still
 continue when the completed event is already saved. The email-only `?r=` resume
 link remains separate and still opens at the first unanswered question.
-The native scheduler still accepts the email typed on the appointment. The
-booking feed therefore checks a saved `survey.completed` event for the same
-organization, client and normalized appointment email, dated no later than the
-booking. If that receipt is absent, Cortana gets a booked-call event with no
-funding bucket, offer-financing score or capital band. The appointment and
-closer task remain visible so staff can resolve an unverified booking. This
-does not prove an appointment was created by the ticket holder; a real booked
-webhook and persisted-row check are still required after release.
+The native scheduler accepts the email typed on the appointment. A booking alone does not verify a survey identity. Staff can see and reconcile the appointment inside Fundhub. The external booking receipt does not include credit, capital or survey status.
 
 "Finished" means `survey.completed`. A reply means a `message.inbound` event for
 the client after the flow started.
@@ -628,27 +621,9 @@ people and the gap passes a 95% check, and it never switches a version by itself
 
 ## 7. Cortana's confirmed-booking receipt (2026-10-29)
 
-The ClickFunnels appointment still creates a saved Fundhub booking. The
-`cortana-booking-feed` clock reads confirmed ClickFunnels booking rows created
-after its cutover and posts each one to the existing **Funding Call** conversion
-through `src/messaging/providers/cortana-booking-webhook.mjs`. The
-payload includes the booking's saved `qualification_bucket` (`funding_qualified`
-or `funding_unqualified`, or null when the survey has no score answer). It keeps
-the existing `funding_call_booked` event name and Funding Call conversion.
-The same payload also carries `offer_financing_screen` and
-`available_capital_band` for reporting. `review_620_plus` means the saved score
-places the lead in the owner's 620+ screen for financing the high-ticket Fundhub
-offer through providers such as Clarity or Sezzle; it is not business funding
-qualification or a financing approval. Known lower score bands say `below_620`;
-unknown answers and the older 580-649 band say `score_unconfirmed`. A valid setter
-correction takes precedence. Capital retains the readable selected current or
-legacy band, including `$0`, and unknown values stay null. Raw credit scores and
-unrelated survey/customer fields are not added. Existing booking IDs, event name,
-funding bucket, destination and replay ledger stay unchanged; old successful
-bookings are not replayed to populate these fields. Actual Cortana receipt of
-these new fields requires the next eligible real booking after deployment.
+The scheduled `cortana-booking-feed` reports the existing `funding_call_booked` receipt for every genuine confirmed ClickFunnels booking, keeping the established booking identity and ad attribution fields. It no longer exports qualification bucket, offer-financing screen or available-capital band. Credit, income and survey status do not select which bookings are reported.
 
-`cortana_booking_sends` row records success or a retryable failure, so a browser
+A `cortana_booking_sends` row records success or a retryable failure, so a browser
 leaving the thank-you page cannot lose the server-side conversion. Company,
 demo, and simulated buyer bookings are marked skipped. This is a vendor event,
 not a customer text or an eligibility decision; the call copy is unchanged.
@@ -676,7 +651,7 @@ The board's hourly check reports a card on Set without a completed handoff.
 760-850 since 2026-10-31; 700-749 or 750+ on answers saved before then) and the
 copy calendar page `/funding-book-call--02424` (funnel 994750, page 25820226) for
 every other answer (`showCal`, `marketing/landing-pages/apply-survey.html`). Both
-pages show the same words, load the same tracker and one Meta pixel, relay the
+pages show the same words, load the first-party tracker without a browser Pixel, relay the
 booking to `/apply` and move to `/thank-you`. `/funding-book-call` runs event type
 14234; the copy runs event type 14959 (set in the ClickFunnels builder 2026-10-30).
 Each booking message names its page (`page.id`), which is how the two calendars are
@@ -718,9 +693,9 @@ flowchart TD
     B -->|700-759 or 760-850, older 700-749 or 750+| C[/funding-book-call?fh_tier=q/]
     B -->|Any other answer, Not sure too| D[/funding-book-call--02424?fh_tier=u/]
     B -->|None readable| E[/funding-book-call, no mark/]
-    C --> F[Booking: Schedule + QualifiedSchedule]
-    D --> G[Booking: Schedule + UnqualifiedSchedule]
-    E --> H[Booking: Schedule only]
+    C --> F[Accepted booking: Schedule]
+    D --> F
+    E --> F
 ```
 
 **The score answers (owner-set 2026-10-30, live 2026-10-31).** The survey offers
@@ -733,15 +708,14 @@ edge. One rule, `creditTierFor`, turns the answer into the owner's two buckets:
 wins over the typed answer. It picks the calendar in links, and it is saved on the
 person as `custom_fields.credit_tier` when the survey answer arrives and when a
 setter corrects it. On the page, the same 700-and-up rule picks the framed calendar
-and the `credit_tier` the tracker turns into QualifiedLead / UnqualifiedLead.
+internally. All accepted public applications share Lead, and all accepted funding bookings share Schedule; the score and calendar address stay in Fundhub.
 
 **Saved call bucket.** A survey score also writes `clients.qualification_bucket`
 as `funding_qualified` or `funding_unqualified` using the same `creditTierFor`
 rule as calendar links and `credit_tier`. A setter score correction updates the
 client's bucket. `bookings.qualification_bucket` copies the client's bucket
 when the booking is saved and keeps the first known bucket (migration 508);
-bookings without a readable score remain NULL until one is saved. The Cortana
-booking event carries this saved value without changing `funding_call_booked`.
+bookings without a readable score remain NULL until one is saved. This saved value stays in Fundhub.
 Blueprint versus repair is decided on the call; both use the unqualified bucket.
 
 ## 8. Known gaps, not fixed here

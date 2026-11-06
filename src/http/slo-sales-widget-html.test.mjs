@@ -92,7 +92,7 @@ test("buy box v2: step 1 — the refund line right above the button, the button,
   assert.doesNotMatch(html, /Step 1 of 3\. Your card is next, then the short soft pull form\./);
   /* The button keeps its handler and its tracking event. */
   assert.match(widgetScript, /s1\.addEventListener\('submit',function\(e\)\{e\.preventDefault\(\);onContinue\(\);\}\);/);
-  /* continue (Meta Lead via the shared tracker) only after the step-1 checks pass:
+  /* Fundhub records a continue only after the step-1 checks pass:
      a failed press sends validation_error, never continue. */
   assert.match(
     widgetScript,
@@ -105,11 +105,12 @@ test("buy box v2: every buy box event carries bbv:2 (widget and sample previews)
   assert.match(widgetScript, /var BBV=2;\n\s*function fht\(e,p\)\{try\{p=p\|\|\{\};p\.bbv=BBV;/);
   const preview = inlineScripts.find((x) => x.includes("preview_opened")) || "";
   assert.match(preview, /function fht\(e,p\)\{try\{p=p\|\|\{\};p\.bbv=2;/);
-  /* Meta's PreviewOpened is unchanged. */
-  assert.match(preview, /fbq\('trackCustom','PreviewOpened',\{content_name:d\}\)/);
+  assert.match(preview, /fht\('preview_opened',\{deliverable:d\}\)/);
+  assert.match(preview, /fht\('preview_closed',\{deliverable:openD,open_ms:Date\.now\(\)-openedAt\}\)/);
+  assert.doesNotMatch(preview, /fbq\s*\(/);
 });
 
-test("checkout:success sends payment_result with the order's ref, for Meta Purchase id purchase.<ref> (Phase 4)", () => {
+test("checkout:success records the first-party payment result and order reference", () => {
   const at = widgetScript.indexOf("card.on('checkout:success'");
   const success = widgetScript.slice(at, widgetScript.indexOf("card.on('form:submission_error'", at));
   assert.match(success, /var pr=\{result:'success'\};if\(order&&order\.ref\)pr\.order_ref=String\(order\.ref\);\n\s*fht\('payment_result',pr\);\n\s*go\(3\);/);
@@ -120,9 +121,9 @@ test("checkout:success sends payment_result with the order's ref, for Meta Purch
   assert.match(widgetScript, /fht\('payment_result',\{result:'fail',code:'checkout_error'\}\);/);
 });
 
-test("the page sends Meta nothing itself except PreviewOpened: Lead, InitiateCheckout, Purchase come from the shared tracker", () => {
+test("financial checkout and preview interactions never call Meta from the sales page", () => {
   const fbqCalls = [...html.matchAll(/fbq\(([^)]*)\)/g)].map((m) => m[1]);
-  assert.deepEqual(fbqCalls, ["'trackCustom','PreviewOpened',{content_name:d}"]);
+  assert.deepEqual(fbqCalls, []);
 });
 
 test("the guarantee is back in its old place, right before the FAQ, word for word (owner ask 2026-10-02)", () => {

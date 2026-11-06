@@ -434,13 +434,7 @@
         if (fieldOk(f[0], f[1])) fhField("field_complete", f[0]);
       });
       var list = steps();
-      // last: the final question (contact, step 10). The shared tracker turns it into
-      // Meta Lead (docs/tracking/meta-events.md, Phase 4 map). Once per page load, so a
-      // second press after a failed send is not a second Lead.
       var answer = { survey: "home", step_num: idx + 1, question_id: list[idx].id };
-      if (!lastSent) answer.last = true;
-      lastSent = true;
-      fht("survey_answer", answer);
       btn.disabled = true;
       btn.textContent = "Sending…";
       setErr("");
@@ -467,7 +461,7 @@
           });
         })
         .then(function (res) {
-          if (!res.ok || !res.body || !res.body.redirect) {
+          if (!res.ok || !res.body || res.body.ok !== true || !res.body.redirect) {
             btn.disabled = false;
             btn.textContent = "Submit application";
             setErr(
@@ -478,6 +472,14 @@
           // A retry after a lost response may repeat an event that is already
           // saved. The server returns a fresh completion ticket only when the
           // whole survey is stored, so that retry can still reach the calendar.
+          if (res.body.survey_completed === true && !lastSent) {
+            lastSent = true;
+            answer.last = true;
+            answer.completion_acknowledged = true;
+            var receipt = res.body.public_contact_receipt;
+            if (typeof receipt === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receipt)) answer.public_contact_receipt = receipt;
+          }
+          fht("survey_answer", answer);
           btn.textContent = "Received";
           window.location.assign(res.body.redirect);
         })

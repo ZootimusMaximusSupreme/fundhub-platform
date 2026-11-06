@@ -8,6 +8,7 @@ import {
   FH_ATTRIBUTION_SRC,
   FH_EVENTS_SRC,
   META_PIXEL_FALLBACK_ID,
+  metaPixelHeadHtml,
   VSL_WATCH_BEACON_SRC
 } from "../../../marketing/landing-pages/tracking-manifest.mjs";
 import {
@@ -51,7 +52,7 @@ function scriptTag(src) {
 function pageHtml(pixelId, { clarity = true, scripts = [FH_ATTRIBUTION_SRC, FH_EVENTS_SRC, VSL_WATCH_BEACON_SRC] } = {}) {
   const tag = clarity ? `<script src="${CLARITY_SRC}" defer></script>` : "";
   const loads = scripts.map(scriptTag).join("");
-  return `<!doctype html><html><head><script>fbq('init', '${pixelId}');</script>${tag}</head><body>${loads}</body></html>`;
+  return `<!doctype html><html><head>${pixelId ? metaPixelHeadHtml(pixelId) : ""}${tag}</head><body>${loads}</body></html>`;
 }
 
 function fakeFetch(routes) {
@@ -69,10 +70,12 @@ function fakeFetch(routes) {
 }
 
 function liveRoutes(html = pageHtml(PIXEL)) {
-  const own = { status: 200, text: pageHtml(PIXEL, { clarity: false, scripts: [FH_ATTRIBUTION_SRC] }) };
+  const own = { status: 200, text: pageHtml(null, { clarity: false, scripts: [FH_ATTRIBUTION_SRC, FH_EVENTS_SRC] }) };
   return {
     [new URL(PAGE).pathname]: { status: 200, text: html },
     "/apply": own,
+    "/funding-book-call": own,
+    "/funding-book-call--02424": own,
     "/roadmap": own,
     "/roadmap-book": own,
     "/roadmap-thank-you": own,
@@ -154,7 +157,7 @@ function assertNoSecrets(checks) {
 
 function assertReadsOnly(calls) {
   // /watch, 4 custom pages, clarity.js, 3 tracking scripts, 2 routes.
-  assert.equal(calls.length, 11);
+  assert.equal(calls.length, 13);
   assert.ok(calls.every((c) => c.method === "GET" && c.body == null));
   const paths = calls.map((c) => new URL(c.url).pathname);
   assert.equal(paths.filter((p) => p === new URL(PAGE).pathname).length, 1);
@@ -168,6 +171,8 @@ test("the manifest names the head page, the four custom pages, and what /watch m
   assert.equal(PAGE, "https://apply.fundhub.ai/watch");
   assert.deepEqual(ownPixelPages().map((u) => new URL(u).pathname).sort(), [
     "/apply",
+    "/funding-book-call",
+    "/funding-book-call--02424",
     "/roadmap",
     "/roadmap-book",
     "/roadmap-thank-you"
@@ -178,11 +183,16 @@ test("the manifest names the head page, the four custom pages, and what /watch m
   assert.equal(pageHasClaritySnippet(pageHtml(PIXEL, { clarity: false })), false);
 });
 
-test("pageHasPixel needs the pixel started with the id, not a mention of it", () => {
+test("pageHasPixel requires the reviewed guard and rejects unguarded senders", () => {
   assert.equal(pageHasPixel(pageHtml(PIXEL), PIXEL), true);
   assert.equal(pageHasPixel("<html>no pixel</html>", PIXEL), false);
   // The id in a comment next to some other fbq call is not our pixel.
   assert.equal(pageHasPixel(`<!-- ${PIXEL} --><script>fbq('track','PageView')</script>`, PIXEL), false);
+  for (const extra of [
+    `<script>fbq('init', '${PIXEL}');</script>`,
+    '<noscript><img src="https://www.facebook.com/tr?id=1"></noscript>',
+    '<script src="https://app.directroas.com/api/hub/v1/old"></script>',
+  ]) assert.equal(pageHasPixel(pageHtml(PIXEL) + extra, PIXEL), false);
   // A different pixel started on the page is not ours.
   assert.equal(pageHasPixel(pageHtml("111111111111"), PIXEL), false);
   assert.equal(pageHasPixel(pageHtml(PIXEL), "not-digits"), false);
@@ -194,7 +204,7 @@ test("clarity.js carries a project id, or it records nothing", () => {
   assert.equal(clarityScriptHasProjectId("// no id here"), false);
 });
 
-test("green path: pixel everywhere, Clarity, scripts, both routes, and stored clicks", async () => {
+test("privacy-guarded landing, first-party-only financial forms, Clarity and stored clicks", async () => {
   const { fetchImpl, calls } = fakeFetch(liveRoutes());
   const seen = [];
   const checks = await gapChecks({ fetchImpl, env: env(), scope: scopeFor({}, seen), orgId: ORG, now: NOW });
@@ -229,7 +239,7 @@ test("pixel missing on the page the code says must have it", async () => {
   assertNoSecrets(checks);
   assertReadsOnly(calls);
   assert.equal(byId(checks)["pixel-on-funnel-page"].status, "FAIL");
-  assert.match(byId(checks)["pixel-on-funnel-page"].detail, /not started in the HTML/);
+  assert.match(byId(checks)["pixel-on-funnel-page"].detail, /approved Meta guard.*missing/);
   assert.equal(byId(checks)["pixel-on-own-pages"].status, "PASS");
   assert.equal(byId(checks)["clarity-snippet"].status, "PASS");
 });
@@ -253,17 +263,27 @@ test("a fetch that throws is a FAIL with the reason, not a PASS", async () => {
   assert.match(rows["pixel-on-funnel-page"].detail, /socket hang up/);
 });
 
-test("the pixel is gone from /roadmap only: own-pages FAIL names it, /watch stays PASS", async () => {
+test("an independent Meta beacon on /roadmap fails even beside an approved guard", async () => {
   const routes = liveRoutes();
-  routes["/roadmap"] = { status: 200, text: "<html><body>sales page with no pixel</body></html>" };
+  routes["/roadmap"] = { status: 200, text: pageHtml(PIXEL) + '<img src="https://www.facebook.com/tr?id=1">' };
   const { fetchImpl } = fakeFetch(routes);
   const checks = await gapChecks({ fetchImpl, env: env(), scope: scopeFor() });
   assertShape(checks);
   const rows = byId(checks);
   assert.equal(rows["pixel-on-own-pages"].status, "FAIL");
-  assert.match(rows["pixel-on-own-pages"].detail, /\/roadmap \(pixel not started\)/);
+  assert.match(rows["pixel-on-own-pages"].detail, /\/roadmap \(unguarded Meta sender\)/);
   assert.doesNotMatch(rows["pixel-on-own-pages"].detail, /\/apply/);
   assert.equal(rows["pixel-on-funnel-page"].status, "PASS");
+});
+
+test("both funding calendars may omit all Meta tags but must keep their first-party tracker", async () => {
+  const routes = liveRoutes();
+  routes["/funding-book-call--02424"] = { status: 200, text: "<html><body>calendar</body></html>" };
+  const { fetchImpl } = fakeFetch(routes);
+  const row = byId(await gapChecks({ fetchImpl, env: env(), scope: scopeFor() }))["pixel-on-own-pages"];
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /02424 \(first-party tracker missing\)/);
+  assert.doesNotMatch(row.suggestedFix, /restore the pixel|put the Meta pixel back/i);
 });
 
 test("a custom page that answers 404 is named in the own-pages FAIL", async () => {
@@ -714,7 +734,7 @@ test("without a fetch the page and route rows are skip, and the database rows st
 test("unset META_PIXEL_ID uses the fallback and the report does not print the id", async () => {
   const html = pageHtml(META_PIXEL_FALLBACK_ID);
   const routes = liveRoutes(html);
-  const own = { status: 200, text: pageHtml(META_PIXEL_FALLBACK_ID, { clarity: false, scripts: [FH_ATTRIBUTION_SRC] }) };
+  const own = { status: 200, text: pageHtml(META_PIXEL_FALLBACK_ID, { clarity: false, scripts: [FH_ATTRIBUTION_SRC, FH_EVENTS_SRC] }) };
   for (const p of ["/apply", "/roadmap", "/roadmap-book", "/roadmap-thank-you"]) routes[p] = own;
   const { fetchImpl } = fakeFetch(routes);
   const checks = await gapChecks({

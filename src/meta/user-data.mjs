@@ -6,10 +6,10 @@
 //   * em / ph — SHA-256 hex of the email (lowercased, trimmed) and of the phone
 //     (digits only, no leading zeros; a 10-digit US number gets a leading 1).
 //     NEVER the raw value.
-//     Both come from that browser session's slo.contact_started row.
-//   * external_id — SHA-256 hex of our session id (fh_sid).
+//     Only a directly collected, same-session public contact may be matched.
 //   * client_ip_address / client_user_agent — from the request headers.
-//   * fbc / fbp — the click id and browser id the page read from its cookies.
+//   * fbp — the Meta browser cookie with a numeric random part.
+// The original click ID can carry arbitrary URL text; it stays in first-party tracking.
 //
 // Never sent: card numbers, Social Security number, date of birth, survey
 // answers about income or credit, soft-pull field values, raw email or phone.
@@ -58,6 +58,7 @@ export function hashPhone(raw) {
 // Same shape public/funnel/fh-events.js accepts (FB_COOKIE).
 const FBC = /^fb\.[0-9]\.\d{10,16}\.[A-Za-z0-9_.-]{1,500}$/;
 const FBP = /^fb\.[0-9]\.\d{10,16}\.[A-Za-z0-9_.-]{1,100}$/;
+const OUTBOUND_FBP = /^fb\.[0-9]\.\d{13}\.\d{8,10}$/;
 
 /** The fbc value when it has Meta's shape, else null. */
 export function cleanFbc(raw) {
@@ -69,6 +70,13 @@ export function cleanFbc(raw) {
 export function cleanFbp(raw) {
   const s = typeof raw === "string" ? raw.trim() : "";
   return s.length <= 130 && FBP.test(s) ? s : null;
+}
+
+// Preserve old first-party attribution via cleanFbp, but do not pass
+// free-text labels or short numeric fields to the external recipient.
+export function outboundFbp(raw) {
+  const s = typeof raw === "string" ? raw.trim() : "";
+  return OUTBOUND_FBP.test(s) ? s : null;
 }
 
 /** A real IPv4 / IPv6 address (port and brackets stripped), else null. */
@@ -97,48 +105,17 @@ export function clientIpFrom(req) {
  * user_data for one server event. Only keys with a value are present; em and
  * ph are arrays of SHA-256 hex, never the raw value.
  */
-export function buildUserData({ email, phone, ip, userAgent, fbc, fbp, sessionId } = {}) {
+export function buildUserData({ email, phone, ip, userAgent, fbp } = {}) {
   const out = {};
   const ipClean = cleanIp(ip);
   if (ipClean) out.client_ip_address = ipClean;
   const ua = String(userAgent ?? "").trim().slice(0, 512);
   if (ua) out.client_user_agent = ua;
-  const c = cleanFbc(fbc);
-  if (c) out.fbc = c;
-  const p = cleanFbp(fbp);
+  const p = outboundFbp(fbp);
   if (p) out.fbp = p;
   const em = hashEmail(email);
   if (em) out.em = [em];
   const ph = hashPhone(phone);
   if (ph) out.ph = [ph];
-  const sid = String(sessionId ?? "").trim();
-  if (sid) out.external_id = [sha256(sid)];
   return out;
-}
-
-/* That browser session's step-1 contact. The contact row carries session_id
-   from 2026-10-02 (api/public/slo-interest.mjs, kind "contact"); older rows do
-   not, so they are simply not found. Bounded by idx_events_name
-   (org_id, name, created_at): only the last two days of contact rows are read. */
-export const SESSION_CONTACT_SQL =
-  `SELECT payload->>'email' AS email, payload->>'phone' AS phone, payload->>'actor' AS actor
-     FROM events
-    WHERE org_id = $1
-      AND name = 'slo.contact_started'
-      AND created_at > now() - interval '2 days'
-      AND payload->>'session_id' = $2
-    ORDER BY created_at DESC
-    LIMIT 1`;
-
-/** { email, phone, actor } for this session, or null. Never throws. */
-export async function sessionContact(db, orgId, sessionId) {
-  if (!db || !orgId || !sessionId) return null;
-  try {
-    const r = await db.query(SESSION_CONTACT_SQL, [orgId, sessionId]);
-    const row = r?.rows?.[0];
-    return row ? { email: row.email || null, phone: row.phone || null, actor: row.actor || null } : null;
-  } catch (err) {
-    console.error("meta: session contact lookup failed —", err?.message || err);
-    return null;
-  }
 }

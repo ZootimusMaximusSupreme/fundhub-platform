@@ -8,9 +8,10 @@
  *
  * Never prints secrets. Never commits .env.
  */
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from "fs";
+import { readFileSync, existsSync, writeFileSync, mkdirSync, mkdtempSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { createHash } from "node:crypto";
 import pg from "pg";
 
 import { cfFetch } from "../src/analytics/clickfunnels.mjs";
@@ -18,7 +19,8 @@ import { decryptToken } from "../src/adplatforms/tokens.mjs";
 import {
   metaPixelId,
   metaPixelHeadHtml,
-  directRoasHeadHtml,
+  neutralizeHostedTracking,
+  updateHostedApplyReceipt,
   wrapCustomHtmlDocument,
   headBlocksHtml,
   DO_NOT_FULL_REPLACE_PATHS,
@@ -173,10 +175,10 @@ function readFragment(relPath) {
   return readFileSync(abs, "utf8");
 }
 
-function trackingHeadScripts({ skipMeta, skipDirectRoas, skipGa4, env = process.env }) {
+function trackingHeadScripts({ skipMeta, skipGa4, env = process.env }) {
   const parts = [];
   if (!skipMeta) parts.push(metaPixelHeadHtml(metaPixelId(env).id));
-  if (!skipDirectRoas) parts.push(directRoasHeadHtml(env));
+
   if (!skipGa4) {
     const ga = ga4HeadHtml(env);
     if (ga) parts.push(ga);
@@ -584,7 +586,7 @@ function redactSecret(text, secret) {
 
 /** Push-time only. The fragment in git never contains the ingest secret. */
 function injectApplySurveyRuntime(html, { secret, pixelId, pageToken }) {
-  let out = html;
+  let out = neutralizeHostedTracking(html, pixelId).next;
   const head = [];
   if (pageToken && !out.includes("cf-page-token")) {
     head.push(
@@ -787,7 +789,7 @@ async function pageOnStep(creds, workspaceId, funnelName, stepPath, ctx) {
 
 /**
  * Whole-step custom HTML page built from one fragment. A custom page gets no funnel
- * head code, so the pixel, Direct ROAS and every footer script ride inside the document.
+ * head code, so the guarded Pixel and first-party footer scripts travel with the document.
  * First run: the step holds a builder page, so a custom page is made on the same step
  * (the builder page is left in place, never deleted). Later runs: PUT the same page.
  */
@@ -803,7 +805,7 @@ function buildStepDocument(row, pageToken, pixelId) {
     pageToken,
     pixelId,
     includeVslBeacon: !!row.vslBeacon,
-    headFirstHtml: [directRoasHeadHtml(process.env), headBlocksHtml(row, readFragment)].filter(Boolean).join("\n"),
+    headFirstHtml: headBlocksHtml(row, readFragment),
     env: process.env,
   });
   return row.title ? html.replace("<title>Fundhub</title>", `<title>${row.title}</title>`) : html;
@@ -913,10 +915,9 @@ async function cmdPush(creds, { dryRun = false, only = null } = {}) {
 
     if (row.strategy === "custom_html_inject_only") {
       await snapshotCustomHtml(creds, page.id, ctx, snapDir);
-      const existing = await getCustomHtml(creds, page.id, ctx);
+      const existing = neutralizeHostedTracking(await getCustomHtml(creds, page.id, ctx), pixel.id).next;
       const head = trackingHeadScripts({
         skipMeta: existing.includes("fbq('init'"),
-        skipDirectRoas: existing.includes("directroas.com"),
         skipGa4: existing.includes("googletagmanager.com/gtag/js"),
         env: process.env,
       });
@@ -967,7 +968,6 @@ async function cmdPush(creds, { dryRun = false, only = null } = {}) {
       const liveHasMeta = liveHead.includes("fbq('init'") || liveFoot.includes("fbq('init'");
       const head = trackingHeadScripts({
         skipMeta: liveHasMeta,
-        skipDirectRoas: liveHead.includes("directroas.com") || liveFoot.includes("directroas.com"),
         skipGa4: liveHead.includes("googletagmanager.com/gtag/js") || liveFoot.includes("googletagmanager.com/gtag/js"),
         env: process.env,
       });
@@ -1036,14 +1036,82 @@ async function cmdPush(creds, { dryRun = false, only = null } = {}) {
   console.log(JSON.stringify({ auth: creds.source, workspace_id: workspaceId, results }, null, 2));
 }
 
+// These are the published Fundhub funnels and the exact custom documents that
+// carry their own copy of the Pixel. Native booking pages inherit the funnel
+// slots and their scheduler documents must never be replaced with HTML.
+const META_FUNNEL_IDS = ["968281", "994750"];
+const META_CUSTOM_PAGE_IDS = [
+  "25515671", "25752378", "25820229", "25820231", // Apply, thank-you and their copies
+  "25516164", "25516165", "25516166",            // Roadmap steps
+  "25568231", "25783743", "25783744",            // Blueprint steps
+];
+
+async function repairMetaTracking(creds, { dryRun }) {
+  const pixelId = metaPixelId(process.env).id;
+  const targets = [
+    ...META_FUNNEL_IDS.flatMap(id => ["head_code", "footer_code"].map(slot => ({ entity: "funnel", id, slot }))),
+    ...META_CUSTOM_PAGE_IDS.map(id => ({ entity: "page", id, slot: "custom_html" })),
+  ];
+  async function read({ id, entity, slot }) {
+    const url = new URL(`${baseUrl(creds.subdomain)}/${entity}s/${id}` + (entity === "page" ? "/custom_html" : ""));
+    if (entity === "funnel") url.searchParams.append("expand[]", slot);
+    let result;
+    try {
+      result = await cfApi({ url: url.toString(), apiKey: creds.api_key });
+    } catch (error) {
+      throw new Error(`ClickFunnels read failed for ${id} ${slot} (HTTP ${error.status || "unknown"})`);
+    }
+    const body = result.body;
+    if (!body || !Object.hasOwn(body, slot) || (body[slot] != null && typeof body[slot] !== "string")) {
+      throw new Error(`unreadable ${id} ${slot}`);
+    }
+    return body[slot] || "";
+  }
+  const sha256 = value => createHash("sha256").update(value).digest("hex");
+  const changes = [];
+  const summary = [];
+  // Complete the read/validation phase for every slot before any writes.
+  for (const target of targets) {
+    const live = await read(target);
+    if (!live && target.slot !== "footer_code") throw new Error(`empty ${target.id} ${target.slot}`);
+    let next = neutralizeHostedTracking(live, pixelId).next;
+    // Only the active parent /apply owns the acknowledged public submission.
+    if (target.id === "25515671") next = updateHostedApplyReceipt(next, readFragment("marketing/landing-pages/apply-survey.html"));
+    const changed = live !== next;
+    if (changed) changes.push({ target, live, next });
+    summary.push({ ...target, changed, beforeSha256: sha256(live), afterSha256: sha256(next) });
+  }
+  if (dryRun || !changes.length) return { dryRun, targets: summary };
+  const root = join(ROOT, "ops/workflows/meta-tracking-privacy-2026-11-05/evidence/cf-backups");
+  mkdirSync(root, { recursive: true, mode: 0o700 });
+  const backup = mkdtempSync(join(root, "meta-privacy-"));
+  for (const { target, live } of changes) {
+    writeFileSync(join(backup, `${target.entity}-${target.id}-${target.slot}.html`), live, { mode: 0o600 });
+  }
+  for (const { target, live, next } of changes) {
+    const { entity, id, slot } = target;
+    if (await read(target) !== live) throw new Error(`concurrent edit to ${id} ${slot}; rerun after review`);
+    const fields = { [slot]: next };
+    if (entity === "funnel") fields[`${slot}_mode`] = "replace";
+    try {
+      await cfApi({ url: `${baseUrl(creds.subdomain)}/${entity}s/${id}`, apiKey: creds.api_key, method: "PUT",
+        body: JSON.stringify({ [entity]: fields }) });
+    } catch (error) {
+      throw new Error(`ClickFunnels write failed for ${id} ${slot} (HTTP ${error.status || "unknown"})`);
+    }
+    if ((await read(target)).trim() !== next.trim()) throw new Error(`readback mismatch for ${id} ${slot}`);
+  }
+  return { dryRun, targets: summary };
+}
+
 async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   const dryRun = rest.includes("--dry-run");
   const onlyArg = rest.find((a) => a.startsWith("--only="));
   const only = onlyArg ? onlyArg.slice("--only=".length) : null;
 
-  if (!cmd || !["list", "push"].includes(cmd)) {
-    console.error("Usage: node scripts/cf-push-custom-html.mjs list|push [--dry-run] [--only=key]");
+  if (!cmd || !["list", "push", "meta-privacy"].includes(cmd)) {
+    console.error("Usage: node scripts/cf-push-custom-html.mjs list|push|meta-privacy [--dry-run] [--only=key]");
     process.exit(1);
   }
 
@@ -1059,7 +1127,8 @@ async function main() {
     process.exit(2);
   }
 
-  if (cmd === "list") await cmdList(creds);
+  if (cmd === "meta-privacy") console.log(JSON.stringify(await repairMetaTracking(creds, { dryRun }), null, 2));
+  else if (cmd === "list") await cmdList(creds);
   else await cmdPush(creds, { dryRun, only });
 }
 
