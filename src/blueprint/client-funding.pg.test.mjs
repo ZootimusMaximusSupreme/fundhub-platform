@@ -5,7 +5,9 @@ import pg from "pg";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 import { grantFromTransaction } from "../entitlements/entitlements.mjs";
 import { getBlueprintFulfillmentAccess, requireBlueprintFulfillmentScope } from "./fulfillment-access.mjs";
-import { readBlueprintFunding, openBlueprintLender, reportBlueprintApplication } from "./client-funding.mjs";
+import { readBlueprintFunding, openBlueprintLender, reportBlueprintApplication, finishBlueprintSubmissions } from "./client-funding.mjs";
+import fundingApi from "../../api/blueprint/funding.mjs";
+import { onMailResponse } from "../handlers/comms.mjs";
 import { isBlueprintCoachClient } from "./coach.mjs";
 
 const url = process.env.APP_DATABASE_URL || process.env.DATABASE_URL;
@@ -64,7 +66,8 @@ test("verified purchase → owner-scoped lender handoff → report → exact pur
   await owner.query("UPDATE blueprint_fulfillment_engagements SET opens_at=now()+interval '1 day' WHERE id=$1",[scope.engagement.id]);
   await assert.rejects(openBlueprintLender(pool,scope,{lenderId:banks[0]}),/scheduled/);
   await owner.query("UPDATE blueprint_fulfillment_engagements SET opens_at=now()-interval '1 second' WHERE id=$1",[scope.engagement.id]);
-  const [first,replay] = await Promise.all([openBlueprintLender(pool,scope,{lenderId:banks[0]}),openBlueprintLender(pool,scope,{lenderId:banks[0]})]);
+  const [first,replay] = await Promise.all([openBlueprintLender(pool,scope,{lenderId:banks[0],idempotencyKey:"open:A"}),openBlueprintLender(pool,scope,{lenderId:banks[0],idempotencyKey:"open:A"})]);
+  await assert.rejects(openBlueprintLender(pool,scope,{lenderId:banks[1],idempotencyKey:"open:A"}),/idempotency_key_conflict/);
   assert.deepEqual(first,replay);
   assert.equal(first.url,"https://alpha.example.test/apply");
   scope.engagement = await getBlueprintFulfillmentAccess(pool,scope);
@@ -87,7 +90,24 @@ test("verified purchase → owner-scoped lender handoff → report → exact pur
   const prep = randomUUID();
   await owner.query("INSERT INTO transactions(id,org_id,client_id,product_name,amount_paid,status) VALUES($1,$2,$3,'Synthetic prep',5000,'succeeded')",[prep,orgId,person]);
   await grantFromTransaction(pool,{...purchase,transactionId:prep,productCode:"consulting-package"});
-  await owner.query("UPDATE funding_rounds SET status='closed' WHERE id=$1",[scope.engagement.roundId]);
+  await finishBlueprintSubmissions(pool,scope,{idempotencyKey:"batch-finished"});
+  scope.engagement=await getBlueprintFulfillmentAccess(pool,scope);
+  assert.ok(scope.engagement.submissionsClosed);
+  await assert.rejects(openBlueprintLender(pool,scope,{lenderId:banks[1]}),/batch_submitted/);
+  const reply = async (subject,bodyPreview,authenticatedBankDomain="alpha.example.test") =>
+    onMailResponse({orgId,clientId:person,id:randomUUID(),payload:{source:"mailgun",classification:"APPROVED",
+      subject,bodyPreview,authenticatedBankDomain}},pool);
+  await reply("Alpha application SYN-fixture-123","Approved for $5,100.","another.example.test");
+  assert.equal((await readBlueprintFunding(pool,scope)).applications[0].status,"Applied");
+  await reply("Alpha application SYN-fixture-123","Your application has been approved for $5,100.");
+  let verified=(await readBlueprintFunding(pool,scope)).applications[0];
+  assert.equal(verified.status,"Approved"); assert.equal(Number(verified.approvedAmount),5100);
+  assert.equal(verified.fundedAmount,null);
+  assert.equal((await getBlueprintFulfillmentAccess(pool,scope)).status,"active");
+  await assert.rejects(owner.query("UPDATE funding_rounds SET status='funded',funded_amount=99999 WHERE id=$1",
+    [scope.engagement.roundId]),/requires its submitted batch and verified bank outcomes/);
+  await reply("Alpha card SYN-fixture-123","Your card is active. Available credit is $4,800.");
+  assert.equal(Number((await pool.query("SELECT funded_amount FROM funding_rounds WHERE id=$1",[scope.engagement.roundId])).rows[0].funded_amount),4800);
   scope.now = new Date();
   scope.engagement = await getBlueprintFulfillmentAccess(pool,scope);
   assert.equal(scope.engagement.status,"completed");
@@ -103,4 +123,37 @@ test("verified purchase → owner-scoped lender handoff → report → exact pur
   assert.equal((await requireBlueprintFulfillmentScope({method:"GET"},response,deps)).engagement.status,"completed");
   assert.equal(await requireBlueprintFulfillmentScope({method:"POST"},response,deps),null);
   assert.equal(response.code,409);
+  // A second paid owner lacks authenticated bank mail. An actual CSM, scoped
+  // to the case, can resolve a versioned bank letter the owner supplied.
+  const otherAccount=randomUUID(), otherReceipt=randomUUID();
+  await owner.query("UPDATE clients SET custom_fields=$1 WHERE id=$2",[{home_state:"AZ",crs_negative_items_count:0},other]);
+  await owner.query("INSERT INTO accounts(id,org_id,client_id,kind,email) VALUES($1,$2,$3,'client',$4)",
+    [otherAccount,orgId,other,"blueprint+"+other+"@example.test"]);
+  await owner.query("INSERT INTO transactions(id,org_id,client_id,product_name,amount_paid,status) VALUES($1,$2,$3,'Synthetic full',20000,'succeeded')",[otherReceipt,orgId,other]);
+  await grantFromTransaction(pool,{...purchase,clientId:other,transactionId:otherReceipt});
+  await owner.query("INSERT INTO crs_results(org_id,client_id,result,is_demo) VALUES($1,$2,$3,false)",[orgId,other,{scores:{ex:723,eq:710,tu:720}}]);
+  const second={orgId,clientId:other,accountId:otherAccount,now:new Date()};
+  second.engagement=await getBlueprintFulfillmentAccess(pool,second);
+  const opened=await openBlueprintLender(pool,second,{lenderId:banks[0]});
+  second.engagement=await getBlueprintFulfillmentAccess(pool,second);
+  const documentId=randomUUID(), versionId=randomUUID();
+  await owner.query(`INSERT INTO documents(id,org_id,client_id,document_key,kind,title,storage_key,mime_type,byte_size)
+    VALUES($1,$2,$3,$4,'client_upload','Synthetic bank decision','synthetic/decision.pdf','application/pdf',512)`,[documentId,orgId,other,documentId]);
+  await owner.query(`INSERT INTO document_versions(id,org_id,document_id,version,storage_key,mime_type,byte_size)
+    VALUES($1,$2,$3,1,'synthetic/decision.pdf','application/pdf',512)`,[versionId,orgId,documentId]);
+  await owner.query("UPDATE documents SET current_version_id=$1 WHERE id=$2",[versionId,documentId]);
+  await reportBlueprintApplication(pool,second,{applicationId:opened.applicationId,status:"declined",evidenceDocumentId:documentId});
+  await finishBlueprintSubmissions(pool,second,{idempotencyKey:"finish-exception"});
+  assert.equal((await getBlueprintFulfillmentAccess(pool,second)).status,"active");
+  const staff=(await owner.query("INSERT INTO staff(org_id,name,role,status) VALUES($1,'Synthetic CSM','csm','active') RETURNING *",[orgId])).rows[0];
+  const staffDeps={db:pool,requirePrincipal:async()=>({kind:"staff",staff,orgId})};
+  const body={action:"review_bank_evidence",clientId:other,applicationId:opened.applicationId,evidenceDocumentId:documentId,
+    decision:"declined",note:"Read the dated denial and matched its account reference."};
+  await fundingApi({method:"POST",query:{},body:{...body,evidenceDocumentId:randomUUID()}},response,staffDeps);
+  assert.equal(response.code,409);
+  await fundingApi({method:"POST",query:{},body},response,staffDeps);
+  assert.equal(response.code,200,JSON.stringify(response.body));
+  assert.equal((await getBlueprintFulfillmentAccess(pool,second)).status,"completed");
+  assert.equal((await pool.query("SELECT status,funded_amount FROM funding_rounds WHERE id=$1",[second.engagement.roundId])).rows[0].funded_amount,null);
+
 });

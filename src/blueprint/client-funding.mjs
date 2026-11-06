@@ -1,3 +1,4 @@
+import { reconcileSubmittedEvidence, finishEvidencedRound } from "./bank-evidence.mjs";
 import { createTask } from "../lib/create-task.mjs";
 import { pool, db as defaultDb } from "../db.mjs";
 import { withTransaction } from "../documents/register.mjs";
@@ -48,7 +49,11 @@ async function readApplications(db, { orgId, clientId, engagement }) {
     `SELECT a.id, h.id AS "handoffId",h.lender_id AS "lenderId",h.business_id AS "businessId",
             a.lender_name AS "lenderName",l.bureaus_pulled AS "bureausPulled",a.status,a.approved_amount AS "approvedAmount",
             h.opened_at AS "openedAt",a.updated_at AS "decisionUpdatedAt",
-            r.report_status AS "reportedStatus",r.created_at AS "reportedAt"
+            r.report_status AS "reportedStatus",r.created_at AS "reportedAt",
+            (SELECT actual_funded_amount FROM blueprint_application_proof WHERE handoff_id=h.id) AS "fundedAmount",
+            COALESCE((SELECT jsonb_agg(jsonb_build_object('id',doc.id,'reference',rep.reference)) FROM blueprint_application_reports rep
+              JOIN documents doc ON doc.id=rep.evidence_document_id AND doc.org_id=h.org_id AND doc.client_id=h.client_id
+              WHERE rep.handoff_id=h.id),'[]'::jsonb) AS "evidenceDocuments"
        FROM blueprint_funding_handoffs h
        JOIN applications a ON a.id=h.application_id AND a.org_id=h.org_id AND a.client_id=h.client_id
           AND a.lender_id=h.lender_id AND a.funding_round_id=$4
@@ -61,7 +66,10 @@ async function readApplications(db, { orgId, clientId, engagement }) {
 }
 
 function result(engagement, state, applications, lenders = [], reason = null) {
-  return { ok:true, engagement, state, reason, nextAction:STEPS[state], applications, lenders };
+  const submissionsClosed = Boolean(engagement.submissionsClosed);
+  const canFinishSubmissions = !submissionsClosed && engagement.status==="active" && engagement.executionOwner==="client" &&
+    applications.length>0 && applications.every(a => a.status!=="Apply" || a.reportedStatus);
+  return { ok:true, engagement, state, reason, nextAction:STEPS[state], applications, lenders,submissionsClosed,canFinishSubmissions };
 }
 
 // Never hand a bank URL out with the list. Both the list and open action use the
@@ -71,9 +79,11 @@ export async function readBlueprintFunding(db, scope, deps = {}) {
   const applications = await readApplications(db,scope);
   if (engagement.status === "completed") return result(engagement,"completed",applications);
   if (engagement.executionOwner !== "client") return result(engagement,"managed",applications);
+  if (engagement.submissionsClosed) return result(engagement,"awaiting_response",applications,[],"batch_submitted");
   const credit = (await db.query(BLUEPRINT_GENUINE_CREDIT_SQL,[clientId,orgId])).rows[0];
   if (!credit?.result || !Object.keys(credit.result).length) return result(engagement,"needs_file",applications);
-  const decision = await (deps.loadBlueprintFundable || loadBlueprintFundable)(db,{orgId,clientId,creditFile:credit});
+  const decision = await (deps.loadBlueprintFundable || loadBlueprintFundable)(db,{orgId,clientId,creditFile:credit,includeMissing:true});
+  if (decision.reason==="incomplete_credit_file") return result(engagement,"needs_file",applications,[],decision.reason);
   if (!decision.fundable) return result(engagement,"optimize",applications);
   const [record,businessRows,inquiries,cases,matches] = await Promise.all([
     db.query(`SELECT c.custom_fields,c.tags,EXISTS(SELECT 1 FROM inquiry_removal_cases ir
@@ -202,6 +212,21 @@ export async function openBlueprintLender(db,scope,{lenderId,businessId = null,i
   });
 }
 
+export async function finishBlueprintSubmissions(db,scope,{idempotencyKey}) {
+  return inEngagementTransaction(db,scope,async (tx,own)=>{
+    await recordOperation(tx,own.engagement.id,"finish_submissions",idempotencyKey,{});
+    const applications = await readApplications(tx,own);
+    if (!applications.length || applications.some(a=>a.status==="Apply" && !a.reportedStatus))
+      throw new BlueprintFundingError("report_open_applications_first");
+    const {rows:[g]}=await tx.query(`UPDATE blueprint_fulfillment_engagements
+      SET submissions_closed_at=COALESCE(submissions_closed_at,now()) WHERE id=$1 AND org_id=$2 AND client_id=$3
+      RETURNING submissions_closed_at AS "submissionsClosed"`,[own.engagement.id,own.orgId,own.clientId]);
+    await reconcileSubmittedEvidence(tx,{...own.engagement,...g});
+    await finishEvidencedRound(tx,{...own.engagement,...g});
+    return {ok:true,submissionsClosed:true};
+  });
+}
+
 export async function reportBlueprintApplication(db,scope,{applicationId,status,evidenceDocumentId = null,reference = null,approvedAmount = null,idempotencyKey}) {
   requireId(applicationId,"invalid_application");
   if (!["pending","approved","declined"].includes(status)) throw new BlueprintFundingError("invalid_status",400);
@@ -229,8 +254,10 @@ export async function reportBlueprintApplication(db,scope,{applicationId,status,
     // A reported submission is real client activity. Approval, denial and
     // dollars belong to the canonical evidence/decision path, never this post.
     await tx.query("UPDATE applications SET status='Applied',updated_at=now() WHERE id=$1 AND status='Apply'",[applicationId]);
+    await reconcileSubmittedEvidence(tx,own.engagement);
+    const current=(await tx.query("SELECT status FROM applications WHERE id=$1",[applicationId])).rows[0];
     const expected = status==="approved" ? "Approved" : "Denied";
-    if (status!=="pending" && app.status!==expected) {
+    if (status!=="pending" && current.status!==expected) {
       await createTask(tx,{orgId:own.orgId,clientId:own.clientId,assigneeRole:"csm",
         sourceWorkflow:"blueprint-bank-evidence",title:"Reconcile bank evidence for the purchased round",
         eventId:"blueprint-bank-evidence:"+applicationId+":"+status,

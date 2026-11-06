@@ -313,6 +313,10 @@ export async function onMailResponse(event, db) {
      VALUES ($1,$2,$3,$4,$5,$6)`,
     [event.orgId, clientId, p.classification || null, p.subject || null, preview, JSON.stringify(raw)]
   );
+  if (clientId && p.authenticatedBankDomain) {
+    const { reconcileClientBankEvidence } = await import("../blueprint/bank-evidence.mjs");
+    await reconcileClientBankEvidence(db,{orgId:event.orgId,clientId});
+  }
 }
 
 /* ==========================================================================
