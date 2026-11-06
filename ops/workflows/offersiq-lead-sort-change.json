@@ -1,7 +1,7 @@
 {
   "ownerLane": "lead-sort",
   "base": "930713f6d35576df92bf359eda55ff752ea5769a",
-  "delivery": "draft; shared manifest and CRS rule installation pending",
+  "delivery": "draft; ordered ship tool stopped on prior queue base; shared manifest and CRS proof pending",
   "files": [
     {
       "path": "db/migrations/567_offersiq_lead_sort.sql",
@@ -17,7 +17,7 @@
     },
     {
       "path": "ops/workflows/offersiq-lead-sort-2026-11-06.txt",
-      "sha256": "c1c74b73cb94b605e70c118760cb3cc3713d9074b446518b8228a7860d368a92"
+      "sha256": "c848be6ddb2a654acec847dace3aff218a32c5a01eb42fef8941adab3e4ad1a3"
     },
     {
       "path": "ops/workflows/offersiq-lead-sort-heartbeat.pending.patch",
@@ -136,5 +136,6 @@
     "typescript": "passed",
     "scratchPostgres": "16.15; fundhub_app; no superuser/bypassrls",
     "sandbox": "4 published identities; 3 no-file, 1 starter; full new list not proven"
-  }
+  },
+  "currentMainBase": "c6019c9beed4c6e21aa57b8e7d7c8d57b57a3578"
 }
