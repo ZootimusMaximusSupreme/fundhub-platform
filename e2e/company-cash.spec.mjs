@@ -43,10 +43,16 @@ const reply = (route, body, status = 200) => route.fulfill({ status, contentType
 async function open(page, { bank = fullBank(), cash = fullCash(), bankError = false, cashGate = null,
   bankPost = null, bankGet = null, matchLookup = null, authSession = null } = {}) {
   const calls = [];
+  const passkeyCalls = [];
+  Object.defineProperty(calls, "passkeyCalls", { value: passkeyCalls });
   await page.addInitScript(() => localStorage.setItem("fh_token", "test-owner-session"));
   await page.route("**/api/**", async route => {
     const url = new URL(route.request().url());
     const path = url.pathname;
+    if (path === "/api/auth/passkey") {
+      passkeyCalls.push(route.request().postDataJSON());
+      return reply(route, { ok: true, enrolled: true, assured: true, recovery_required: false });
+    }
     if (path === "/api/auth/session") return authSession ? authSession(route) : reply(route, { ok: true, staff: { id: "00000000-0000-4000-8000-000000000099", role: "owner", name: "Owner", org_id: "00000000-0000-4000-8000-000000000098" } });
     if (path === "/api/health") return reply(route, { ok: true, db: "up", migrations: 548 });
     if (path === "/api/owner/company-bank") {
@@ -205,6 +211,8 @@ test("owner controls save reviewed amounts, match only posted debits, and confir
   await page.locator("#ccSaveAccount").click();
   await expect.poll(() => calls.at(-1)?.body.action).toBe("exchange");
   expect(calls.at(-1).body).toMatchObject({ action: "exchange", account_id: "plaid-business-checking", confirm_business_account: true, consent: true });
+  expect(calls.passkeyCalls.map(call => call.action)).toEqual(["status", "status"]);
+  expect(calls.passkeyCalls.every(call => call.target_kind === "company_bank")).toBe(true);
   expect(calls.some(c => c.body.action === "transfer")).toBe(false);
 });
 
@@ -340,6 +348,27 @@ test("cancel and pagehide remove each Plaid widget without exchanging an account
     accounts: [{ id: "late-account", name: "Late account", type: "depository" }]
   }));
   expect(calls.map(c => c.body.action)).toEqual(["link_token", "link_token"]);
+  expect(calls.passkeyCalls.map(call => call.action)).toEqual(["status", "status"]);
+  expect(calls.some(c => c.body.action === "exchange")).toBe(false);
+});
+
+test("cancelling the company account picker never exchanges the Plaid token", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.Plaid = { create: config => ({ open() { config.onSuccess("cancelled-picker-token", {
+      institution: { name: "Arizona Financial" },
+      accounts: [{ id: "plaid-business-checking", name: "Business Checking", type: "depository", subtype: "checking", mask: "9999" }]
+    }); } }) };
+  });
+  const calls = await open(page);
+  await page.locator("#ccBusinessConfirm").check();
+  await page.locator("#ccReadConsent").check();
+  await page.locator("#ccConnect").click();
+  await expect(page.locator("#ccAccountDialog")).toBeVisible();
+  await page.locator("#ccCancelAccount").click();
+  await expect(page.locator("#ccAccountDialog")).toBeHidden();
+  expect(calls.map(call => call.body.action)).toEqual(["link_token"]);
+  expect(calls.passkeyCalls.map(call => call.action)).toEqual(["status"]);
+  expect(calls.some(call => call.body.action === "exchange")).toBe(false);
 });
 
 test("payment matching reaches an exact posted debit beyond the newest 100 transactions", async ({ page }) => {
