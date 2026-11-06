@@ -7,6 +7,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { readFile } from 'node:fs/promises';
 import { convert } from './economics.mjs';
+import { WHOP_SELLER_SQL, WHOP_ACCESS_SQL, gapChecks } from '../pulse/coverage/gap-whop-billing.mjs';
 import { SELLER_SQL } from '../pulse/beats/beat-whop-billing.mjs';
 import { createSellerSale, resolveSellerHandoff, handoffUrl, parseSellerBuyer, sellerCapability } from './blueprint-sale.mjs';
 import sellerHandler from '../../api/affiliates/blueprint-sale.mjs';
@@ -26,10 +27,18 @@ const principal={kind:'affiliate',orgId:ORG,affiliateId:AFF,accountId:ACCOUNT};
 const env={BLUEPRINT_AFFILIATE_SELLER_IDS:AFF,CONTRACT_URL_SECRET:'synthetic-seller-handoff-secret-32bytes-plus',WHOP_API_KEY:'synthetic-key',WHOP_ACCOUNT_ID:'biz_synthetic',WHOP_CONSULTING_PACKAGE_PRODUCT_ID:'prod_synthetic',WHOP_WEBHOOK_SECRET:'synthetic-secret',ADAPTERS_DRY_RUN:'0'};
 const buyer=()=>({first_name:'Synthetic',last_name:'Buyer',email:randomUUID()+'@example.test',phone:'+12025550123',request_id:randomUUID()});
 function response(){return {statusCode:200,headers:{},setHeader(k,v){this.headers[k]=v;},status(v){this.statusCode=v;return this;},json(v){this.body=v;return this;},end(){return this;}};}
-async function world({sandbox=false}={}){
+async function world({sandbox=false,migratedSchema=false}={}){
  const testEnv=sandbox?{...env,WHOP_ENV:'sandbox'}:env;
  const db=PG_MODULE?new (await import(PG_MODULE)).PGlite():new pg.Client({connectionString:SCRATCH});
  if(!PG_MODULE)await db.connect();
+ const actorMigration=await readFile(new URL('../../db/migrations/566_contract_affiliate_actors.sql',import.meta.url),'utf8');
+ if(migratedSchema&&PG_MODULE){
+  // CI already has the migrated public contracts table. Reproduce that exact
+  // named-constraint collision in the otherwise-empty embedded PostgreSQL.
+  await db.exec(`CREATE TABLE public.accounts(id uuid PRIMARY KEY,org_id uuid,kind text);
+   CREATE TABLE public.contracts(id uuid PRIMARY KEY,org_id uuid,status text,created_by uuid NOT NULL,sent_by uuid,sent_at timestamptz);`);
+  await db.exec(actorMigration);
+ }
  await (PG_MODULE ? db.exec.bind(db) : db.query.bind(db))(`CREATE TEMP TABLE clients(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),org_id uuid,email text,first_name text,last_name text,phone text,ghl_contact_id text,channel_source text,is_demo boolean DEFAULT false,custom_fields jsonb DEFAULT '{}',created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
  CREATE UNIQUE INDEX ON clients(org_id,lower(email)) WHERE email IS NOT NULL;
  CREATE TEMP TABLE affiliates(id uuid PRIMARY KEY,org_id uuid,name text,status text,tracking_id text,recruited_by uuid);
@@ -41,11 +50,13 @@ async function world({sandbox=false}={}){
  CREATE TEMP TABLE sales(id uuid,org_id uuid,client_id uuid,product_id uuid,status text,sale_motion text,sold_at timestamptz);
  CREATE TEMP TABLE sale_attributions(sale_id uuid,staff_id uuid,role text,attributed_at timestamptz);
  CREATE TEMP TABLE call_outcomes(org_id uuid,client_id uuid,staff_id uuid,logged_at timestamptz);
- CREATE TEMP TABLE payment_links(id uuid PRIMARY KEY,org_id uuid,client_id uuid,purpose text,description text,amount_cents bigint,currency text,link_ref text,checkout_url text,provider text,product_id uuid,sale_id uuid,sale_motion text,created_by_staff_id uuid,closer_staff_id uuid,sales_manager_staff_id uuid,status text DEFAULT 'created',created_at timestamptz DEFAULT now(),whop_checkout_configuration_id text,whop_plan_id text,whop_payment_id text,whop_metadata_version integer NOT NULL DEFAULT 2 CHECK(whop_metadata_version IN(1,2)));
+ CREATE TEMP TABLE payment_links(id uuid PRIMARY KEY,org_id uuid,client_id uuid,purpose text,description text,amount_cents bigint,currency text,link_ref text,checkout_url text,provider text,product_id uuid,sale_id uuid,sale_motion text,created_by_staff_id uuid,closer_staff_id uuid,sales_manager_staff_id uuid,status text DEFAULT 'created',paid_at timestamptz,created_at timestamptz DEFAULT now(),whop_checkout_configuration_id text,whop_plan_id text,whop_payment_id text,whop_metadata_version integer NOT NULL DEFAULT 2 CHECK(whop_metadata_version IN(1,2)));
  CREATE TEMP TABLE transactions(id uuid DEFAULT gen_random_uuid(),org_id uuid,client_id uuid,provider text,provider_ref text,status text,amount_paid numeric);
  CREATE TEMP TABLE affiliate_commission_rules(id uuid,org_id uuid,tier text,affiliate_id uuid,product_id uuid,active boolean,effective_from timestamptz,effective_to timestamptz,created_at timestamptz);
+ CREATE TEMP TABLE whop_billing_inbox(org_id uuid,status text,received_at timestamptz,claimed_at timestamptz);
+ CREATE TEMP TABLE product_entitlements(org_id uuid,product_code text,entitlement_code text);
  CREATE TEMP TABLE entitlements(source_transaction_id uuid,org_id uuid,client_id uuid,entitlement_code text);`);
- await (PG_MODULE ? db.exec.bind(db) : db.query.bind(db))(await readFile(new URL('../../db/migrations/566_contract_affiliate_actors.sql',import.meta.url),'utf8'));
+ await (PG_MODULE ? db.exec.bind(db) : db.query.bind(db))(actorMigration);
  await db.query(`INSERT INTO staff VALUES($1,$2,'staff-fixture@example.test','closer','active',false)`,[STAFF,ORG]);
  await db.query(`INSERT INTO affiliates VALUES ($1,$2,'Synthetic seller','active','AFF-SYNTHETIC',NULL)`,[AFF,ORG]);
  await db.query(`INSERT INTO accounts VALUES ($1,$2,'seller@example.test','affiliate','active',$3,NULL)`,[ACCOUNT,ORG,AFF]);
@@ -352,3 +363,49 @@ test('permanent seller broker traverses the exact sandbox checkout and refuses i
   await assert.rejects(resolveSellerHandoff(w.db,{...args,env:{...env,WHOP_ENV:'sandbox'}}),{code:'not_found'});
  }finally{await w.close();}
 });
+
+test('actual actor migration installs its checks on the active table despite preexisting public constraint names',OPTIONS,async()=>{
+ const w=await world({migratedSchema:true});try{
+  const publicChecks=(await w.db.query(`SELECT conname FROM pg_constraint WHERE conrelid='public.contracts'::regclass AND conname IN ('contracts_creator_subject_ck','contracts_sender_subject_ck')`)).rows;
+  assert.equal(publicChecks.length,2,'the full migrated schema already owns these constraint names');
+  const activeChecks=(await w.db.query(`SELECT conname FROM pg_constraint WHERE conrelid='contracts'::regclass AND conname IN ('contracts_creator_subject_ck','contracts_sender_subject_ck')`)).rows;
+  assert.equal(activeChecks.length,2,'the temporary active contracts table receives both real migration checks');
+  await assert.rejects(w.db.query(`INSERT INTO contracts(org_id,status) VALUES($1,'draft')`,[ORG]),/contracts_creator_subject_ck/);
+  await assert.rejects(w.db.query(`INSERT INTO contracts(org_id,status,created_by,created_by_account_id) VALUES($1,'draft',$2,$3)`,[ORG,STAFF,ACCOUNT]),/contracts_creator_subject_ck/);
+  const id=(await w.db.query(`INSERT INTO contracts(org_id,status,created_by_account_id) VALUES($1,'draft',$2) RETURNING id`,[ORG,ACCOUNT])).rows[0].id;
+  await assert.rejects(w.db.query(`UPDATE contracts SET sent_by=$2,sent_by_account_id=$3 WHERE id=$1`,[id,STAFF,ACCOUNT]),/contracts_sender_subject_ck/);
+ }finally{await w.close();}
+});
+
+test('daily seller deep check uses the shared SQL, rejects bad price/unverified financing and isolates another company',OPTIONS,()=>scenario(async w=>{
+ w.deps.createCheckout=w.localCheckout;const b={...buyer(),amount_cents:2900000};await w.run(b);const row=await record(w,b.email),saved=row.custom_fields.blueprint_seller_sale;
+ const now=new Date(),cutoff=new Date(now.getTime()-15*60000).toISOString(),params=[ORG,cutoff],otherOrg=randomUUID();
+ await w.db.query(`UPDATE clients SET custom_fields=jsonb_set(custom_fields,'{blueprint_seller_sale,created_at}',to_jsonb((now()-interval '16 minutes')::text)) WHERE id=$1`,[row.id]);
+ const other={...saved,org_id:otherOrg,client_id:randomUUID(),affiliate_id:randomUUID(),account_id:randomUUID(),contract_id:randomUUID(),payment_link_id:randomUUID(),created_at:new Date(now.getTime()-16*60000).toISOString(),financing_verified:false};
+ await w.db.query(`INSERT INTO clients(id,org_id,email,custom_fields) VALUES($1,$2,'other-company@example.test',$3)`,[other.client_id,otherOrg,JSON.stringify({blueprint_seller_sale:other})]);
+ assert.equal((await w.db.query(WHOP_SELLER_SQL,params)).rows[0].n,0);
+ assert.equal((await w.db.query(WHOP_SELLER_SQL,[otherOrg,cutoff])).rows[0].n,1);
+ const daily=()=>gapChecks({db:w.db,orgId:ORG,now});
+ assert.equal((await daily()).find(r=>r.id==='payments:whop-seller-handoffs').status,'PASS');
+ await w.db.query(`UPDATE clients SET custom_fields=jsonb_set(custom_fields,'{blueprint_seller_sale,financing_verified}','false') WHERE id=$1`,[row.id]);
+ assert.equal((await daily()).find(r=>r.id==='payments:whop-seller-handoffs').status,'FAIL');
+ await w.db.query(`UPDATE clients SET custom_fields=jsonb_set(custom_fields,'{blueprint_seller_sale,financing_verified}','true') WHERE id=$1`,[row.id]);
+ await w.db.query(`UPDATE contracts SET merge_values=jsonb_set(merge_values,'{_blueprint_amount_cents}','3000000') WHERE id=$1`,[saved.contract_id]);
+ assert.equal((await w.db.query(WHOP_SELLER_SQL,params)).rows[0].n,1);
+ assert.equal((await daily()).find(r=>r.id==='payments:whop-seller-handoffs').status,'FAIL');
+}));
+test('daily paid-access deep check includes the full Blueprint and requires its exact transaction entitlement',OPTIONS,()=>scenario(async w=>{
+ w.deps.createCheckout=w.localCheckout;const b={...buyer(),amount_cents:2900000};await w.run(b);const saved=(await record(w,b.email)).custom_fields.blueprint_seller_sale;
+ const params=[ORG,new Date(Date.now()-5*60000).toISOString()];
+ await w.db.query(`UPDATE payment_links SET status='paid',paid_at=now()-interval '10 minutes',whop_payment_id='pay_deep' WHERE id=$1`,[saved.payment_link_id]);
+ assert.equal((await w.db.query(WHOP_ACCESS_SQL,params)).rows[0].n,1);
+ await w.db.query(`INSERT INTO product_entitlements VALUES($1,'blueprint-self-funding','blueprint-client-fulfillment')`,[ORG]);
+ const tx=(await w.db.query(`INSERT INTO transactions(org_id,client_id,provider,provider_ref,status,amount_paid) VALUES($1,$2,'whop','pay_deep','succeeded',29000) RETURNING id`,[ORG,saved.client_id])).rows[0].id;
+ assert.equal((await w.db.query(WHOP_ACCESS_SQL,params)).rows[0].n,1);
+ await w.db.query(`INSERT INTO entitlements VALUES($1,$2,$3,'blueprint-client-fulfillment')`,[tx,ORG,saved.client_id]);
+ assert.equal((await w.db.query(WHOP_ACCESS_SQL,params)).rows[0].n,0);
+ const otherOrg=randomUUID(),otherProduct=randomUUID();
+ await w.db.query(`INSERT INTO products VALUES($1,$2,'blueprint-self-funding')`,[otherProduct,otherOrg]);
+ await w.db.query(`INSERT INTO payment_links(id,org_id,client_id,product_id,provider,status,paid_at) VALUES($1,$2,$3,$4,'whop','paid',now()-interval '10 minutes')`,[randomUUID(),otherOrg,randomUUID(),otherProduct]);
+ assert.equal((await w.db.query(WHOP_ACCESS_SQL,params)).rows[0].n,0);
+}));

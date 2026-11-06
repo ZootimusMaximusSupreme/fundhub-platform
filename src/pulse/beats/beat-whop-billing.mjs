@@ -36,7 +36,8 @@ export const ACCESS_SQL = `SELECT count(DISTINCT l.id)::integer AS n
 
 // Once a seller agreement is pinned, the actual actor, agreed price and
 // provider-verified financing must agree within the preparation window.
-export const SELLER_SQL = `SELECT count(*)::integer AS n FROM clients c
+export function sellerHandoffsSql(orgScoped = false) {
+  return `SELECT count(*)::integer AS n FROM clients c
   CROSS JOIN LATERAL (SELECT c.custom_fields->'blueprint_seller_sale' AS s) handoff
   LEFT JOIN affiliates a ON a.id=(s->>'affiliate_id')::uuid AND a.org_id=c.org_id
   LEFT JOIN accounts ac ON ac.id=(s->>'account_id')::uuid AND ac.org_id=c.org_id AND ac.affiliate_id=a.id AND ac.kind='affiliate'
@@ -44,9 +45,9 @@ export const SELLER_SQL = `SELECT count(*)::integer AS n FROM clients c
   LEFT JOIN contracts k ON k.id=(s->>'contract_id')::uuid AND k.client_id=c.id AND k.org_id=c.org_id
   LEFT JOIN payment_links l ON l.id=(s->>'payment_link_id')::uuid AND l.client_id=c.id AND l.org_id=c.org_id
   LEFT JOIN products p ON p.id=l.product_id AND p.org_id=l.org_id
-  WHERE s IS NOT NULL AND c.is_demo IS NOT TRUE AND (a.id IS NULL OR ac.id IS NULL OR r.id IS NULL
+  WHERE ${orgScoped ? 'c.org_id = $1 AND ' : ''}s IS NOT NULL AND c.is_demo IS NOT TRUE AND (a.id IS NULL OR ac.id IS NULL OR r.id IS NULL
     OR s->>'org_id' IS DISTINCT FROM c.org_id::text OR s->>'client_id' IS DISTINCT FROM c.id::text
-    OR (s->>'contract_id' IS NOT NULL AND (COALESCE((s->>'created_at')::timestamptz,c.created_at) < now()-interval '15 minutes')
+    OR (s->>'contract_id' IS NOT NULL AND (COALESCE((s->>'created_at')::timestamptz,c.created_at) < ${orgScoped ? '$2::timestamptz' : "now()-interval '15 minutes'"})
       AND (k.id IS NULL OR k.template_key IS DISTINCT FROM 'BLUEPRINT-SELF-FUNDING-AGREEMENT'
         OR k.status NOT IN ('sent','viewed','signed')
         OR (k.created_by_account_id IS NOT NULL AND k.created_by_account_id::text IS DISTINCT FROM s->>'account_id')
@@ -56,6 +57,8 @@ export const SELLER_SQL = `SELECT count(*)::integer AS n FROM clients c
         OR k.merge_values->>'_blueprint_amount_cents' IS DISTINCT FROM s->>'amount_cents'
         OR l.id IS NULL OR l.provider IS DISTINCT FROM 'whop'
         OR l.amount_cents IS DISTINCT FROM (s->>'amount_cents')::bigint OR p.code IS DISTINCT FROM 'blueprint-self-funding'))) `;
+}
+export const SELLER_SQL = sellerHandoffsSql();
 
 export const fixGuide = `A Whop payment clock, receipt or Blueprint access grant needs attention.
 

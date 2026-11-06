@@ -3,10 +3,10 @@ ALTER TABLE contracts ALTER COLUMN created_by DROP NOT NULL;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS created_by_account_id uuid REFERENCES accounts(id) ON DELETE RESTRICT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS sent_by_account_id uuid REFERENCES accounts(id) ON DELETE RESTRICT;
 DO $$ BEGIN
- IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='contracts_creator_subject_ck') THEN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='contracts_creator_subject_ck' AND conrelid='contracts'::regclass) THEN
   ALTER TABLE contracts ADD CONSTRAINT contracts_creator_subject_ck CHECK (num_nonnulls(created_by,created_by_account_id)=1);
  END IF;
- IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='contracts_sender_subject_ck') THEN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='contracts_sender_subject_ck' AND conrelid='contracts'::regclass) THEN
   ALTER TABLE contracts ADD CONSTRAINT contracts_sender_subject_ck CHECK (num_nonnulls(sent_by,sent_by_account_id)<=1);
  END IF;
 END $$;
