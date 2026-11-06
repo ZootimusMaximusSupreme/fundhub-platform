@@ -3,7 +3,7 @@
   "databaseRole": "fundhub_app",
   "externalProviderRequests": 0,
   "liveCustomerActions": 0,
-  "providerSandboxDelivery": "unavailable: no verified dedicated vendor sandbox credentials in local project or linked preview",
+  "providerSandboxDelivery": "This HTTP rehearsal used fixture transports. See crs-vendor-three-bureau.json for the separate external TransUnion, Experian and Equifax sandbox run.",
   "transport": {
     "http": "real loopback HTTP to production Netlify router",
     "payments": "synthetic signed event bytes and simulated Whop checkout responses",

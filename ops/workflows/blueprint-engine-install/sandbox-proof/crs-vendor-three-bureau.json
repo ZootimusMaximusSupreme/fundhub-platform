@@ -1,0 +1,68 @@
+{
+  "checkedAt": "2026-11-06T17:23:39.272Z",
+  "provider": "CRS / Stitch Credit",
+  "environment": "vendor sandbox",
+  "host": "api-sandbox.stitchcredit.com",
+  "input": "three published standard sandbox fixtures, each matching its bundled vendor capture by legal name, DOB and never-issued synthetic SSN",
+  "source": "distinct Fundhub sandbox account in vendor Postman collection",
+  "productionRequests": 0,
+  "authRequests": 1,
+  "bureauOrderRequests": 3,
+  "realConsumerData": false,
+  "storedTokens": false,
+  "observations": [
+    {
+      "operation": "sandbox_authentication",
+      "httpStatus": 200,
+      "tokenIssued": true
+    },
+    {
+      "operation": "canonical_bureau_order",
+      "bureau": "TU",
+      "httpStatus": 200,
+      "vendorRequestIdPresent": true
+    },
+    {
+      "operation": "canonical_bureau_order",
+      "bureau": "EX",
+      "httpStatus": 200,
+      "vendorRequestIdPresent": true
+    },
+    {
+      "operation": "canonical_bureau_order",
+      "bureau": "EQ",
+      "httpStatus": 200,
+      "vendorRequestIdPresent": true
+    }
+  ],
+  "currentSupplierCollection": {
+    "consumerProduct": "efx-prequal-fico9-cvie",
+    "matchesCurrentFundhubStandardPath": false,
+    "matchesCurrentFundhubSyntheticIdentity": false
+  },
+  "standardRuntime": {
+    "ok": true,
+    "returnCode": null
+  },
+  "storage": {
+    "ledger_status": "fulfilled",
+    "allowance_kind": "included",
+    "persisted": true,
+    "provider": "crs_softview",
+    "report_environment": "sandbox",
+    "bureau_status": {
+      "EQ": "file_returned",
+      "EX": "file_returned",
+      "TU": "file_returned"
+    },
+    "tradeline_count": 30,
+    "inquiry_count": 74
+  },
+  "verifiedBureaus": [
+    "TU",
+    "EX",
+    "EQ"
+  ],
+  "status": "verified_three_bureau_sandbox_report",
+  "completedAt": "2026-11-06T17:23:42.413Z"
+}
