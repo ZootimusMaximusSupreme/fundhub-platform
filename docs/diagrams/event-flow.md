@@ -136,7 +136,7 @@ flowchart LR
 | `entry.captured` | journey spine | `onEntryCaptured` | 5 |
 | `survey.submitted` | journey spine | `onSurveySubmitted` | 0 |
 | `survey.completed` | journey spine | — | 1 |
-| `diagnostic.paid` | journey spine | `onDiagnosticPaid`, `onDiagnosticPaidSoftPull`, `onMoneyEventForMeta`, `onDiagnosticPaidMoney` | 2 |
+| `diagnostic.paid` | journey spine | `onDiagnosticPaid`, `onDiagnosticPaidSoftPull`, `onDiagnosticPaidMoney` | 2 |
 | `analysis.completed` | journey spine | `onAnalysisCompleted`, `onAnalysisCompletedDeliverables`, `onAnalysisCompletedFullReport`, `onAnalysisCompletedSloPack` | 9 |
 | `booking.created` | journey spine | `onBookingCreated`, `onInterviewBooked` | 9 |
 | `booking.rescheduled` | journey spine | `onBookingRescheduled` | 4 |
@@ -145,15 +145,15 @@ flowchart LR
 | `call.completed` | journey spine | `onCallCompleted` | 4 |
 | `setter.no_answer` | journey spine | — | 1 |
 | `decision.rendered` | journey spine | `onDecisionRendered` | 0 |
-| `deposit.paid` | journey spine | `onDepositPaid`, `onPaidMidCheckin`, `onDepositPaidGate`, `onMoneyEventForMeta`, `onDepositPaidMoney`, `onDealCloseWinAlert` | 3 |
-| `sale.closed` | journey spine | `onSaleClosed`, `onPaidMidCheckin`, `onMoneyEventForMeta`, `onSaleClosedMoney`, `onDealCloseWinAlert` | 0 |
+| `deposit.paid` | journey spine | `onDepositPaid`, `onPaidMidCheckin`, `onDepositPaidGate`, `onDepositPaidMoney`, `onDealCloseWinAlert` | 3 |
+| `sale.closed` | journey spine | `onSaleClosed`, `onPaidMidCheckin`, `onSaleClosedMoney`, `onDealCloseWinAlert` | 0 |
 | `round.started` | journey spine | `onRoundStartedMoney` | 7 |
 | `round.submitted` | journey spine | — | 1 |
 | `round.approved` | journey spine | — | 3 |
 | `round.funded` | journey spine | `onRoundFundedInsights`, `onRoundFundedMoney` | 4 |
 | `round.closeout` | journey spine | `onRoundCloseoutGate`, `closePurchasedBlueprintRound` | 1 |
 | `file.finalized` | journey spine | — | 0 |
-| `payment.received` | side events | `onPaymentReceivedForClarity`, `onPaymentReceived`, `onPaidMidCheckin`, `onMoneyEventForMeta`, `onPaymentReceivedMoney`, `onBlueprintPaidServicePaymentReceived`, `onPaidServicePaymentReceived`, `onPaymentReceivedForAddOn`, `onPaymentReceivedForLink` | 3 |
+| `payment.received` | side events | `onPaymentReceivedForClarity`, `onPaymentReceived`, `onPaidMidCheckin`, `onPaymentReceivedMoney`, `onBlueprintPaidServicePaymentReceived`, `onPaidServicePaymentReceived`, `onPaymentReceivedForAddOn`, `onPaymentReceivedForLink` | 3 |
 | `payment.failed` | side events | `onPaymentFailed` | 0 |
 | `payment.expired` | side events | — | 0 |
 | `payment.canceled` | side events | — | 0 |

@@ -13,8 +13,7 @@
 // switch, set at ship), and the ADAPTERS fence must be down.
 //
 // NOT IN THE MESSAGE QUEUE. Not registered in providers/index.mjs; no channel
-// routes here. Callers: src/meta/track-send.mjs (funnel track events) and,
-// later, the payment webhook's server-only Purchase.
+// routes here. The public funnel tracker is the only caller.
 //
 // NEVER THROWS. Returns { ok, sent, error?, skipped?, blocked? }. `error` is
 // Meta's own text (redacted, clipped) when Meta refused.
@@ -26,7 +25,8 @@
 
 import { postJsonTo, ADAPTERS, redact } from "../../lib/outbound-fetch.mjs";
 import { getMetaCapiToken } from "../../meta/token.mjs";
-import { isHashed } from "../../meta/user-data.mjs";
+import { cleanIp, isHashed, outboundFbp, sha256 } from "../../meta/user-data.mjs";
+import { CONVERSION_SOURCE, isMetaUuid, META_EVENT_NAMES, PUBLIC_META_PAGES } from "../../meta/map.mjs";
 
 export const PROVIDER = "meta-capi";
 /* Declared so src/lib/no-unfenced-transmit.test.mjs checks that this file goes
@@ -60,73 +60,50 @@ export function metaEventsUrl(env = process.env) {
 
 // ── what may leave ───────────────────────────────────────────────────────────
 
-const USER_DATA_TEXT = Object.freeze(["client_ip_address", "client_user_agent", "fbc", "fbp"]);
-const USER_DATA_HASHED = Object.freeze(["em", "ph", "external_id"]);
-const CUSTOM_DATA = Object.freeze({
-  value: "number",
-  currency: "currency",
-  content_name: "text",
-  survey: "text",
-  step: "number",
-  offer: "text",
-  video: "text",
-  pct: "number",
-  businesses: "number",
-});
+const USER_DATA_HASHED = ["em", "ph"];
+const PUBLIC_SOURCES = PUBLIC_META_PAGES.map(page => "https://apply.fundhub.ai" + page);
 
-function cleanUserData(raw) {
+function cleanUserData(raw = {}) {
   const out = {};
   if (!raw || typeof raw !== "object") return out;
-  for (const k of USER_DATA_TEXT) {
-    if (typeof raw[k] === "string" && raw[k].trim()) out[k] = raw[k].trim().slice(0, 512);
+  const ip = cleanIp(raw.client_ip_address);
+  if (ip) out.client_ip_address = ip;
+  if (typeof raw.client_user_agent === "string" && raw.client_user_agent.trim()) {
+    out.client_user_agent = raw.client_user_agent.trim().slice(0, 512);
   }
-  for (const k of USER_DATA_HASHED) {
-    const list = (Array.isArray(raw[k]) ? raw[k] : [raw[k]]).filter(isHashed);
-    if (list.length) out[k] = list.slice(0, 5);
+  const fbp = outboundFbp(raw.fbp);
+  if (fbp) out.fbp = fbp;
+  for (const key of USER_DATA_HASHED) {
+    const supplied = Array.isArray(raw[key]) ? raw[key] : [raw[key]];
+    const hashes = supplied.filter(isHashed);
+    if (hashes.length) out[key] = hashes.slice(0, 5);
   }
   return out;
 }
 
-function cleanCustomData(raw) {
-  if (!raw || typeof raw !== "object") return undefined;
-  const out = {};
-  for (const [k, type] of Object.entries(CUSTOM_DATA)) {
-    const v = raw[k];
-    if (type === "number" && typeof v === "number" && Number.isFinite(v)) out[k] = v;
-    else if (type === "currency" && typeof v === "string" && /^[A-Z]{3}$/.test(v)) out[k] = v;
-    else if (type === "text" && typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, 120);
-  }
-  return Object.keys(out).length ? out : undefined;
-}
-
-/* "website" for anything a browser started (the default). "system_generated"
-   for a server-only event with no web session behind it — a Purchase the
-   payment webhook sends with no user agent and no page (src/handlers/
-   meta-purchase.mjs). Neither requires event_source_url or client_user_agent
-   here: each is sent only when the caller has one. */
-const ACTION_SOURCES = new Set(["website", "system_generated"]);
-
-const EVENT_NAME = /^[A-Za-z][A-Za-z0-9_]{0,49}$/;
-const EVENT_ID = /^[A-Za-z0-9_.:-]{1,160}$/;
-
-/** One event, reduced to what Meta may receive, or null when it is unusable. */
+/** Reject old trackers or direct calls which do not match the reviewed wire contract. */
 export function sanitizeEvent(ev, { now = Date.now() } = {}) {
-  if (!ev || typeof ev !== "object") return null;
-  if (!EVENT_NAME.test(String(ev.event_name || ""))) return null;
-  if (!EVENT_ID.test(String(ev.event_id || ""))) return null;
-  const t = Number.isInteger(ev.event_time) && ev.event_time > 0 ? ev.event_time : Math.floor(now / 1000);
+  if (!ev || !META_EVENT_NAMES.includes(ev.event_name)) return null;
+  const name = ev.event_name;
+  const source = ev.event_source_url;
+  const id = ev.event_id;
+  if (typeof id !== "string" || (name === "ViewContent"
+      ? !id.endsWith(".vc") || !isMetaUuid(id.slice(0, -3))
+      : !isMetaUuid(id))) return null;
+  if (ev.action_source !== undefined && ev.action_source !== "website") return null;
+  if (name === "Lead" || name === "Schedule") {
+    if (source !== CONVERSION_SOURCE) return null;
+  } else if (!PUBLIC_SOURCES.includes(source)) return null;
   const out = {
-    event_name: ev.event_name,
-    event_time: t,
-    event_id: ev.event_id,
-    action_source: ACTION_SOURCES.has(ev.action_source) ? ev.action_source : "website",
-    user_data: cleanUserData(ev.user_data),
+    event_name: name, event_id: id,
+    event_time: Number.isInteger(ev.event_time) && ev.event_time > 0 ? ev.event_time : Math.floor(now / 1000),
+    action_source: "website", event_source_url: source, user_data: cleanUserData(ev.user_data)
   };
-  if (typeof ev.event_source_url === "string" && /^https?:\/\//i.test(ev.event_source_url)) {
-    out.event_source_url = ev.event_source_url.slice(0, 1000);
+  // This UUID comes from the linked survey receipt. Browser cookies, session
+  // names and arbitrary external_id values are never exported as customer IDs.
+  if ((name === "Lead" || name === "Schedule") && isMetaUuid(ev.matchedClientId)) {
+    out.user_data.external_id = [sha256(ev.matchedClientId.toLowerCase())];
   }
-  const cd = cleanCustomData(ev.custom_data);
-  if (cd) out.custom_data = cd;
   return out;
 }
 

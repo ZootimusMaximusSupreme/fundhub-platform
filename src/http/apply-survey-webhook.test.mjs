@@ -150,7 +150,10 @@ test("apply-survey.html SEND_STEP posts the handoff shape to /api/webhooks/click
   assert.equal(HTML.includes("fh_booking_v1"), false, "the old Schedule listener is gone");
   assert.match(HTML, /if \(last\) p\.last = true;/);
   assert.match(HTML, /e\.name === 'survey\.completed'/);
-  assert.match(HTML, /sent\.then\(function \(\) \{\s*savingFinal = false;\s*fht\('survey_answer', p\);\s*finish\(\);/);
+  const onSaved = HTML.slice(HTML.indexOf("sent.then(function (saved)"), HTML.indexOf("}).catch(function ()", HTML.indexOf("sent.then(function (saved)")));
+  assert.match(onSaved, /e\.name === 'survey\.completed'/);
+  assert.match(onSaved, /if \(completed\) \{\s*p\.completion_acknowledged = true;/);
+  assert.match(onSaved, /fht\('survey_answer', p\);\s*finish\(\);/);
 });
 
 test("apply-survey approval strip is the same 16 watch-proof cards", () => {

@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   sha256, isHashed, normalizeEmail, normalizePhone, hashEmail, hashPhone,
-  cleanFbc, cleanFbp, cleanIp, clientIpFrom, buildUserData, sessionContact, SESSION_CONTACT_SQL
+  cleanFbc, cleanFbp, cleanIp, clientIpFrom, buildUserData, outboundFbp
 } from "./user-data.mjs";
 
 const hex = (s) => crypto.createHash("sha256").update(s, "utf8").digest("hex");
@@ -66,11 +66,9 @@ describe("user_data", () => {
     assert.deepEqual(ud, {
       client_ip_address: "203.0.113.7",
       client_user_agent: "Mozilla/5.0 (iPhone)",
-      fbc: FBC,
       fbp: FBP,
       em: [hex("pat@gmail.com")],
-      ph: [hex("14155550134")],
-      external_id: [hex("sess-abcdef12")]
+      ph: [hex("14155550134")]
     });
     const text = JSON.stringify(ud);
     for (const raw of ["pat@gmail.com", "Pat@Gmail.com", "4155550134", "sess-abcdef12"]) {
@@ -94,6 +92,8 @@ describe("user_data", () => {
     assert.equal(cleanFbc(`fb.1.1727900000000.${"A".repeat(501)}`), null);
     assert.equal(cleanFbp(FBP), FBP);
     assert.equal(cleanFbp("fb.1.1727900000000."), null);
+    assert.equal(outboundFbp("fb.1.1727900000000.800"), null);
+    assert.equal(outboundFbp("fb.1.1727900000000.credit_800_income_100000"), null);
     assert.equal(cleanFbp("fb.1.17279.1116446470"), null);
   });
 
@@ -107,27 +107,6 @@ describe("user_data", () => {
     assert.equal(cleanIp("[2001:db8::1]:443"), "2001:db8::1");
     assert.equal(cleanIp("203.0.113.7:8080"), "203.0.113.7");
     assert.equal(cleanIp("999.1.1.1"), null);
-  });
-});
-
-describe("the session's step-1 contact", () => {
-  test("read from slo.contact_started by session id, last two days, newest first", async () => {
-    const seen = [];
-    const db = { async query(sql, params) { seen.push({ sql, params }); return { rows: [{ email: "pat@gmail.com", phone: "+14155550134", actor: "person" }] }; } };
-    assert.deepEqual(await sessionContact(db, "org-1", "sess-abcdef12"),
-      { email: "pat@gmail.com", phone: "+14155550134", actor: "person" });
-    assert.equal(seen[0].sql, SESSION_CONTACT_SQL);
-    assert.deepEqual(seen[0].params, ["org-1", "sess-abcdef12"]);
-    assert.match(SESSION_CONTACT_SQL, /name = 'slo\.contact_started'/);
-    assert.match(SESSION_CONTACT_SQL, /payload->>'session_id' = \$2/);
-    assert.match(SESSION_CONTACT_SQL, /created_at > now\(\) - interval '2 days'/, "bounded, so idx_events_name serves it");
-  });
-
-  test("no row, no session, or a database error → null, never a throw", async () => {
-    assert.equal(await sessionContact({ query: async () => ({ rows: [] }) }, "org-1", "sess-abcdef12"), null);
-    assert.equal(await sessionContact({ query: async () => { throw new Error("down"); } }, "org-1", "sess-abcdef12"), null);
-    assert.equal(await sessionContact(null, "org-1", "sess-abcdef12"), null);
-    assert.equal(await sessionContact({ query: async () => { throw new Error("must not run"); } }, "org-1", ""), null);
   });
 });
 

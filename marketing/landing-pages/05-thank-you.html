@@ -188,9 +188,6 @@ body>div:last-child{margin-bottom:0!important;padding-bottom:0!important}
   a.style.display='';
   var ico=document.getElementById('fh-cal-inbox-ico');
   if(ico){ ico.src='https://www.google.com/s2/favicons?domain='+dom+'&sz=64'; ico.style.display=''; }
-  a.addEventListener('click', function(){
-    try{ if(typeof fbq!=='undefined') fbq('trackCustom','OpenInboxConfirm'); }catch(e){}
-  });
 })();
 </script>
 <!-- The booked route uses the accepted calendar relay and a fresh upcoming booking; thankyou-sort.js checks both. -->

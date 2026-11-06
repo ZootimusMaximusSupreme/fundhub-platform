@@ -13,6 +13,8 @@
  * carries metaPixelHeadHtml(META_PIXEL_FALLBACK_ID) as written text; a test keeps it equal.
  */
 
+import { createHash } from "node:crypto";
+
 export const META_PIXEL_FALLBACK_ID = "2403674420141513";
 
 /** @param {Record<string, string | undefined>} env */
@@ -22,40 +24,77 @@ export function metaPixelId(env = process.env) {
   return { id: META_PIXEL_FALLBACK_ID, envName: v ? "fallback (META_PIXEL_ID is not digits)" : "fallback (META_PIXEL_ID unset)" };
 }
 
-/**
- * Meta base pixel + ONE PageView that carries an event id (Phase 4 contract,
- * docs/tracking/meta-events.md "Same event_id in browser and server").
- *
- * window.__fhPv = "pv.<fh_sid>.<random>". fh_sid is the session id in sessionStorage,
- * made the same way public/funnel/fh-events.js and fh-attribution.js make it, so all
- * three agree. The shared tracker sends window.__fhPv as the page_view's
- * meta_event_id, and the server's PageView copy uses it, so Meta counts the page once.
- * A second copy of this block on the same page does nothing (window.__fhPv is set), so
- * a page never fires two PageViews from it.
- *
- * `noscript: false` leaves out the no-JavaScript image (the funnel head on ClickFunnels
- * keeps its own in the funnel footer code).
- */
-export function metaPixelHeadHtml(pixelId, { noscript = true } = {}) {
+/** Only reviewed, public landing pages may load the third-party SDK. A browser
+ * Pixel sees the document URL and referrer itself. Forms, signed links, frames,
+ * ad query strings and all other routes rely on first-party server tracking. */
+export function metaPixelHeadHtml(pixelId) {
   const id = String(pixelId).replace(/[^\d]/g, "");
   if (!id) return "";
-  const block = `<!-- Meta Pixel (Fundhub) -->
+  return `<!-- Meta Pixel (Fundhub) -->
 <script>
-!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-document,'script','https://connect.facebook.net/en_US/fbevents.js');
-if(!window.__fhPv&&window.self===window.top){(function(w){var s='';try{s=w.sessionStorage.getItem('fh_sid')||'';}catch(e){}
-if(!/^[A-Za-z0-9_-]{8,80}$/.test(s)){s=(Math.random().toString(36).slice(2)+new Date().getTime().toString(36)+Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);try{w.sessionStorage.setItem('fh_sid',s);}catch(e){}}
-w.__fhPv='pv.'+s+'.'+Math.random().toString(36).slice(2,10);})(window);
-fbq('init', '${id}');
-fbq('track', 'PageView', {}, {eventID: window.__fhPv});}
+(function (w, d) {
+  var pages = ['https://apply.fundhub.ai/watch', 'https://apply.fundhub.ai/blueprint'];
+  var origins = ['https://fundhub.ai/', 'https://apply.fundhub.ai/', 'https://www.facebook.com/', 'https://l.facebook.com/', 'https://www.instagram.com/', 'https://l.instagram.com/'];
+  function publicVisit() {
+    if (w.self !== w.top || w.location.href.indexOf('#') !== -1) return false;
+    var url;
+    try { url = new URL(w.location.href); } catch (err) { return false; }
+    if (url.username || url.password || pages.indexOf(url.origin + url.pathname) < 0) return false;
+    var acquisition = ['fbclid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id', 'utm_source_platform', 'utm_creative_format', 'utm_marketing_tactic', 'campaign_id', 'adset_id', 'ad_id'];
+    var allowed = true;
+    url.searchParams.forEach(function (_, key) { if (acquisition.indexOf(key) < 0) allowed = false; });
+    return allowed;
+  }
+  function sdkAddress() {
+    return w.self === w.top && pages.indexOf(w.location.href) >= 0 &&
+      (!d.referrer || pages.indexOf(d.referrer) >= 0 || origins.indexOf(d.referrer) >= 0);
+  }
+  if (!publicVisit() || w.__fhPv || !w.crypto || typeof w.crypto.randomUUID !== 'function') return;
+  w.__fhPv = w.crypto.randomUUID();
+  // /watch contains a hosted contact form. Its measurements use the server.
+  if (w.location.href !== pages[1] || !sdkAddress()) return;
+  function startPixel() {
+    if (!sdkAddress() || w.fbq || d.querySelector('form,input,select,textarea,iframe,object,embed,[contenteditable]')) return;
+    w.__fhMetaPixelAllowed = true;
+    !function(f,b,e,v,n,t,s){n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.referrerPolicy='no-referrer';t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(w,
+    d,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('set', 'autoConfig', false, '${id}');
+    fbq('init', '${id}');
+    fbq('track', 'PageView', {}, {eventID: window.__fhPv});
+    fbq('track', 'ViewContent', {}, {eventID: window.__fhPv + '.vc'});
+  }
+  if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', startPixel, { once: true });
+  else startPixel();
+})(window, document);
 </script>`;
-  if (!noscript) return block;
-  return `${block}
-<noscript><img height="1" width="1" style="display:none" alt=""
-src="https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1"/></noscript>`;
+}
+
+/** Classify rendered HTML without executing third-party code. Only one exact
+ * reviewed head script is accepted. A second initializer, noscript beacon or
+ * Direct ROAS relay anywhere else on the page fails the check. */
+export function metaTrackingState(html, expectedPixelId, { headFragment = false } = {}) {
+  const source = String(html ?? "").replace(/\r\n?/g, "\n").replace(/<!--[\s\S]*?-->/g, "");
+  const id = expectedPixelId ?? source.match(/fbq\('init', '(\d{6,20})'\)/)?.[1];
+  let unreviewed = source;
+  let guarded = false;
+  if (typeof id === "string" && /^\d{6,20}$/.test(id)) {
+    const script = metaPixelHeadHtml(id).slice("<!-- Meta Pixel (Fundhub) -->\n".length);
+    const headEnd = source.search(/<\/head\s*>/i);
+    const position = source.indexOf(script);
+    const inHead = headEnd >= 0 && source.lastIndexOf("<head", position) >= 0 && position < headEnd;
+    if (position >= 0 && (inHead || (headFragment && headEnd < 0))) {
+      guarded = true;
+      unreviewed = source.slice(0, position) + source.slice(position + script.length);
+    }
+  }
+  // Inspect executable code and resource-loading tags, not visible page copy.
+  const transport = /\b_?fbq\b|connect\.facebook\.net|facebook\.com\/tr(?:[/?#"']|$)|graph\.facebook\.com|app\.directroas\.com\/api\/hub/i;
+  const surfaces = unreviewed.match(/<script\b[^>]*>[\s\S]*?<\/script\s*>|<style\b[^>]*>[\s\S]*?<\/style\s*>|<[a-z][^>]*>/gi) || [];
+  if (surfaces.some(element => transport.test(element))) return "unsafe";
+  return guarded ? "guarded" : "absent";
 }
 
 /**
@@ -64,7 +103,7 @@ src="https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1"/></noscript>`;
  * (no comment, a plain fbq('track', 'PageView')) — measured by API GET 2026-10-02.
  */
 const FUNNEL_PIXEL_SCRIPT =
-  /(?:<!-- Meta Pixel \([^)\n]*\) -->[ \t]*\r?\n)?<script>(?:(?!<\/script>)[\s\S])*?fbq\('init'[\s\S]*?<\/script>(?:[ \t]*\r?\n<noscript>[\s\S]*?<\/noscript>)?/g;
+  /(?:<!-- Meta Pixel \([^)\n]*\) -->[ \t]*\r?\n)?<script>(?:(?!<\/script>)[\s\S])*?fbq\('init'[\s\S]*?<\/script>(?:[ \t]*\r?\n<noscript>\s*<img\b(?=[^>]*https:\/\/www\.facebook\.com\/tr\?)[^>]*>\s*<\/noscript>)?/g;
 
 /**
  * Funnel head_code with its Meta pixel swapped for metaPixelHeadHtml (PageView with
@@ -80,10 +119,9 @@ export function nextFunnelHeadCode(live, pixelId) {
   if (inits !== 1 || found.length !== 1) {
     throw new Error(`funnel head holds ${inits} pixel init(s) in ${found.length} script(s) — expected exactly one`);
   }
-  const m = found[0];
-  const want = metaPixelHeadHtml(pixelId, { noscript: m[0].includes("<noscript>") });
+  const want = metaPixelHeadHtml(pixelId);
   if (!want) throw new Error("no pixel id");
-  const next = code.slice(0, m.index) + want + code.slice(m.index + m[0].length);
+  const next = neutralizeHostedTracking(code, pixelId).next;
   return { next, changed: next !== code };
 }
 
@@ -190,9 +228,65 @@ function stripSrcTags(code, src) {
 const META_PIXEL_BLOCK =
   /[ \t]*<!-- Meta Pixel \([^)\n]*\) -->[ \t]*\r?\n<script>[\s\S]*?<\/script>[ \t]*(?:\r?\n<noscript>[\s\S]*?<\/noscript>)?[ \t]*\r?\n?/g;
 
-/** One Direct ROAS tag, or none when the funnel head already loads it. */
-const DIRECT_ROAS_BLOCK =
-  /[ \t]*<!-- Direct ROAS \([^)\n]*\) -->[ \t]*\r?\n<script async src="https:\/\/app\.directroas\.com\/[^"]+"><\/script>[ \t]*\r?\n?/g;
+/** Direct ROAS can send its own server conversions from forms and page URLs.
+ * Remove only the old Fundhub hub loader, including its optional generated label. */
+function removeDirectRoas(html) {
+  return html.replace(/(?:<!-- Direct ROAS \([^\n]*\) -->\s*)?<script\b[^>]*\bsrc=["']https:\/\/app\.directroas\.com\/api\/hub\/v1\/[^"']+["'][^>]*>\s*<\/script>/gi, "");
+}
+
+// Shipped standalone Pixel snippets from the old Fundhub template and the
+// original funnel head. Permit exactly those scripts (with any numeric pixel
+// id); unknown scripts may contain unrelated application code and require review.
+const LEGACY_PIXEL_DIGESTS = new Set([
+  "a9e38e5fc733e351e979d42bffa9f4ade13bfaa1e77563ef6b3cca6671847ee2",
+  "ef16e1bee34d0660221a236073e596e802da03e0468b1cfc5bbd12ba44b4f0c0"
+]);
+
+export function neutralizeHostedTracking(html, pixelId) {
+  const original = String(html ?? "");
+  // Process ordinary script elements only. Preserve adjacent SDKs, booking code
+  // and page-local markup even when the live page differs from its source file.
+  const startPattern = /(?:<!-- Meta Pixel \([^\n]*\) -->[ \t]*\r?\n)?<script>(?:(?!<\/script>)[\s\S])*?fbq\('init'(?:(?!<\/script>)[\s\S])*?<\/script>/g;
+  let next = original.replace(startPattern, block => {
+    const script = block.slice(block.indexOf("<script>")).replace(/\r\n?/g, "\n");
+    const currentId = script.match(/fbq\('init', '(\d+)'\)/)?.[1];
+    if (!currentId) throw new Error("unrecognized Meta initializer; refusing to replace unrelated code");
+    const approved = metaPixelHeadHtml(currentId);
+    if (script !== approved.slice(approved.indexOf("<script>"))) {
+      const normalized = script.replace(/(fbq\('init',\s*')\d+(')/g, "$1PIXEL$2");
+      if (!LEGACY_PIXEL_DIGESTS.has(createHash("sha256").update(normalized).digest("hex"))) {
+        throw new Error("unrecognized Meta initializer; refusing to replace unrelated code");
+      }
+    }
+    return metaPixelHeadHtml(pixelId);
+  });
+  next = next.replace(/<noscript>\s*<img\b(?=[^>]*https:\/\/www\.facebook\.com\/tr\?)[^>]*>\s*<\/noscript>/gi, "");
+  next = removeDirectRoas(next);
+  // Older editions of these three pages can still call an unrelated fbq stub.
+  next = next.replace(/try\s*\{\s*if\s*\(typeof fbq!=='undefined'\)\s*fbq\('trackCustom','(?:OpenInboxConfirm|AddToCalendar|PreviewOpened)'(?:,\{content_name:d\})?\);\s*\}catch\([ex]\)\{\}/g, "");
+  if (metaTrackingState(next, pixelId, { headFragment: true }) === "unsafe") {
+    throw new Error("unrecognized third-party tag remains; refusing a partial repair");
+  }
+  return { next, changed: next !== original };
+}
+
+// Copy the one reviewed callback from the source fragment. Never replace an
+// independently edited live survey or reinsert its embedded ingest credential.
+export function updateHostedApplyReceipt(html, source) {
+  const start = "    sent.then(function (saved) {\n      savingFinal = false;";
+  const finish = "      fht('survey_answer', p);";
+  const before = "    sent.then(function () {\n      savingFinal = false;\n" + finish;
+  const i = source.indexOf(start);
+  const j = source.indexOf(finish, i);
+  if (i < 0 || j < 0) throw new Error("source survey completion callback missing");
+  const after = source.slice(i, j + finish.length);
+  if (!after.includes("p.public_contact_receipt") || !after.includes("survey.completed")) {
+    throw new Error("source survey receipt missing");
+  }
+  if (html.includes(after)) return html;
+  if (html.split(before).length !== 2) throw new Error("live survey completion callback differs from reviewed version");
+  return html.replace(before, after);
+}
 
 function applyBlockPolicy(code, pattern, dropAll) {
   const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
@@ -207,16 +301,15 @@ function applyBlockPolicy(code, pattern, dropAll) {
 
 /**
  * Page head_code after a tracking cleanup.
- * Drop every page pixel / Direct ROAS block when `funnelHead` already has that
- * tag (the funnel head is on every builder step). Otherwise keep the first
- * copy and drop the rest. Marked blocks (fh-framed, fh-book-fit) stay.
+ * Keep one guarded Pixel when there is no inherited funnel Pixel and remove
+ * the independent Direct ROAS relay. Other builder code stays in place.
  * @returns {{ next: string, changed: boolean }}
  */
 export function nextHeadCode(live, { funnelHead = "" } = {}) {
   const funnel = String(funnelHead ?? "");
   const original = String(live ?? "");
   let next = applyBlockPolicy(original, META_PIXEL_BLOCK, funnel.includes("fbq('init'"));
-  next = applyBlockPolicy(next, DIRECT_ROAS_BLOCK, funnel.includes("directroas.com"));
+  next = neutralizeHostedTracking(next, metaPixelId().id).next;
   if (next !== original) next = next.replace(/^\n+/, "").replace(/\n+$/, "");
   return { next, changed: next !== original };
 }
@@ -293,18 +386,6 @@ export function nextFooterCode(live, { includeVslBeacon = false, extraSrcs = [],
  */
 export function isClickFunnelsPageHtml(html) {
   return typeof html === "string" && html.includes("data-page-element=");
-}
-
-/** Direct ROAS hub script (override with DIRECT_ROAS_HUB_URL in env). */
-export function directRoasScriptSrc(env = process.env) {
-  const fromEnv = String(env.DIRECT_ROAS_HUB_URL ?? "").trim();
-  if (fromEnv) return fromEnv;
-  return "https://app.directroas.com/api/hub/v1/cmsdutl8e00mukv041vwuo39w";
-}
-
-export function directRoasHeadHtml(env = process.env) {
-  const src = directRoasScriptSrc(env);
-  return `<!-- Direct ROAS (Fundhub) -->\n<script async src="${src}"></script>`;
 }
 
 export function clarityHeadHtml(env = process.env) {
@@ -462,7 +543,7 @@ export const PUSH_MANIFEST = [
     funnelId: "968281",
     liveUrl: "https://apply.fundhub.ai/watch",
     strategy: "funnel_head_pixel",
-    note: "Funnel-level head_code of the Fundhub Funnel: the Meta pixel every builder step loads (/watch, /funding-book-call, /thank-you, /order). Swaps only that pixel <script> for metaPixelHeadHtml (one PageView with eventID window.__fhPv); preconnect and Direct ROAS stay byte for byte. PUT /funnels/968281 head_code_mode replace, read back. Custom HTML steps (/apply, every 984178 step) carry their own copy in the page; funnel 984178 has no head code.",
+    note: "Funnel-level head_code of the Fundhub Funnel: the Meta pixel every builder step loads (/watch, /funding-book-call, /thank-you, /order). Swaps only that pixel <script> for metaPixelHeadHtml (one PageView with eventID window.__fhPv); unrelated head code is preserved. PUT /funnels/968281 head_code_mode replace, read back. Custom HTML steps (/apply, every 984178 step) carry their own copy in the page; funnel 984178 has no head code.",
   },
   {
     key: "apply-watch",

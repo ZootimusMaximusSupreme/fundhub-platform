@@ -9,19 +9,13 @@
 // META_WAIT_MS so the function host does not freeze the send. The outcome is
 // recorded on the same events row as payload.meta with one small UPDATE.
 //
-// Who goes to Meta: real people only. A row whose actor is not "person"
-// (automated or bot browser) never starts a job, and a session whose step-1
-// contact row was marked an agent (company or test email) is skipped too.
-//
-// Nothing starts unless META_CAPI_ENABLED is "1" and the row maps to a Meta
-// event and carries the browser's meta_event_id (src/meta/map.mjs). So with the
-// switch off this adds no query. The once-rules (InitiateCheckout once per
-// session, Purchase once per order, ReachedBuyBox once per page load) are the
-// browser's: it sends meta_event_id only when they pass.
+// Only reviewed public events are mapped. Match data, when available, comes
+// from the sender's own neutral survey session. A contact match is optional.
 
 import { sendMetaEvents, metaCapiEnabled } from "../messaging/providers/meta-capi.mjs";
-import { metaEventsFor, pageUrl } from "./map.mjs";
-import { buildUserData, sessionContact } from "./user-data.mjs";
+import { metaEventsFor } from "./map.mjs";
+import { buildUserData, isHashed } from "./user-data.mjs";
+import { publicContact } from "./public-contact.mjs";
 
 /* One key, so a ClickFunnels or other result written at the same moment is kept. */
 export const RECORD_META_SQL = `UPDATE events SET payload = payload || $1::jsonb WHERE id = $2`;
@@ -63,7 +57,8 @@ export function startMetaSend({ db, orgId, rowId, payload, actor, deps = {} }) {
     const at = deps.now instanceof Date ? deps.now : new Date();
     const list = candidates;
     try {
-      const contact = await sessionContact(db, orgId, payload.session_id);
+      const conversion = list.some(event => event.event_name === "Lead" || event.event_name === "Schedule");
+      const contact = conversion ? await (deps.publicContact || publicContact)(db, orgId, payload.session_id).catch(() => null) : null;
       if (contact?.actor === "agent") {
         const out = { ok: true, sent: 0, skipped: "agent_session" };
         await record(db, rowId, {
@@ -74,26 +69,23 @@ export function startMetaSend({ db, orgId, rowId, payload, actor, deps = {} }) {
       }
 
       const userData = buildUserData({
-        email: contact?.email,
-        phone: contact?.phone,
         ip: deps.clientIp,
         userAgent: deps.userAgent,
-        fbc: payload.fbc,
-        fbp: payload.fbp,
-        sessionId: payload.session_id
+        fbp: payload.fbp
       });
-      const sourceUrl = payload.url || pageUrl(payload.page);
+      if (isHashed(contact?.emailHash)) userData.em = [contact.emailHash];
+      if (isHashed(contact?.phoneHash)) userData.ph = [contact.phoneHash];
       const eventTime = Math.floor(at.getTime() / 1000);
       const events = list.map((e) => {
         const ev = {
           event_name: e.event_name,
           event_time: eventTime,
           event_id: e.event_id,
-          event_source_url: sourceUrl,
+          event_source_url: e.event_source_url,
           action_source: "website",
           user_data: userData
         };
-        if (e.custom_data) ev.custom_data = e.custom_data;
+        if (contact?.clientId) ev.matchedClientId = contact.clientId;
         return ev;
       });
 

@@ -41,7 +41,7 @@ POST /api/public/slo-interest
 | /roadmap-thank-you | roadmap | 3 |
 | /order | watch | 5 |
 
-`/thank-you--80c5a` is ClickFunnels' copy of `/thank-you` in the second calendar's funnel (994750); a booking made straight on `/funding-book-call--02424` lands there. The tracker names it `/thank-you` (`PAGE_ALIASES` in `public/funnel/fh-events.js`), so it sends exactly what `/thank-you` sends, and Cortana steps saved on either calendar page go out from it.
+`/thank-you--80c5a` is ClickFunnels' copy of `/thank-you` in the second calendar's funnel (994750); a booking made straight on `/funding-book-call--02424` lands there. The tracker names it `/thank-you` (`PAGE_ALIASES` in `public/funnel/fh-events.js`), so it sends exactly what `/thank-you` sends. Fundhub retains the confirmed-booking retry across this move; no third-party browser milestone queue is replayed.
 | /home | homepage | 1 |
 | /portal-login.html | portal | 1 |
 
@@ -65,7 +65,7 @@ Rows are added from `docs/tracking/page-inventory.md` (Phase 2). Same map in the
 | `carousel` | Testimonial carousel next, previous, play | `carousel`, `action` (next/prev/play), `index` | shared tracker (by `data-fh-carousel` / known classes) or page hook |
 | `faq_open` | Each FAQ question opened (`<details>` toggle or FAQ button) | `question` (label slug) | shared tracker |
 | `app_download_tap` | An Apple link (TestFlight or App Store) on `/thank-you` or `/portal-login.html` pressed; every press | none | shared tracker (by the link's address) |
-| `survey_answer` | Each survey question answered | `survey`, `step_num`, `question_id`, `last` (true once, on the survey's final submit), `credit_tier` (/apply final submit only: qualified for a 700-749 or 750+ score answer, else unqualified; never the score) | survey page hook |
+| `survey_answer` | Each survey question answered | `survey`, `step_num`, `question_id`, `last` (true once, on the survey's final submit), `credit_tier` (Fundhub only), `completion_acknowledged` plus optional `public_contact_receipt` for a saved public survey (local only) | survey page hook |
 | `survey_route` | Sorting hat routes someone | `survey`, `offer` (offer code) | thank-you / survey hook |
 | `buybox_tab` | Each buy box step shown (buy box v2 has no tabs: the "Step n of 3" line; same event, so before and after compare) | `tab` (1/2/3), `bbv` | /roadmap buy box hook |
 | `field_focus` | A buy box / survey / booking field gets focus, once per field per page load | `form`, `field` (name only), `bbv` (buy box only) | page hook |
@@ -73,7 +73,7 @@ Rows are added from `docs/tracking/page-inventory.md` (Phase 2). Same map in the
 | `continue` | Buy box step 1 button pressed ("Get My Funding Roadmap" on buy box v2, "Continue" before) | `step`, `bbv` | buy box hook |
 | `validation_error` | A field or step check fails | `form`, `field`, `code` (short slug, never the value), `bbv` (buy box only) | page hook |
 | `payment_attempt` | Pay pressed and card form submitted | `amount_cents`, `bbv` | buy box hook |
-| `payment_result` | checkout:success or a decline / error | `result` (success/fail), `code`, `bbv`, `order_ref` (the order: up to 64 letters, digits, _ or -; Meta's Purchase id is built from it, see meta-events.md) | buy box hook |
+| `payment_result` | checkout:success or a decline / error | `result` (success/fail), `code`, `bbv`, `order_ref` (internal order reference only) | buy box hook |
 | `softpull_submit` | Start My Soft Pull pressed and accepted by the form check | `businesses` (count), `bbv` | buy box hook |
 | `calendar_view` | A booking calendar is on screen | `calendar` | booking hook |
 | `time_selected` | A time slot picked | `calendar` | booking hook |
@@ -85,7 +85,7 @@ Rows are added from `docs/tracking/page-inventory.md` (Phase 2). Same map in the
 
 `deliverable` is one of exactly: `how_much_you_qualify_for`, `credit_analysis_report`, `credit_optimization_roadmap`, `dispute_letter_pack`, `bank_lender_match_list`, `business_duplication_map`. Any other value (or none) is refused with `deliverable_invalid` (HTTP 400) and nothing is saved. `open_ms` is whole milliseconds the preview stayed open, clamped 0..600000 (missing = 0).
 
-Each open also fires Meta custom event `PreviewOpened` with `content_name` = the deliverable (`fbq('trackCustom','PreviewOpened',{content_name:d})`, the same pixel and call style the thank-you pages use).
+Preview opens and the deliverable name stay in Fundhub.
 
 Same `session_id` (`fh_sid`) as the `continue` event, so a visitor's opens and their step-1 press join. View `v_roadmap_preview_continue_daily` (opened vs not-opened Continue rate per day) and `v_roadmap_preview_open_ms_daily` (average `open_ms` per deliverable per day): `db/migrations/405_roadmap_preview_views.sql`. Days are UTC. Only `actor = 'person'` sessions count.
 
@@ -113,15 +113,9 @@ Page hooks call it safely before or after the tracker has loaded:
 
 The tracker drains `window.fhq` when it loads. Inside an iframe the shared tracker stays silent (the parent page counts the step); a framed booking calendar reports through the parent page.
 
-### Cortana book-a-call observations (2026-10-20; local code, not live proof)
+### Booking observations
 
-The shared tracker also passes first-occurrence, non-revenue observations to the existing Cortana browser hub when `akTracking.trackEvent` is available. `/watch` records `book_call_watch_view`; `/apply` records `book_call_apply_view`, `book_call_apply_started` on the first survey answer, and `book_call_apply_final_answer` when the visitor finishes the last question. The survey webhook is fire-and-forget, so that last event does **not** prove the server accepted the application. The `/apply` parent or a directly opened `/funding-book-call` or `/funding-book-call--02424` records `book_call_calendar_view`, `book_call_time_selected`, and `book_call_booking_observed` only from the existing calendar event hooks. `/thank-you` records `book_call_thank_you_view`, even on a direct visit; it is not a booking confirmation. Neither browser booking observation nor page view is a provider-confirmed appointment or paid conversion.
-
-Each event uses the stable `dr.b.<name>.<fh_sid>` event ID, a timestamp, page path, funnel/stage, session ID, safe UTMs and available attribution cookies. It contains no survey answer, contact value, card data, amount, or currency. A bounded queue waits for the async Cortana hub; the Fundhub database event still sends when the hub is missing. The mapping excludes `/order`, `/roadmap`, and paid offers. Local tests prove the browser mapping and dedupe; a Cortana receipt and a verified booking are still required before calling this path live.
-
-Read-only public HTML on 2026-10-20 showed the Fundhub Cortana hub on `/watch`, `/funding-book-call`, and `/thank-you`, but not `/apply`; all four loaded the shared Fundhub tracker. The tracker now adds that same hub script once when a free-call milestone needs it and no hub script is present. The public hub script confirms `akTracking.trackEvent(eventName, eventData)`. This is source-level proof, not a Cortana event receipt after deployment.
-
-**App download tap (2026-10-26; local code, not live proof).** `/thank-you` and `/portal-login.html` record `book_call_app_download_tap` the first time in a session that a visitor presses an Apple link: TestFlight (`https://testflight.apple.com/…`) or the verified Fundhub Portal App Store listing (`https://apps.apple.com/us/app/fundhub-portal/id6823985032`). The tracker recognises the press by that link's address, not by card class names or setting keys. A link to any other host does not count. A page can see a tap and never an install, so the name says tap: nothing here reports a download or an install. The envelope, the once-per-session rule, the bounded hub queue and the no-automated-browser rule are the same as for the other eight, and the envelope carries no link address. The Fundhub event `app_download_tap` has no props; every press is saved, as a click is, and the press still saves its ordinary `click` row. A Cortana receipt is still required before calling this milestone live, as for the other eight.
+Fundhub retains first-party booking milestones. The hosted pages must not load an unrestricted ad relay or forward finance-selected calendar paths to Meta. See [the Meta contract](meta-events.md) for permitted external signals.
 
 ### Framed calendar → parent page
 
@@ -141,55 +135,12 @@ The page move can drop the `booking_confirmed` beacon (measured 2026-10-29: a Fa
 
 ### Booking confirmed — the one signal
 
-`booking_confirmed` (and Meta Schedule later) fire only when ClickFunnels has **accepted** the booking — never on the Book press alone (a Book press with a bad phone is refused by ClickFunnels). The /funding-book-call footer block stamps `fh_booking_v1.submittedAt` at that same moment, so the existing listeners on /apply and /roadmap-book keep working.
+`booking_confirmed` (and Meta Schedule for public funding calendars) fire only when ClickFunnels has **accepted** the booking — never on the Book press alone (a Book press with a bad phone is refused by ClickFunnels). The /funding-book-call footer block stamps `fh_booking_v1.submittedAt` at that same moment, so the existing listeners on /apply and /roadmap-book keep working.
 
 ## Clarity
 
 `public/js/clarity.js` (project `tscu15s674`) loads on every page in the inventory. The shared tracker also sends `click` labels to Clarity as custom events, as today.
 
-## Coverage — live 2026-10-02
+## Verification
 
-Every page also gets page_view, time_on_page, exit, click (id, label, position), scroll 25/50/75/100 and section_view from the shared tracker. Meta column: B = browser pixel only (no server copy yet — Phase 4 stopped, see `docs/tracking/meta-events.md`).
-
-| Page | Extra database events | Clarity | Meta today | Missing |
-|---|---|---|---|---|
-| /watch | video (VSL), carousel/FAQ if present | yes | PageView B | ViewContent, server copies |
-| /apply | survey_answer (9 screens), field_focus/complete, validation_error; calendar_view / time_selected / booking_confirmed relayed from the framed calendar | yes | PageView B, Lead B, Schedule B | server copies, SurveyStep custom |
-| /funding-book-call | calendar_view, time_selected, booking_confirmed (framed → parent; direct → itself) | yes | PageView B | Schedule when opened directly |
-| /thank-you | survey_route; app_download_tap (when the app card shows) | yes | PageView B, AddToCalendar B, OpenInboxConfirm B | SurveyRouted custom, Purchase per offer |
-| /portal-login.html | app_download_tap on the App Store link | no | none | live Cortana receipt after release |
-| /order | — | yes (added 2026-10-02) | PageView B | the native ClickFunnels checkout has no hooks of ours |
-| /roadmap | buybox_tab, field_focus/complete, continue, validation_error, payment_attempt, payment_result, softpull_submit, video, carousel, faq_open | yes | PageView B, InitiateCheckout B, PreviewOpened B | Lead, Purchase, ReachedBuyBox, SoftPullSubmitted, server copies |
-| /roadmap-book | calendar events relayed from the framed calendar, video | yes | PageView B | Schedule |
-| /roadmap-thank-you | — | yes | PageView B, AddToCalendar B, OpenInboxConfirm B | — |
-| fundhub.ai homepage survey (`/home`) | survey_answer (10 screens), field_focus/complete, validation_error | yes | none (no pixel on fundhub.ai) | pixel + all Meta events |
-| apply.fundhub.ai/schedule/phonecall | none — ClickFunnels gives no way to add code | ClickFunnels' own | none | cannot be tracked by us |
-
-## Phone checklist — run on your phone
-
-Open Meta Test Events first: https://business.facebook.com/events_manager2/list/pixel/2403674420141513/test_events — type `https://apply.fundhub.ai/roadmap` into "Test browser events", open the link it gives you on your phone. Our database events show up within a minute (an agent can read them back for you by session).
-
-Use an email ending `@fundhub.ai` so the system marks you as us, not a buyer.
-
-### /roadmap
-| # | Tap | You should see | Meta Test Events | Our database / ClickFunnels |
-|---|---|---|---|---|
-| 1 | Open https://apply.fundhub.ai/roadmap/ (with the slash) | The address bar drops the slash | PageView | funnel.page, then scroll / section_view as you scroll |
-| 2 | Look at the top of the buy box (buy box v2) | "Step 1 of 3", no tabs; "If you're not happy with what you get, email us within 7 days and we'll refund you." right above the button | — | funnel.buybox_tab tab 1, bbv 2 |
-| 3 | Type first name, last name, a valid email; tap out of the email box | Nothing visible | — | slo.contact_started with your email, no phone; ClickFunnels contact appears (agent emails are kept out of ClickFunnels — use a real non-@fundhub.ai email you own if you want to see it there) |
-| 4 | Look for a phone box on step 1 | Not there (it is on step 3, after paying; typed there, it merges into the same row and the same ClickFunnels contact) | — | — |
-| 5 | Tap Get My Funding Roadmap | Card boxes load; "Step 2 of 3" | — | funnel.continue, funnel.buybox_tab tab 2 (both bbv 2) |
-| 6 | Look for "$15" anywhere | Not there | — | — |
-| 7 | **Stop. Do not tap Get My Roadmap** (it charges $297) | — | — | — |
-
-### /apply → booking
-| # | Tap | You should see | Meta Test Events | Our database / CRM |
-|---|---|---|---|---|
-| 1 | Open https://apply.fundhub.ai/watch, tap Get Started | /apply | PageView ×2 | funnel.page /watch then /apply |
-| 2 | Fill contact, answer every screen | "You're qualified. Pick a time below." | Lead, plus QualifiedLead (score 700+) or UnqualifiedLead | survey_answer steps 1–9; step 9 has credit_tier |
-| 3 | Pick a time | Contact form inside the calendar | — | time_selected |
-| 4 | Book with a **bad phone** (e.g. 123) | ClickFunnels refuses | **No** Schedule | no booking_confirmed |
-| 5 | Book with a real phone | Booking confirmed | Schedule, plus QualifiedSchedule or UnqualifiedSchedule (same bucket as step 2) | booking_confirmed with credit_tier; a real appointment in ClickFunnels + CRM booking (cancel it after) |
-
-### Facebook / Instagram in-app (no charge)
-Send `https://apply.fundhub.ai/roadmap` to yourself in an Instagram DM (or post it to Facebook as Only me), tap it, fill step 1, tap Get My Funding Roadmap. Pass: card boxes show within ~10 seconds and the card number box brings up a number keyboard. Switch to Messages for a minute and come back — note whether the page reloaded to an empty step 1 (the reload fix is coming with the page agent's batch). Do not tap Get My Roadmap.
+Use the database event table above to check first-party page, survey, calendar, preview and checkout tracking. For Meta use only the [current event contract](meta-events.md) and intercepted outbound requests. A refused booking, partial survey, financial checkout or report must not emit a conversion. Confirm that accepted funding bookings on both calendars produce the same Schedule event and clean URL; do not create a live booking or charge as a tracking check.

@@ -40,7 +40,8 @@ import {
   PUSH_MANIFEST,
   VSL_WATCH_BEACON_SRC,
   hasScriptSrc,
-  metaPixelId
+  metaPixelId,
+  metaTrackingState
 } from "../../../marketing/landing-pages/tracking-manifest.mjs";
 import { AD_ACCOUNT_TZ, adAccountDay } from "../../lib/ad-account-day.mjs";
 import { FRESH_HOURS } from "../machine.mjs";
@@ -88,10 +89,11 @@ export function requiredPixelPage(manifest = PUSH_MANIFEST) {
   return row ? String(row.liveUrl) : "";
 }
 
-/** Live URLs of the pages that carry their own pixel copy (custom HTML). */
+/** Hosted custom forms and both native funding calendars must have no unguarded sender. */
 export function ownPixelPages(manifest = PUSH_MANIFEST) {
   const urls = (manifest || [])
-    .filter((r) => r && r.liveUrl && OWN_PIXEL_STRATEGIES.has(r.strategy))
+    .filter((r) => r?.liveUrl && (OWN_PIXEL_STRATEGIES.has(r.strategy)
+      || r.key === "apply-book" || r.key === "apply-book-survey-entry-unqualified"))
     .map((r) => String(r.liveUrl));
   return [...new Set(urls)];
 }
@@ -121,11 +123,9 @@ export function scriptsRequiredOn(pageUrl, manifest = PUSH_MANIFEST) {
   return [...need];
 }
 
-/** The page starts the Meta pixel with this id. A bare mention of the id is not enough. */
+/** The approved landing guard is present and no other sender was found. */
 export function pageHasPixel(html, pixelId) {
-  const id = String(pixelId || "");
-  if (!/^\d{6,20}$/.test(id)) return false;
-  return new RegExp(`fbq\\(\\s*['"]init['"]\\s*,\\s*['"]${id}['"]`).test(String(html ?? ""));
+  return metaTrackingState(html, pixelId) === "guarded";
 }
 
 export function pageHasClaritySnippet(html) {
@@ -359,16 +359,15 @@ function redact(text, hidden) {
 function assessPixel({ pageUrl, page, pixelId, source }) {
   const id = "pixel-on-funnel-page";
   const fix =
-    `Put the Meta pixel back on the funnel page the manifest names (${pageUrl || "funnel_head_pixel"}). ` +
-    `The id comes from META_PIXEL_ID, or META_PIXEL_FALLBACK_ID in tracking-manifest.mjs. ${RECON}`;
+    `Restore the reviewed privacy guard on ${pageUrl || "the public landing page"} and remove any separate Meta sender. ${RECON}`;
   if (page.error) return row(id, "FAIL", clip(page.error), fix);
   if (page.status < 200 || page.status >= 300) {
     return row(id, "FAIL", clip(`${pageUrl} answered ${page.status}`), fix);
   }
   if (!pageHasPixel(page.text, pixelId)) {
-    return row(id, "FAIL", clip(`${pageUrl} loaded, and the pixel id (${source}) is not started in the HTML`), fix);
+    return row(id, "FAIL", clip(`${pageUrl} loaded, and the approved Meta guard (${source}) is missing or another Meta sender is present`), fix);
   }
-  return row(id, "PASS", clip(`${pageUrl} HTML includes the pixel id (${source})`));
+  return row(id, "PASS", clip(`${pageUrl} HTML contains only the approved Meta guard (${source})`));
 }
 
 // The custom pages (/apply and the three roadmap steps) are written whole by the
@@ -377,22 +376,22 @@ function assessPixel({ pageUrl, page, pixelId, source }) {
 function assessOwnPages({ owns, pixelId }) {
   const id = "pixel-on-own-pages";
   const fix =
-    "Push the page again from marketing/landing-pages so its own Meta pixel block is back. " +
-    `The id comes from META_PIXEL_ID, or META_PIXEL_FALLBACK_ID in tracking-manifest.mjs. ${RECON}`;
+    `Keep first-party tracking and remove any unguarded Meta initializer, no-JavaScript beacon or Direct ROAS relay. ${RECON}`;
   if (!owns.length) {
-    return row(id, "skip", "The manifest names no custom page that carries its own pixel");
+    return row(id, "skip", "The manifest names no financial page to inspect");
   }
   const bad = [];
   for (const { url, got } of owns) {
     const path = urlPath(url);
     if (got.error) bad.push(`${path} (${got.error})`);
     else if (got.status < 200 || got.status >= 300) bad.push(`${path} (answered ${got.status})`);
-    else if (!pageHasPixel(got.text, pixelId)) bad.push(`${path} (pixel not started)`);
+    else if (metaTrackingState(got.text, pixelId) === "unsafe") bad.push(`${path} (unguarded Meta sender)`);
+    else if (!hasScriptSrc(got.text, FH_EVENTS_SRC)) bad.push(`${path} (first-party tracker missing)`);
   }
   if (bad.length) {
-    return row(id, "FAIL", clip(`Meta pixel missing on ${bad.join("; ")}`, 300), fix);
+    return row(id, "FAIL", clip(`Tracking privacy check failed on ${bad.join("; ")}`, 300), fix);
   }
-  return row(id, "PASS", clip(`${owns.map((o) => urlPath(o.url)).join(", ")} each start the Meta pixel`, 300));
+  return row(id, "PASS", clip(`${owns.map((o) => urlPath(o.url)).join(", ")} retain first-party tracking without an unguarded Meta sender`, 300));
 }
 
 function assessClarity({ pageUrl, page, clarityJs, manifest }) {

@@ -29,7 +29,11 @@ describe("the browser tracker on a built funnel page", () => {
     const p = makePage({ pathname: "/blueprint-book" });
     p.win.FH_FUNNEL = CONFIG("/blueprint-book");
     p.run();
-    p.fireWin("message", { origin: "https://apply.fundhub.ai", data: { fh: "track", event: "booking_confirmed", props: { calendar: "funding-book-call" } } });
+    const frame = p.node("iframe", { id: "fh-book-frame" });
+    frame.contentWindow = {};
+    p.add(frame);
+    p.fireWin("message", { origin: "https://apply.fundhub.ai", source: frame.contentWindow,
+      data: { fh: "track", event: "booking_confirmed", props: { calendar: "funding-book-call" } } });
     const b = p.events("booking_confirmed");
     assert.equal(b.length, 1);
     assert.equal(b[0].funnel_tag, "fnl-blueprint");
