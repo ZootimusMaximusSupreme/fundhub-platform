@@ -1,0 +1,34 @@
+{
+  "testedAt": "2026-11-06T20:20:10.476Z",
+  "provider": "Whop sandbox",
+  "resource": "GET /api/v1/variants",
+  "filters": {
+    "account_id": "biz_HJLxYsZFdxSfkV",
+    "product_ids": [
+      "prod_Ak27i3qIp7t21"
+    ],
+    "first": 20
+  },
+  "requests": 1,
+  "status": 200,
+  "responseKeys": [
+    "data",
+    "page_info",
+    "recommended_action"
+  ],
+  "variants": [
+    {
+      "id": "plan_cJW1bcTvWhcRl",
+      "title": null,
+      "accountMatches": true,
+      "productMatches": true,
+      "type": "one_time",
+      "initialPrice": 0,
+      "currency": "usd"
+    }
+  ],
+  "scope": "One authenticated, read-only list request for the exact fixture product. No checkout or other mutation requested.",
+  "receivedItems": 1,
+  "hasNextPage": false,
+  "readOk": true
+}

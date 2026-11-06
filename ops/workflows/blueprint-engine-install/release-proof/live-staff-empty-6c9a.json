@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-11-06T18:52:06.555614+00:00",
+  "source": "6c9a10d7a5c094166342018026ff15f4e94fa48d",
+  "site": "https://fundhub.ai",
+  "path": "/app/csm-queue.html",
+  "auth": "existing legitimate staff browser session",
+  "action": "Clicked Refresh clients in Full-package clients",
+  "observed": "No active full-package clients are in this view.",
+  "clientCards": 0,
+  "syntheticApiInterception": false,
+  "productionRowsWritten": 0,
+  "providerActions": 0,
+  "scope": "Staff panel refresh/empty state only, not a paid live buyer journey. Screenshot crop excludes the real customer call queue.",
+  "screenshot": "live-staff-empty-6c9a-MARKED.png"
+}

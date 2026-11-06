@@ -1,0 +1,37 @@
+{
+  "completedAt": "2026-11-06T20:24:46.842656+00:00",
+  "processes": [
+    {
+      "role": "anonymous Cloudflare tunnel",
+      "pid": 92724,
+      "port": 8944,
+      "signal": "SIGTERM",
+      "localListenerStopped": true,
+      "processExited": true
+    },
+    {
+      "role": "signature-only callback HTTP receiver/proxy",
+      "pid": 95352,
+      "port": 8933,
+      "signal": "SIGTERM",
+      "localListenerStopped": true,
+      "processExited": true
+    }
+  ],
+  "publicCallbackStatus": "temporary receiver and tunnel stopped locally after proof; no subsequent remote probe",
+  "protectedListenersUnchanged": true,
+  "protectedListenerPortsPresent": [
+    8901,
+    8902,
+    8903,
+    8904,
+    8905,
+    8907,
+    56548
+  ],
+  "privateFilesRetained": true,
+  "retainedFilesVerifiedByStat": 7,
+  "providerRequests": 0,
+  "dashboardChanges": 0,
+  "databaseChanges": 0
+}

@@ -1,0 +1,72 @@
+{
+  "checkedAt": "2026-11-06T18:45:44.052Z",
+  "source": "6c9a10d7a5c094166342018026ff15f4e94fa48d",
+  "serverWrites": 0,
+  "files": [
+    {
+      "path": "/app/blueprint-fulfillment.js",
+      "savedAs": "live-client.js",
+      "status": 200,
+      "sha256": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81",
+      "expectedSha256": "fceac6a73c7a6f512cef7f3d7338569f2645dafceb662534a82db403d0586b81",
+      "matchesSource": true,
+      "headers": {
+        "cache-control": "public,max-age=0,must-revalidate",
+        "etag": "W/\"f8ba96e29f81ef11b61ee2cf1edd0551-ssl\"",
+        "last-modified": null,
+        "age": "0",
+        "date": "Fri, 06 Nov 2026 18:45:44 GMT",
+        "content-type": "application/javascript; charset=UTF-8"
+      }
+    },
+    {
+      "path": "/app/blueprint-csm-services.js",
+      "savedAs": "live-csm.js",
+      "status": 200,
+      "sha256": "6ec711c17a476fe5fede8684e13973ebbc62c61733ab72c9aef0dc782e84424e",
+      "expectedSha256": "6ec711c17a476fe5fede8684e13973ebbc62c61733ab72c9aef0dc782e84424e",
+      "matchesSource": true,
+      "headers": {
+        "cache-control": "public,max-age=0,must-revalidate",
+        "etag": "W/\"333ed8efdd123f3bd5067d97aaba0d59-ssl\"",
+        "last-modified": null,
+        "age": "1",
+        "date": "Fri, 06 Nov 2026 18:45:45 GMT",
+        "content-type": "application/javascript; charset=UTF-8"
+      }
+    },
+    {
+      "path": "/app/client-portal.html",
+      "savedAs": "client-entry.html",
+      "status": 200,
+      "sha256": "751873d40b99b879541258824c2e7fe27538ec852a9ed84e91723ef948309631",
+      "expectedSha256": "751873d40b99b879541258824c2e7fe27538ec852a9ed84e91723ef948309631",
+      "matchesSource": true,
+      "headers": {
+        "cache-control": "public,max-age=0,must-revalidate",
+        "etag": "W/\"7428fb751424376b94684cc494641b8e-ssl\"",
+        "last-modified": null,
+        "age": "0",
+        "date": "Fri, 06 Nov 2026 18:45:45 GMT",
+        "content-type": "text/html; charset=UTF-8"
+      }
+    },
+    {
+      "path": "/app/csm-queue.html",
+      "savedAs": "staff-entry.html",
+      "status": 200,
+      "sha256": "3b9bd5a0814e618552fce8bc5b8af3698dffa80b8bd20a6a14bae30e742b68e1",
+      "expectedSha256": "3b9bd5a0814e618552fce8bc5b8af3698dffa80b8bd20a6a14bae30e742b68e1",
+      "matchesSource": true,
+      "headers": {
+        "cache-control": "public,max-age=0,must-revalidate",
+        "etag": "W/\"97465cea7023e23adc8af65e7d58510e-ssl\"",
+        "last-modified": null,
+        "age": "0",
+        "date": "Fri, 06 Nov 2026 18:45:45 GMT",
+        "content-type": "text/html; charset=UTF-8"
+      }
+    }
+  ],
+  "allMatch": true
+}

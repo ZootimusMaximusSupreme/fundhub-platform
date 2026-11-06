@@ -1,0 +1,35 @@
+{
+  "type": "Whop sandbox dashboard-generated Test event; no sandbox purchase",
+  "checkedAt": "2026-11-06T18:55:51.651Z",
+  "sample": {
+    "receivedAt": "2026-11-06T18:55:09.813Z",
+    "signatureVerified": true,
+    "webhookTimestamp": 1793991309,
+    "eventIdHash": "7e8889893bfe2a93521f4609aad661311ce3fc073aa7d6805fce4ae59922544c",
+    "bodySha256": "91de8a1a456abe3718c162d99c68c24fa6479baeb8519326f03bf1b874b91133",
+    "bytes": 4379,
+    "event": "payment.succeeded",
+    "accountMatches": false,
+    "status": 403
+  },
+  "syntheticScratchReadback": {
+    "role": "fundhub_app",
+    "billing_inbox": 0,
+    "payment_links": 0,
+    "transactions": 0,
+    "entitlements": 0,
+    "engagements": 0
+  },
+  "providerApiCallsByReceiver": 0,
+  "scope": "Vendor HMAC verified and normal router rejected sample account mismatch (403). No canonical payment or fulfillment was exercised.",
+  "dashboardReceipt": {
+    "event": "payment.succeeded",
+    "status": 403,
+    "body": {
+      "ok": false
+    },
+    "success": false,
+    "testClicks": 1,
+    "screenshot": "whop-vendor-test-403-MARKED.png"
+  }
+}

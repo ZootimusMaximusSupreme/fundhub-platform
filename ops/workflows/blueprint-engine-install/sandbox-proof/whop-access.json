@@ -1,21 +1,21 @@
 {
-  "checkedAt": "2026-11-06T18:21:41.403609+00:00",
+  "checkedAt": "2026-11-06T20:09:51.425134+00:00",
   "provider": "Whop",
   "host": "sandbox.whop.com",
-  "status": "sandbox_business_ready_key_creation_approval_pending",
+  "status": "sandbox_checkout403_permissions_unchanged_no_further_questions",
   "login": "existing owner account, normal email and requested one-time sign-in code",
   "sessionCopiedFromProduction": false,
   "termsAccepted": true,
-  "approval": "Owner conditioned acceptance on the Commas naming rule; the repair and independent verification completed before sandbox terms acceptance. A separate action-time approval for creating the prepared narrow key is pending.",
+  "approval": "Owner naming condition was verified before terms acceptance. Owner explicitly answered Create the sandbox key to the action-time four-scope key request on November6; root created only those four permissions and stored the value privately0600.",
   "gate": [
     "Terms of Service",
     "Seller Terms",
     "Spend Card Terms",
     "Wallet Terms"
   ],
-  "sandboxKeysCreated": 0,
+  "sandboxKeysCreated": 1,
   "sandboxCheckouts": 0,
-  "providerDeliveredWebhooks": 0,
+  "providerDeliveredWebhooks": 1,
   "productionRecordsChanged": false,
   "credentialsOrCodesInReceipt": false,
   "earlierSignedCallbacks": "local fixture transport only, recorded separately in result.json",
@@ -31,11 +31,81 @@
       "plan:basic:read",
       "payment:basic:read"
     ],
-    "created": false
+    "created": true
   },
   "automaticReview": {
     "action": "Select Create plans permission",
     "outcome": "rejected as broader access without specific approval",
-    "alternative": "Not selected; prepared only checkout create/read and read-only plan/payment access."
+    "alternative": "Not selected; prepared only checkout create/read and read-only plan/payment access.",
+    "latest": {
+      "action": "Select Create plans on the existing expiring sandbox key",
+      "outcome": "rejected",
+      "reason": "The casual owner reply was not accepted as explicit authorization to expand access.",
+      "persistedKeyPermissions": 4,
+      "createPlansSelected": false,
+      "workaroundAttempted": false
+    }
+  },
+  "providerDeliveredWebhookScope": "Dashboard-generated sample: signature verified, foreign account refused403, no purchase/canonical payment/fulfillment exercised.",
+  "webhook": {
+    "name": "Consulting Services Receipts",
+    "id": "hook_qPL9RwQDsZfT7",
+    "enabled": true,
+    "apiVersion": "2026-10-15-1",
+    "eventTypes": [
+      "payment.succeeded",
+      "payment.failed",
+      "payment.canceled",
+      "refund.created",
+      "refund.updated",
+      "dispute.created"
+    ],
+    "destination": "Temporary callback-only isolated scratch receiver; no production settings changed.",
+    "temporaryReceiverActive": false
+  },
+  "sandboxFixtureProduct": {
+    "id": "prod_Ak27i3qIp7t21",
+    "title": "Consulting Services Package",
+    "basePricing": "free base variant; actual tested checkout will use the accepted frozen amount",
+    "apps": 0,
+    "affiliates": false,
+    "storeVisible": false
+  },
+  "screenshots": [
+    "whop-sandbox-key-created-MARKED.png",
+    "whop-sandbox-product-created-MARKED.png"
+  ],
+  "checkoutAttempt": {
+    "count": 1,
+    "status": 403,
+    "urlReturned": false,
+    "paidEffects": 0,
+    "receipt": "whop-checkout-denied.json"
+  },
+  "pendingPermissionRequest": {
+    "label": "Create plans",
+    "documentedScope": "plan:create",
+    "reason": "Likely needed for an inline checkout plan; the actual403 does not identify a missing scope.",
+    "granted": false,
+    "sameKeySameExpiry": true,
+    "status": "not_authorized",
+    "ownerDirection": "Owner requested no further questions; agent continued with already approved access."
+  },
+  "readOnlyDiagnostic": {
+    "requests": 1,
+    "resource": "GET /variants for the exact sandbox product",
+    "status": 200,
+    "ownershipMatched": true,
+    "variants": 1,
+    "pricedVariantAtAcceptedAmount": false,
+    "receipt": "whop-variant-read.json"
+  },
+  "temporaryReceiver": {
+    "status": "stopped_after_proof",
+    "completedAt": "2026-11-06T20:24:46.842656+00:00",
+    "receipt": "whop-cleanup.json",
+    "walkthroughServersRetained": true,
+    "credentialsRetained": true,
+    "dashboardConfigChangedByCleanup": false
   }
 }
