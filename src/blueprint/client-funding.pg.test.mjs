@@ -3,9 +3,12 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
-import { grantFromTransaction } from "../entitlements/entitlements.mjs";
+import { forClient, grantFromTransaction, has } from "../entitlements/entitlements.mjs";
 import { getBlueprintFulfillmentAccess, requireBlueprintFulfillmentScope } from "./fulfillment-access.mjs";
 import { readBlueprintFunding, openBlueprintLender, reportBlueprintApplication, finishBlueprintSubmissions } from "./client-funding.mjs";
+import { createAccountSession } from "../auth/account-session.mjs";
+import { close as closeReadPool } from "../db.mjs";
+import readEntitlements from "../../api/read/entitlements.mjs";
 import fundingApi from "../../api/blueprint/funding.mjs";
 import { onMailResponse } from "../handlers/comms.mjs";
 import { isBlueprintCoachClient } from "./coach.mjs";
@@ -35,7 +38,7 @@ test("verified purchase → owner-scoped lender handoff → report → exact pur
     [accountId,orgId,person,"blueprint+"+person+"@example.test"]);
   await owner.query(`INSERT INTO products(org_id,code,name) VALUES ($1,'blueprint-self-funding','Synthetic full'),($1,'consulting-package','Synthetic prep')`,[orgId]);
   await owner.query(`INSERT INTO entitlement_catalog(org_id,code,name,kind) VALUES
-    ($1,'blueprint-client-fulfillment','Full','service'),($1,'credit-optimization-roadmap','Plan','service')`,[orgId]);
+    ($1,'blueprint-client-fulfillment','Full','service'),($1,'credit-optimization-roadmap','Plan','deliverable')`,[orgId]);
   await owner.query(`INSERT INTO product_entitlements(org_id,product_code,entitlement_code) VALUES
     ($1,'blueprint-self-funding','blueprint-client-fulfillment'),($1,'blueprint-self-funding','credit-optimization-roadmap'),
     ($1,'consulting-package','credit-optimization-roadmap')`,[orgId]);
@@ -52,6 +55,20 @@ test("verified purchase → owner-scoped lender handoff → report → exact pur
   assert.equal(await isBlueprintCoachClient(pool,scope),true);
   assert.equal(await getBlueprintFulfillmentAccess(pool,{orgId,clientId:other}),null);
   assert.equal((await readBlueprintFunding(pool,scope)).state,"needs_file");
+  const tiles=await forClient(pool,scope);
+  assert.deepEqual(tiles.held.map(row=>row.code),["credit-optimization-roadmap"]);
+  assert.equal(await has(pool,{...scope,code:"blueprint-client-fulfillment"}),true);
+  const {token}=await createAccountSession(pool,{orgId,accountId});
+  const request={method:"GET",query:{},headers:{authorization:"Bearer "+token}};
+  const portalResponse=()=>({ code:200,setHeader(){},status(code){this.code=code;return this;},json(body){this.body=body;} });
+  const raw=portalResponse();
+  t.after(closeReadPool);
+  await readEntitlements(request,raw);
+  assert.equal(raw.code,200);
+  assert.ok(raw.body.items.some(row=>row.entitlement_code==="blueprint-client-fulfillment" && row.kind==="service" && row.active));
+  const workspace=portalResponse();
+  await fundingApi(request,workspace,{db:pool});
+  assert.equal(workspace.code,200); assert.equal(workspace.body.engagement.id,scope.engagement.id);
   await owner.query(`INSERT INTO lenders(id,org_id,lender_table,name,application_url,eligible_states,bureaus_pulled,priority_tier,active,is_demo)
       VALUES($1,$3,'PersonalCC','Alpha','https://alpha.example.test/apply','AZ','EX',1,true,false),
             ($2,$3,'PersonalCC','Beta','https://beta.example.test/apply','AZ','TU',2,true,false)`,[...banks,orgId]);
