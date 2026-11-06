@@ -7,7 +7,7 @@ const ORG = "00000000-0000-4000-8000-000000000001";
 const STAFF = "00000000-0000-4000-8000-000000000002";
 const OTHER = "00000000-0000-4000-8000-000000000003";
 const auth = (role = "owner", mfa = true) => async req => {
-  req.session = { mfaVerifiedAt: mfa ? new Date() : null };
+  req.session = { id: OTHER, mfaVerifiedAt: mfa ? new Date() : null };
   return { id: STAFF, org_id: ORG, role };
 };
 const res = () => ({ statusCode: 200, body: null, jsonCalls: 0,
@@ -53,7 +53,7 @@ test("owner GET uses only session org for bank and cash data", async () => {
   assert.equal(cash.statusCode, 200);
 });
 
-test("owner bank actions use the owner session without a separate MFA check", async () => {
+test("owner bank actions use verified bank passkey assurance without changing normal login", async () => {
   for (const action of ["link_token", "exchange", "select_account", "sync", "refresh_balance"]) {
     const response = res();
     let called = 0;
@@ -70,7 +70,10 @@ test("owner bank actions use the owner session without a separate MFA check", as
     };
     await bankRoute({ method: "POST", body: { action, item_id: OTHER, account_id: OTHER,
       public_token: "public", consent: true, confirm_business_account: true } }, response,
-    { db: noDb, requireAuth: auth("owner", false),
+    { db: noDb, requireAuth: auth("owner", false), passkeyAssurance: async (_db, identity) => {
+        assert.equal(identity.sessionId, OTHER); assert.equal(identity.targetId, ORG);
+        return { verified_at: new Date() };
+      },
       linkToken: scoped, completeLink: complete, selectAccount: complete,
       sync: scoped, refreshBalance: scoped });
     assert.equal(response.statusCode, 200);
@@ -88,7 +91,7 @@ test("bank writes still require owner role and explicit business consent", async
   const noConsent = res();
   await bankRoute({ method: "POST", body: { action: "exchange", public_token: "public",
     account_id: "plaid-business", confirm_business_account: true } }, noConsent,
-    { db: noDb, requireAuth: auth("owner", false),
+    { db: noDb, requireAuth: auth("owner", false), passkeyAssurance: async () => ({ verified_at: new Date() }),
       completeLink: () => { throw new Error("bank exchange ran without consent"); } });
   assert.equal(noConsent.statusCode, 400);
   assert.equal(noConsent.body.error, "business_account_and_consent_required");
@@ -99,7 +102,7 @@ test("bank exchange pins owner identity and records consent; cash match pins org
   await bankRoute({ method: "POST", body: { action: "exchange", org_id: OTHER,
     staff_id: OTHER, public_token: "public", account_id: "plaid-business",
     consent: true, confirm_business_account: true } }, bank,
-  { db: noDb, requireAuth: auth(), env: {}, completeLink: async (database, args) => {
+  { db: noDb, requireAuth: auth(), env: {}, passkeyAssurance: async () => ({ verified_at: new Date() }), completeLink: async (database, args) => {
     assert.equal(args.orgId, ORG);
     assert.equal(args.staffId, STAFF);
     assert.equal(args.accountId, "plaid-business");
@@ -149,4 +152,15 @@ test("sync conflict is retryable 409 with no server error", async () => {
     ({ ok: false, reason: "sync_conflict", retryable: true }) });
   assert.equal(response.statusCode, 409);
   assert.deepEqual(response.body, { ok: false, reason: "sync_conflict", retryable: true });
+});
+
+test("owner bank token and exchange refuse missing assurance before calling Plaid", async () => {
+  for (const action of ["link_token", "exchange"]) {
+    const response = res(); let calls = 0;
+    await bankRoute({ method: "POST", body: { action, public_token: "public", account_id: "bank",
+      consent: true, confirm_business_account: true } }, response,
+      { db: noDb, requireAuth: auth(), passkeyAssurance: async () => null,
+        linkToken: async () => { calls++; }, completeLink: async () => { calls++; } });
+    assert.equal(response.statusCode, 403); assert.equal(response.body.error, "passkey_required"); assert.equal(calls, 0);
+  }
 });
