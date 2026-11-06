@@ -15,7 +15,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
 
-import { parseArgs, plan, apply, resolveActor, validateApplySession } from "./retention-purge.mjs";
+import { parseArgs, plan, countOnlyPlan, apply, resolveActor, validateApplySession } from "./retention-purge.mjs";
 import { CLASSES, MOCK_EVENT_KEY_PATTERNS, MOCK_CLIENT_EMAILS } from "../src/retention/classes.mjs";
 import { DATA_CLASSES, loadPolicy, RetentionError } from "../src/retention/policy.mjs";
 
@@ -176,6 +176,21 @@ describe("an unset retention period means DO NOTHING, never zero", () => {
     signed_off_at: null,
     signed_off_by: null
   }));
+
+  test("an intentional signed retain policy stays signed and truthful in the count-only receipt without counting or purging", async () => {
+    const db = fakeDb({
+      "FROM retention_policy": [{ data_class: "broker_upload_rows", retain_days: null,
+        action: "retain", signed_off_at: "2026-08-31T21:52:56Z", signed_off_by: "owner" }],
+      "FROM v_retention_policy_gaps": []
+    });
+    const result = await plan(db, { orgId: ORG });
+    const item = countOnlyPlan(result.items).find(row => row.dataClass === "broker_upload_rows");
+    assert.deepEqual(item, { dataClass: "broker_upload_rows", action: "retain", retainDays: null,
+      signedOff: true, expired: null, skipped: "owner-approved retain in full; no scheduled purge" });
+    assert.deepEqual(db.writes(), []);
+    assert.equal(db.queries.length, 2, "a retained class must not query its data table");
+    assert.equal(result.gaps.length, 0);
+  });
 
   test("NULL retain_days leaves the key ABSENT, not zero", async () => {
     const db = fakeDb({ "FROM retention_policy": POLICY_ALL_NULL });
