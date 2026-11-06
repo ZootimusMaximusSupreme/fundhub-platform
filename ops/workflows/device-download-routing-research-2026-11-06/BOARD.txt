@@ -421,3 +421,18 @@ required repair and keeps source/CI/protected-release proof. No separate CI PR.
 unpublished1163685 repairs and owns that source-boundary resolution. Current
 guard review does not prove437 publication or solve an unreviewed new helper
 boundary. Device feature still local; registrations parked pending CRS parent.
+
+REVIEWABLE DEVICE DRAFT PREPARATION
+Safely rebased unpublished own source on current origin/main; no content
+conflicts. Preflight behind0,blocking0; only3inactive historical shell warnings,
+no active shared file claims. Main now includes436. CI guard is independently
+reviewed and transferred to437, not part of device branch. Create UNQUEUED
+Draft PR against main for source visibility/review; no ship-order label, ready
+status, auto-merge or deployment. This source is intentionally unfinished while
+its exact2registrationlines stay parked for ancestor/CRS ownership. The earlier
+120/120 registration proof applies to saved registered candidate073650153;
+current draft does not claim those gates pass. Chrome/WebKit newfeature48each
+and other focused source proof still describe unchanged owned UI/runtime code.
+After ready437/CRS parent publishes, inherit normal helper, reapply own exact
+2linepatch, refresh manifests, rerun requiredgates, markreadyanduse ship-change.
+Do not substitute this Draft for the requested finished live app outcome.

@@ -7,8 +7,8 @@
   "credentials_or_customer_data_in_transfer": false,
   "native_binary_changes": false,
   "tracking_sender_changes": false,
-  "base": "b53c30f052b966017189052ecc063b3824674d30",
-  "publication": "not deployed; two monitoring entries temporarily parked to unblock ancestor437 repair",
+  "base": "04b981f5cb613393d39096fd6be7c73f11ce0454",
+  "publication": "unfinished draft for review; not queued or deployed; two monitoring entries parked for CRS parent",
   "pending_shared_files": [
     "src/pulse/registry.mjs",
     "src/pulse/tripwires.mjs"
