@@ -1,0 +1,282 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-03T11:13:24.978Z",
+  "evidenceNote": "Seeded from the earliest retained actual scan artifact 13225856060. Earlier history is unknown; these are first-observed evidence dates, not claimed vulnerability introduction dates.",
+  "findings": [
+    {
+      "id": "gaxios|GHSA-3g3m-2fjr-6pw4",
+      "package": "gaxios",
+      "advisoryId": "GHSA-3g3m-2fjr-6pw4",
+      "advisoryUrl": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4",
+      "advisoryRange": ">=9.0.0 <=14.0.1",
+      "packageRange": "7.1.3",
+      "severity": "moderate",
+      "direct": false,
+      "owner": "Chris Stanbridge (security owner)",
+      "firstObservedAt": "2026-11-03T11:13:24.978Z",
+      "firstObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "earlierHistoryUnknown": true,
+      "dueAt": "2026-12-03T11:13:24.978Z",
+      "lastObservedAt": "2026-11-03T11:13:24.978Z",
+      "lastObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "status": "open",
+      "resolvedAt": null,
+      "observedRanges": [
+        {
+          "advisory": ">=9.0.0 <=14.0.1",
+          "package": "7.1.3"
+        }
+      ]
+    },
+    {
+      "id": "gaxios|GHSA-g3hv-75wg-m249",
+      "package": "gaxios",
+      "advisoryId": "GHSA-g3hv-75wg-m249",
+      "advisoryUrl": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "advisoryRange": "<11.0.1",
+      "packageRange": "7.1.3",
+      "severity": "moderate",
+      "direct": false,
+      "owner": "Chris Stanbridge (security owner)",
+      "firstObservedAt": "2026-11-03T11:13:24.978Z",
+      "firstObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "earlierHistoryUnknown": true,
+      "dueAt": "2026-12-03T11:13:24.978Z",
+      "lastObservedAt": "2026-11-03T11:13:24.978Z",
+      "lastObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "status": "open",
+      "resolvedAt": null,
+      "observedRanges": [
+        {
+          "advisory": "<11.0.1",
+          "package": "7.1.3"
+        }
+      ]
+    },
+    {
+      "id": "gcp-metadata|GHSA-3g3m-2fjr-6pw4",
+      "package": "gcp-metadata",
+      "advisoryId": "GHSA-3g3m-2fjr-6pw4",
+      "advisoryUrl": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4",
+      "advisoryRange": ">=9.0.0 <=14.0.1",
+      "packageRange": "8.1.3 - 8.1.4",
+      "severity": "moderate",
+      "direct": false,
+      "owner": "Chris Stanbridge (security owner)",
+      "firstObservedAt": "2026-11-03T11:13:24.978Z",
+      "firstObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "earlierHistoryUnknown": true,
+      "dueAt": "2026-12-03T11:13:24.978Z",
+      "lastObservedAt": "2026-11-03T11:13:24.978Z",
+      "lastObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "status": "open",
+      "resolvedAt": null,
+      "observedRanges": [
+        {
+          "advisory": ">=9.0.0 <=14.0.1",
+          "package": "8.1.3 - 8.1.4"
+        }
+      ]
+    },
+    {
+      "id": "gcp-metadata|GHSA-g3hv-75wg-m249",
+      "package": "gcp-metadata",
+      "advisoryId": "GHSA-g3hv-75wg-m249",
+      "advisoryUrl": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "advisoryRange": "<11.0.1",
+      "packageRange": "8.1.3 - 8.1.4",
+      "severity": "moderate",
+      "direct": false,
+      "owner": "Chris Stanbridge (security owner)",
+      "firstObservedAt": "2026-11-03T11:13:24.978Z",
+      "firstObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "earlierHistoryUnknown": true,
+      "dueAt": "2026-12-03T11:13:24.978Z",
+      "lastObservedAt": "2026-11-03T11:13:24.978Z",
+      "lastObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "status": "open",
+      "resolvedAt": null,
+      "observedRanges": [
+        {
+          "advisory": "<11.0.1",
+          "package": "8.1.3 - 8.1.4"
+        }
+      ]
+    },
+    {
+      "id": "glob|GHSA-3g3m-2fjr-6pw4",
+      "package": "glob",
+      "advisoryId": "GHSA-3g3m-2fjr-6pw4",
+      "advisoryUrl": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4",
+      "advisoryRange": ">=9.0.0 <=14.0.1",
+      "packageRange": "3.0.0 - 14.0.1",
+      "severity": "moderate",
+      "direct": false,
+      "owner": "Chris Stanbridge (security owner)",
+      "firstObservedAt": "2026-11-03T11:13:24.978Z",
+      "firstObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "earlierHistoryUnknown": true,
+      "dueAt": "2026-12-03T11:13:24.978Z",
+      "lastObservedAt": "2026-11-03T11:13:24.978Z",
+      "lastObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "status": "open",
+      "resolvedAt": null,
+      "observedRanges": [
+        {
+          "advisory": ">=9.0.0 <=14.0.1",
+          "package": "3.0.0 - 14.0.1"
+        }
+      ]
+    },
+    {
+      "id": "glob|GHSA-g3hv-75wg-m249",
+      "package": "glob",
+      "advisoryId": "GHSA-g3hv-75wg-m249",
+      "advisoryUrl": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "advisoryRange": "<11.0.1",
+      "packageRange": "3.0.0 - 14.0.1",
+      "severity": "moderate",
+      "direct": false,
+      "owner": "Chris Stanbridge (security owner)",
+      "firstObservedAt": "2026-11-03T11:13:24.978Z",
+      "firstObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "earlierHistoryUnknown": true,
+      "dueAt": "2026-12-03T11:13:24.978Z",
+      "lastObservedAt": "2026-11-03T11:13:24.978Z",
+      "lastObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "status": "open",
+      "resolvedAt": null,
+      "observedRanges": [
+        {
+          "advisory": "<11.0.1",
+          "package": "3.0.0 - 14.0.1"
+        }
+      ]
+    },
+    {
+      "id": "inngest|GHSA-mrhx-c7xc-m3w5",
+      "package": "inngest",
+      "advisoryId": "GHSA-mrhx-c7xc-m3w5",
+      "advisoryUrl": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+      "advisoryRange": "<4.6.6",
+      "packageRange": "0.0.0-streaming-20230424112237 || 0.4.0-beta.1 - 3.41.0 || >=3.45.1-pr-1160.0",
+      "severity": "high",
+      "direct": true,
+      "owner": "Chris Stanbridge (security owner)",
+      "firstObservedAt": "2026-11-03T11:13:24.978Z",
+      "firstObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "earlierHistoryUnknown": true,
+      "dueAt": "2026-12-03T11:13:24.978Z",
+      "lastObservedAt": "2026-11-03T11:13:24.978Z",
+      "lastObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "status": "open",
+      "resolvedAt": null,
+      "observedRanges": [
+        {
+          "advisory": "<4.6.6",
+          "package": "0.0.0-streaming-20230424112237 || 0.4.0-beta.1 - 3.41.0 || >=3.45.1-pr-1160.0"
+        }
+      ]
+    },
+    {
+      "id": "minimatch|GHSA-g3hv-75wg-m249",
+      "package": "minimatch",
+      "advisoryId": "GHSA-g3hv-75wg-m249",
+      "advisoryUrl": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "advisoryRange": "<11.0.1",
+      "packageRange": "<11.0.1",
+      "severity": "moderate",
+      "direct": false,
+      "owner": "Chris Stanbridge (security owner)",
+      "firstObservedAt": "2026-11-03T11:13:24.978Z",
+      "firstObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "earlierHistoryUnknown": true,
+      "dueAt": "2026-12-03T11:13:24.978Z",
+      "lastObservedAt": "2026-11-03T11:13:24.978Z",
+      "lastObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "status": "open",
+      "resolvedAt": null,
+      "observedRanges": [
+        {
+          "advisory": "<11.0.1",
+          "package": "<11.0.1"
+        }
+      ]
+    },
+    {
+      "id": "rimraf|GHSA-3g3m-2fjr-6pw4",
+      "package": "rimraf",
+      "advisoryId": "GHSA-3g3m-2fjr-6pw4",
+      "advisoryUrl": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4",
+      "advisoryRange": ">=9.0.0 <=14.0.1",
+      "packageRange": ">=4.2.0",
+      "severity": "moderate",
+      "direct": false,
+      "owner": "Chris Stanbridge (security owner)",
+      "firstObservedAt": "2026-11-03T11:13:24.978Z",
+      "firstObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "earlierHistoryUnknown": true,
+      "dueAt": "2026-12-03T11:13:24.978Z",
+      "lastObservedAt": "2026-11-03T11:13:24.978Z",
+      "lastObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "status": "open",
+      "resolvedAt": null,
+      "observedRanges": [
+        {
+          "advisory": ">=9.0.0 <=14.0.1",
+          "package": ">=4.2.0"
+        }
+      ]
+    },
+    {
+      "id": "rimraf|GHSA-g3hv-75wg-m249",
+      "package": "rimraf",
+      "advisoryId": "GHSA-g3hv-75wg-m249",
+      "advisoryUrl": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "advisoryRange": "<11.0.1",
+      "packageRange": ">=4.2.0",
+      "severity": "moderate",
+      "direct": false,
+      "owner": "Chris Stanbridge (security owner)",
+      "firstObservedAt": "2026-11-03T11:13:24.978Z",
+      "firstObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "earlierHistoryUnknown": true,
+      "dueAt": "2026-12-03T11:13:24.978Z",
+      "lastObservedAt": "2026-11-03T11:13:24.978Z",
+      "lastObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "status": "open",
+      "resolvedAt": null,
+      "observedRanges": [
+        {
+          "advisory": "<11.0.1",
+          "package": ">=4.2.0"
+        }
+      ]
+    },
+    {
+      "id": "zod|GHSA-mrhx-c7xc-m3w5",
+      "package": "zod",
+      "advisoryId": "GHSA-mrhx-c7xc-m3w5",
+      "advisoryUrl": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+      "advisoryRange": "<4.6.6",
+      "packageRange": "<4.6.6",
+      "severity": "high",
+      "direct": false,
+      "owner": "Chris Stanbridge (security owner)",
+      "firstObservedAt": "2026-11-03T11:13:24.978Z",
+      "firstObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "earlierHistoryUnknown": true,
+      "dueAt": "2026-12-03T11:13:24.978Z",
+      "lastObservedAt": "2026-11-03T11:13:24.978Z",
+      "lastObservedRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/41625685920",
+      "status": "open",
+      "resolvedAt": null,
+      "observedRanges": [
+        {
+          "advisory": "<4.6.6",
+          "package": "<4.6.6"
+        }
+      ]
+    }
+  ]
+}
