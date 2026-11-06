@@ -26,7 +26,14 @@ export async function isBlueprintCoachClient(db, { orgId, clientId, asOf = new D
         AND e.entitlement_code = 'credit-optimization-roadmap'
         AND e.revoked_at IS NULL
         AND (e.expires_at IS NULL OR e.expires_at > $3::timestamptz)
-        AND lower(btrim(p.code)) = $4
+        AND (lower(btrim(p.code)) = $4 OR
+              (lower(btrim(p.code)) = 'blueprint-self-funding' AND EXISTS (
+                 SELECT 1 FROM blueprint_fulfillment_engagements bf
+                   JOIN entitlements access ON access.id = bf.source_entitlement_id
+                  WHERE bf.org_id = t.org_id AND bf.client_id = t.client_id
+                    AND bf.source_transaction_id = t.id AND bf.status = 'active'
+                    AND access.revoked_at IS NULL AND (access.expires_at IS NULL OR access.expires_at > $3)
+              )))
         AND lower(btrim(COALESCE(t.status, ''))) = $5
         AND t.created_at <= $3::timestamptz
         AND (t.created_at + interval '12 months') > $3::timestamptz
