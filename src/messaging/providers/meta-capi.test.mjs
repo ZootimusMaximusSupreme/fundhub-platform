@@ -37,19 +37,16 @@ function fakeMeta({ status = 200, reply } = {}) {
 const EVENT = Object.freeze({
   event_name: "Lead",
   event_time: 1727900000,
-  event_id: "sess-abcdef12.4",
-  event_source_url: "https://apply.fundhub.ai/roadmap",
+  event_id: "1a234567-89ab-4cde-8123-456789abcdef",
+  event_source_url: "https://apply.fundhub.ai/apply",
   action_source: "website",
   user_data: {
     client_ip_address: "203.0.113.7",
     client_user_agent: "Mozilla/5.0",
-    fbc: "fb.1.1727900000000.IwAR2abc",
     fbp: "fb.1.1727900000000.1116446470",
     em: [sha256("pat@gmail.com")],
-    ph: [sha256("14155550134")],
-    external_id: [sha256("sess-abcdef12")]
+    ph: [sha256("14155550134")]
   },
-  custom_data: { content_name: "roadmap_buybox" }
 });
 
 beforeEach(() => clearMetaTokenCache());
@@ -113,7 +110,7 @@ describe("the request", () => {
 
   test("batches of 1000; sent is what Meta says it received", async () => {
     const meta = fakeMeta({ reply: (b) => ({ events_received: b.data.length }) });
-    const many = Array.from({ length: 2500 }, (_, i) => ({ ...EVENT, event_id: `sess-abcdef12.${i}` }));
+    const many = Array.from({ length: 2500 }, (_, i) => ({ ...EVENT, event_id: `01234567-89ab-4000-8000-${String(i).padStart(12, "0")}` }));
     const out = await sendMetaEvents(many, { env: ON, fetchImpl: meta.fetchImpl });
     assert.equal(MAX_BATCH, 1000);
     assert.deepEqual(meta.calls.map((c) => c.body.data.length), [1000, 1000, 500]);
@@ -152,34 +149,34 @@ describe("never raw PII, only listed keys", () => {
       custom_data: { value: 297, currency: "USD", content_name: "x", ssn: "123-45-6789", income: "$90k", answer: "yes", card_number: "4242" }
     });
     assert.deepEqual(Object.keys(out).sort(),
-      ["action_source", "custom_data", "event_id", "event_name", "event_source_url", "event_time", "user_data"]);
+      ["action_source", "event_id", "event_name", "event_source_url", "event_time", "user_data"]);
     assert.deepEqual(Object.keys(out.user_data).sort(),
-      ["client_ip_address", "client_user_agent", "em", "external_id", "fbc", "fbp", "ph"]);
-    assert.deepEqual(out.custom_data, { value: 297, currency: "USD", content_name: "x" });
+      ["client_ip_address", "client_user_agent", "em", "fbp", "ph"]);
+    assert.equal(out.custom_data, undefined);
     assert.equal(out.action_source, "website");
   });
 
-  test("action_source: website by default, system_generated kept for a server-only event", async () => {
-    assert.equal(sanitizeEvent({ ...EVENT, action_source: undefined }).action_source, "website");
-    assert.equal(sanitizeEvent({ ...EVENT, action_source: "physical_store" }).action_source, "website");
-    const meta = fakeMeta();
-    const out = await sendMetaEvents([{
-      event_name: "Purchase",
-      event_time: 1727900000,
-      event_id: "purchase.slo_ab12",
-      action_source: "system_generated",
-      user_data: { em: [sha256("pat@gmail.com")], ph: [sha256("14155550134")] },
-      custom_data: { value: 297, currency: "USD" }
-    }], { env: ON, fetchImpl: meta.fetchImpl });
-    assert.deepEqual(out, { ok: true, sent: 1 });
-    assert.deepEqual(meta.calls[0].body.data, [{
-      event_name: "Purchase",
-      event_time: 1727900000,
-      event_id: "purchase.slo_ab12",
-      action_source: "system_generated",
-      user_data: { em: [sha256("pat@gmail.com")], ph: [sha256("14155550134")] },
-      custom_data: { value: 297, currency: "USD" }
-    }], "no event_source_url and no client_user_agent needed, none invented");
+  test("free-text click ids, financial labels and caller-supplied external ids never cross the sender", () => {
+    const untrusted = { fbc: "fb.1.1793900000000.credit_800_income_100000",
+      fbp: "fb.1.1793900000000.subprime_qual", external_id: [sha256("credit_800_income_100000")] };
+    const unsafe = { ...EVENT, matchedClientId: "credit_800_income_100000", user_data: untrusted };
+    assert.deepEqual(sanitizeEvent(unsafe).user_data, {});
+    const clientId = "afeae72a-9544-472e-99a6-fe5db433d526";
+    const safe = sanitizeEvent({ ...unsafe, matchedClientId: clientId, user_data: { ...untrusted, fbp: EVENT.user_data.fbp } });
+    assert.deepEqual(safe.user_data, { external_id: [sha256(clientId)], fbp: EVENT.user_data.fbp });
+    assert.ok(!JSON.stringify(safe).includes(clientId));
+    const view = sanitizeEvent({ ...unsafe, matchedClientId: clientId, event_name: "PageView", event_source_url: "https://apply.fundhub.ai/watch" });
+    assert.equal(view.user_data.external_id, undefined);
+  });
+
+  test("deprecated financial names and arbitrary URLs never reach the transport", async () => {
+    for (const event_name of ["QualifiedLead", "UnqualifiedLead", "SurveyRouted", "SurveyStep", "InitiateCheckout", "Purchase", "SoftPullSubmitted", "QualifiedSchedule", "UnqualifiedSchedule", "Other"]) {
+      assert.equal(sanitizeEvent({ ...EVENT, event_name }), null);
+    }
+    for (const event_source_url of ["https://other.example/apply", "https://apply.fundhub.ai/apply?ticket=secret", "https://apply.fundhub.ai/funding-book-call--02424", undefined]) {
+      assert.equal(sanitizeEvent({ ...EVENT, event_source_url }), null);
+    }
+    assert.equal(sanitizeEvent({ ...EVENT, action_source: "system_generated" }), null);
   });
 
   test("an event without a usable name or id is dropped", async () => {

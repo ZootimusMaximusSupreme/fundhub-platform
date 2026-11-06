@@ -52,6 +52,14 @@ describe("every page carries the tag and the tracking", () => {
     });
   }
 
+  test("builder rejects an unconditional Pixel or a second sender after the approved head", () => {
+    const safe = page("booking");
+    const unguarded = safe.replace('if (w.location.href !== pages[1] || !sdkAddress()) return;', '');
+    assert.ok(trackingGaps(unguarded, "fnl-blueprint").some(gap => gap.includes("privacy guard")));
+    const extra = '<img src="https://www.facebook.com/tr?id=999">';
+    assert.ok(trackingGaps(safe.replace("</body>", extra + "</body>"), "fnl-blueprint").some(gap => gap.includes("privacy guard")));
+  });
+
   test("no pixel id in env: the pixel that has always been live", () => {
     const html = renderPage({ funnel: FUNNEL, page: { role: "landing", path: "/blueprint" }, copy: COPY, paths: PATHS, env: {} });
     assert.ok(html.includes(`fbq('init', '${META_PIXEL_FALLBACK_ID}')`));

@@ -21,6 +21,11 @@ import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
+import { cleanProps } from "../funnel/track.mjs";
+
+const RECEIPT = "10000000-0072-4ace-8a77-100000000001";
+const acknowledged = { completion_acknowledged: true, public_contact_receipt: RECEIPT };
+
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 const APPLY_HTML = read("marketing/landing-pages/apply-survey.html");
@@ -33,7 +38,7 @@ const APP_CARD_JS = read("public/funnel/fundhub-prompter-download.js");
 const ALLOWED = {
   /* last: true on the final question only (docs/tracking/meta-events.md, Phase 4 map:
      the shared tracker turns it into Meta Lead). */
-  survey_answer: ["survey", "step_num", "question_id", "last", "credit_tier"],
+  survey_answer: ["survey", "step_num", "question_id", "last", "credit_tier", "completion_acknowledged", "public_contact_receipt"],
   survey_route: ["survey", "offer"],
   field_focus: ["form", "field"],
   field_complete: ["form", "field"],
@@ -328,7 +333,7 @@ function openApply(opts = {}) {
   const body = APPLY_HTML.slice(APPLY_HTML.indexOf("<body>") + 6, APPLY_HTML.indexOf("<script>"));
   const script = APPLY_HTML.slice(APPLY_HTML.indexOf("<script>") + 8, APPLY_HTML.lastIndexOf("</script>"));
   const doc = makeDocument(body);
-  const save = async () => ({ ok: true, json: async () => ({ ok: true, emitted: [{ name: "survey.completed" }] }) });
+  const save = async () => ({ ok: true, json: async () => ({ ok: true, emitted: [{ name: "survey.completed", id: RECEIPT }] }) });
   const page = makePage(doc, { hostname: "apply.fundhub.ai", pathname: "/apply", fetchImpl: save, ...opts });
   page.win.FH_APPLY_SURVEY_WEBHOOK_FORCE = true;
   page.win.FH_APPLY_SURVEY_INGEST = "test-ingest-secret";
@@ -349,7 +354,7 @@ async function openApplyResume(reply, { search = "?r=tok123" } = {}) {
   const doc = makeDocument(body);
   const asked = [];
   const fetchImpl = async (url, init) => {
-    if (init?.method === "POST") return { ok: true, json: async () => ({ ok: true, emitted: [{ name: "survey.completed" }] }) };
+    if (init?.method === "POST") return { ok: true, json: async () => ({ ok: true, emitted: [{ name: "survey.completed", id: RECEIPT }] }) };
     asked.push(String(url)); return reply;
   };
   const page = makePage(doc, { hostname: "apply.fundhub.ai", pathname: "/apply", search, fetchImpl });
@@ -423,7 +428,7 @@ const APPLY_CONTACT_EVENTS = [
    It also carries the owner's credit bucket (2026-10-29); APPLY_COMMON answers 700-759. */
 const answersOf = (path, tier = "qualified") =>
   path.map(([key], i) => ev("survey_answer", {
-    survey: "apply", step_num: i + 2, question_id: key, ...(i === path.length - 1 ? { last: true, credit_tier: tier } : {}),
+    survey: "apply", step_num: i + 2, question_id: key, ...(i === path.length - 1 ? { last: true, credit_tier: tier, ...acknowledged } : {}),
   }));
 
 describe("/apply survey hooks (apply-survey.html)", () => {
@@ -449,7 +454,7 @@ describe("/apply survey hooks (apply-survey.html)", () => {
       const final = JSON.parse(init.body).step_key === "cf_svy_available_capital";
       return final && failFinal
         ? { ok: false, status: 503 }
-        : { ok: true, json: async () => ({ ok: true, emitted: [{ name: "survey.completed" }] }) };
+        : { ok: true, json: async () => ({ ok: true, emitted: [{ name: "survey.completed", id: RECEIPT }] }) };
     } });
     fillApplyContact(a);
     for (const [, label] of [...APPLY_COMMON, ...APPLY_BIZ]) a.pick(label);
@@ -465,6 +470,39 @@ describe("/apply survey hooks (apply-survey.html)", () => {
     assert.equal(a.byId("cal").hidden, false);
     assert.equal(a.byId("fh-book-frame").src, "https://apply.fundhub.ai/funding-book-call");
     assert.equal(a.page.events().filter((e) => e[1].last).length, 1);
+  });
+
+  test("partial and legacy apply acknowledgements cannot attach another event's ID", async () => {
+    for (const completedId of [undefined, "not-a-receipt"]) {
+      const a = openApply({ fetchImpl: async () => ({ ok: true, json: async () => ({ ok: true, emitted: [
+        { name: "survey.submitted", id: RECEIPT }, { name: "survey.completed", id: completedId }
+      ] }) }) });
+      fillApplyContact(a);
+      for (const [, label] of [...APPLY_COMMON, ...APPLY_BIZ]) a.pick(label);
+      await settleApply(a);
+      const row = a.page.events().find(([, props]) => props.last)[1];
+      assert.equal(row.completion_acknowledged, true);
+      assert.equal(row.public_contact_receipt, undefined);
+      assert.equal(a.byId("cal").hidden, false);
+    }
+    const partial = openApply({ fetchImpl: async () => ({ ok: true, json: async () => ({
+      ok: true, emitted: [{ name: "survey.submitted", id: RECEIPT }]
+    }) }) });
+    fillApplyContact(partial);
+    for (const [, label] of [...APPLY_COMMON, ...APPLY_BIZ]) partial.pick(label);
+    await settleApply(partial);
+    assert.ok(!partial.page.events().some(([, props]) => props.last || props.public_contact_receipt));
+    assert.equal(partial.byId("cal").hidden, true);
+  });
+
+  test("the first-party tracking schema keeps only opaque receipts of acknowledged final answers", () => {
+    const props = { survey: "apply", last: true, ...acknowledged };
+    assert.deepEqual(cleanProps("survey_answer", props), props);
+    for (const patch of [{ last: false }, { completion_acknowledged: false },
+      { public_contact_receipt: "555-111-1111" }, { public_contact_receipt: { value: RECEIPT } }]) {
+      assert.equal(cleanProps("survey_answer", { ...props, ...patch }).public_contact_receipt, undefined);
+    }
+    assert.equal(cleanProps("booking_confirmed", props).public_contact_receipt, undefined);
   });
 
   test("the two calendars: qualified credit frames /funding-book-call; every other score answer frames the copy", async () => {
@@ -491,7 +529,7 @@ describe("/apply survey hooks (apply-survey.html)", () => {
       for (const [key, label] of [...APPLY_COMMON, ...APPLY_BIZ]) a.pick(key === "cf_svy_self_reported_fico" ? score : label);
       await settleApply(a);
       const got = a.page.events().filter((e) => e[1].credit_tier !== undefined);
-      assert.deepEqual(got, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: tier })], score);
+      assert.deepEqual(got, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: tier, ...acknowledged })], score);
       assert.ok(a.doc.body.textContent.includes("You're qualified. Pick a time below."), `${score}: the page words do not change`);
       assert.ok(!JSON.stringify(a.page.events()).includes(score), `${score}: the score itself is never queued`);
     }
@@ -537,7 +575,7 @@ describe("/apply survey hooks (apply-survey.html)", () => {
     for (const rest of [APPLY_BIZ, APPLY_PERSONAL]) {
       const a = await settleApply(walkApply(rest));
       const lasts = a.page.events().filter((e) => e[1].last !== undefined);
-      assert.deepEqual(lasts, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: "qualified" })]);
+      assert.deepEqual(lasts, [ev("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: "qualified", ...acknowledged })]);
     }
   });
 
@@ -688,7 +726,7 @@ const HOME_CONTACT = { name: "Homefirst Homelast", business: "Acme Test Co", ema
 
 const okFetch = () => Promise.resolve({
   ok: true, status: 200,
-  json: () => Promise.resolve({ ok: true, redirect: "https://apply.fundhub.ai/funding-book-call" }),
+  json: () => Promise.resolve({ ok: true, survey_completed: true, public_contact_receipt: RECEIPT, redirect: "https://apply.fundhub.ai/funding-book-call" }),
 });
 
 async function walkHome(rest, opts = {}) {
@@ -715,7 +753,7 @@ const HOME_CONTACT_EVENTS = [
   ev("field_complete", { form: "home", field: "email" }),
   ev("field_focus", { form: "home", field: "phone" }),
   ev("field_complete", { form: "home", field: "phone" }),
-  ev("survey_answer", { survey: "home", step_num: 10, question_id: "contact", last: true }),
+  ev("survey_answer", { survey: "home", step_num: 10, question_id: "contact", last: true, ...acknowledged }),
 ];
 
 describe("fundhub.ai homepage survey hooks (public/js/homepage-survey.js)", () => {
@@ -744,17 +782,39 @@ describe("fundhub.ai homepage survey hooks (public/js/homepage-survey.js)", () =
     assertShape(got);
   });
 
-  test("last: true goes on the contact submit once per page load: a second press after a failed send is not a second Lead", async () => {
-    const failFetch = () => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({ ok: false }) });
-    const h = await walkHome(HOME_BIZ, { fetchImpl: failFetch });
+  test("retrying after a failed home save records only the acknowledged completion", async () => {
+    let fail = true;
+    const h = await walkHome(HOME_BIZ, { fetchImpl: () => fail
+      ? Promise.resolve({ ok: false, status: 503, json: async () => ({ ok: false }) })
+      : okFetch() });
+    assert.ok(!h.page.events().some(([, props]) => props.completion_acknowledged || props.public_contact_receipt));
+    fail = false;
     h.page.click(h.act("submit"));
     await new Promise((r) => setImmediate(r));
-    const contact = h.page.events().filter((e) => e[0] === "survey_answer" && e[1].question_id === "contact");
-    assert.deepEqual(contact, [
-      ev("survey_answer", { survey: "home", step_num: 10, question_id: "contact", last: true }),
-      ev("survey_answer", { survey: "home", step_num: 10, question_id: "contact" }),
-    ]);
-    assert.equal(h.page.events().filter((e) => e[1].last !== undefined).length, 1, "no other screen carries last");
+    const contacts = h.page.events().filter(([event, props]) => event === "survey_answer" && props.question_id === "contact");
+    assert.deepEqual(contacts, [HOME_CONTACT_EVENTS.at(-1)]);
+  });
+
+  test("a partial home save redirects without marking a completed survey", async () => {
+    const redirect = "https://apply.fundhub.ai/apply";
+    const h = await walkHome(HOME_BIZ, { fetchImpl: async () => ({
+      ok: true, status: 200, json: async () => ({ ok: true, survey_completed: false, public_contact_receipt: RECEIPT, redirect })
+    }) });
+    const answer = h.page.events().at(-1)[1];
+    assert.equal(h.page.win.__assigned, redirect);
+    assert.equal(answer.last, undefined);
+    assert.equal(answer.completion_acknowledged, undefined);
+    assert.equal(answer.public_contact_receipt, undefined);
+  });
+
+  test("an acknowledged completion without an event id still advances without contact data", async () => {
+    const h = await walkHome(HOME_BIZ, { fetchImpl: async () => ({
+      ok: true, status: 200, json: async () => ({ ok: true, survey_completed: true, redirect: "/apply" })
+    }) });
+    assert.deepEqual(h.page.events().at(-1), ev("survey_answer", {
+      survey: "home", step_num: 10, question_id: "contact", last: true, completion_acknowledged: true
+    }));
+    assert.equal(h.page.win.__assigned, "/apply");
   });
 
   test("no answer and no typed value is ever queued", async () => {
@@ -804,11 +864,12 @@ describe("fundhub.ai homepage survey hooks (public/js/homepage-survey.js)", () =
     h.doc.getElementById("sv-name").value = "Homefirst Homelast";
     h.doc.getElementById("sv-email").value = "home.qa@example.com";
     h.page.click(h.act("submit"));
+    await new Promise((r) => setImmediate(r));
     const tail = h.page.events().slice(9);
     assert.deepEqual(tail, [
       ev("field_complete", { form: "home", field: "name" }),
       ev("field_complete", { form: "home", field: "email" }),
-      ev("survey_answer", { survey: "home", step_num: 10, question_id: "contact", last: true }),
+      ev("survey_answer", { survey: "home", step_num: 10, question_id: "contact", last: true, ...acknowledged }),
     ]);
   });
 

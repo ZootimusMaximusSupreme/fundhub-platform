@@ -17,6 +17,7 @@
 //
 // It is not a browser. The real-browser proof is the Playwright walk.
 
+import { webcrypto } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
@@ -212,6 +213,7 @@ export function makePage({
 
   const calls = [];
   const win = {
+    crypto: webcrypto,
     location: { pathname, hostname, search, origin: `https://${hostname}`, href: `https://${hostname}${pathname}${search}`,
       assign(url) { this.href = String(url); } },
     navigator: { webdriver, sendBeacon: (url, blob) => { sent.push({ url, text: blob.text }); return true; } },

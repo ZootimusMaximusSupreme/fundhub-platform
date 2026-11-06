@@ -70,8 +70,7 @@ const PERCENT = int(0, 100);
 const FORM = slug(40);
 const FIELD = slug(64);
 const CALENDAR = { calendar: slug(64) };
-// The owner's two buckets (2026-10-29): /apply's last answer says which, never
-// the score; booking_confirmed carries the same tab's tier (src/meta/map.mjs).
+// The tier is local Fundhub reporting only.
 const CREDIT_TIER = oneOf("qualified", "unqualified");
 // Which /roadmap buy box sent the event (2 = phone on step 3 and the
 // "Step 1 of 3" line, owner-set 2026-10-02). Only the buy box sends it; the
@@ -98,6 +97,7 @@ const ORDER_REF = /^[A-Za-z0-9_-]{1,64}$/;
    digits in a row (or a run that reads as a date), which looksSensitiveValue
    would take for a card or a birth date and drop. That exact shape is a ref we
    minted, never a typed value, so it skips the value check. */
+const PUBLIC_CONTACT_RECEIPT = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const OWN_ORDER_REF = /^slo_[a-f0-9]+$/;
 
 export const TRACK_EVENTS = Object.freeze({
@@ -127,7 +127,8 @@ export const TRACK_EVENTS = Object.freeze({
   // A tap on the Apple link of the /thank-you app card. No props: the page, the
   // session and the UTMs already say who and where, and nothing typed is read.
   app_download_tap: {},
-  survey_answer: { survey: slug(40), step_num: int(0, 100), question_id: slug(64), last: bool(), credit_tier: CREDIT_TIER },
+  survey_answer: { survey: slug(40), step_num: int(0, 100), question_id: slug(64), last: bool(), credit_tier: CREDIT_TIER,
+    completion_acknowledged: bool(), public_contact_receipt: pattern(PUBLIC_CONTACT_RECEIPT) },
   survey_route: { survey: slug(40), offer: slug(40) },
   buybox_tab: { tab: int(1, 3), bbv: BBV },
   field_focus: { form: FORM, field: FIELD, bbv: BBV },
@@ -252,7 +253,9 @@ export function cleanProps(event, raw) {
     // carrying a long ad id must not cost the whole prop.
     const kept = spec.type === "path" && typeof v === "string" ? v.split(/[?#]/)[0] : v;
     const ownRef = key === "order_ref" && typeof v === "string" && OWN_ORDER_REF.test(v.trim());
-    if (!ownRef && looksSensitiveValue(kept)) continue;
+    const completionRef = key === "public_contact_receipt" && raw.last === true && raw.completion_acknowledged === true;
+    if (key === "public_contact_receipt" && !completionRef) continue;
+    if (!ownRef && !completionRef && looksSensitiveValue(kept)) continue;
     const clean = cleanValue(v, spec);
     if (clean !== undefined) out[key] = clean;
   }

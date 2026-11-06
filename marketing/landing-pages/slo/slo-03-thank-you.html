@@ -196,9 +196,6 @@ body>div:last-child{margin-bottom:0!important;padding-bottom:0!important}
       return d.timeString||'';
     }
   }
-  function track(){
-    try{ if(typeof fbq!=='undefined') fbq('trackCustom','AddToCalendar'); }catch(e){}
-  }
   function buildIcs(d){
     var uid='fh-'+String(d.start).replace(/\W/g,'')+'@fundhub.ai';
     var stamp=toIcsStamp(new Date().toISOString());
@@ -245,7 +242,6 @@ body>div:last-child{margin-bottom:0!important;padding-bottom:0!important}
   var icsBtn=document.getElementById('fh-cal-ics');
   if(icsBtn){
     icsBtn.addEventListener('click', function(){
-      track();
       var blob=new Blob([buildIcs(data)],{type:'text/calendar;charset=utf-8'});
       var url=URL.createObjectURL(blob);
       var a=document.createElement('a');
@@ -283,9 +279,6 @@ body>div:last-child{margin-bottom:0!important;padding-bottom:0!important}
   a.style.display='';
   var ico=document.getElementById('fh-cal-inbox-ico');
   if(ico){ ico.src='https://www.google.com/s2/favicons?domain='+dom+'&sz=64'; ico.style.display=''; }
-  a.addEventListener('click', function(){
-    try{ if(typeof fbq!=='undefined') fbq('trackCustom','OpenInboxConfirm'); }catch(e){}
-  });
 })();
 </script>
 <script>

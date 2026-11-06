@@ -31,16 +31,11 @@
      carousel      next, prev or play on a testimonial row     { carousel, action, index }
      app_download_tap  a press on an Apple link (TestFlight or App Store) on
                    /thank-you or /portal-login.html, every press   { }
-                   The first press per session also reaches Cortana as
-                   book_call_app_download_tap. It is a tap: a page never sees an install.
+                   A tap is a first-party observation, not proof of an install.
 
    Passed on from the framed booking calendar (window "message" from
    https://apply.fundhub.ai with data.fh === "track"):
      calendar_view, time_selected, booking_confirmed           { calendar }
-   booking_confirmed also carries this tab's credit_tier, kept from the /apply
-   survey's last answer, or from fh_tier on a calendar opened from a text or
-   email link (see keepTier below).
-
    Page hooks send the rest through window.fhTrack(event, props). That call is
    safe before this file has loaded; the queue is sent when it loads:
      (window.fhTrack || function (e, p) { (window.fhq = window.fhq || []).push([e, p]); })("continue", { step: 1 });
@@ -48,25 +43,10 @@
    Click labels also go to Clarity and gtag as custom events, first press of each
    label per page load, as before.
 
-   Meta (docs/tracking/meta-events.md, "Phase 4 contract"). Every post also
-   carries url (origin + path, never the query), fbc and fbp (when there are
-   any), and meta_event_id when the event stands for a Meta event. The same
-   id goes to fbq as eventID, so Meta counts the browser copy and our
-   server's copy once:
-     page_view            meta_event_id = window.__fhPv (set by the head pixel
-                          snippet, which fires PageView itself; this file never
-                          does). No __fhPv: "pv.<sid>.<seq>".
-                          /roadmap /watch /apply /home also fire ViewContent,
-                          eventID "<that id>.vc".
-     everything else      "<sid>.<seq>" (the seq of the same post), except
-     payment_result       success with an order_ref: Purchase, "purchase.<ref>",
-                          once per order. No order_ref: no browser Purchase (the
-                          payment webhook sends it with the same id).
-   fbq is called only when the pixel is on the page (its stub queues the call
-   until it loads), and never from an automated browser (navigator.webdriver),
-   the rule the old InitiateCheckout on the Pay press followed. custom_data is
-   built only from props this file already kept, by name: never a field value,
-   survey answer, email or phone.
+   Meta: a reviewed public landing's guarded head sends PageView. The tracker
+   supplies the same opaque ID on the server copy of its PageView and ViewContent. The completed application and a confirmed booking carry
+   a server-only Lead or Schedule ID on the Fundhub event. The two calendar
+   paths share one public source URL. Other tracking stays with Fundhub.
 
    It reads no form field value and sends no typed text. A label is the visible
    words of the button or link, lowercased. Nothing here can throw into the page.
@@ -107,12 +87,12 @@
   var RELAY_ORIGIN = "https://apply.fundhub.ai";
   var RELAYED = { calendar_view: 1, time_selected: 1, booking_confirmed: 1 };
   var applyRedirecting = false;
-  /* Meta: the map is docs/tracking/meta-events.md, "Map (database event → Meta)". */
-  var VIEW_CONTENT = { "/roadmap": 1, "/watch": 1, "/apply": 1, "/home": 1 };
-  var BUY_BOX = { "fh-cf-form": 1, fhw: 1 };
-  var PRICE = { value: 147, currency: "USD" };
+  var countedBooking = false;
+  var keptBookingForResend = false;
+  var META_LANDINGS = { "/watch": 1, "/blueprint": 1 };
+  var CALENDARS = { "/funding-book-call": 1, "/funding-book-call--02424": 1 };
+  var META_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   var REF = /^[A-Za-z0-9_-]{1,64}$/;
-  var PV_ID = /^[A-Za-z0-9_.-]{1,120}$/;
   var CLICK_ID = /^[A-Za-z0-9_-]{1,500}$/;
   var FB_COOKIE = /^fb\.[0-9]\.[0-9]{10,16}\.[A-Za-z0-9_.-]{1,500}$/;
   var has = Object.prototype.hasOwnProperty;
@@ -194,7 +174,7 @@
     for (var k in p) {
       if (!has.call(p, k) || !PROP.test(k) || SECRET.test(k)) continue;
       var v = p[k];
-      // The order's ref (slo_<hex>) names the Purchase; slug-safe or not sent.
+      // The order reference stays in Fundhub's own payment event.
       if (k === "order_ref" && !(typeof v === "string" && REF.test(v))) continue;
       if (typeof v === "number") { if (isFinite(v)) out[k] = v; else continue; }
       else if (typeof v === "boolean") out[k] = v;
@@ -241,32 +221,6 @@
       if (b && b.event === "booking_confirmed") beacon(k.body);
     } catch (e) {}
   }
-
-  /* The owner's two buckets (2026-10-29): the /apply survey sends credit_tier on
-     its last answer (qualified at a 700+ score answer, else unqualified; never
-     the score). It is kept for this tab so the booking it leads to carries the
-     same tier. Each tier is its own Meta event on top of Lead and Schedule. */
-  var TIERS = { qualified: "Qualified", unqualified: "Unqualified" };
-  var TIER_KEY = "fh_credit_tier_v1";
-  function keepTier(tier) {
-    try { sessionStorage.setItem(TIER_KEY, tier); } catch (e) {}
-  }
-  function keptTier() {
-    var t = null;
-    try { t = sessionStorage.getItem(TIER_KEY); } catch (e) {}
-    return has.call(TIERS, t) ? t : null;
-  }
-  /* A text or email link opens a calendar in a tab that never saw /apply. Its
-     fh_tier (q or u) was picked by the server from the lead's saved score answer
-     (src/workflows/messaging.mjs), so the booking it leads to carries that tier. */
-  var CALENDARS = { "/funding-book-call": 1, "/funding-book-call--02424": 1 };
-  var LINK_TIERS = { q: "qualified", u: "unqualified" };
-  function tierFromLink() {
-    if (!has.call(CALENDARS, pagePath())) return;
-    var t = urlParam("fh_tier");
-    if (has.call(LINK_TIERS, t)) keepTier(LINK_TIERS[t]);
-  }
-  try { tierFromLink(); } catch (e) {}
 
   /* ── Meta ids: fbclid, fbc, fbp, the page url ─────────────────────────── */
 
@@ -320,243 +274,62 @@
 
   /* ── Meta events ──────────────────────────────────────────────────────── */
 
-  /* true the first time key is asked for (per page load; per session too
-     when perSession, so a reload does not count it again). */
-  var metaDone = {};
-  function first(key, perSession) {
-    if (metaDone[key]) return false;
-    metaDone[key] = 1;
-    if (!perSession) return true;
-    try { if (sessionStorage.getItem(key)) return false; sessionStorage.setItem(key, "1"); } catch (e) {}
-    return true;
+  function newMetaId() {
+    var crypto = window.crypto;
+    if (!crypto) return "";
+    if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+    if (typeof crypto.getRandomValues !== "function") return "";
+    var bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 15) | 64;
+    bytes[8] = (bytes[8] & 63) | 128;
+    var hex = "";
+    for (var i = 0; i < bytes.length; i++) hex += ("0" + bytes[i].toString(16)).slice(-2);
+    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16)
+      + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
   }
 
-  /* Cortana's hub is async in the funnel head. These are observations of the
-     FREE book-a-call path only; no browser event below reports a paid sale or
-     a durable booking conversion. The Fundhub track post remains the source
-     of truth when the hub is blocked. book_call_app_download_tap is a tap on
-     Apple's link, never an install. */
-  var cortanaPending = [], cortanaTimer = null, cortanaWaits = 0, cortanaBusy = false;
-  var CORTANA_PENDING_KEY = "fh_dr_pending_v1";
-  var CORTANA_MAX_PENDING = 12;
-  var CORTANA_PAGES = {
-    book_call_watch_view: { "/watch": 1 },
-    book_call_apply_view: { "/apply": 1 },
-    book_call_apply_started: { "/apply": 1 },
-    book_call_apply_final_answer: { "/apply": 1 },
-    book_call_calendar_view: { "/apply": 1, "/funding-book-call": 1, "/funding-book-call--02424": 1 },
-    book_call_time_selected: { "/apply": 1, "/funding-book-call": 1, "/funding-book-call--02424": 1 },
-    book_call_booking_observed: { "/apply": 1, "/funding-book-call": 1, "/funding-book-call--02424": 1 },
-    book_call_thank_you_view: { "/thank-you": 1 },
-    book_call_app_download_tap: { "/thank-you": 1, "/portal-login.html": 1 }
-  };
-  var CORTANA_HUB_SRC = "https://app.directroas.com/api/hub/v1/cmsdutl8e00mukv041vwuo39w";
-  var cortanaHubChecked = false;
-  function cortanaTracker() {
-    var t = window.akTracking || window.CortanaTracking;
-    return t && typeof t.trackEvent === "function" ? t : null;
+  // Fundhub attributes bookings to the tab's survey or signed-link tier. Only
+  // these two labels are valid. The Meta mapper builds its own event from the
+  // action and never receives the tier or the internal calendar URL.
+  var TIER_KEY = "fh_credit_tier_v1";
+  function isInternalTier(value) { return value === "qualified" || value === "unqualified"; }
+  function keepInternalTier(value) {
+    if (isInternalTier(value)) try { sessionStorage.setItem(TIER_KEY, value); } catch (e) {}
   }
-  function ensureCortanaHub() {
-    if (cortanaHubChecked || cortanaTracker()) return;
-    cortanaHubChecked = true;
+  function bookingTier() {
     try {
-      var scripts = document.querySelectorAll("script");
-      for (var i = 0; i < scripts.length; i++) {
-        var src = scripts[i].getAttribute("src") || scripts[i].src || "";
-        if (String(src).indexOf(CORTANA_HUB_SRC) === 0) return;
+      var value = sessionStorage.getItem(TIER_KEY);
+      return isInternalTier(value) ? value : null;
+    } catch (e) { return null; }
+  }
+  if (has.call(CALENDARS, pagePath())) {
+    var linkTier = urlParam("fh_tier");
+    if (linkTier === "q") keepInternalTier("qualified");
+    if (linkTier === "u") keepInternalTier("unqualified");
+  }
+
+  function tagMeta(body) {
+    var page = body.page, event = body.event, p = body.props;
+    var home = page === "/home" && /^(www\.)?fundhub\.ai$/.test(location.hostname);
+    var applyHost = location.hostname === "apply.fundhub.ai";
+    var lead = event === "survey_answer" && p.last === true && p.completion_acknowledged === true
+      && ((home && p.survey === "home") || (applyHost && page === "/apply" && p.survey === "apply"));
+    var schedule = event === "booking_confirmed" && p.calendar === "funding-book-call"
+      && applyHost && (page === "/apply" || page === "/blueprint-book" || has.call(CALENDARS, page));
+    if (lead || schedule) {
+      if (schedule && countedBooking) return;
+      var conversionId = newMetaId();
+      if (conversionId) {
+        body.meta_event_id = conversionId;
+        if (schedule) countedBooking = true;
       }
-      // ClickFunnels currently omits this pixel on /apply, while the other
-      // free-call pages include it. Load the same Fundhub hub once here.
-      var script = document.createElement("script");
-      script.async = true;
-      script.setAttribute("src", CORTANA_HUB_SRC);
-      (document.head || document.documentElement).append(script);
-    } catch (e) {}
-  }
-  function cortanaAccepted(name) {
-    try { return !!sessionStorage.getItem("fh_dr_" + name); } catch (e) { return false; }
-  }
-  function saveCortanaPending() {
-    try { sessionStorage.setItem(CORTANA_PENDING_KEY, JSON.stringify(cortanaPending)); } catch (e) {}
-  }
-  function restoreCortanaPending() {
-    var saved;
-    try { saved = JSON.parse(sessionStorage.getItem(CORTANA_PENDING_KEY) || "[]"); } catch (e) { return; }
-    if (!saved || Object.prototype.toString.call(saved) !== "[object Array]") return;
-    var session = sid();
-    for (var i = 0; i < saved.length && cortanaPending.length < CORTANA_MAX_PENDING; i++) {
-      var item = saved[i];
-      if (!item || !has.call(CORTANA_PAGES, item.name) || !has.call(CORTANA_PAGES[item.name], item.page) ||
-          item.sid !== session || typeof item.at !== "number" || !isFinite(item.at) || item.at <= 0 ||
-          cortanaAccepted(item.name)) continue;
-      var duplicate = false;
-      for (var j = 0; j < cortanaPending.length; j++) if (cortanaPending[j].name === item.name) duplicate = true;
-      if (!duplicate) cortanaPending.push({ name: item.name, page: item.page, sid: session, at: item.at });
-    }
-    saveCortanaPending();
-  }
-  function cortanaUtm(value) {
-    return typeof value === "string" && /^[A-Za-z0-9_.~-]{1,120}$/.test(value) ? value : "";
-  }
-  function cortanaEnvelope(item) {
-    var envelope = {
-      schema_version: "fh-cortana-v1",
-      event_id: "dr.b." + item.name + "." + item.sid,
-      occurred_at: new Date(item.at).toISOString(),
-      funnel: "book_call",
-      stage: item.name,
-      page_path: item.page,
-      session_id: item.sid
-    };
-    var tid = cortanaCookie();
-    if (tid) envelope.ak_tid = tid;
-    var saved = attribution();
-    for (var i = 0; i < KEYS.length; i++) {
-      var key = KEYS[i], safe = key.indexOf("utm_") === 0 ? cortanaUtm(saved[key]) : "";
-      if (safe) envelope[key] = safe;
-    }
-    var fbc = cookie("_fbc") || storedFbc(), fbp = cookie("_fbp");
-    if (fbc) envelope.fbc = fbc;
-    if (fbp) envelope.fbp = fbp;
-    return envelope;
-  }
-  function scheduleCortana() {
-    if (cortanaTimer || cortanaBusy || !cortanaPending.length) return;
-    // Keep one low-rate poll alive after the first ten seconds. The queue is
-    // bounded and survives a reload; a slow or rejected hub never erases it.
-    var delay = cortanaWaits < 40 ? 250 : cortanaWaits < 100 ? 1000 : 5000;
-    cortanaTimer = setTimeout(flushCortana, delay);
-  }
-  function flushCortana() {
-    cortanaTimer = null;
-    if (cortanaBusy || !cortanaPending.length) return;
-    var tracker = cortanaTracker();
-    if (!tracker) {
-      ensureCortanaHub();
-      cortanaWaits++;
-      scheduleCortana();
       return;
     }
-    var item = cortanaPending[0];
-    function retry() {
-      cortanaBusy = false;
-      cortanaWaits++;
-      scheduleCortana();
-    }
-    function accepted(value) {
-      if (value === false || (value && (value.ok === false || value.success === false))) {
-        retry();
-        return;
-      }
-      cortanaBusy = false;
-      cortanaWaits = 0;
-      try { sessionStorage.setItem("fh_dr_" + item.name, "1"); } catch (e) {}
-      cortanaPending.shift();
-      saveCortanaPending();
-      flushCortana();
-    }
-    try {
-      var result = tracker.trackEvent(item.name, cortanaEnvelope(item));
-      if (result && typeof result.then === "function") {
-        cortanaBusy = true;
-        result.then(accepted, retry);
-      } else accepted(result);
-    } catch (e) { retry(); }
-  }
-  function cortanaCookie() {
-    try {
-      var m = /(?:^|;\s*)ak_tid=([^;]+)/.exec(String(document.cookie || ""));
-      if (!m) return "";
-      var v = decodeURIComponent(m[1]);
-      return /^[A-Za-z0-9._-]{8,200}$/.test(v) ? v : "";
-    } catch (e) { return ""; }
-  }
-  function cortanaMilestones(event, props, page) {
-    if (event === "page_view") {
-      if (page === "/watch") return ["book_call_watch_view"];
-      if (page === "/apply") return ["book_call_apply_view"];
-      if (page === "/thank-you") return ["book_call_thank_you_view"];
-      return [];
-    }
-    if (event === "app_download_tap") return page === "/thank-you" || page === "/portal-login.html" ? ["book_call_app_download_tap"] : [];
-    if (page !== "/apply" && !has.call(CALENDARS, page)) return [];
-    if (event === "survey_answer" && page === "/apply") {
-      return props.last === true
-        ? ["book_call_apply_started", "book_call_apply_final_answer"]
-        : ["book_call_apply_started"];
-    }
-    if (event === "calendar_view") return ["book_call_calendar_view"];
-    if (event === "time_selected") return ["book_call_time_selected"];
-    if (event === "booking_confirmed") return ["book_call_booking_observed"];
-    return [];
-  }
-  function fireCortana(event, props, page, body) {
-    if (navigator.webdriver === true) return;
-    var names = cortanaMilestones(event, props, page);
-    for (var i = 0; i < names.length; i++) {
-      var name = names[i];
-      if (cortanaAccepted(name) || cortanaPending.length >= CORTANA_MAX_PENDING) continue;
-      var queued = false;
-      for (var j = 0; j < cortanaPending.length; j++) if (cortanaPending[j].name === name) queued = true;
-      if (!queued) cortanaPending.push({ name: name, page: page, sid: body.session_id, at: now() });
-    }
-    if (cortanaPending.length) {
-      saveCortanaPending();
-      ensureCortanaHub();
-      if (!cortanaTimer && !cortanaBusy) flushCortana();
-    }
-  }
-
-  /* custom_data from kept props only, by name; empty values left out. */
-  function data(pairs) {
-    var out = {};
-    for (var k in pairs) if (has.call(pairs, k) && pairs[k] != null && pairs[k] !== "") out[k] = pairs[k];
-    return out;
-  }
-
-  /* The Meta events one of our events stands for, as [method, name,
-     custom_data, eventID]. id is "<sid>.<seq>" of this post. */
-  function metaFor(event, p, page, id) {
-    var out = [];
-    function add(name, cd, eid, custom) { out.push([custom ? "trackCustom" : "track", name, cd, eid || id]); }
-    if (event === "continue") {
-      if (page === "/roadmap" && (p.step == null || p.step === 1)) add("Lead", { content_name: "roadmap_buybox" });
-    } else if (event === "survey_answer") {
-      /* Lead only on the page's own once-only last:true (a resend after a failed
-         submit carries no last, so it cannot count a second Lead). */
-      var last = p.last === true;
-      if (last) add("Lead", data({ content_name: p.survey }));
-      add("SurveyStep", data({ survey: p.survey, step: p.step_num }), null, true);
-      if (last && has.call(TIERS, p.credit_tier)) add(TIERS[p.credit_tier] + "Lead", data({ content_name: p.survey }), null, true);
-    } else if (event === "buybox_tab") {
-      if (p.tab === 2 && first("fh_ic_sent", true)) add("InitiateCheckout", data(PRICE));
-    } else if (event === "payment_result") {
-      if (p.result === "success" && REF.test(p.order_ref || "") && first("fh_buy_" + p.order_ref, true)) {
-        add("Purchase", data(PRICE), "purchase." + p.order_ref);
-      }
-    } else if (event === "booking_confirmed") {
-      add("Schedule", data({ content_name: p.calendar }));
-      if (has.call(TIERS, p.credit_tier)) add(TIERS[p.credit_tier] + "Schedule", data({ content_name: p.calendar }), null, true);
-    } else if (event === "survey_route") {
-      add("SurveyRouted", data({ offer: p.offer }), null, true);
-    } else if (event === "video") {
-      if (p.action === "progress" && (p.pct === 25 || p.pct === 50 || p.pct === 75 || p.pct === 100)) {
-        add("VideoProgress", data({ video: p.video, pct: p.pct }), null, true);
-      }
-    } else if (event === "section_view") {
-      if (has.call(BUY_BOX, p.section) && first("reached_buy_box", false)) add("ReachedBuyBox", {}, null, true);
-    } else if (event === "softpull_submit") {
-      add("SoftPullSubmitted", data({ businesses: p.businesses }), null, true);
-    }
-    return out;
-  }
-
-  function fire(list) {
-    if (!list.length || navigator.webdriver === true) return;
-    var fbq = window.fbq;
-    if (typeof fbq !== "function") return;
-    for (var i = 0; i < list.length; i++) {
-      try { fbq(list[i][0], list[i][1], list[i][2], { eventID: list[i][3] }); } catch (e) {}
+    // Only the reviewed public head creates this UUID. It owns both browser
+    // calls after inspecting the DOM; the track row supplies their server IDs.
+    if (applyHost && has.call(META_LANDINGS, page) && event === "page_view"
+        && typeof window.__fhPv === "string" && META_UUID.test(window.__fhPv)) {
+      body.meta_event_id = window.__fhPv;
     }
   }
 
@@ -566,10 +339,10 @@
       var built = builtFunnel(page);
       if (!has.call(PAGES, page) && !built) return;
       var seq = nextSeq(), session = sid(), kept = cleanProps(props);
-      if (has.call(kept, "credit_tier") && !has.call(TIERS, kept.credit_tier)) delete kept.credit_tier;
-      if (event === "survey_answer" && kept.last === true && kept.credit_tier) keepTier(kept.credit_tier);
+      if (has.call(kept, "credit_tier") && !isInternalTier(kept.credit_tier)) delete kept.credit_tier;
+      if (event === "survey_answer" && kept.last === true) keepInternalTier(kept.credit_tier);
       if (event === "booking_confirmed" && !kept.credit_tier) {
-        var tier = keptTier();
+        var tier = bookingTier();
         if (tier) kept.credit_tier = tier;
       }
       var body = { kind: "track", event: event, seq: seq, session_id: session, page: page, props: kept };
@@ -582,21 +355,12 @@
       if (fbc) body.fbc = fbc;
       if (fbp) body.fbp = fbp;
 
-      var list;
-      if (event === "page_view") {
-        // PageView itself is the head snippet's; only its id rides along here.
-        var pv = "";
-        try { pv = window.__fhPv; } catch (e) {}
-        body.meta_event_id = typeof pv === "string" && PV_ID.test(pv) ? pv : "pv." + session + "." + seq;
-        list = has.call(VIEW_CONTENT, page) ? [["track", "ViewContent", { content_name: page }, body.meta_event_id + ".vc"]] : [];
-      } else {
-        list = metaFor(event, kept, page, session + "." + seq);
-        if (list.length) body.meta_event_id = list[0][3];
-      }
-      try { fire(list); } catch (e) {}
-      try { fireCortana(event, kept, page, body); } catch (e) {}
+      try { tagMeta(body); } catch (e) {}
       var payload = JSON.stringify(body);
-      if (event === "booking_confirmed") keepForResend(payload);
+      if (event === "booking_confirmed" && !keptBookingForResend) {
+        keepForResend(payload);
+        keptBookingForResend = true;
+      }
       beacon(payload);
     } catch (e) {}
   }
@@ -768,8 +532,7 @@
 
   /* Recognise the Apple URL on the thank-you card or portal login page, not
      the card's class names or setting key. The host is matched whole, so
-     apps.apple.com.example is not Apple. Every press is saved; Cortana hears
-     the first press per session. A page cannot see the install. */
+     apps.apple.com.example is not Apple. Every press is saved. A page cannot see the install. */
   var APP_LINK = /^https:\/\/(testflight|apps|itunes)\.apple\.com\//i;
   function appDownloadPress(node) {
     var page = pagePath();
@@ -1047,21 +810,6 @@
   try { window.fhTrack = fhTrack; } catch (e) {}
 
   try {
-    var cortanaPage = pagePath();
-    if (navigator.webdriver !== true &&
-        (cortanaPage === "/watch" || cortanaPage === "/apply" ||
-         cortanaPage === "/funding-book-call" || cortanaPage === "/funding-book-call--02424" ||
-         cortanaPage === "/thank-you" ||
-         cortanaPage === "/portal-login.html")) {
-      restoreCortanaPending();
-      if (cortanaPending.length) {
-        ensureCortanaHub();
-        flushCortana();
-      }
-    }
-  } catch (e) {}
-
-  try {
     var here = pagePath();
     if (has.call(PAGES, here) || builtFunnel(here)) {
       var flag = "fh_pg_" + here;
@@ -1130,10 +878,11 @@
     var d = ev.data;
     if (!d || typeof d !== "object" || d.fh !== "track" || typeof d.event !== "string" || !has.call(RELAYED, d.event)) return;
     var cal = d.props && typeof d.props === "object" ? slug(d.props.calendar, 40) : "";
-    var isApply = pagePath() === "/apply";
-    if (isApply) {
-      // Origin alone is not proof of a booking: require the actual calendar iframe.
-      // Gate tracking BEFORE Meta Schedule / Cortana are emitted, not just redirect.
+    var parentPage = pagePath();
+    var isApply = parentPage === "/apply";
+    if (isApply || parentPage === "/blueprint-book") {
+      // Only an accepted message from the calendar mounted on this public offer
+      // page may count as a booking. Replayed messages from it still count once.
       var frame = document.getElementById("fh-book-frame");
       if (!frame || ev.source !== frame.contentWindow) return;
       if (d.event === "booking_confirmed" && cal !== "funding-book-call") return;
@@ -1142,7 +891,7 @@
     if (isApply && d.event === "booking_confirmed" && !applyRedirecting) {
       applyRedirecting = true;
       try { sessionStorage.setItem("fh_apply_booking_confirmed_v1", String(now())); } catch (e) {}
-      // The tracker has queued the Meta and Cortana events before the parent moves.
+      // Queue the Fundhub booking before the parent moves.
       setTimeout(function () { window.location.assign(RELAY_ORIGIN + "/thank-you"); }, 250);
     }
   });

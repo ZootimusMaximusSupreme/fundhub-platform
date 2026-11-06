@@ -20,6 +20,8 @@ import { defaultOrgId } from "../../src/events/bus.mjs";
 import { resolveClient } from "../../src/handlers/client-lifecycle.mjs";
 import { normalizePhone } from "../../src/messaging/providers/bland-voice.mjs";
 
+const COMPLETION_RECEIPT = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 const KNOWN_PAYLOAD_KEYS = new Set(
   CF_SURVEY_QUESTIONS.filter((q) => q.type !== "contact").map((q) => q.payloadKey)
 );
@@ -224,6 +226,9 @@ export async function runSurveySubmit(parsed, deps = {}) {
     qualification,
     redirect,
     clientId,
+    survey_completed: !!completed,
+    ...(completed && typeof completed.id === "string" && COMPLETION_RECEIPT.test(completed.id)
+      ? { public_contact_receipt: completed.id } : {}),
     deduped: !!(entry.deduped || survey.deduped || completed?.deduped),
   };
 }
