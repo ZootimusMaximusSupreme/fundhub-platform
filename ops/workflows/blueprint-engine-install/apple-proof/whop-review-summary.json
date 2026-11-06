@@ -1,0 +1,60 @@
+{
+  "checkedAt": "2026-11-06T18:02:54.138Z",
+  "head": "faa0cd7553d4797e8d783621f8708bdbfa3c3112",
+  "reviewedWorkingTree": true,
+  "verdict": "No remaining P1/P2 finding after parent repaired WHOP-GUARD-01",
+  "tests": {
+    "passed": 53,
+    "failed": 0,
+    "skipped": 0,
+    "role": "fundhub_app",
+    "rolsuper": false,
+    "rolbypassrls": false,
+    "externalFetch": "rejected by preload; injected test transports only"
+  },
+  "guardNegativeCases": 9,
+  "guardRecorderCalls": 0,
+  "providerCalls": 0,
+  "productionWrites": 0,
+  "sqlConcern": {
+    "paymentLinksProviderNullable": false,
+    "serviceProviderNullable": true,
+    "serviceV2Constraint": "IS NOT DISTINCT FROM whop"
+  },
+  "source": [
+    {
+      "file": "src/messaging/providers/whop-payments.mjs",
+      "sha256": "e6e9fb60777c296a9cebe0b9761f8971ac26ad02ee58a557071625624e9d2c11"
+    },
+    {
+      "file": "src/blueprint/service-whop.mjs",
+      "sha256": "616ec90260bef97945d90315f9251d26f9a2fdf9c2752729ad1d9fc6558135a0"
+    },
+    {
+      "file": "src/payments/whop-blueprint.mjs",
+      "sha256": "d50b2d3d9d82dab39dd48c538a78a79fb6ff37ea75ae6d83ad61b693c83bd7f6"
+    },
+    {
+      "file": "src/adapters/whop-billing.mjs",
+      "sha256": "dd9919215bae26fd5d188db6e675356e24a10d1d583edd8d8f1e8da0324d5e67"
+    },
+    {
+      "file": "src/payments/whop-billing-reconcile.mjs",
+      "sha256": "6ab1acd4b65b26e8487f82410b39c998833cbb8da52358f89f6cc1cdba5d68a7"
+    },
+    {
+      "file": "src/blueprint/client-services.mjs",
+      "sha256": "4bdd50d073d7e764a2f6d5f185f036d3ff2bce818a68a58ca6559d6e7a705fcc"
+    },
+    {
+      "file": "db/migrations/565_whop_checkout_metadata_version.sql",
+      "sha256": "e38f58b28073162914bf05c53eb12ca3d483407847c960e72288b791712b97f1"
+    }
+  ],
+  "limits": [
+    "No actual provider sandbox API request or checkout",
+    "No terms accepted or keys/environment changed",
+    "Not live deployment or provider delivery proof",
+    "Post-Ship native live-byte retest remains separately pending"
+  ]
+}

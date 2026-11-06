@@ -224,6 +224,7 @@ export async function checkoutBlueprintHelp(db, scope, input, { mint = mintCheck
     await serviceTarget(tx, scope, current.service_kind, current.target_id);
     await tx.query(`UPDATE blueprint_client_services SET state='checkout_pending',checkout_claimed_at=now(),
       authorized_account_id=$2,authorized_at=now(),checkout_provider=$3,accepted_price_cents=$4,checkout_currency='USD',
+      whop_metadata_version=CASE WHEN $3='whop' THEN 2 ELSE 1 END,
       whop_account_id=$5,whop_product_id=$6,updated_at=now() WHERE id=$1 AND state='quoted'`,
     [current.id, scope.accountId, provider, Number(current.price_total_cents), cfg?.accountId || null, cfg?.productId || null]);
     return { row: await ownedRequest(tx, scope, current.id), claimed: true };

@@ -113,6 +113,10 @@ test('signed Whop financing callback activates only the existing exact help/roun
     assert.equal((await lookupBlueprintServiceReceipt(db, foreign)).valid, false);
     assert.equal((await onPaidServicePaymentReceived(foreign, db)).done, false);
     assert.equal((await onPaidServicePaymentReceived({ ...foreign, payload: { ...foreign.payload, source: 'whop' } }, db)).done, false);
+    assert.equal(service.whop_metadata_version,2);
+    await db.query('SAVEPOINT pin_guard');
+    await assert.rejects(db.query('UPDATE blueprint_client_services SET whop_metadata_version=1 WHERE id=$1',[id]),{code:'23514'});
+    await db.query('ROLLBACK TO SAVEPOINT pin_guard');
     const body = paidBody(service);
     const invalid = [p => { p.data.total.amount = '1199.99'; }, p => { p.data.account_id = 'biz_other'; },
       p => { p.data.metadata.fh_org_id = randomUUID(); }, p => { p.data.metadata.fh_client_id = randomUUID(); },
@@ -341,4 +345,48 @@ test('a valid settled Whop payment after local checkout expiry records one recei
     assert.equal((await db.query("SELECT count(*)::int AS n FROM tasks WHERE client_id=$1 AND source_workflow='blueprint-service-payment'", [scope.clientId])).rows[0].n, 1);
     assert.equal((await db.query("SELECT count(*)::int AS n FROM events WHERE client_id=$1 AND name='payment.received'", [scope.clientId])).rows[0].n, 1);
   } finally { await db.query('ROLLBACK'); db.release(); await pool.end(); clearHandlers(); }
+});
+
+test('a reserved v1 service recovers by GET, settles once and refunds the original payment after the metadata upgrade', {skip}, async () => {
+  const pool=new pg.Pool({connectionString:url,ssl:false,max:1});
+  const db=await pool.connect();registerMoney();
+  try {
+    await db.query('BEGIN');
+    const {scope,id}=await fixture(db);
+    await db.query(`UPDATE blueprint_client_services SET state='checkout_pending',checkout_provider='whop',checkout_claimed_at=now(),
+      accepted_price_cents=120000,checkout_currency='USD',authorized_at=now(),authorized_account_id=$2,
+      whop_account_id=$3,whop_product_id=$4 WHERE id=$1`,[id,scope.accountId,env.WHOP_ACCOUNT_ID,env.WHOP_CONSULTING_PACKAGE_PRODUCT_ID]);
+    const old=await loadService(db,id);
+    assert.equal(old.whop_metadata_version,1);
+    const recovered={...old,whop_checkout_configuration_id:'ch_legacy',whop_plan_id:'plan_legacy'};
+    const body=paidBody(recovered);
+    assert.equal(body.data.metadata.fh_schema,'1');
+    assert.equal(body.data.metadata.product_code,'blueprint-help-funding_round');
+    const row=await signedInbox(db,body);
+    const reads=[];
+    const fetchImpl=async (uri,init)=>{
+      assert.equal(init.method,'GET','existing checkout must never be reminted');
+      reads.push(uri);
+      if(uri.endsWith('/checkout_configurations/ch_legacy')) return Response.json({id:'ch_legacy',account_id:env.WHOP_ACCOUNT_ID,
+        mode:'payment',metadata:body.data.metadata,plan:{id:'plan_legacy',initial_price:1200,currency:'usd',plan_type:'one_time'},
+        purchase_url:'https://whop.com/checkout/ch_legacy/'});
+      assert.ok(uri.endsWith('/variants/plan_legacy'));
+      return Response.json({id:'plan_legacy',account:{id:env.WHOP_ACCOUNT_ID},product:{id:env.WHOP_CONSULTING_PACKAGE_PRODUCT_ID},
+        currency:'usd',plan_type:'one_time',initial_price:1200,title:'Consulting Services Package'});
+    };
+    const forged=structuredClone(body);forged.data.metadata=whopServiceMetadata({...recovered,whop_metadata_version:2});
+    await assert.rejects(processWhopBillingInboxRow({...row,raw_body:JSON.stringify(forged)},db,{...deps,fetchImpl}),/metadata mismatch/);
+    assert.equal(reads.length,0);
+    await processWhopBillingInboxRow(row,db,{...deps,fetchImpl});
+    await processWhopBillingInboxRow(row,db,{...deps,fetchImpl});
+    const settled=await loadService(db,id);
+    assert.equal(settled.state,'in_progress');assert.equal(settled.whop_payment_id,body.data.id);
+    assert.equal(reads.length,2);
+    const refund={account_id:env.WHOP_ACCOUNT_ID,type:'refund.created',data:{id:'rf_legacy',account_id:env.WHOP_ACCOUNT_ID,
+      payment_id:body.data.id,status:'succeeded',amount:{amount:'1200.00',currency:'usd',decimals:2},currency:'usd'}};
+    const reversal=await signedInbox(db,refund);
+    await processWhopBillingInboxRow(reversal,db,deps);await processWhopBillingInboxRow(reversal,db,deps);
+    assert.equal((await loadService(db,id)).state,'refunded');
+    assert.equal((await processWhopBillingInboxRow(row,db,deps)).ignored,true);
+  } finally {await db.query('ROLLBACK');db.release();await pool.end();clearHandlers();}
 });

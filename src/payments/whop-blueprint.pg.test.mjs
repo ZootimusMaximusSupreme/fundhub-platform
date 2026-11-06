@@ -25,8 +25,9 @@ const ENV = { WHOP_API_KEY: 'pg-test-only', WHOP_ACCOUNT_ID: 'biz_pgtest',
 const pool = safe ? new pg.Pool({ connectionString, max: 3, connectionTimeoutMillis: 5000 }) : null;
 after(async () => { clearHandlers(); if (pool) await pool.end(); });
 
-for (const amountCents of [500000, 750000, 1000000]) {
-test(`Whop $${amountCents / 100} receipt reaches real canonical transaction, sale payment and entitlement exactly once`, options, async () => {
+for (const [amountCents,version,productCode] of [[500000,1,'consulting-package'],[750000,1,'consulting-package'],
+  [1000000,2,'consulting-package'],[2500000,2,'blueprint-self-funding']]) {
+test(`Whop v${version} $${amountCents / 100} receipt reaches real canonical transaction, sale payment and entitlement exactly once`, options, async () => {
   const db = await pool.connect();
   await db.query('BEGIN');
   try {
@@ -35,7 +36,7 @@ test(`Whop $${amountCents / 100} receipt reaches real canonical transaction, sal
     // additional orgs behind; UUID ordering is not a product identity.
     const org = (await db.query('SELECT id FROM orgs WHERE is_default ORDER BY id LIMIT 1')).rows[0]?.id;
     assert.ok(org, 'scratch migrations must seed the default org');
-    const product = (await db.query(`SELECT id FROM products WHERE org_id = $1 AND code = 'consulting-package'`, [org])).rows[0];
+    const product = (await db.query(`SELECT id FROM products WHERE org_id = $1 AND code = $2`, [org,productCode])).rows[0];
     assert.ok(product, 'real Blueprint product mapping must be migrated');
     const client = (await db.query(`INSERT INTO clients (org_id, email, first_name, last_name)
       VALUES ($1,$2,'Whop','Scratch') RETURNING id`, [org, `e2e+aff-whop-${randomUUID()}@example.com`])).rows[0].id;
@@ -43,10 +44,20 @@ test(`Whop $${amountCents / 100} receipt reaches real canonical transaction, sal
     const paymentId = `pay_${randomUUID().replaceAll('-', '')}`;
     const link = (await db.query(`INSERT INTO payment_links (id, org_id, client_id, purpose,
       description, amount_cents, currency, link_ref, checkout_url, provider, product_id,
-      whop_checkout_configuration_id, whop_plan_id)
+      whop_checkout_configuration_id, whop_plan_id, whop_metadata_version)
       VALUES ($1,$2,$3,'custom','Consulting Services Package',$6,'USD',$4,
-        'https://whop.com/checkout/ch_pgtest/','whop',$5,'ch_pgtest','plan_pgtest') RETURNING *`,
-    [id, org, client, `whop-pg-${randomUUID()}`, product.id, amountCents])).rows[0];
+        'https://whop.com/checkout/ch_pgtest/','whop',$5,'ch_pgtest','plan_pgtest',$7) RETURNING *`,
+    [id, org, client, `whop-pg-${randomUUID()}`, product.id, amountCents,version])).rows[0];
+    link.product_code=productCode;
+    await db.query('SAVEPOINT version_guard');
+    await assert.rejects(db.query("UPDATE payment_links SET whop_metadata_version=$2 WHERE id=$1",[id,version===1?2:1]),{code:'23514'});
+    await db.query('ROLLBACK TO SAVEPOINT version_guard');
+    if (version===2) {
+      await assert.rejects(db.query("UPDATE payment_links SET amount_cents=amount_cents+100 WHERE id=$1",[id]),{code:'23514'});
+      await db.query('ROLLBACK TO SAVEPOINT version_guard');
+      await assert.rejects(db.query("UPDATE payment_links SET product_id=NULL WHERE id=$1",[id]),{code:'23514'});
+      await db.query('ROLLBACK TO SAVEPOINT version_guard');
+    }
     const body = { account_id: 'biz_pgtest', type: 'payment.succeeded', data: {
       id: paymentId, account_id: 'biz_pgtest', checkout_configuration_id: 'ch_pgtest',
       plan_id: 'plan_pgtest', product_id: 'prod_pgtest', status: 'paid', currency: 'usd',
@@ -71,7 +82,7 @@ test(`Whop $${amountCents / 100} receipt reaches real canonical transaction, sal
     assert.equal(Number((await db.query(`SELECT count(*) AS n FROM sale_payments
       WHERE org_id = $1 AND transaction_id = $2`, [org, transaction[0].id])).rows[0].n), 1);
     const expected = (await db.query(`SELECT entitlement_code FROM product_entitlements
-      WHERE org_id = $1 AND product_code = 'consulting-package'`, [org])).rows;
+      WHERE org_id = $1 AND product_code = $2`, [org,productCode])).rows;
     assert.ok(expected.length > 0);
     for (const { entitlement_code } of expected) {
       assert.equal(Number((await db.query(`SELECT count(*) AS n FROM entitlements
