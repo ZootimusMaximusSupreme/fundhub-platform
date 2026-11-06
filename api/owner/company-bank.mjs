@@ -1,4 +1,5 @@
 // Owner-only Fundhub business bank. Plaid Link and sync only read account data.
+import { bankPasskeyAssurance } from "../../src/auth/passkey-stepup.mjs";
 import { db } from "../../src/db.mjs";
 import { requireAuth } from "../../src/http/middleware/requireAuth.mjs";
 import { isUuid, requireRole } from "../../src/http/read-api.mjs";
@@ -60,6 +61,13 @@ export default async function handler(req, res, deps = {}) {
     }
     const body = bodyOf(req.body);
     if (!body) return res.status(400).json({ ok: false, error: "body_must_be_json" });
+    if (["link_token", "exchange"].includes(body.action)) {
+      const proof = await (deps.passkeyAssurance || bankPasskeyAssurance)(database, {
+        orgId: staff.org_id, staffId: staff.id, sessionId: req.session?.id,
+        targetKind: "company_bank", targetId: staff.org_id
+      });
+      if (!proof) return res.status(403).json({ ok: false, error: "passkey_required" });
+    }
     if (body.action === "link_token") {
       const out = await (deps.linkToken || companyLinkToken)({ orgId: staff.org_id, env,
         provider: deps.provider });
