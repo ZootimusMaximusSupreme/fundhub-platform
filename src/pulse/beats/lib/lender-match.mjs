@@ -488,6 +488,10 @@ export function sensitiveBureaus(inquiryLog, opts = {}) {
   const now = opts.now || new Date();
   const out = new Set();
   for (const row of Array.isArray(inquiryLog) ? inquiryLog : []) {
+    const terminal = /^(removed|cleared|deleted|confirmed)$/i.test(String(row?.status || ""));
+    const verified = row?.removal_verified_at
+      && (row?.removal_verified_report_id || row?.removal_verified_document_id);
+    if (terminal && verified) continue;
     const codes = parseBureaus(row?.bureau);
     if (!codes.length) continue;
     const st = String(row?.status || "open").toLowerCase();

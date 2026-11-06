@@ -7,6 +7,7 @@ const defaults = () => ({
   orgId: "org", clientId: "client", crsResultId: "saved-result",
   isBuyer: async () => true,
   verify: async () => ({ ok: true }), seed: async () => ({ ok: true }),
+  verifyInquiries: async () => ({ ok: true, checked: 0, removed: 0 }),
   buildPack: async () => ({ files: [{ name: "roadmap" }], reason: null }),
   persist: async () => ({ stored: [{ id: "document" }], notStored: [], faults: [], unrecognised: [] }),
   store: {}
@@ -19,7 +20,7 @@ test("successful monthly delivery reports saved files and all completed phases",
   assert.equal(out.letterPack.documentsStored, 1);
 });
 
-for (const phase of ["verify", "seed", "buildPack", "persist"]) {
+for (const phase of ["verify", "seed", "buildPack", "persist", "verifyInquiries"]) {
   test(`a thrown ${phase} failure remains failed while the other delivery phases continue`, async () => {
     const input = defaults();
     input[phase] = async () => { throw new Error(`${phase} failed`); };
