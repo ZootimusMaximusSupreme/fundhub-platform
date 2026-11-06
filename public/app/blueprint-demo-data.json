@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "generatedAt": "2026-11-06T12:00:00.000Z",
   "ids": {
     "org": "a0000000-0000-4000-8000-000000000001",
@@ -148,33 +148,270 @@
       }
     },
     "progress": {
-      "orgId": "a0000000-0000-4000-8000-000000000001",
-      "clientId": "a0000000-0000-4000-8000-000000000002",
-      "nextStep": {
-        "waypointId": "sample-mail-letters"
+      "ok": true,
+      "stage": {
+        "key": null,
+        "roundCurrent": null,
+        "roundCap": null,
+        "enteredAt": null,
+        "expectedResponseBy": null,
+        "waitingOn": null,
+        "roundLabel": null
+      },
+      "scores": {
+        "personal": [
+          {
+            "bureau": "experian",
+            "score": 702,
+            "pulledAt": "2026-10-17T12:00:00.000Z",
+            "reportDocumentId": null,
+            "sample": true
+          },
+          {
+            "bureau": "equifax",
+            "score": 709,
+            "pulledAt": "2026-10-17T12:00:00.000Z",
+            "reportDocumentId": null,
+            "sample": true
+          },
+          {
+            "bureau": "transunion",
+            "score": 706,
+            "pulledAt": "2026-10-17T12:00:00.000Z",
+            "reportDocumentId": null,
+            "sample": true
+          }
+        ],
+        "business": []
+      },
+      "movement": {
+        "middleScoreNow": 706,
+        "middleScoreBaseline": 706,
+        "baselineAt": "2026-10-17T12:00:00.000Z",
+        "itemsRemoved": 0,
+        "itemsDisputed": 0,
+        "series": [
+          {
+            "at": "2026-10-17T12:00:00.000Z",
+            "experian": 702,
+            "equifax": 709,
+            "transunion": 706
+          }
+        ]
       },
       "waypoints": [
         {
-          "id": "sample-mail-letters",
-          "key": "blueprint_dispute_mail_letters",
-          "title": "Review and mail your current letters",
-          "detail": "Review the sample letter packet and save a sample submission receipt.",
-          "owner": "client",
-          "state": "in_progress",
-          "verifyKind": "document",
-          "completedAt": null
-        },
-        {
-          "id": "sample-business",
-          "key": "blueprint_business_formation",
-          "title": "Prepare your first business",
-          "detail": "Save the name, real activity and formation state.",
+          "id": "b0000000-0000-4000-8000-000000000001",
+          "key": "paydown_sample_card_a",
+          "order": 10,
+          "title": "Pay Sample Card A down to $800",
+          "detail": "You do not have to do it in one payment. Anything you put against this card moves the balance toward the target.",
           "owner": "client",
           "state": "not_started",
-          "verifyKind": "document",
-          "completedAt": null
+          "dueAt": "2026-12-06T12:00:00.000Z",
+          "overdue": false,
+          "completedAt": null,
+          "closedBy": "credit_report",
+          "verifyKind": "paydown",
+          "params": {
+            "definition_key": "paydown_revolving_account",
+            "creditor": "Sample Card A",
+            "creditor_key": "sample_card_a",
+            "account_prints": [],
+            "target_cents": 80000,
+            "limit_at_seed_cents": 800000,
+            "balance_at_seed_cents": 240000
+          },
+          "paidAlternative": null
+        },
+        {
+          "id": "b0000000-0000-4000-8000-000000000002",
+          "key": "paydown_sample_card_b",
+          "order": 10,
+          "title": "Pay Sample Card B down to $500",
+          "detail": "You do not have to do it in one payment. Anything you put against this card moves the balance toward the target.",
+          "owner": "client",
+          "state": "not_started",
+          "dueAt": "2026-12-06T12:00:00.000Z",
+          "overdue": false,
+          "completedAt": null,
+          "closedBy": "credit_report",
+          "verifyKind": "paydown",
+          "params": {
+            "definition_key": "paydown_revolving_account",
+            "creditor": "Sample Card B",
+            "creditor_key": "sample_card_b",
+            "account_prints": [],
+            "target_cents": 50000,
+            "limit_at_seed_cents": 500000,
+            "balance_at_seed_cents": 85000
+          },
+          "paidAlternative": null
+        },
+        {
+          "id": "b0000000-0000-4000-8000-000000000003",
+          "key": "blueprint_dispute_mail_letters",
+          "order": 12,
+          "title": "Print and mail your dispute letters",
+          "detail": "Print the letters from your pack, sign where marked, and mail a copy to each bureau address in the instructions. Keep your post office receipt.",
+          "owner": "client",
+          "state": "not_started",
+          "dueAt": "2026-11-20T12:00:00.000Z",
+          "overdue": false,
+          "completedAt": null,
+          "closedBy": "client",
+          "verifyKind": null,
+          "params": {
+            "definition_key": "blueprint_dispute_mail_letters"
+          },
+          "paidAlternative": null
+        },
+        {
+          "id": "b0000000-0000-4000-8000-000000000004",
+          "key": "blueprint_dispute_mail_receipt",
+          "order": 14,
+          "title": "Upload your mailing proof",
+          "detail": "Take a clear photo of your post office receipt or the stamped envelopes. Upload it here when you are done.",
+          "owner": "client",
+          "state": "not_started",
+          "dueAt": "2026-11-27T12:00:00.000Z",
+          "overdue": false,
+          "completedAt": null,
+          "closedBy": "fundhub",
+          "verifyKind": "dispute_mail_receipt",
+          "params": {
+            "definition_key": "blueprint_dispute_mail_receipt"
+          },
+          "paidAlternative": null
+        },
+        {
+          "id": "b0000000-0000-4000-8000-000000000005",
+          "key": "blueprint_dispute_bureau_response",
+          "order": 16,
+          "title": "Upload bureau responses when they arrive",
+          "detail": "When a bureau writes back, photograph or scan the letter and upload it here.",
+          "owner": "client",
+          "state": "not_started",
+          "dueAt": "2026-12-21T12:00:00.000Z",
+          "overdue": false,
+          "completedAt": null,
+          "closedBy": "fundhub",
+          "verifyKind": "bureau_response_upload",
+          "params": {
+            "definition_key": "blueprint_dispute_bureau_response"
+          },
+          "paidAlternative": null
+        },
+        {
+          "id": "b0000000-0000-4000-8000-000000000006",
+          "key": "no_new_credit",
+          "order": 20,
+          "title": "Do not open new credit while we work on your file",
+          "detail": "A new card adds a hard inquiry and lowers the average age of your accounts. Talk to our team before you apply for anything.",
+          "owner": "client",
+          "state": "in_progress",
+          "dueAt": null,
+          "overdue": false,
+          "completedAt": null,
+          "closedBy": "ongoing",
+          "verifyKind": "no_new_credit",
+          "params": {
+            "definition_key": "no_new_credit",
+            "accounts_at_seed": [
+              null,
+              null
+            ],
+            "account_prints_at_seed": [],
+            "accounts_without_print_at_seed": 2,
+            "snapshot_source": "crs_result",
+            "baseline_locked": true
+          },
+          "paidAlternative": null
+        },
+        {
+          "id": "b0000000-0000-4000-8000-000000000007",
+          "key": "personal_loan",
+          "order": 30,
+          "title": "Talk to our team about a personal loan",
+          "detail": "Raise it early, before any of the optimization work changes your accounts. Our team will walk you through whether it fits your plan.",
+          "owner": "client",
+          "state": "not_started",
+          "dueAt": "2026-11-20T12:00:00.000Z",
+          "overdue": false,
+          "completedAt": null,
+          "closedBy": "client",
+          "verifyKind": null,
+          "params": {
+            "definition_key": "personal_loan"
+          },
+          "paidAlternative": null
+        },
+        {
+          "id": "b0000000-0000-4000-8000-000000000008",
+          "key": "form_llc",
+          "order": 40,
+          "title": "File your LLC",
+          "detail": "File online with the Secretary of State in AZ. Send us the filing confirmation once you have it.",
+          "owner": "client",
+          "state": "not_started",
+          "dueAt": "2026-12-06T12:00:00.000Z",
+          "overdue": false,
+          "completedAt": null,
+          "closedBy": "client",
+          "verifyKind": null,
+          "params": {
+            "definition_key": "form_llc"
+          },
+          "paidAlternative": null
+        },
+        {
+          "id": "b0000000-0000-4000-8000-000000000009",
+          "key": "get_ein",
+          "order": 50,
+          "title": "Get your EIN from the IRS",
+          "detail": "You can apply for one on IRS.gov at no cost. Your business bank account will ask for it.",
+          "owner": "client",
+          "state": "not_started",
+          "dueAt": null,
+          "overdue": false,
+          "completedAt": null,
+          "closedBy": "client",
+          "verifyKind": null,
+          "params": {
+            "definition_key": "get_ein"
+          },
+          "paidAlternative": null
+        },
+        {
+          "id": "b0000000-0000-4000-8000-000000000010",
+          "key": "business_checking",
+          "order": 60,
+          "title": "Open a business checking account",
+          "detail": "Open it in the LLC name, using the EIN. Take your filing paperwork and your EIN letter with you.",
+          "owner": "client",
+          "state": "not_started",
+          "dueAt": null,
+          "overdue": false,
+          "completedAt": null,
+          "closedBy": "client",
+          "verifyKind": null,
+          "params": {
+            "definition_key": "business_checking"
+          },
+          "paidAlternative": null
         }
-      ]
+      ],
+      "nextStep": {
+        "waypointId": "b0000000-0000-4000-8000-000000000001",
+        "owner": "client"
+      },
+      "escalations": [],
+      "timeline": [],
+      "deliverables": [],
+      "ownedNotReady": [],
+      "paidServices": [],
+      "orgId": "a0000000-0000-4000-8000-000000000001",
+      "clientId": "a0000000-0000-4000-8000-000000000002"
     },
     "lessons": [
       {
@@ -686,7 +923,121 @@
       "securedCreditReviewRequired": null,
       "authorizedUserCount": null,
       "thinFile": null,
-      "authorizedUserFindingCodes": []
+      "authorizedUserFindingCodes": [],
+      "opportunity": {
+        "currency": "USD",
+        "basis": "current_crs_engine",
+        "source": {
+          "reportId": null,
+          "asOf": null
+        },
+        "personal": {
+          "currentCents": null,
+          "projectedCents": null,
+          "liftCents": null,
+          "status": "unknown",
+          "blockers": [
+            "genuine_credit_report_required"
+          ]
+        },
+        "businesses": [
+          {
+            "planId": "a0000000-0000-4000-8000-000000000009",
+            "businessId": null,
+            "name": "Cedar Grove LLC",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "unknown",
+            "blockers": [
+              "formed_business_not_on_file",
+              "formation_evidence_required",
+              "ein_evidence_required",
+              "matched_business_credit_report_required"
+            ]
+          },
+          {
+            "planId": "a0000000-0000-4000-8000-000000000010",
+            "businessId": null,
+            "name": "Willow Studio LLC",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "unknown",
+            "blockers": [
+              "formed_business_not_on_file",
+              "formation_evidence_required",
+              "ein_evidence_required",
+              "matched_business_credit_report_required"
+            ]
+          },
+          {
+            "planId": "a0000000-0000-4000-8000-000000000011",
+            "businessId": null,
+            "name": "Juniper Services LLC",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "unknown",
+            "blockers": [
+              "formed_business_not_on_file",
+              "formation_evidence_required",
+              "ein_evidence_required",
+              "matched_business_credit_report_required"
+            ]
+          }
+        ],
+        "combined": {
+          "currentCents": null,
+          "projectedCents": null,
+          "liftCents": null,
+          "status": "overlap_review_required",
+          "blockers": [
+            "business_capacity_incomplete",
+            "shared_personal_guarantee_overlap_not_modeled"
+          ]
+        },
+        "steps": [
+          {
+            "key": "formation",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          },
+          {
+            "key": "ein",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          },
+          {
+            "key": "bank_preparation",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          },
+          {
+            "key": "business_credit",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          }
+        ],
+        "limitations": [
+          "Modeled capacity is not an approval, issued credit, or usable funding.",
+          "Step estimates describe shared scenarios and must not be added together.",
+          "One personal estimate is counted once. Multiple business estimates require a model that resolves shared personal-guarantee overlap.",
+          "Missing business facts, reviewed evidence, or a matching business report leave capacity unknown."
+        ]
+      }
     },
     "businessLessons": [
       {
@@ -2326,7 +2677,7 @@
     "serviceTypes": [
       {
         "key": "inquiry_removal",
-        "label": "Inquiry removal",
+        "label": "Have Fundhub handle this inquiry case",
         "priceCents": null,
         "requiresQuote": true,
         "targets": [
@@ -2338,8 +2689,8 @@
       },
       {
         "key": "repair_round",
-        "label": "One repair round",
-        "priceCents": null,
+        "label": "Have Fundhub handle this repair round",
+        "priceCents": 10000,
         "requiresQuote": true,
         "targets": [
           {
@@ -2349,34 +2700,33 @@
         ]
       },
       {
-        "key": "full_repair",
-        "label": "Full repair",
-        "priceCents": null,
-        "requiresQuote": true
+        "key": "repair_full",
+        "label": "Have Fundhub handle the full repair program",
+        "priceCents": 100000,
+        "requiresQuote": true,
+        "targets": []
       },
       {
         "key": "funding_round",
-        "label": "Funding takeover",
+        "label": "Have Fundhub handle this funding round",
         "priceCents": null,
         "requiresQuote": true,
         "targets": [
           {
             "id": "sample-purchased-round",
-            "label": "Current sample funding round"
+            "label": "This purchased sample funding round"
           }
         ]
-      }
-    ],
-    "requests": [
+      },
       {
-        "id": "sample-help-quote",
-        "serviceKind": "inquiry_removal",
-        "status": "quoted",
-        "priceCents": 50000,
-        "quoteVersion": 1,
-        "note": "Fictional service quote for the demo; not a live price."
+        "key": "credit_pull",
+        "label": "An additional credit report",
+        "priceCents": 3200,
+        "requiresQuote": false,
+        "targets": []
       }
     ],
+    "requests": [],
     "capabilities": {
       "requestHelp": true,
       "requestReport": true,
@@ -2394,6 +2744,7 @@
         "versionId": "sample-v1",
         "download": null,
         "documentId": "a0000000-0000-4000-8000-000000000007",
+        "generatedAt": "2026-11-06T12:00:00.000Z",
         "eligibleForMailing": true,
         "reason": null
       },
@@ -2405,6 +2756,7 @@
         "versionId": "sample-v1",
         "download": null,
         "documentId": "a0000000-0000-4000-8000-000000000012",
+        "generatedAt": "2026-11-06T12:00:00.000Z",
         "eligibleForMailing": true,
         "reason": null
       }
@@ -2416,25 +2768,2287 @@
       "city": "Phoenix",
       "state": "AZ",
       "postalCode": "85004"
-    }
+    },
+    "capabilities": {
+      "mailSupported": true,
+      "hostedCheckoutSupported": true,
+      "savedCardSupported": false
+    },
+    "priceCents": 9700,
+    "maxLetters": 6
   },
   "documents": [
     {
       "id": "a0000000-0000-4000-8000-000000000007",
       "title": "Sample inquiry packet",
-      "kind": "inquiry_doc"
+      "kind": "inquiry_doc",
+      "subtype": "inquiry_removal_letter",
+      "sample": true
     },
     {
       "id": "a0000000-0000-4000-8000-000000000012",
       "title": "Sample personal-information letter",
-      "kind": "inquiry_doc"
+      "kind": "inquiry_doc",
+      "subtype": "personal_information_letter",
+      "sample": true
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000013",
+      "title": "Sample Credit Analysis Report",
+      "subtype": "credit_analysis_report",
+      "kind": "deliverable",
+      "receivedAt": "2026-11-06T12:00:00.000Z",
+      "sample": true
+    },
+    {
+      "id": "c0000000-0000-4000-8000-000000000002",
+      "title": "Sample Credit Optimization Roadmap",
+      "subtype": "credit_optimization_roadmap",
+      "kind": "deliverable",
+      "receivedAt": "2026-11-06T12:00:00.000Z",
+      "sample": true
+    },
+    {
+      "id": "c0000000-0000-4000-8000-000000000003",
+      "title": "Sample Funding Snapshot",
+      "subtype": "funding_snapshot",
+      "kind": "deliverable",
+      "receivedAt": "2026-11-06T12:00:00.000Z",
+      "sample": true
+    },
+    {
+      "id": "c0000000-0000-4000-8000-000000000004",
+      "title": "Sample Bank and Lender Match List",
+      "subtype": "bank_lender_match_list",
+      "kind": "deliverable",
+      "receivedAt": "2026-11-06T12:00:00.000Z",
+      "sample": true
     }
   ],
-  "messages": [],
-  "scenario": "optimize",
+  "messages": [
+    {
+      "id": "sample-csm-welcome",
+      "direction": "outbound",
+      "channel": "sms",
+      "rendered_body": "Welcome to Fundhub. Start your Blueprint setup, then follow the next step from your own file. Use this conversation for an aged-business question, repair help or optional managed funding. The team reviews your actual facts before quoting work.",
+      "body": "Welcome to Fundhub. Your team can guide the next step.",
+      "sender_kind": "staff",
+      "sender_name": "Fundhub team",
+      "status": "sample",
+      "created_at": "2026-11-06T12:00:00.000Z"
+    }
+  ],
+  "scenario": "start",
+  "offer": "implementation",
+  "firstVisit": {
+    "scenario": "start",
+    "businesses": [],
+    "startedAt": null
+  },
+  "offers": {
+    "preparation": {
+      "key": "UWIQ_DELIVERABLES",
+      "productCode": "consulting-package",
+      "name": "Capital Blueprint preparation",
+      "priceCents": 1000000,
+      "minimumCents": 500000,
+      "maximumCents": 1000000,
+      "contractTemplateKey": "CAPITAL-BLUEPRINT-AGREEMENT",
+      "hasFundingEngine": false
+    },
+    "implementation": {
+      "key": "BLUEPRINT_SELF_FUNDING",
+      "productCode": "blueprint-self-funding",
+      "name": "Capital Blueprint — full implementation",
+      "priceCents": 3000000,
+      "minimumCents": 2000000,
+      "maximumCents": 3000000,
+      "contractTemplateKey": "BLUEPRINT-SELF-FUNDING-AGREEMENT",
+      "hasFundingEngine": true
+    }
+  },
+  "canonicalWaypoints": [
+    {
+      "id": "b0000000-0000-4000-8000-000000000001",
+      "key": "paydown_sample_card_a",
+      "order": 10,
+      "title": "Pay Sample Card A down to $800",
+      "detail": "You do not have to do it in one payment. Anything you put against this card moves the balance toward the target.",
+      "owner": "client",
+      "state": "not_started",
+      "dueAt": "2026-12-06T12:00:00.000Z",
+      "overdue": false,
+      "completedAt": null,
+      "closedBy": "credit_report",
+      "verifyKind": "paydown",
+      "params": {
+        "definition_key": "paydown_revolving_account",
+        "creditor": "Sample Card A",
+        "creditor_key": "sample_card_a",
+        "account_prints": [],
+        "target_cents": 80000,
+        "limit_at_seed_cents": 800000,
+        "balance_at_seed_cents": 240000
+      },
+      "paidAlternative": null
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000002",
+      "key": "paydown_sample_card_b",
+      "order": 10,
+      "title": "Pay Sample Card B down to $500",
+      "detail": "You do not have to do it in one payment. Anything you put against this card moves the balance toward the target.",
+      "owner": "client",
+      "state": "not_started",
+      "dueAt": "2026-12-06T12:00:00.000Z",
+      "overdue": false,
+      "completedAt": null,
+      "closedBy": "credit_report",
+      "verifyKind": "paydown",
+      "params": {
+        "definition_key": "paydown_revolving_account",
+        "creditor": "Sample Card B",
+        "creditor_key": "sample_card_b",
+        "account_prints": [],
+        "target_cents": 50000,
+        "limit_at_seed_cents": 500000,
+        "balance_at_seed_cents": 85000
+      },
+      "paidAlternative": null
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000003",
+      "key": "blueprint_dispute_mail_letters",
+      "order": 12,
+      "title": "Print and mail your dispute letters",
+      "detail": "Print the letters from your pack, sign where marked, and mail a copy to each bureau address in the instructions. Keep your post office receipt.",
+      "owner": "client",
+      "state": "not_started",
+      "dueAt": "2026-11-20T12:00:00.000Z",
+      "overdue": false,
+      "completedAt": null,
+      "closedBy": "client",
+      "verifyKind": null,
+      "params": {
+        "definition_key": "blueprint_dispute_mail_letters"
+      },
+      "paidAlternative": null
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000004",
+      "key": "blueprint_dispute_mail_receipt",
+      "order": 14,
+      "title": "Upload your mailing proof",
+      "detail": "Take a clear photo of your post office receipt or the stamped envelopes. Upload it here when you are done.",
+      "owner": "client",
+      "state": "not_started",
+      "dueAt": "2026-11-27T12:00:00.000Z",
+      "overdue": false,
+      "completedAt": null,
+      "closedBy": "fundhub",
+      "verifyKind": "dispute_mail_receipt",
+      "params": {
+        "definition_key": "blueprint_dispute_mail_receipt"
+      },
+      "paidAlternative": null
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000005",
+      "key": "blueprint_dispute_bureau_response",
+      "order": 16,
+      "title": "Upload bureau responses when they arrive",
+      "detail": "When a bureau writes back, photograph or scan the letter and upload it here.",
+      "owner": "client",
+      "state": "not_started",
+      "dueAt": "2026-12-21T12:00:00.000Z",
+      "overdue": false,
+      "completedAt": null,
+      "closedBy": "fundhub",
+      "verifyKind": "bureau_response_upload",
+      "params": {
+        "definition_key": "blueprint_dispute_bureau_response"
+      },
+      "paidAlternative": null
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000006",
+      "key": "no_new_credit",
+      "order": 20,
+      "title": "Do not open new credit while we work on your file",
+      "detail": "A new card adds a hard inquiry and lowers the average age of your accounts. Talk to our team before you apply for anything.",
+      "owner": "client",
+      "state": "in_progress",
+      "dueAt": null,
+      "overdue": false,
+      "completedAt": null,
+      "closedBy": "ongoing",
+      "verifyKind": "no_new_credit",
+      "params": {
+        "definition_key": "no_new_credit",
+        "accounts_at_seed": [
+          null,
+          null
+        ],
+        "account_prints_at_seed": [],
+        "accounts_without_print_at_seed": 2,
+        "snapshot_source": "crs_result",
+        "baseline_locked": true
+      },
+      "paidAlternative": null
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000007",
+      "key": "personal_loan",
+      "order": 30,
+      "title": "Talk to our team about a personal loan",
+      "detail": "Raise it early, before any of the optimization work changes your accounts. Our team will walk you through whether it fits your plan.",
+      "owner": "client",
+      "state": "not_started",
+      "dueAt": "2026-11-20T12:00:00.000Z",
+      "overdue": false,
+      "completedAt": null,
+      "closedBy": "client",
+      "verifyKind": null,
+      "params": {
+        "definition_key": "personal_loan"
+      },
+      "paidAlternative": null
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000008",
+      "key": "form_llc",
+      "order": 40,
+      "title": "File your LLC",
+      "detail": "File online with the Secretary of State in AZ. Send us the filing confirmation once you have it.",
+      "owner": "client",
+      "state": "not_started",
+      "dueAt": "2026-12-06T12:00:00.000Z",
+      "overdue": false,
+      "completedAt": null,
+      "closedBy": "client",
+      "verifyKind": null,
+      "params": {
+        "definition_key": "form_llc"
+      },
+      "paidAlternative": null
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000009",
+      "key": "get_ein",
+      "order": 50,
+      "title": "Get your EIN from the IRS",
+      "detail": "You can apply for one on IRS.gov at no cost. Your business bank account will ask for it.",
+      "owner": "client",
+      "state": "not_started",
+      "dueAt": null,
+      "overdue": false,
+      "completedAt": null,
+      "closedBy": "client",
+      "verifyKind": null,
+      "params": {
+        "definition_key": "get_ein"
+      },
+      "paidAlternative": null
+    },
+    {
+      "id": "b0000000-0000-4000-8000-000000000010",
+      "key": "business_checking",
+      "order": 60,
+      "title": "Open a business checking account",
+      "detail": "Open it in the LLC name, using the EIN. Take your filing paperwork and your EIN letter with you.",
+      "owner": "client",
+      "state": "not_started",
+      "dueAt": null,
+      "overdue": false,
+      "completedAt": null,
+      "closedBy": "client",
+      "verifyKind": null,
+      "params": {
+        "definition_key": "business_checking"
+      },
+      "paidAlternative": null
+    }
+  ],
+  "portalSummary": {
+    "ok": true,
+    "prequal_amount": 19799,
+    "prequal_display": "$19,799",
+    "scores": {
+      "experian": 702,
+      "equifax": 709,
+      "transunion": 706,
+      "experian_business": null,
+      "sample": true
+    },
+    "soft_pull_complete": true,
+    "doc_agent_message": null,
+    "inquiry_open": false,
+    "documents": [],
+    "repair_path": false,
+    "dispute_consent": false,
+    "invoice_due": {
+      "count": 0,
+      "currency": "USD",
+      "total": 0,
+      "total_display": "$0.00",
+      "items": []
+    },
+    "payments": [],
+    "slo_paid": false,
+    "advisor": null,
+    "upcoming_call": null,
+    "stage": {
+      "key": "soft_pull",
+      "before_call": false,
+      "contract_signed_at": null,
+      "soft_pull_complete": true,
+      "call_held": false,
+      "agreement_signed": false,
+      "payment_posted": false
+    }
+  },
+  "readyToFund": {
+    "ok": true,
+    "status": "none",
+    "round": 0,
+    "task_id": null,
+    "requested_at": null,
+    "done_at": null,
+    "process": "blueprint-csm-prep",
+    "offers": {
+      "blueprint": {
+        "owned": true,
+        "name": "Capital Blueprint",
+        "sell": {
+          "how": "call",
+          "url": null
+        }
+      },
+      "financeos": {
+        "entitled": true,
+        "setup_url": null
+      }
+    }
+  },
+  "creditSnapshots": {
+    "initial": {
+      "raw": {
+        "bureaus": {
+          "EX": {
+            "requestData": {
+              "firstName": "Alex",
+              "lastName": "Sample",
+              "addresses": [
+                {
+                  "borrowerResidencyType": "Current",
+                  "addressLine1": "100 Example Street",
+                  "city": "Phoenix",
+                  "state": "AZ",
+                  "postalCode": "85004"
+                }
+              ]
+            },
+            "repositoryIncluded": {
+              "experian": true,
+              "equifax": false,
+              "transunion": false
+            },
+            "responseDetail": {
+              "dateRequested": "2026-10-06T12:00:00.000Z"
+            },
+            "creditFiles": [
+              {
+                "creditFileDetail": {
+                  "sourceType": "Experian",
+                  "creditFileInfileDate": "2026-10-06",
+                  "creditFileResultStatusType": "FileReturned"
+                },
+                "aliases": [
+                  {
+                    "firstName": "Alex",
+                    "lastName": "Sample"
+                  }
+                ],
+                "addresses": [
+                  {
+                    "addressLine1": "100 Example Street",
+                    "city": "Phoenix",
+                    "state": "AZ",
+                    "postalCode": "85004",
+                    "dateReported": "2026-10-06"
+                  }
+                ]
+              }
+            ],
+            "scores": [
+              {
+                "borrowerSourceType": "Borrower",
+                "modelName": "FICO Score 9",
+                "modelNameType": "F9",
+                "sourceType": "Experian",
+                "scoreValue": "662"
+              }
+            ],
+            "tradelines": [
+              {
+                "accountIdentifier": "SAMPLE-CARD-A",
+                "accountOpenedDate": "2019-01-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-10-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "8000",
+                "highBalanceAmount": "8000",
+                "currentBalanceAmount": "2400",
+                "creditorName": "Sample Card A",
+                "sourceType": "Experian",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-10-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-CARD-B",
+                "accountOpenedDate": "2021-03-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-10-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "5000",
+                "highBalanceAmount": "5000",
+                "currentBalanceAmount": "850",
+                "creditorName": "Sample Card B",
+                "sourceType": "Experian",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-10-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-AUTO",
+                "accountOpenedDate": "2022-02-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-10-06",
+                "accountStatusType": "Open",
+                "accountType": "Installment",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "20000",
+                "highBalanceAmount": "20000",
+                "currentBalanceAmount": "9000",
+                "creditorName": "Sample Auto Loan",
+                "sourceType": "Experian",
+                "businessType": "Banking",
+                "loanType": "Automobile",
+                "monthlyPaymentAmount": "250",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-10-06",
+                "derogatoryDataIndicator": false
+              }
+            ],
+            "inquiries": [
+              {
+                "creditorName": "Sample Community Bank",
+                "inquiryDate": "2026-09-06",
+                "sourceType": "Experian",
+                "businessType": "Banking"
+              }
+            ],
+            "publicRecords": [],
+            "responseAlertMessages": []
+          },
+          "EQ": {
+            "requestData": {
+              "firstName": "Alex",
+              "lastName": "Sample",
+              "addresses": [
+                {
+                  "borrowerResidencyType": "Current",
+                  "addressLine1": "100 Example Street",
+                  "city": "Phoenix",
+                  "state": "AZ",
+                  "postalCode": "85004"
+                }
+              ]
+            },
+            "repositoryIncluded": {
+              "experian": false,
+              "equifax": true,
+              "transunion": false
+            },
+            "responseDetail": {
+              "dateRequested": "2026-10-06T12:00:00.000Z"
+            },
+            "creditFiles": [
+              {
+                "creditFileDetail": {
+                  "sourceType": "Equifax",
+                  "creditFileInfileDate": "2026-10-06",
+                  "creditFileResultStatusType": "FileReturned"
+                },
+                "aliases": [
+                  {
+                    "firstName": "Alex",
+                    "lastName": "Sample"
+                  }
+                ],
+                "addresses": [
+                  {
+                    "addressLine1": "100 Example Street",
+                    "city": "Phoenix",
+                    "state": "AZ",
+                    "postalCode": "85004",
+                    "dateReported": "2026-10-06"
+                  }
+                ]
+              }
+            ],
+            "scores": [
+              {
+                "borrowerSourceType": "Borrower",
+                "modelName": "FICO Score 9",
+                "modelNameType": "F9",
+                "sourceType": "Equifax",
+                "scoreValue": "668"
+              }
+            ],
+            "tradelines": [
+              {
+                "accountIdentifier": "SAMPLE-CARD-A",
+                "accountOpenedDate": "2019-01-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-10-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "8000",
+                "highBalanceAmount": "8000",
+                "currentBalanceAmount": "2400",
+                "creditorName": "Sample Card A",
+                "sourceType": "Equifax",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-10-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-CARD-B",
+                "accountOpenedDate": "2021-03-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-10-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "5000",
+                "highBalanceAmount": "5000",
+                "currentBalanceAmount": "850",
+                "creditorName": "Sample Card B",
+                "sourceType": "Equifax",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-10-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-AUTO",
+                "accountOpenedDate": "2022-02-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-10-06",
+                "accountStatusType": "Open",
+                "accountType": "Installment",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "20000",
+                "highBalanceAmount": "20000",
+                "currentBalanceAmount": "9000",
+                "creditorName": "Sample Auto Loan",
+                "sourceType": "Equifax",
+                "businessType": "Banking",
+                "loanType": "Automobile",
+                "monthlyPaymentAmount": "250",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-10-06",
+                "derogatoryDataIndicator": false
+              }
+            ],
+            "inquiries": [
+              {
+                "creditorName": "Sample Community Bank",
+                "inquiryDate": "2026-09-06",
+                "sourceType": "Equifax",
+                "businessType": "Banking"
+              }
+            ],
+            "publicRecords": [],
+            "responseAlertMessages": []
+          },
+          "TU": {
+            "requestData": {
+              "firstName": "Alex",
+              "lastName": "Sample",
+              "addresses": [
+                {
+                  "borrowerResidencyType": "Current",
+                  "addressLine1": "100 Example Street",
+                  "city": "Phoenix",
+                  "state": "AZ",
+                  "postalCode": "85004"
+                }
+              ]
+            },
+            "repositoryIncluded": {
+              "experian": false,
+              "equifax": false,
+              "transunion": true
+            },
+            "responseDetail": {
+              "dateRequested": "2026-10-06T12:00:00.000Z"
+            },
+            "creditFiles": [
+              {
+                "creditFileDetail": {
+                  "sourceType": "TransUnion",
+                  "creditFileInfileDate": "2026-10-06",
+                  "creditFileResultStatusType": "FileReturned"
+                },
+                "aliases": [
+                  {
+                    "firstName": "Alex",
+                    "lastName": "Sample"
+                  }
+                ],
+                "addresses": [
+                  {
+                    "addressLine1": "100 Example Street",
+                    "city": "Phoenix",
+                    "state": "AZ",
+                    "postalCode": "85004",
+                    "dateReported": "2026-10-06"
+                  }
+                ]
+              }
+            ],
+            "scores": [
+              {
+                "borrowerSourceType": "Borrower",
+                "modelName": "FICO Score 9",
+                "modelNameType": "F9",
+                "sourceType": "TransUnion",
+                "scoreValue": "665"
+              }
+            ],
+            "tradelines": [
+              {
+                "accountIdentifier": "SAMPLE-CARD-A",
+                "accountOpenedDate": "2019-01-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-10-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "8000",
+                "highBalanceAmount": "8000",
+                "currentBalanceAmount": "2400",
+                "creditorName": "Sample Card A",
+                "sourceType": "TransUnion",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-10-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-CARD-B",
+                "accountOpenedDate": "2021-03-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-10-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "5000",
+                "highBalanceAmount": "5000",
+                "currentBalanceAmount": "850",
+                "creditorName": "Sample Card B",
+                "sourceType": "TransUnion",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-10-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-AUTO",
+                "accountOpenedDate": "2022-02-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-10-06",
+                "accountStatusType": "Open",
+                "accountType": "Installment",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "20000",
+                "highBalanceAmount": "20000",
+                "currentBalanceAmount": "9000",
+                "creditorName": "Sample Auto Loan",
+                "sourceType": "TransUnion",
+                "businessType": "Banking",
+                "loanType": "Automobile",
+                "monthlyPaymentAmount": "250",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-10-06",
+                "derogatoryDataIndicator": false
+              }
+            ],
+            "inquiries": [
+              {
+                "creditorName": "Sample Community Bank",
+                "inquiryDate": "2026-09-06",
+                "sourceType": "TransUnion",
+                "businessType": "Banking"
+              }
+            ],
+            "publicRecords": [],
+            "responseAlertMessages": []
+          }
+        },
+        "bureausPulled": [
+          "TU",
+          "EX",
+          "EQ"
+        ],
+        "environment": "fictional_demo",
+        "simulated": true
+      },
+      "analysis": {
+        "ok": true,
+        "outcome": "FULL_FUNDING",
+        "consumerSignals": {
+          "scores": {
+            "median": 665,
+            "bureauConfidence": "high",
+            "spread": 6,
+            "perBureau": {
+              "tu": 665,
+              "ex": 662,
+              "eq": 668
+            }
+          },
+          "tradelines": {
+            "total": 9,
+            "primary": 9,
+            "au": 0,
+            "auDominance": 0,
+            "revolvingDepth": 6,
+            "installmentDepth": 3,
+            "mortgagePresent": false,
+            "depth": 9,
+            "thinFile": false
+          },
+          "anchors": {
+            "revolving": {
+              "creditor": "Sample Card A",
+              "limit": 8000,
+              "openedDate": "2019-01-01",
+              "months": 94
+            },
+            "installment": {
+              "creditor": "Sample Auto Loan",
+              "amount": 20000,
+              "openedDate": "2022-02-01",
+              "months": 57
+            }
+          },
+          "utilization": {
+            "totalBalance": 9750,
+            "totalLimit": 39000,
+            "pct": 25,
+            "band": "good"
+          },
+          "inquiries": {
+            "total": 3,
+            "last6Mo": 3,
+            "last12Mo": 3,
+            "pressure": "moderate"
+          },
+          "derogatories": {
+            "active": 0,
+            "chargeoffs": 0,
+            "collections": 0,
+            "active30": 0,
+            "active60": 0,
+            "active90": 0,
+            "active120Plus": 0,
+            "worstSeverity": 0,
+            "activeBankruptcy": false,
+            "dischargedBankruptcy": false,
+            "bankruptcyAge": null
+          },
+          "paymentHistory": {
+            "late30": 0,
+            "late60": 0,
+            "late90": 0,
+            "totalEvents": 0,
+            "recentActivity": false
+          },
+          "bureauNegatives": {
+            "transunion": {
+              "pulled": true,
+              "clean": true,
+              "count": 0,
+              "items": []
+            },
+            "experian": {
+              "pulled": true,
+              "clean": true,
+              "count": 0,
+              "items": []
+            },
+            "equifax": {
+              "pulled": true,
+              "clean": true,
+              "count": 0,
+              "items": []
+            }
+          },
+          "allBureausClean": true,
+          "anyBureauClean": true,
+          "auImpact": {
+            "harmful": [],
+            "neutral": []
+          }
+        },
+        "businessSignals": {
+          "available": false
+        },
+        "preapprovals": {
+          "personalCard": {
+            "base": 44000,
+            "modifiers": {
+              "outcome": 1,
+              "utilization": 0.9,
+              "thinFile": 1
+            },
+            "final": 39600,
+            "eligible": true,
+            "offerBand": "moderate"
+          },
+          "personalLoan": {
+            "base": 60000,
+            "modifiers": {
+              "outcome": 1,
+              "utilization": 0.9,
+              "thinFile": 1
+            },
+            "final": 54000,
+            "eligible": true,
+            "offerBand": "moderate"
+          },
+          "business": {
+            "base": 0,
+            "multiplier": 0,
+            "modifiers": {
+              "bizUtilization": 1,
+              "outcome": 1
+            },
+            "final": 0,
+            "eligible": false,
+            "offerBand": "none",
+            "capReason": "not_applicable"
+          },
+          "totalPersonal": 93600,
+          "totalBusiness": 0,
+          "totalCombined": 93600,
+          "suppressedByOutcome": false,
+          "customerSafe": true,
+          "confidenceBand": "high",
+          "modifiersApplied": [
+            "utilization"
+          ]
+        },
+        "projectedPreapproval": {
+          "personalCard": {
+            "base": 44000,
+            "modifiers": {
+              "outcome": 1,
+              "utilization": 1,
+              "thinFile": 1
+            },
+            "final": 44000,
+            "eligible": true,
+            "offerBand": "moderate"
+          },
+          "personalLoan": {
+            "base": 60000,
+            "modifiers": {
+              "outcome": 1,
+              "utilization": 1,
+              "thinFile": 1
+            },
+            "final": 60000,
+            "eligible": true,
+            "offerBand": "moderate"
+          },
+          "business": {
+            "base": 0,
+            "multiplier": 0,
+            "modifiers": {
+              "bizUtilization": 1,
+              "outcome": 1
+            },
+            "final": 0,
+            "eligible": false,
+            "offerBand": "none",
+            "capReason": "not_applicable"
+          },
+          "totalPersonal": 104000,
+          "totalBusiness": 0,
+          "totalCombined": 104000,
+          "suppressedByOutcome": false,
+          "customerSafe": true,
+          "confidenceBand": "high",
+          "modifiersApplied": []
+        },
+        "findings": [
+          {
+            "code": "UTIL_CARD_OVER_10",
+            "category": "utilization",
+            "severity": "medium",
+            "customerSafe": true,
+            "plainEnglishProblem": "Your Sample Card A card is at 30% utilization. You owe $2,400 on a $8,000 limit.",
+            "whyItMatters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+            "whatToDoNext": "Pay it down to $800 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers.",
+            "targetState": "Sample Card A under 10%",
+            "documentTriggers": [
+              "balance_reduction_guidance"
+            ],
+            "workflowTags": [
+              "needs_paydown"
+            ],
+            "accountData": {
+              "creditorName": "Sample Card A",
+              "currentBalance": 2400,
+              "limit": 8000,
+              "utilPct": 30,
+              "targetBalance": 800
+            }
+          },
+          {
+            "code": "UTIL_CARD_OVER_10",
+            "category": "utilization",
+            "severity": "medium",
+            "customerSafe": true,
+            "plainEnglishProblem": "Your Sample Card B card is at 17% utilization. You owe $850 on a $5,000 limit.",
+            "whyItMatters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+            "whatToDoNext": "Pay it down to $500 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers.",
+            "targetState": "Sample Card B under 10%",
+            "documentTriggers": [
+              "balance_reduction_guidance"
+            ],
+            "workflowTags": [
+              "needs_paydown"
+            ],
+            "accountData": {
+              "creditorName": "Sample Card B",
+              "currentBalance": 850,
+              "limit": 5000,
+              "utilPct": 17,
+              "targetBalance": 500
+            }
+          },
+          {
+            "code": "UTIL_CARD_OVER_10",
+            "category": "utilization",
+            "severity": "medium",
+            "customerSafe": true,
+            "plainEnglishProblem": "Your Sample Card A card is at 30% utilization. You owe $2,400 on a $8,000 limit.",
+            "whyItMatters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+            "whatToDoNext": "Pay it down to $800 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers.",
+            "targetState": "Sample Card A under 10%",
+            "documentTriggers": [
+              "balance_reduction_guidance"
+            ],
+            "workflowTags": [
+              "needs_paydown"
+            ],
+            "accountData": {
+              "creditorName": "Sample Card A",
+              "currentBalance": 2400,
+              "limit": 8000,
+              "utilPct": 30,
+              "targetBalance": 800
+            }
+          },
+          {
+            "code": "UTIL_CARD_OVER_10",
+            "category": "utilization",
+            "severity": "medium",
+            "customerSafe": true,
+            "plainEnglishProblem": "Your Sample Card B card is at 17% utilization. You owe $850 on a $5,000 limit.",
+            "whyItMatters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+            "whatToDoNext": "Pay it down to $500 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers.",
+            "targetState": "Sample Card B under 10%",
+            "documentTriggers": [
+              "balance_reduction_guidance"
+            ],
+            "workflowTags": [
+              "needs_paydown"
+            ],
+            "accountData": {
+              "creditorName": "Sample Card B",
+              "currentBalance": 850,
+              "limit": 5000,
+              "utilPct": 17,
+              "targetBalance": 500
+            }
+          },
+          {
+            "code": "UTIL_CARD_OVER_10",
+            "category": "utilization",
+            "severity": "medium",
+            "customerSafe": true,
+            "plainEnglishProblem": "Your Sample Card A card is at 30% utilization. You owe $2,400 on a $8,000 limit.",
+            "whyItMatters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+            "whatToDoNext": "Pay it down to $800 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers.",
+            "targetState": "Sample Card A under 10%",
+            "documentTriggers": [
+              "balance_reduction_guidance"
+            ],
+            "workflowTags": [
+              "needs_paydown"
+            ],
+            "accountData": {
+              "creditorName": "Sample Card A",
+              "currentBalance": 2400,
+              "limit": 8000,
+              "utilPct": 30,
+              "targetBalance": 800
+            }
+          },
+          {
+            "code": "UTIL_CARD_OVER_10",
+            "category": "utilization",
+            "severity": "medium",
+            "customerSafe": true,
+            "plainEnglishProblem": "Your Sample Card B card is at 17% utilization. You owe $850 on a $5,000 limit.",
+            "whyItMatters": "Lenders see this and think you are relying too much on credit. High utilization on individual cards drags your score down.",
+            "whatToDoNext": "Pay it down to $500 or less. That puts you at 10%, which is the ideal range for maximum scores and the best funding offers.",
+            "targetState": "Sample Card B under 10%",
+            "documentTriggers": [
+              "balance_reduction_guidance"
+            ],
+            "workflowTags": [
+              "needs_paydown"
+            ],
+            "accountData": {
+              "creditorName": "Sample Card B",
+              "currentBalance": 850,
+              "limit": 5000,
+              "utilPct": 17,
+              "targetBalance": 500
+            }
+          },
+          {
+            "code": "UTIL_MODERATE",
+            "category": "utilization",
+            "severity": "medium",
+            "customerSafe": true,
+            "plainEnglishProblem": "Your utilization is at 25%. That is decent, but you are leaving money on the table.",
+            "whyItMatters": "Under 10% is where the magic happens for funding. The lower your utilization, the higher your pre-approval amount.",
+            "whatToDoNext": "Get total balances under $3,900. Push to get every card under 10% of its limit.",
+            "targetState": "Overall utilization under 10%",
+            "documentTriggers": [
+              "balance_reduction_guidance"
+            ],
+            "workflowTags": [
+              "needs_paydown"
+            ],
+            "accountData": null
+          },
+          {
+            "code": "DONT_CLOSE_OLDEST",
+            "category": "tradeline_depth",
+            "severity": "info",
+            "customerSafe": true,
+            "plainEnglishProblem": "Your oldest account is your Sample Card A, open for 93 months.",
+            "whyItMatters": "This account is building your credit history every month.",
+            "whatToDoNext": "Whatever you do, do not close this card. If you are worried about annual fees, call and ask to downgrade to a no-fee version.",
+            "targetState": "Keep oldest account open",
+            "documentTriggers": [],
+            "workflowTags": [],
+            "accountData": null
+          },
+          {
+            "code": "INQUIRY_REMOVAL",
+            "category": "inquiries",
+            "severity": "medium",
+            "customerSafe": true,
+            "plainEnglishProblem": "You have 3 hard inquiry(ies) on your credit report.",
+            "whyItMatters": "Inquiries are cleanup only — this does not affect funding. However, removing them keeps your report clean and tidy for lenders.",
+            "whatToDoNext": "We prioritize Experian first for inquiry removal. Your inquiry removal letters target any that did not result in an account. Send them out and do not apply for new credit until funding is secured.",
+            "targetState": "Inquiries removed where possible",
+            "documentTriggers": [
+              "inquiry_removal_letter"
+            ],
+            "workflowTags": [
+              "needs_inquiry_cleanup"
+            ],
+            "accountData": null
+          },
+          {
+            "code": "NO_BUSINESS_ENTITY",
+            "category": "business",
+            "severity": "low",
+            "customerSafe": true,
+            "plainEnglishProblem": "You do not have a registered business entity on file.",
+            "whyItMatters": "Business credit programs require an LLC or corporation. Without one, you are limited to personal credit funding only.",
+            "whatToDoNext": "Forming an LLC is straightforward — most states allow you to do it online for under $100. Once formed, we can help you build your business credit profile.",
+            "targetState": "LLC or corporation registered",
+            "documentTriggers": [
+              "business_buildout_guide"
+            ],
+            "workflowTags": [
+              "business_prep"
+            ],
+            "accountData": null
+          },
+          {
+            "code": "FUNDING_FIRST",
+            "category": "strategic",
+            "severity": "high",
+            "customerSafe": true,
+            "plainEnglishProblem": "You qualify for funding. Do NOT open new accounts before applying.",
+            "whyItMatters": "Every new card or loan you open drops your average account age, adds a hard inquiry, and can trigger automatic declines from lenders.",
+            "whatToDoNext": "Get your funding locked in first while your file looks its best. After your funding is secured, then you can open new accounts to build depth for future rounds.",
+            "targetState": "Secure funding before new accounts",
+            "documentTriggers": [],
+            "workflowTags": [
+              "funding_ready"
+            ],
+            "accountData": null
+          }
+        ]
+      },
+      "source": {
+        "reportId": "sample-crs-report-initial",
+        "asOf": "2026-10-06T12:00:00.000Z"
+      },
+      "creditContext": {
+        "source": "sample_credit_report",
+        "reportId": "sample-crs-report-initial",
+        "asOf": "2026-10-06T12:00:00.000Z",
+        "authorizedUserReviewRequired": false,
+        "securedCreditReviewRequired": false,
+        "authorizedUserCount": 0,
+        "thinFile": false,
+        "authorizedUserFindingCodes": [],
+        "sample": true
+      },
+      "opportunity": {
+        "currency": "USD",
+        "basis": "current_crs_engine",
+        "source": {
+          "reportId": "sample-crs-report-initial",
+          "asOf": "2026-10-06T12:00:00.000Z"
+        },
+        "personal": {
+          "currentCents": 9360000,
+          "projectedCents": 10400000,
+          "liftCents": 1040000,
+          "status": "modeled",
+          "blockers": []
+        },
+        "businesses": [
+          {
+            "planId": "a0000000-0000-4000-8000-000000000009",
+            "businessId": null,
+            "name": "Cedar Grove LLC",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "unknown",
+            "blockers": [
+              "formed_business_not_on_file",
+              "formation_evidence_required",
+              "ein_evidence_required",
+              "matched_business_credit_report_required"
+            ]
+          },
+          {
+            "planId": "a0000000-0000-4000-8000-000000000010",
+            "businessId": null,
+            "name": "Willow Studio LLC",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "unknown",
+            "blockers": [
+              "formed_business_not_on_file",
+              "formation_evidence_required",
+              "ein_evidence_required",
+              "matched_business_credit_report_required"
+            ]
+          },
+          {
+            "planId": "a0000000-0000-4000-8000-000000000011",
+            "businessId": null,
+            "name": "Juniper Services LLC",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "unknown",
+            "blockers": [
+              "formed_business_not_on_file",
+              "formation_evidence_required",
+              "ein_evidence_required",
+              "matched_business_credit_report_required"
+            ]
+          }
+        ],
+        "combined": {
+          "currentCents": null,
+          "projectedCents": null,
+          "liftCents": null,
+          "status": "overlap_review_required",
+          "blockers": [
+            "business_capacity_incomplete",
+            "shared_personal_guarantee_overlap_not_modeled"
+          ]
+        },
+        "steps": [
+          {
+            "key": "utilization",
+            "currentCents": 9360000,
+            "projectedCents": 10400000,
+            "liftCents": 1040000,
+            "status": "modeled_scenario",
+            "reason": "The existing engine's scenario assumes all card balances reach its utilization target. This is one joint scenario, not a lift per card."
+          },
+          {
+            "key": "formation",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          },
+          {
+            "key": "ein",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          },
+          {
+            "key": "bank_preparation",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          },
+          {
+            "key": "business_credit",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          }
+        ],
+        "limitations": [
+          "Modeled capacity is not an approval, issued credit, or usable funding.",
+          "Step estimates describe shared scenarios and must not be added together.",
+          "One personal estimate is counted once. Multiple business estimates require a model that resolves shared personal-guarantee overlap.",
+          "Missing business facts, reviewed evidence, or a matching business report leave capacity unknown."
+        ]
+      }
+    },
+    "updated": {
+      "raw": {
+        "bureaus": {
+          "EX": {
+            "requestData": {
+              "firstName": "Alex",
+              "lastName": "Sample",
+              "addresses": [
+                {
+                  "borrowerResidencyType": "Current",
+                  "addressLine1": "100 Example Street",
+                  "city": "Phoenix",
+                  "state": "AZ",
+                  "postalCode": "85004"
+                }
+              ]
+            },
+            "repositoryIncluded": {
+              "experian": true,
+              "equifax": false,
+              "transunion": false
+            },
+            "responseDetail": {
+              "dateRequested": "2026-11-06T12:00:00.000Z"
+            },
+            "creditFiles": [
+              {
+                "creditFileDetail": {
+                  "sourceType": "Experian",
+                  "creditFileInfileDate": "2026-11-06",
+                  "creditFileResultStatusType": "FileReturned"
+                },
+                "aliases": [
+                  {
+                    "firstName": "Alex",
+                    "lastName": "Sample"
+                  }
+                ],
+                "addresses": [
+                  {
+                    "addressLine1": "100 Example Street",
+                    "city": "Phoenix",
+                    "state": "AZ",
+                    "postalCode": "85004",
+                    "dateReported": "2026-11-06"
+                  }
+                ]
+              }
+            ],
+            "scores": [
+              {
+                "borrowerSourceType": "Borrower",
+                "modelName": "FICO Score 9",
+                "modelNameType": "F9",
+                "sourceType": "Experian",
+                "scoreValue": "712"
+              }
+            ],
+            "tradelines": [
+              {
+                "accountIdentifier": "SAMPLE-CARD-A",
+                "accountOpenedDate": "2019-01-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-11-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "8000",
+                "highBalanceAmount": "8000",
+                "currentBalanceAmount": "400",
+                "creditorName": "Sample Card A",
+                "sourceType": "Experian",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-11-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-CARD-B",
+                "accountOpenedDate": "2021-03-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-11-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "5000",
+                "highBalanceAmount": "5000",
+                "currentBalanceAmount": "250",
+                "creditorName": "Sample Card B",
+                "sourceType": "Experian",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-11-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-AUTO",
+                "accountOpenedDate": "2022-02-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-11-06",
+                "accountStatusType": "Open",
+                "accountType": "Installment",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "20000",
+                "highBalanceAmount": "20000",
+                "currentBalanceAmount": "9000",
+                "creditorName": "Sample Auto Loan",
+                "sourceType": "Experian",
+                "businessType": "Banking",
+                "loanType": "Automobile",
+                "monthlyPaymentAmount": "250",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-11-06",
+                "derogatoryDataIndicator": false
+              }
+            ],
+            "inquiries": [],
+            "publicRecords": [],
+            "responseAlertMessages": []
+          },
+          "EQ": {
+            "requestData": {
+              "firstName": "Alex",
+              "lastName": "Sample",
+              "addresses": [
+                {
+                  "borrowerResidencyType": "Current",
+                  "addressLine1": "100 Example Street",
+                  "city": "Phoenix",
+                  "state": "AZ",
+                  "postalCode": "85004"
+                }
+              ]
+            },
+            "repositoryIncluded": {
+              "experian": false,
+              "equifax": true,
+              "transunion": false
+            },
+            "responseDetail": {
+              "dateRequested": "2026-11-06T12:00:00.000Z"
+            },
+            "creditFiles": [
+              {
+                "creditFileDetail": {
+                  "sourceType": "Equifax",
+                  "creditFileInfileDate": "2026-11-06",
+                  "creditFileResultStatusType": "FileReturned"
+                },
+                "aliases": [
+                  {
+                    "firstName": "Alex",
+                    "lastName": "Sample"
+                  }
+                ],
+                "addresses": [
+                  {
+                    "addressLine1": "100 Example Street",
+                    "city": "Phoenix",
+                    "state": "AZ",
+                    "postalCode": "85004",
+                    "dateReported": "2026-11-06"
+                  }
+                ]
+              }
+            ],
+            "scores": [
+              {
+                "borrowerSourceType": "Borrower",
+                "modelName": "FICO Score 9",
+                "modelNameType": "F9",
+                "sourceType": "Equifax",
+                "scoreValue": "718"
+              }
+            ],
+            "tradelines": [
+              {
+                "accountIdentifier": "SAMPLE-CARD-A",
+                "accountOpenedDate": "2019-01-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-11-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "8000",
+                "highBalanceAmount": "8000",
+                "currentBalanceAmount": "400",
+                "creditorName": "Sample Card A",
+                "sourceType": "Equifax",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-11-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-CARD-B",
+                "accountOpenedDate": "2021-03-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-11-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "5000",
+                "highBalanceAmount": "5000",
+                "currentBalanceAmount": "250",
+                "creditorName": "Sample Card B",
+                "sourceType": "Equifax",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-11-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-AUTO",
+                "accountOpenedDate": "2022-02-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-11-06",
+                "accountStatusType": "Open",
+                "accountType": "Installment",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "20000",
+                "highBalanceAmount": "20000",
+                "currentBalanceAmount": "9000",
+                "creditorName": "Sample Auto Loan",
+                "sourceType": "Equifax",
+                "businessType": "Banking",
+                "loanType": "Automobile",
+                "monthlyPaymentAmount": "250",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-11-06",
+                "derogatoryDataIndicator": false
+              }
+            ],
+            "inquiries": [],
+            "publicRecords": [],
+            "responseAlertMessages": []
+          },
+          "TU": {
+            "requestData": {
+              "firstName": "Alex",
+              "lastName": "Sample",
+              "addresses": [
+                {
+                  "borrowerResidencyType": "Current",
+                  "addressLine1": "100 Example Street",
+                  "city": "Phoenix",
+                  "state": "AZ",
+                  "postalCode": "85004"
+                }
+              ]
+            },
+            "repositoryIncluded": {
+              "experian": false,
+              "equifax": false,
+              "transunion": true
+            },
+            "responseDetail": {
+              "dateRequested": "2026-11-06T12:00:00.000Z"
+            },
+            "creditFiles": [
+              {
+                "creditFileDetail": {
+                  "sourceType": "TransUnion",
+                  "creditFileInfileDate": "2026-11-06",
+                  "creditFileResultStatusType": "FileReturned"
+                },
+                "aliases": [
+                  {
+                    "firstName": "Alex",
+                    "lastName": "Sample"
+                  }
+                ],
+                "addresses": [
+                  {
+                    "addressLine1": "100 Example Street",
+                    "city": "Phoenix",
+                    "state": "AZ",
+                    "postalCode": "85004",
+                    "dateReported": "2026-11-06"
+                  }
+                ]
+              }
+            ],
+            "scores": [
+              {
+                "borrowerSourceType": "Borrower",
+                "modelName": "FICO Score 9",
+                "modelNameType": "F9",
+                "sourceType": "TransUnion",
+                "scoreValue": "715"
+              }
+            ],
+            "tradelines": [
+              {
+                "accountIdentifier": "SAMPLE-CARD-A",
+                "accountOpenedDate": "2019-01-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-11-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "8000",
+                "highBalanceAmount": "8000",
+                "currentBalanceAmount": "400",
+                "creditorName": "Sample Card A",
+                "sourceType": "TransUnion",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-11-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-CARD-B",
+                "accountOpenedDate": "2021-03-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-11-06",
+                "accountStatusType": "Open",
+                "accountType": "Revolving",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "5000",
+                "highBalanceAmount": "5000",
+                "currentBalanceAmount": "250",
+                "creditorName": "Sample Card B",
+                "sourceType": "TransUnion",
+                "businessType": "Banking",
+                "loanType": "CreditCard",
+                "monthlyPaymentAmount": "70",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-11-06",
+                "derogatoryDataIndicator": false
+              },
+              {
+                "accountIdentifier": "SAMPLE-AUTO",
+                "accountOpenedDate": "2022-02-01",
+                "accountOwnershipType": "Individual",
+                "accountReportedDate": "2026-11-06",
+                "accountStatusType": "Open",
+                "accountType": "Installment",
+                "borrowerSourceType": "Borrower",
+                "creditLimitAmount": "20000",
+                "highBalanceAmount": "20000",
+                "currentBalanceAmount": "9000",
+                "creditorName": "Sample Auto Loan",
+                "sourceType": "TransUnion",
+                "businessType": "Banking",
+                "loanType": "Automobile",
+                "monthlyPaymentAmount": "250",
+                "monthsReviewedCount": "36",
+                "_30DayLates": "0",
+                "_60DayLates": "0",
+                "_90DayLates": "0",
+                "currentRatingCode": "C",
+                "currentRatingType": "AsAgreed",
+                "paymentPatternData": "CCCCCCCCCCCCCCCCCCCCCCCC",
+                "paymentPatternStartDate": "2026-11-06",
+                "derogatoryDataIndicator": false
+              }
+            ],
+            "inquiries": [],
+            "publicRecords": [],
+            "responseAlertMessages": []
+          }
+        },
+        "bureausPulled": [
+          "TU",
+          "EX",
+          "EQ"
+        ],
+        "environment": "fictional_demo",
+        "simulated": true
+      },
+      "analysis": {
+        "ok": true,
+        "outcome": "FULL_FUNDING",
+        "consumerSignals": {
+          "scores": {
+            "median": 715,
+            "bureauConfidence": "high",
+            "spread": 6,
+            "perBureau": {
+              "tu": 715,
+              "ex": 712,
+              "eq": 718
+            }
+          },
+          "tradelines": {
+            "total": 9,
+            "primary": 9,
+            "au": 0,
+            "auDominance": 0,
+            "revolvingDepth": 6,
+            "installmentDepth": 3,
+            "mortgagePresent": false,
+            "depth": 9,
+            "thinFile": false
+          },
+          "anchors": {
+            "revolving": {
+              "creditor": "Sample Card A",
+              "limit": 8000,
+              "openedDate": "2019-01-01",
+              "months": 95
+            },
+            "installment": {
+              "creditor": "Sample Auto Loan",
+              "amount": 20000,
+              "openedDate": "2022-02-01",
+              "months": 58
+            }
+          },
+          "utilization": {
+            "totalBalance": 1950,
+            "totalLimit": 39000,
+            "pct": 5,
+            "band": "excellent"
+          },
+          "inquiries": {
+            "total": 0,
+            "last6Mo": 0,
+            "last12Mo": 0,
+            "pressure": "low"
+          },
+          "derogatories": {
+            "active": 0,
+            "chargeoffs": 0,
+            "collections": 0,
+            "active30": 0,
+            "active60": 0,
+            "active90": 0,
+            "active120Plus": 0,
+            "worstSeverity": 0,
+            "activeBankruptcy": false,
+            "dischargedBankruptcy": false,
+            "bankruptcyAge": null
+          },
+          "paymentHistory": {
+            "late30": 0,
+            "late60": 0,
+            "late90": 0,
+            "totalEvents": 0,
+            "recentActivity": false
+          },
+          "bureauNegatives": {
+            "transunion": {
+              "pulled": true,
+              "clean": true,
+              "count": 0,
+              "items": []
+            },
+            "experian": {
+              "pulled": true,
+              "clean": true,
+              "count": 0,
+              "items": []
+            },
+            "equifax": {
+              "pulled": true,
+              "clean": true,
+              "count": 0,
+              "items": []
+            }
+          },
+          "allBureausClean": true,
+          "anyBureauClean": true,
+          "auImpact": {
+            "harmful": [],
+            "neutral": []
+          }
+        },
+        "businessSignals": {
+          "available": false
+        },
+        "preapprovals": {
+          "personalCard": {
+            "base": 44000,
+            "modifiers": {
+              "outcome": 1,
+              "utilization": 1,
+              "thinFile": 1
+            },
+            "final": 44000,
+            "eligible": true,
+            "offerBand": "moderate"
+          },
+          "personalLoan": {
+            "base": 60000,
+            "modifiers": {
+              "outcome": 1,
+              "utilization": 1,
+              "thinFile": 1
+            },
+            "final": 60000,
+            "eligible": true,
+            "offerBand": "moderate"
+          },
+          "business": {
+            "base": 0,
+            "multiplier": 0,
+            "modifiers": {
+              "bizUtilization": 1,
+              "outcome": 1
+            },
+            "final": 0,
+            "eligible": false,
+            "offerBand": "none",
+            "capReason": "not_applicable"
+          },
+          "totalPersonal": 104000,
+          "totalBusiness": 0,
+          "totalCombined": 104000,
+          "suppressedByOutcome": false,
+          "customerSafe": true,
+          "confidenceBand": "high",
+          "modifiersApplied": []
+        },
+        "projectedPreapproval": {
+          "personalCard": {
+            "base": 44000,
+            "modifiers": {
+              "outcome": 1,
+              "utilization": 1,
+              "thinFile": 1
+            },
+            "final": 44000,
+            "eligible": true,
+            "offerBand": "moderate"
+          },
+          "personalLoan": {
+            "base": 60000,
+            "modifiers": {
+              "outcome": 1,
+              "utilization": 1,
+              "thinFile": 1
+            },
+            "final": 60000,
+            "eligible": true,
+            "offerBand": "moderate"
+          },
+          "business": {
+            "base": 0,
+            "multiplier": 0,
+            "modifiers": {
+              "bizUtilization": 1,
+              "outcome": 1
+            },
+            "final": 0,
+            "eligible": false,
+            "offerBand": "none",
+            "capReason": "not_applicable"
+          },
+          "totalPersonal": 104000,
+          "totalBusiness": 0,
+          "totalCombined": 104000,
+          "suppressedByOutcome": false,
+          "customerSafe": true,
+          "confidenceBand": "high",
+          "modifiersApplied": []
+        },
+        "findings": [
+          {
+            "code": "DONT_CLOSE_OLDEST",
+            "category": "tradeline_depth",
+            "severity": "info",
+            "customerSafe": true,
+            "plainEnglishProblem": "Your oldest account is your Sample Card A, open for 94 months.",
+            "whyItMatters": "This account is building your credit history every month.",
+            "whatToDoNext": "Whatever you do, do not close this card. If you are worried about annual fees, call and ask to downgrade to a no-fee version.",
+            "targetState": "Keep oldest account open",
+            "documentTriggers": [],
+            "workflowTags": [],
+            "accountData": null
+          },
+          {
+            "code": "NO_BUSINESS_ENTITY",
+            "category": "business",
+            "severity": "low",
+            "customerSafe": true,
+            "plainEnglishProblem": "You do not have a registered business entity on file.",
+            "whyItMatters": "Business credit programs require an LLC or corporation. Without one, you are limited to personal credit funding only.",
+            "whatToDoNext": "Forming an LLC is straightforward — most states allow you to do it online for under $100. Once formed, we can help you build your business credit profile.",
+            "targetState": "LLC or corporation registered",
+            "documentTriggers": [
+              "business_buildout_guide"
+            ],
+            "workflowTags": [
+              "business_prep"
+            ],
+            "accountData": null
+          },
+          {
+            "code": "FUNDING_FIRST",
+            "category": "strategic",
+            "severity": "high",
+            "customerSafe": true,
+            "plainEnglishProblem": "You qualify for funding. Do NOT open new accounts before applying.",
+            "whyItMatters": "Every new card or loan you open drops your average account age, adds a hard inquiry, and can trigger automatic declines from lenders.",
+            "whatToDoNext": "Get your funding locked in first while your file looks its best. After your funding is secured, then you can open new accounts to build depth for future rounds.",
+            "targetState": "Secure funding before new accounts",
+            "documentTriggers": [],
+            "workflowTags": [
+              "funding_ready"
+            ],
+            "accountData": null
+          },
+          {
+            "code": "REQUEST_CLI",
+            "category": "strategic",
+            "severity": "low",
+            "customerSafe": true,
+            "plainEnglishProblem": "Your Sample Card A card has been open 94 months with on-time payments and low utilization.",
+            "whyItMatters": "A higher limit lowers your utilization and increases your funding potential.",
+            "whatToDoNext": "Call Sample Card A or check your app for a credit limit increase. Many issuers do a soft pull increase if you have been responsible. This does not open a new account or add a hard inquiry.",
+            "targetState": "Higher credit limit",
+            "documentTriggers": [],
+            "workflowTags": [],
+            "accountData": {
+              "creditorName": "Sample Card A",
+              "limit": 8000,
+              "ageMonths": 94
+            }
+          }
+        ]
+      },
+      "source": {
+        "reportId": "sample-crs-report-updated",
+        "asOf": "2026-11-06T12:00:00.000Z"
+      },
+      "creditContext": {
+        "source": "sample_credit_report",
+        "reportId": "sample-crs-report-updated",
+        "asOf": "2026-11-06T12:00:00.000Z",
+        "authorizedUserReviewRequired": false,
+        "securedCreditReviewRequired": false,
+        "authorizedUserCount": 0,
+        "thinFile": false,
+        "authorizedUserFindingCodes": [],
+        "sample": true
+      },
+      "opportunity": {
+        "currency": "USD",
+        "basis": "current_crs_engine",
+        "source": {
+          "reportId": "sample-crs-report-updated",
+          "asOf": "2026-11-06T12:00:00.000Z"
+        },
+        "personal": {
+          "currentCents": 10400000,
+          "projectedCents": 10400000,
+          "liftCents": 0,
+          "status": "modeled",
+          "blockers": []
+        },
+        "businesses": [
+          {
+            "planId": "a0000000-0000-4000-8000-000000000009",
+            "businessId": null,
+            "name": "Cedar Grove LLC",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "unknown",
+            "blockers": [
+              "formed_business_not_on_file",
+              "formation_evidence_required",
+              "ein_evidence_required",
+              "matched_business_credit_report_required"
+            ]
+          },
+          {
+            "planId": "a0000000-0000-4000-8000-000000000010",
+            "businessId": null,
+            "name": "Willow Studio LLC",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "unknown",
+            "blockers": [
+              "formed_business_not_on_file",
+              "formation_evidence_required",
+              "ein_evidence_required",
+              "matched_business_credit_report_required"
+            ]
+          },
+          {
+            "planId": "a0000000-0000-4000-8000-000000000011",
+            "businessId": null,
+            "name": "Juniper Services LLC",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "unknown",
+            "blockers": [
+              "formed_business_not_on_file",
+              "formation_evidence_required",
+              "ein_evidence_required",
+              "matched_business_credit_report_required"
+            ]
+          }
+        ],
+        "combined": {
+          "currentCents": null,
+          "projectedCents": null,
+          "liftCents": null,
+          "status": "overlap_review_required",
+          "blockers": [
+            "business_capacity_incomplete",
+            "shared_personal_guarantee_overlap_not_modeled"
+          ]
+        },
+        "steps": [
+          {
+            "key": "formation",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          },
+          {
+            "key": "ein",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          },
+          {
+            "key": "bank_preparation",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          },
+          {
+            "key": "business_credit",
+            "currentCents": null,
+            "projectedCents": null,
+            "liftCents": null,
+            "status": "not_modeled",
+            "reason": "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it."
+          }
+        ],
+        "limitations": [
+          "Modeled capacity is not an approval, issued credit, or usable funding.",
+          "Step estimates describe shared scenarios and must not be added together.",
+          "One personal estimate is counted once. Multiple business estimates require a model that resolves shared personal-guarantee overlap.",
+          "Missing business facts, reviewed evidence, or a matching business report leave capacity unknown."
+        ]
+      }
+    }
+  },
+  "moneyEmpty": {
+    "alerts": {
+      "enrolled": false,
+      "settings": {},
+      "cards": [],
+      "reserve": {},
+      "alerts": []
+    },
+    "banks": {
+      "location": null,
+      "containers": [],
+      "recommended_banks": [],
+      "banks_left_out": [],
+      "card_stacking": null,
+      "next_sequence": [],
+      "next_round": null,
+      "relationships": [],
+      "not_set": []
+    },
+    "connections": {
+      "connections": [],
+      "containers": [],
+      "summary": {
+        "connected": 0,
+        "manual": 0
+      },
+      "open_api_url": null
+    },
+    "payments": {
+      "owed": [],
+      "plans": [],
+      "upcoming": [],
+      "agent_log": [],
+      "agent": null
+    },
+    "setup": {
+      "paid": false,
+      "paid_at": null,
+      "setup_fee_cents": null,
+      "price_per_container_cents": null,
+      "containers": 0,
+      "monthly_cents": null,
+      "open_checkout": null,
+      "soft_pull": {
+        "requested": false,
+        "completed": false,
+        "last_pulled_at": null,
+        "price": {
+          "base_cents": null,
+          "business_addon_cents": null
+        }
+      },
+      "entitled": true,
+      "steps": [],
+      "current_step": null
+    },
+    "strategy": {
+      "sandbox": true,
+      "tip": "Sample planning only. No payments or transfers are made.",
+      "inputs": {},
+      "targets": [],
+      "methods": [],
+      "sources": [],
+      "defaults": {},
+      "plan": [],
+      "saved": null
+    },
+    "transfers": {
+      "mode": "sample",
+      "limits": {},
+      "accounts": [],
+      "waiting": [],
+      "history": []
+    },
+    "trends": {
+      "range": "3m",
+      "from": null,
+      "to": "2026-11-06",
+      "has_history": false,
+      "daily": [],
+      "monthly": [],
+      "sales": [],
+      "credit": [],
+      "sales_unavailable": true
+    },
+    "vault": {
+      "audience": "client",
+      "complete": false,
+      "summary": {},
+      "scopes": [],
+      "items": [],
+      "unfiled": [],
+      "settings": {}
+    },
+    "declines": {
+      "items": [],
+      "declines": [],
+      "settings": {},
+      "sources": []
+    },
+    "helper": {
+      "viewer": "client",
+      "today": "2026-11-06",
+      "helper": null,
+      "turns": [],
+      "pending": []
+    }
+  },
   "provenance": {
-    "source": "Fictional values; real Blueprint lesson and debt-allocation helpers",
+    "source": "Fictional values; real Blueprint lesson, waypoint, service-type and debt-allocation helpers",
     "payoffSha256": "80ee2dab21e86b5a1315937d06b3ba1ac4b0416b50859248b387a3df2316ff23",
-    "guidanceSha256": "5a34895c3d13b59a35cbaa06ef767180c6aa8c4a28ab38f8978622d2bf8e30b3"
+    "guidanceSha256": "5a34895c3d13b59a35cbaa06ef767180c6aa8c4a28ab38f8978622d2bf8e30b3",
+    "progressSha256": "86856565f89ef35cf9ed7454593f456942fd3be635cd63ac95924d51e61d2b41",
+    "opportunitySha256": "b1b627d5cdf1002ab438991dd3408d562821037ef467bdd5141bed60bd1fbcb7"
   }
 }

@@ -130,6 +130,7 @@ import { slugify, accountPrint } from "../waypoints/definitions.mjs";
 import { isDerogatoryRuleId } from "../metro2/diy/derogatory.mjs";
 import { isoDay } from "../liabilities/card-stack.mjs";
 import { toCents } from "../commissions/money.mjs";
+import { fundingOpportunityFromCreditRows } from "../blueprint/funding-opportunity.mjs";
 
 /** How far ahead each projected point looks, in months. */
 export const PROJECTION_MONTHS = Object.freeze([3, 6, 12]);
@@ -762,6 +763,12 @@ export function buildFundability({
 
   return {
     ok: true,
+    // Additive current full-engine view shared with the Blueprint client plan.
+    // Legacy FinanceOS history/checks below retain their existing contract.
+    opportunity: fundingOpportunityFromCreditRows({ crsRows: newestFirst,
+      businessPlans: { ...(safeObject(cf.blueprint_business_plans) || {}),
+        existingBusinesses: bizOrdered.map(row => ({ id: String(row.id), name: text(row.name),
+          formationDate: text(row.entity_data?.incorporated_date) || text(row.entity_data?.formation_date) })) } }),
     client: { id: text(client.id), name: [first, last].filter(Boolean).join(" ") || null },
     as_of: new Date(asOf).toISOString(),
     has_pull: scored,
@@ -819,7 +826,7 @@ export function buildFundability({
 
 /* Demo rows are left out, as the Credit page and the portal leave them out. */
 const CRS_SQL = `
-  SELECT id, result, created_at
+  SELECT id, provider, is_demo, result, created_at
     FROM crs_results
    WHERE client_id = $1 AND org_id = $2
      AND is_demo IS NOT TRUE

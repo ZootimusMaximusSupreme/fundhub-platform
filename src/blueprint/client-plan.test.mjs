@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildBlueprintClientPlan } from "./client-plan.mjs";
+import estimator from "../../vendor/underwriteiq-full/api/lite/crs/estimate-preapprovals.js";
 
 const ORG = "org-a";
 const CLIENT = "client-a";
@@ -89,6 +90,48 @@ test("missing real credit leaves both applicability decisions unknown rather tha
   assert.equal(out.creditContext.source, null);
   assert.equal(out.lessons[0].applicability, "review_needed");
   assert.equal(f.calls.engine.length, 0);
+  assert.equal(out.creditContext.opportunity.personal.currentCents, null);
+  assert.equal(out.creditContext.opportunity.source.reportId, null);
+  assert.ok(out.creditContext.opportunity.personal.blockers.includes('genuine_credit_report_required'));
+});
+
+test("the real plan shares one genuine full-engine report without multiplying four business plans or checklist ticks", async () => {
+  function analysis(band) {
+    const consumerSignals = { anchors: { revolving: { limit: 10000 }, installment: { amount: 10000 } },
+      utilization: { band }, tradelines: { au: 0, thinFile: false }, scores: { bureauConfidence: 'high' } };
+    const businessSignals = { available: false };
+    return { outcome: 'FULL_FUNDING', consumerSignals, businessSignals,
+      preapprovals: estimator.estimatePreapprovals(consumerSignals, businessSignals, 'FULL_FUNDING'),
+      projectedPreapproval: estimator.estimatePreapprovals({ ...consumerSignals, utilization: { band: 'excellent' } }, businessSignals, 'FULL_FUNDING'),
+      findings: [{ code: 'UTIL_OVERALL_HIGH' }] };
+  }
+  const payload = { private_account_field: 'RAW_ACCOUNT_MUST_NOT_ESCAPE', analysis: analysis('high') };
+  const credit = genuine(payload), f = fixture({ credit });
+  f.businessPlans.businesses = Array.from({ length: 4 }, (_, i) => ({
+    id: `plan-${i}`, name: `Separate company ${i}`, activity: 'Consulting', formationStatus: 'planned'
+  }));
+  f.businessPlans.existingBusinesses = [];
+  let out = await buildBlueprintClientPlan(f.db, scope, f.deps);
+  const model = out.creditContext.opportunity;
+  assert.equal(f.calls.engine.length, 1, 'one genuine report is analyzed once for the same plan read');
+  assert.equal(f.calls.engine[0], payload);
+  assert.deepEqual(model.source, { reportId: credit.id, asOf: credit.created_at.toISOString() });
+  assert.equal(model.personal.currentCents, payload.analysis.preapprovals.totalPersonal * 100);
+  assert.equal(model.personal.projectedCents, payload.analysis.projectedPreapproval.totalPersonal * 100);
+  assert.equal(model.businesses.length, 4);
+  assert.ok(model.businesses.every(b => b.currentCents === null && b.liftCents === null && b.blockers.includes('matched_business_credit_report_required')));
+  assert.equal(model.combined.currentCents, null);
+  assert.equal(model.combined.status, 'overlap_review_required');
+  assert.doesNotMatch(JSON.stringify(out), /RAW_ACCOUNT_MUST_NOT_ESCAPE|consumerSignals|anchors|preapprovals/);
+  f.progress.waypoints[0].state = 'done';f.progress.waypoints[0].completedAt = NOW.toISOString();
+  out = await buildBlueprintClientPlan(f.db, scope, f.deps);
+  assert.deepEqual(out.creditContext.opportunity, model, 'saving a checklist tick cannot alter credit capacity');
+  credit.id = 'report-2';credit.created_at = new Date('2026-11-01T12:00:00.000Z');payload.analysis = analysis('excellent');
+  out = await buildBlueprintClientPlan(f.db, scope, f.deps);
+  assert.equal(out.creditContext.reportId, 'report-2');
+  assert.equal(out.creditContext.opportunity.source.reportId, 'report-2');
+  assert.equal(out.creditContext.opportunity.source.asOf, '2026-11-01T12:00:00.000Z');
+  assert.ok(out.creditContext.opportunity.personal.currentCents > model.personal.currentCents);
 });
 
 test("AU and secured-credit applicability comes from the existing pure engine on a genuine persisted report", async () => {
@@ -136,6 +179,8 @@ for (const marker of [
   assert.equal(out.creditContext.source, null);
   assert.equal(out.creditContext.securedCreditReviewRequired, null);
   assert.equal(f.calls.engine.length, 0);
+  assert.equal(out.creditContext.opportunity.personal.currentCents, null);
+  assert.equal(out.creditContext.opportunity.source.reportId, null);
   const query = f.calls.queries.find((q) => /FROM crs_results/.test(q.sql));
   assert.match(query.sql, /is_demo IS NOT TRUE/);
   assert.match(query.sql, /sandbox/);

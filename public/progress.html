@@ -1,4 +1,20 @@
 <!doctype html><html lang="en"><head>
+<script>
+/* Full samples use native Response objects from their local adapter only. */
+(function () {
+  var q = new URLSearchParams(location.search);
+  window.__fhBlueprintFullDemoRoute = ['/app/client-portal.html','/progress.html','/app/financeos.html'].indexOf(location.pathname) !== -1 && q.get('demo') === '1' && q.get('blueprint') === 'full';
+  var nativeFetch = window.fetch.bind(window);
+  window.FHClientFetch = function (path, init) {
+    if (!window.__fhBlueprintFullDemoRoute) return nativeFetch(path, init);
+    var demo = window.FHBlueprintDemo;
+    if (demo && demo.active && typeof demo.fetchResponse === 'function') return demo.fetchResponse(path, init);
+    return Promise.resolve(new Response(JSON.stringify({ok:false,error:'demo_unavailable',message:'The sample dashboard could not load. Reload this page to try again.',sample:true}), {status:503,headers:{'content-type':'application/json','cache-control':'no-store'}}));
+  };
+  if (window.__fhBlueprintFullDemoRoute) document.write('<script defer src="/app/blueprint-demo.js"><' + '/script>');
+})();
+</script>
+
 <!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
 <link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/app/fundhub-font.css">
@@ -12,7 +28,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>if (!window.__fhBlueprintFullDemoRoute) document.write('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">');</script>
 <!--
   THE CLIENT PROGRESS PAGE.
 
@@ -208,6 +224,7 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
 <link rel="stylesheet" href="/app/fundhub-astra-client.css">
 </head>
 <body class="fh-astra fh-astra-client fh-astra-progress" data-client-page="progress">
+<script>if(window.__fhBlueprintFullDemoRoute){document.body.setAttribute("data-client-ready", "");document.body.dataset.blueprintDemo="full";}</script>
 <div class="spectrum"></div>
 <div class="wrap">
 
@@ -215,6 +232,7 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
     <div class="brand">Fundhub</div>
     <h1 id="hTitle">Your progress</h1>
     <div class="sub" id="hSub">Loading your file…</div>
+    <p class="sub" id="progressDemoNote" hidden>Sample · fictional client, credit reports and businesses.</p>
     <a class="back" href="/app/client-portal.html">← Back to your portal</a>
   </header>
 
@@ -280,6 +298,12 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
 <script>
 (function () {
   "use strict";
+  function fetch(path, init) {
+    if (typeof window.FHClientFetch === "function") return window.FHClientFetch(path, init);
+    if (window.__fhBlueprintFullDemoRoute) return Promise.resolve(new Response(JSON.stringify({ok:false,error:"demo_unavailable",sample:true}),{status:503,headers:{"content-type":"application/json"}}));
+    return globalThis.fetch(path, init);
+  }
+
 
   /* ── THE ONE ESCAPE FUNCTION ──────────────────────────────────────────────
      Every value that reaches innerHTML on this page passes through here. It is
@@ -320,6 +344,7 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
   }
 
   function toLogin() {
+    if (window.__fhBlueprintFullDemoRoute) return fatal("Your sample session changed. Reload this page to continue the demo.");
     location.href = "/portal-login.html?next=" + encodeURIComponent("/progress.html");
   }
 
@@ -364,7 +389,8 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
   function paintBackLink() {
     var a = document.querySelector("header .back");
     var id = clientIdFromUrl();
-    if (a && id) a.setAttribute("href", "/app/client-portal.html?id=" + encodeURIComponent(id));
+    if (a && window.__fhBlueprintFullDemoRoute) a.setAttribute("href", "/app/client-portal.html?demo=1&blueprint=full&offer=" + encodeURIComponent(window.FHBlueprintDemo.offer));
+    else if (a && id) a.setAttribute("href", "/app/client-portal.html?id=" + encodeURIComponent(id));
   }
 
   function api(path, options) {
@@ -426,6 +452,7 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
     var parsed;
     try { parsed = new URL(raw, window.location.origin); } catch (e) { return null; }
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    if (window.__fhBlueprintFullDemoRoute && !(parsed.origin === location.origin && parsed.pathname === '/app/client-portal.html' && parsed.searchParams.get('demo') === '1' && parsed.searchParams.get('blueprint') === 'full')) return null;
     return parsed.href;
   }
 
@@ -1763,6 +1790,7 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
        a missing fh_token does not mean "signed out". The server decides: its
        401 below is the only thing that sends a visitor to sign in. */
     paintBackLink();
+    if (window.__fhBlueprintFullDemoRoute) $("progressDemoNote").hidden = false;
 
     api(progressPath()).then(function (r) {
       if (r.status === 401) return toLogin();
@@ -1821,7 +1849,11 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
     });
   }
 
-  boot();
+  if (window.__fhBlueprintFullDemoRoute && document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true}); else boot();
+  if (window.__fhBlueprintFullDemoRoute) {
+    window.addEventListener('fh:blueprint-demo-change', boot);
+    window.addEventListener('storage', function(event) { if(event.key === 'fh_token' && !window.FHBlueprintDemo?.isCurrent()) fatal('Your sample session changed. Reload this page to continue the demo.'); });
+  }
 })();
 </script>
 </body></html>

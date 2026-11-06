@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+(function () {
+  var query = new URLSearchParams(location.search);
+  var fullDemo = query.get('demo') === '1' && query.get('blueprint') === 'full';
+  window.__fhBlueprintFullDemoRoute = fullDemo;
+  var nativeFetch = window.fetch.bind(window);
+  window.FHClientFetch = function (input, init) {
+    if (!fullDemo) return nativeFetch(input, init);
+    var demo = window.FHBlueprintDemo;
+    if (demo && demo.active && demo.isCurrent() && typeof demo.fetchResponse === 'function') return demo.fetchResponse(input, init);
+    return Promise.resolve(new Response(JSON.stringify({ok:false,error:'demo_unavailable',sample:true}), {status:503,headers:{'content-type':'application/json'}}));
+  };
+  if (fullDemo) document.write('<script defer src="/app/blueprint-demo.js"><\/script>');
+})();
+</script>
 <!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
 <link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/app/fundhub-font.css">
@@ -13,9 +28,9 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#0A0A0A">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+if (!window.__fhBlueprintFullDemoRoute) document.write('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">');
+</script>
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="money-connections.css">
 <link rel="stylesheet" href="money-payments.css">
@@ -87,6 +102,17 @@ main{padding:24px 24px 64px}
 .fos-soon{display:flex;flex-direction:column;gap:8px;align-items:flex-start;padding:24px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--panel-shadow)}
 .fos-soon h2{font-weight:600;color:var(--ink)}
 .fos-soon p{color:var(--text-dim);max-width:60ch}
+.fos-soon[hidden]{display:none}
+#fos-demo{flex-direction:row;align-items:center;gap:8px 16px;padding:8px 16px;margin-bottom:16px;background:var(--soft);font-size:13px}
+#fos-demo a{display:inline-flex;align-items:center;min-height:44px}
+#fos-demo-notice:empty{display:none}
+#fos-demo-notice:not(:empty){flex-basis:100%}
+#fos-fundability .fd-opportunity>ul{display:grid;gap:16px;margin:16px 0;padding:0;list-style:none}
+#fos-fundability .fd-opportunity :is(h3,h4){margin-bottom:8px}
+#fos-fundability .fd-opportunity dl{display:grid;gap:8px;margin:0}
+#fos-fundability .fd-opportunity dt{font-size:13px;color:var(--text-dim)}
+#fos-fundability .fd-opportunity dd{margin:0;font-variant-numeric:tabular-nums}
+#fos-fundability .fd-opportunity .caption{margin:16px 0}
 
 @keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
 
@@ -496,6 +522,7 @@ main{padding:24px 24px 64px}
 <link rel="stylesheet" href="/app/plaid-stepup.css">
 </head>
 <body class="fh-astra fh-astra-client fh-astra-money" data-client-page="financeos">
+<script>if(window.__fhBlueprintFullDemoRoute){document.body.setAttribute('data-client-public','');document.body.setAttribute('data-client-ready','');document.body.setAttribute('data-blueprint-demo','full');}</script>
 <div class="app">
   <a class="fos-skip" href="#fos-main">Skip to money content</a>
   <header class="mbar">
@@ -532,8 +559,9 @@ main{padding:24px 24px 64px}
     </nav>
   </aside>
   <main id="fos-main" tabindex="-1">
+    <aside class="fos-soon" id="fos-demo" role="note" hidden><strong>Sample FinanceOS workspace</strong><p>Fictional accounts and report data. Actions stay in this demo.</p><a id="fos-demo-return" href="/app/client-portal.html">Return to Blueprint</a><p id="fos-demo-notice" role="status"></p></aside>
     <div class="fos-sandbox" id="fos-sandbox" role="note" hidden><strong>Test data — Plaid sandbox</strong><span>These accounts are fake test accounts, not a real bank.</span></div>
-    <section class="fos-panel" id="fos-overview" role="tabpanel" aria-labelledby="tab-overview" aria-live="polite"></section>
+    <section class="fos-panel" id="fos-overview" role="tabpanel" aria-labelledby="tab-overview" aria-live="polite"><div class="card skel" role="status" aria-busy="true"><p>Loading FinanceOS…</p><span class="sk sk-l" aria-hidden="true"></span><span class="sk sk-m" aria-hidden="true"></span></div></section>
     <section class="fos-panel" id="fos-next" role="tabpanel" aria-labelledby="tab-next" aria-live="polite" hidden></section>
     <section class="fos-panel" id="fos-helper" role="tabpanel" aria-labelledby="tab-helper" aria-live="polite" hidden></section>
     <section class="fos-panel" id="fos-transfers" role="tabpanel" aria-labelledby="tab-transfers" aria-live="polite" hidden></section>
@@ -552,7 +580,7 @@ main{padding:24px 24px 64px}
   </main>
   </div>
 </div>
-<script defer src="plaid-stepup.js"></script>
+<script>if(!window.__fhBlueprintFullDemoRoute)document.write('<script defer src="plaid-stepup.js"><\/script>');</script>
 <script defer src="money.js"></script>
 <script defer src="money-trends.js"></script>
 <script defer src="money-next.js"></script>
