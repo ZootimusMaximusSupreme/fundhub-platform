@@ -39,20 +39,20 @@ have no automation tree at all. See `src/journeys/seed-journeys.mjs`'s header.
 
 | Journey | Who that is in the code | Reach |
 |---|---|---|
-| [client](./client-actual.md) ([intended](./client-intended.md)) | `client` | reaches 91 of 356 routes |
-| [role-owner](./role-owner-actual.md) ([intended](./role-owner-intended.md)) | `owner` | reaches 338 of 356 routes |
-| [role-sales-manager](./role-sales-manager-actual.md) ([intended](./role-sales-manager-intended.md)) | `sales_manager` | reaches 217 of 356 routes |
-| [role-closer](./role-closer-actual.md) ([intended](./role-closer-intended.md)) | `closer` | reaches 199 of 356 routes |
-| [role-funding-advisor](./role-funding-advisor-actual.md) ([intended](./role-funding-advisor-intended.md)) | `funding_advisor` | reaches 179 of 356 routes |
-| [role-inquiry-remover](./role-inquiry-remover-actual.md) ([intended](./role-inquiry-remover-intended.md)) | `inquiry_specialist` | reaches 173 of 356 routes |
-| [affiliate](./affiliate-actual.md) ([intended](./affiliate-intended.md)) | `affiliate` | reaches 47 of 356 routes |
-| [white-label](./white-label-actual.md) ([intended](./white-label-intended.md)) | `partner` | reaches 81 of 356 routes |
+| [client](./client-actual.md) ([intended](./client-intended.md)) | `client` | reaches 92 of 358 routes |
+| [role-owner](./role-owner-actual.md) ([intended](./role-owner-intended.md)) | `owner` | reaches 339 of 358 routes |
+| [role-sales-manager](./role-sales-manager-actual.md) ([intended](./role-sales-manager-intended.md)) | `sales_manager` | reaches 218 of 358 routes |
+| [role-closer](./role-closer-actual.md) ([intended](./role-closer-intended.md)) | `closer` | reaches 200 of 358 routes |
+| [role-funding-advisor](./role-funding-advisor-actual.md) ([intended](./role-funding-advisor-intended.md)) | `funding_advisor` | reaches 180 of 358 routes |
+| [role-inquiry-remover](./role-inquiry-remover-actual.md) ([intended](./role-inquiry-remover-intended.md)) | `inquiry_specialist` | reaches 174 of 358 routes |
+| [affiliate](./affiliate-actual.md) ([intended](./affiliate-intended.md)) | `affiliate` | reaches 49 of 358 routes |
+| [white-label](./white-label-actual.md) ([intended](./white-label-intended.md)) | `partner` | reaches 82 of 358 routes |
 
 ## What was found while generating these
 
-- **356 routes** are reachable in total.
+- **358 routes** are reachable in total.
 - **0 routes have gates that could not be traced.** Every gate resolved to its source.
-- **33 routes are genuinely open** (signing in, signing out, "who am I", and the health check).
+- **34 routes are genuinely open** (signing in, signing out, "who am I", and the health check).
 - **7 routes need no sign-in but are not open** — a signed link, a provider signature, and Inngest's own request signing. Anyone may call them; the wrong signature is refused.
 - **`role-sales-manager` is built.** It was tracked in `CLAUDE.md` §4 with nothing behind
   it until 2026-08-01, when the owner directed the build (Ticket 8). The role now carries a

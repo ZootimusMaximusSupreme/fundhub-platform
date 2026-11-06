@@ -24,6 +24,7 @@ export const ALLOWED_UNMONITORED = {
   "webhooks/[provider]": "Signed webhook POST only. A GET ping is not uptime and can look like a replay.",
   "documents/[id]": "Per-document GET needs a real id and a signed-in caller. Not a desk ping.",
   "contracts/sign": "Signed contract link. GET without id/exp/sig answers 404 on purpose. That is not downtime.",
+  "public/blueprint-handoff": "Signed buyer-only link. GET without its exact contract id and signature answers404 by design; a generic ping cannot open another buyer's agreement or checkout. The hourly whop-billing seller-handoffs step and daily payments:whop-seller-handoffs/payment access checks read the pinned records.",
   /* SHELVED, NOT DOWN. The owner shelved the $27 Decline Autopsy on 2026-08-31
      and its three routes are commented out in netlify/functions/api.mjs on
      purpose. Pinging it anyway answered 404 in every pulse from 2026-09-18 to
@@ -95,6 +96,7 @@ const API_KEYS = [
   "agent-call",
   "agents",
   "affiliates/refer",
+  "affiliates/blueprint-sale",
   "ai-bureau-config",
   "applications",
   "auth/admin-reset",

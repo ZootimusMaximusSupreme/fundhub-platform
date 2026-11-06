@@ -119,3 +119,27 @@ test('Whop refuses alternate checkout POST paths and every unsupported mutation 
   }
   assert.equal(calls, 0);
 });
+
+test('Whop permits only the exact financing override on a bound neutral checkout', async () => {
+  const methods = { enabled: ['claritypay'], disabled: [], include_platform_defaults: true };
+  let calls = 0;
+  const options = (body) => ({ apiKey: 'synthetic-key', method: 'POST', body,
+    idempotencyKey: `fh-order:${ids[0]}`, env, fetchImpl: async (_url, init) => {
+      calls++;
+      assert.deepEqual(JSON.parse(init.body).payment_method_configuration, methods);
+      return new Response(JSON.stringify({ id: 'ch_synthetic' }), { status: 200 });
+    } });
+  await whopRequest('/checkout_configurations', options({ ...packet(), payment_method_configuration: methods }));
+  assert.equal(calls, 1);
+  for (const malformed of [null, {}, { ...methods, enabled: 'claritypay' },
+    { ...methods, enabled: ['claritypay', 7] }, { ...methods, enabled: ['card'] },
+    { ...methods, disabled: 'card' }, { ...methods, disabled: ['claritypay'] },
+    { ...methods, include_platform_defaults: false }, { ...methods, note: 'funding' }]) {
+    await assert.rejects(whopRequest('/checkout_configurations', options({ ...packet(),
+      payment_method_configuration: malformed })), { code: 'whop_unsafe_checkout' });
+  }
+  const forged = { ...methods, toJSON: () => ({ ...methods, disabled: ['claritypay'] }) };
+  await assert.rejects(whopRequest('/checkout_configurations', options({ ...packet(),
+    payment_method_configuration: forged })), { code: 'whop_unsafe_checkout' });
+  assert.equal(calls, 1, 'malformed or serialized overrides never reach the provider');
+});

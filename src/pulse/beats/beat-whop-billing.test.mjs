@@ -15,7 +15,7 @@ test('Whop hourly beat is read-only, valid and covers the payment clock', async 
   assert.deepEqual(validateBeat(beat, { file: 'beat-whop-billing.mjs' }), []);
   assert.deepEqual(pinBeatSource(readFileSync(new URL('./beat-whop-billing.mjs', import.meta.url), 'utf8')), []);
   assert.deepEqual(await checkBeatSelfTest(beat), []);
-  assert.deepEqual(beat.covers, ['webhook:whop-billing']);
+  assert.deepEqual(beat.covers, ['webhook:whop-billing','route:affiliates/blueprint-sale','route:public/blueprint-handoff']);
   assert.equal(SWEEPER.runner, 'netlify');
   assert.equal(beat.CLOCK_STALE_MS, 3 * cronIntervalMs(SWEEPER.cron));
   assert.match(beat.CLOCK_SQL, /job = 'whop-billing-inbox-sweeper'/);
@@ -26,7 +26,7 @@ test('Whop hourly beat runs every step and reports the limit of its proof', asyn
   assert.equal(result.ok, true, result.detail);
   assert.deepEqual(result.notRun, []);
   assert.equal(ctxLog(ctx).http.length, 0);
-  assert.equal(ctxLog(ctx).reads.length, 3);
+  assert.equal(ctxLog(ctx).reads.length, 4);
   assert.match(result.detail, /does not prove a real financed buyer/);
 });
 test('Whop missing settings fail without echoing values', async () => {
@@ -50,7 +50,7 @@ test('Whop clock exactly 15 minutes old (3 x its 5-minute schedule) is still ali
   assert.equal(result.ok, true, result.detail);
 });
 test('Whop stuck receipts and missing grants fail their exact step; unreadable counts stay red', async () => {
-  for (const [match, step] of [[/FROM whop_billing_inbox/, 'inbox-clear'], [/FROM payment_links/, 'paid-access']]) {
+  for (const [match, step] of [[/FROM whop_billing_inbox/, 'inbox-clear'], [/FROM payment_links/, 'paid-access'], [/FROM clients c/, 'seller-handoffs']]) {
     const reads = world().read.map((item) => String(item.match) === String(match) ? { match, rows: [{ n: 1 }] } : item);
     const result = await go({ read: reads });
     assert.equal(result.ok, false);

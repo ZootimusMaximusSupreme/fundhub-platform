@@ -244,3 +244,10 @@ test("registry: a live SMS, email, mail, or APNs send names a pulse row or a wri
     }
   }
 });
+
+test('scoped seller POST is pinged while its signed buyer handoff is watched by stored-result checks',()=>{
+ assert.ok(PULSE_REGISTRY.some(r=>r.kind==='api'&&r.path==='/api/affiliates/blueprint-sale'));
+ assert.ok(!PULSE_REGISTRY.some(r=>r.path==='/api/public/blueprint-handoff'),'a signature-free404 is the correct refusal');
+ assert.match(ALLOWED_UNMONITORED['public/blueprint-handoff'],/exact contract id and signature/);
+ assert.match(ALLOWED_UNMONITORED['public/blueprint-handoff'],/payments:whop-seller-handoffs/);
+});

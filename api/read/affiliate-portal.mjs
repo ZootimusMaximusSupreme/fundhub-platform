@@ -67,6 +67,7 @@ import { ROLE_SETS, requireRole, isUuid } from "../../src/http/read-api.mjs";
 import { safeError } from "../../src/http/health.mjs";
 import { shareUrlFor } from "../affiliates/refer.mjs";
 import { offerLinksFor, liveOffers } from "../../src/affiliates/share-link.mjs";
+import { sellerCapability } from "../../src/affiliates/blueprint-sale.mjs";
 import { shapeAccount } from "../../src/affiliates/payout-rail.mjs";
 
 const REFERRAL_LIMIT = 500;
@@ -285,6 +286,7 @@ export default async function handler(req, res, deps = {}) {
     return res.status(200).json({
       ok: true,
       enrolled: true,
+      blueprintSeller: sellerCapability(principal, a, deps.env || process.env),
       affiliate: {
         id: a.id,
         name: a.name,

@@ -56,6 +56,8 @@ import { threadMessage } from "../conversations/store.mjs";
 import { destinationAddress } from "../auth/authorized-rep.mjs";
 
 /** The two pieces of copy this feature sends. Seeded in db/seed/008. */
+import { sellerHandoffForContract } from "../affiliates/blueprint-handoff-link.mjs";
+
 export const SEND_TEMPLATE_KEY = "CONTRACT-SEND-EMAIL";
 export const REMIND_TEMPLATE_KEY = "CONTRACT-REMIND-EMAIL";
 
@@ -134,7 +136,7 @@ async function loadTemplate(db, orgId, key) {
  * first has agreed to it, which is the whole point of having an order.
  */
 export async function queueSignerMessages(db, {
-  orgId, contract, signers, links, purpose = "send", staffName = null, templateKey = SEND_TEMPLATE_KEY
+  orgId, contract, signers, links, purpose = "send", staffName = null, templateKey = SEND_TEMPLATE_KEY, secret = undefined
 } = {}) {
   const out = { queued: [], skipped: [] };
   const template = await loadTemplate(db, orgId, templateKey);
@@ -149,6 +151,7 @@ export async function queueSignerMessages(db, {
     return out;
   }
 
+  const permanentHandoff = await sellerHandoffForContract(db,contract,{secret});
   const sequential = (contract.signing_order || "sequential") === "sequential";
   const byIndex = [...signers].sort((a, b) => a.signer_index - b.signer_index);
   const turn = byIndex.find((s) => s.status !== "signed" && s.status !== "declined");
@@ -169,7 +172,10 @@ export async function queueSignerMessages(db, {
     const link = (links || []).find((l) => String(l.signer_id) === String(signer.id));
     if (!link) { out.skipped.push({ name: signer.name, reason: "no_link" }); continue; }
 
-    const context = signerContext({ contract, signer, link: link.url, staffName });
+    if (permanentHandoff && signer.client_id!==contract.client_id) {
+      out.skipped.push({name:signer.name,reason:"not_the_bound_buyer"}); continue;
+    }
+    const context = signerContext({ contract, signer, link: permanentHandoff || link.url, staffName });
     const body = renderTemplate(template.body, context);
     const subject = template.subject ? renderTemplate(template.subject, context) : null;
 
@@ -324,7 +330,7 @@ export async function remindContract(db, {
   const { links } = await mintLinks(db, { orgId, contract, baseUrl, secret });
 
   const res = await notifySigners(db, {
-    orgId, contract, signers, links,
+    orgId, contract, signers, links, secret,
     purpose: `chase${n + 1}`,
     templateKey: REMIND_TEMPLATE_KEY,
     staffName: staffName || contract.sent_by_name || null
