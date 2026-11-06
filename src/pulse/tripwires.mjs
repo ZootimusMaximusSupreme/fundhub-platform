@@ -36,6 +36,8 @@ export function isPingId(id) {
 }
 
 export const TRIPWIRES = Object.freeze({
+  "route:affiliates/blueprint-sale": { impact: "money", checks: ["payments:whop-seller-handoffs", "payments:whop-paid-no-access"] },
+  "route:public/blueprint-handoff": { impact: "customer", checks: ["payments:whop-seller-handoffs", "payments:whop-paid-no-access"] },
   "route:owner/company-bank": { impact: "money", checks: ["company-cash:integrity"] },
   "route:owner/company-cash": { impact: "money", checks: ["company-cash:integrity"] },
   "desk:company-cash.html": { impact: "money", checks: ["company-cash:integrity"] },

@@ -53,7 +53,7 @@ import { toCents, fromCents, percentOf, applySplit } from "../commissions/money.
 export const FUNDING_PRODUCT_CODES = ["card-stacking-dfy"];
 export const REPAIR_PRODUCT_CODES = ["repair-bundle"];
 /* Capital Blueprint ($5,000). Code only — never the dollar amount. */
-export const BLUEPRINT_PRODUCT_CODES = ["consulting-package"];
+export const BLUEPRINT_PRODUCT_CODES = ["consulting-package", "blueprint-self-funding"];
 
 export const TIER = { ONE: "tier1", TWO: "tier2" };
 

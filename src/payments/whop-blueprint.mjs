@@ -101,8 +101,21 @@ export function validateWhopCheckout(out, cfg, link, env = process.env) {
   return out;
 }
 
-export async function verifyWhopCheckout(out, cfg, link, { env = process.env, fetchImpl = fetch } = {}) {
+export async function verifyWhopCheckout(out, cfg, link, { env = process.env, fetchImpl = fetch, requiredPaymentMethod = null } = {}) {
   validateWhopCheckout(out, cfg, link, env);
+  if (requiredPaymentMethod) {
+    const selected = out.payment_method_configuration;
+    const effective = out.effective_payment_method_configuration;
+    const methods = value => value && typeof value === 'object' && !Array.isArray(value)
+      && Array.isArray(value.enabled) && value.enabled.every(method => typeof method === 'string')
+      && Array.isArray(value.disabled) && value.disabled.every(method => typeof method === 'string');
+    if (!methods(selected) || !methods(effective) || !selected.enabled.includes(requiredPaymentMethod)
+      || selected.disabled.includes(requiredPaymentMethod) || !effective.enabled.includes(requiredPaymentMethod)
+      || effective.disabled.includes(requiredPaymentMethod)) {
+      throw Object.assign(new Error('The checkout has not confirmed its required financing method'),
+        { code: 'whop_financing_unverified', status: 502 });
+    }
+  }
   // The checkout response's embedded plan omits product/account identity.
   // Read the documented variant resource before exposing or recovering its URL.
   // https://docs.whop.com/api-reference/beta/variants/retrieve-variant
@@ -120,8 +133,11 @@ export async function verifyWhopCheckout(out, cfg, link, { env = process.env, fe
 export async function createWhopBlueprintPaymentLink(db, {
   orgId, clientId, amountCents, currency = 'USD', productId, productCode = null,
   saleId = null, saleMotion = null, createdByStaffId = null, createdByRole = null,
+  resumeLinkId = null, reservationId = null, requiredPaymentMethod = null,
   env = process.env, fetchImpl = fetch
 } = {}) {
+  if (requiredPaymentMethod && requiredPaymentMethod !== 'claritypay') throw new TypeError('Unsupported seller financing method');
+  if (resumeLinkId && reservationId && resumeLinkId !== reservationId) throw new TypeError('Whop reservation identity mismatch');
   const cfg = whopConfig(env);
   if (!cfg.ok) throw Object.assign(new Error('Whop Blueprint checkout is not configured'),
     { code: 'whop_not_configured', status: 503 });
@@ -139,21 +155,42 @@ export async function createWhopBlueprintPaymentLink(db, {
   await assertBlueprintAgreementPrice(db, { orgId, clientId, amountCents, offerKey });
   // Reserve the order before POST. An interrupted response can be recovered from
   // Whop metadata without creating a second checkout. An empty URL is never returned.
-  const id = randomUUID();
+  const id = resumeLinkId || reservationId || randomUUID();
+  if (!UUID.test(id)) throw new TypeError('Invalid Whop reservation identity');
   const linkRef = generateLinkRef();
-  const saved = (await db.query(
+  let saved = resumeLinkId ? (await db.query(`SELECT * FROM payment_links WHERE id=$1 AND org_id=$2 AND client_id=$3`,
+    [id, orgId, clientId])).rows[0] : (await db.query(
     `INSERT INTO payment_links (id, org_id, client_id, purpose, description, amount_cents,
        currency, link_ref, checkout_url, provider, product_id, sale_id, sale_motion,
        created_by_staff_id, closer_staff_id, sales_manager_staff_id, whop_metadata_version)
-     VALUES ($1,$2,$3,'custom',$4,$5,'USD',$6,'','whop',$7,$8,$9,$10,$11,$12,2) RETURNING *`,
+     VALUES ($1,$2,$3,'custom',$4,$5,'USD',$6,'','whop',$7,$8,$9,$10,$11,$12,2) ON CONFLICT (id) DO NOTHING RETURNING *`,
     [id, orgId, clientId, WHOP_BLUEPRINT_TITLE, amountCents, linkRef, context.productId,
       context.saleId, saleMotion, createdByStaffId, context.closerStaffId, context.salesManagerStaffId]
   )).rows[0];
+  if (!saved && reservationId) saved = (await db.query(`SELECT * FROM payment_links WHERE id=$1 AND org_id=$2 AND client_id=$3`,
+    [id, orgId, clientId])).rows[0];
+  if (!saved || saved.org_id !== orgId || saved.client_id !== clientId || saved.provider !== 'whop'
+    || saved.product_id !== context.productId || Number(saved.amount_cents) !== amountCents || saved.currency !== 'USD'
+    || (saved.sale_id || null) !== (context.saleId || null) || (saved.sale_motion || null) !== (saleMotion || null)
+    || (saved.created_by_staff_id || null) !== (createdByStaffId || null)
+    || !['created', 'sent'].includes(saved.status)) throw new TypeError('Whop reservation does not match the requested order');
   saved.product_code = context.productCode;
+  if (saved.checkout_url) {
+    const checkout = await verifyWhopCheckout(await whopRequest(`/checkout_configurations/${saved.whop_checkout_configuration_id}`, {
+      apiKey: cfg.apiKey, env, fetchImpl }), cfg, saved, { env, fetchImpl, requiredPaymentMethod });
+    if (checkout.id !== saved.whop_checkout_configuration_id || checkout.plan.id !== saved.whop_plan_id
+      || checkout.purchase_url !== saved.checkout_url) throw Object.assign(new Error('Whop checkout does not match its saved order'),
+        { code: 'whop_checkout_failed', status: 502 });
+    return saved;
+  }
+  const body = buildWhopBlueprintCheckout(saved, cfg);
+  if (requiredPaymentMethod) body.payment_method_configuration = {
+    enabled: [requiredPaymentMethod], disabled: [], include_platform_defaults: true
+  };
   const out = await verifyWhopCheckout(await whopRequest('/checkout_configurations', {
-    apiKey: cfg.apiKey, method: 'POST', body: buildWhopBlueprintCheckout(saved, cfg),
+    apiKey: cfg.apiKey, method: 'POST', body,
     idempotencyKey: `fh-order:${id}`, env, fetchImpl
-  }), cfg, saved, { env, fetchImpl });
+  }), cfg, saved, { env, fetchImpl, requiredPaymentMethod });
   const result = await db.query(
     `UPDATE payment_links SET checkout_url = $2, whop_checkout_configuration_id = $3,
        whop_plan_id = $4 WHERE id = $1 AND provider = 'whop' RETURNING *`,

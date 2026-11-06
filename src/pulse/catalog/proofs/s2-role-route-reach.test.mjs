@@ -62,6 +62,10 @@ const STAFF_MFA_CHALLENGE = ["auth/mfa"];
    a concrete bank/payout target and a full account session. The generic empty
    probe has neither, so it correctly receives 403 after the kind check. */
 const ACCOUNT_PLAID_MFA_TARGET = ["auth/plaid-mfa"];
+/* The scoped seller action admits the affiliate kind, then requires an active
+   same-company affiliate plus the explicit seller allowlist. The generic probe
+   has neither seller identity nor capability, so its403 is the correct result. */
+const AFFILIATE_SELLER_CAPABILITY = ["affiliates/blueprint-sale"];
 const EXPECTED_DISAGREEMENTS = {
   client: [...CLIENT_OWN_FILE, ...CLIENT_LIGHT_AFFILIATE, ...STAFF_MFA_CHALLENGE, ...ACCOUNT_PLAID_MFA_TARGET, "auth/authorized-rep-file"],
   // All nine approved primary employee roles may enroll their own native device.
@@ -74,7 +78,7 @@ const EXPECTED_DISAGREEMENTS = {
   // This route has two doors. The static journey sees its signed playback URL;
   // the session-only probe sends no signature and therefore reaches the
   // metadata door, which correctly refuses affiliate and partner sessions.
-  affiliate: ["content/welcome-video", "money/setup", ...CLIENT_LIGHT_AFFILIATE, ...STAFF_MFA_CHALLENGE, ...ACCOUNT_PLAID_MFA_TARGET],
+  affiliate: ["content/welcome-video", "money/setup", ...CLIENT_LIGHT_AFFILIATE, ...STAFF_MFA_CHALLENGE, ...ACCOUNT_PLAID_MFA_TARGET, ...AFFILIATE_SELLER_CAPABILITY],
   "white-label": ["content/welcome-video", "money/setup", ...STAFF_MFA_CHALLENGE],
 };
 
@@ -134,6 +138,18 @@ before(async () => {
 });
 
 describe("the probe and the written gates", () => {
+  test("seller role eligibility never substitutes for the explicit affiliate capability",async()=>{
+    const key="affiliates/blueprint-sale";
+    const affiliate=await probeRoute(api,key,"affiliate");
+    assert.equal(affiliate.GET.status,405);
+    assert.equal(affiliate.POST.status,403);
+    assert.equal(affiliate.POST.code,"seller_disabled");
+    for(const caller of [undefined,"client","white-label","role-owner","role-admin","role-sales-manager","role-closer"]) {
+      const result=await probeRoute(api,key,caller);
+      assert.equal(verdictFor(result),"blocked",`${key}: ${caller||"anonymous"}`);
+      assert.equal(result.POST.status,caller?403:401);
+    }
+  });
   test("bank outreach admits its four staff roles and denies other staff, outside accounts and anonymous requests", async () => {
     const data = extractAll();
     const allowed = ["role-owner", "role-admin", "role-sales-manager", "role-outbound-rep"];
