@@ -1,0 +1,27 @@
+Independent Whop naming/sandbox/version-pin review — 2026-11-06
+
+Scope: current uncommitted Whop provider, package/service writers, migration565, callback/reconcile paths and focused tests. Read-only auditor workflow; parent owns source/publication. No credentials, terms, provider calls or live writes.
+Ground truth: owner-requested Commas-equivalent naming rule recorded in docs/journeys/capital-blueprint-intended.md CB-03 and the shared Blueprint board. New checkout title/description exactly Consulting Services Package; metadata only versioned opaque IDs/cents/USD. Existing v1 receipts and GET-only recovery must retain their exact frozen identity.
+
+Independent initial verification
+Command: node --env-file=/private/tmp/fh-whop-naming-565.env --import /private/tmp/fh-whop-review-no-network.mjs --test src/messaging/providers/whop-payments.test.mjs src/payments/whop-blueprint.test.mjs src/payments/whop-blueprint.pg.test.mjs src/blueprint/service-whop.test.mjs src/blueprint/service-whop.pg.test.mjs
+Result:52 passed,0 failed,0 skipped; whop-independent-before.tap. The preload rejects all global external fetch calls; test transports are injected recorders. Verified local test/scratch URL and current rolefundhub_app, rolsuperfalse, rolbypassrlsfalse. Connection values are not printed or saved.
+Source/test coverage includes exact serialized new checkout copy/metadata, sandbox/production URL origins and no URL userinfo, v1/v2 exact receipts and forged-version rejection, duplicate/replayed payments, refunds bound to original payment, interrupted/uncertain checkout holds, two-rail reservation race, GET-only legacy/new checkout recovery and restricted PostgreSQL immutability.
+SQL concern checked in the actual scratch schema: payment_links.provider is NOT NULL, so PostgreSQL CHECK-NULL bypass is not reachable there. Service checkout_provider is nullable and its new constraint explicitly uses IS NOT DISTINCT FROM 'whop'. No SQL finding from this concern.
+
+P2 WHOP-GUARD-01 — observed red, repair pending parent
+Expected: provider checkout egress rejects prohibited serialized copy/metadata before transport for every permitted checkout-creation path.
+Observed: canonical POST /checkout_configurations rejected Funding/Credit repair/product_code input, but POST /checkout_configurations/ passed RESOURCE and skipped the exact-path body guard; injected recorder received that forbidden payload. No real Whop call was made. Current package/service writers use canonical paths; this is a hard-guard bypass, not a demonstrated live checkout/customer exploit.
+Evidence: whop-guard-before.json, observed2026-11-06T17:59:52.845Z.
+Parent confirmed it and owns a repair to permit only supported GET reads and exact, query-free checkout POST, rejecting slash/nested/query/other mutations. Independent after rerun remains required before clean verdict.
+
+Pending native live proof
+Apple1.0.3/build9 remains previously verified public. Repaired client/CSM candidate native handoffs passed earlier. Post-Ship verification with the exact fetched live repaired JavaScript remains pending the parent's deployment receipt; do not substitute this Whop review for it.
+
+FINAL AFTER REVIEW — 2026-11-06T18:02Z
+WHOP-GUARD-01 resolved by parent. Helper now allows GET with no transmitted body or a POST only to the exact query-free checkout collection; every allowed POST receives serialized-copy/metadata validation. Other mutations/aliases are rejected before transport. Inbound refund/dispute processing and GET reconciliation remain separate and unchanged.
+Independent exact red-case retest plus eight related unsafe mutations:9/9 rejected; injected recorder calls0; provider calls0; production writes0. See whop-guard-after.json. Original observed red is preserved in whop-guard-before.json.
+Reran the same five focused provider/package/service unit+PG files after the repair:53 passed,0 failed,0 skipped in1.151s, restricted fundhub_app (not superuser, no RLS bypass), global external-fetch fence. See whop-independent-after.tap. git diff --check passed.
+Legacy/new actual DB cases proved immutable version pins, no schema-forgery downgrade, same original paid/refund identity, one side of competing provider claims, uncertain-result hold and GET-only recovery. Both production and explicit sandbox origins are exercised by injected transports; no provider sandbox checkout or terms flow was executed.
+Final verdict: NO REMAINING P1/P2 FINDING in this reviewed diff. Exact reviewed source hashes and limits: whop-review-summary.json. Parent owns commit, protected CI, deployment and any later vendor sandbox action. This review does not certify live external delivery.
+The separate post-Ship Apple/WebView proof using fetched deployed repaired JS remains pending the parent's receipt; Apple Store1.0.3/build9 baseline and local native six-control candidate proof remain preserved.

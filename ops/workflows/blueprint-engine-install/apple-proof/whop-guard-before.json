@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-11-06T17:59:52.845Z",
+  "scope": "Independent recorder probe of the uncommitted Whop helper before the parent guard repair",
+  "transport": "injected recorder only; no external network",
+  "cases": [
+    { "path": "/checkout_configurations", "accepted": false, "errorCode": "whop_unsafe_checkout" },
+    { "path": "/checkout_configurations/", "accepted": true, "result": { "id": "ch_synthetic" } }
+  ],
+  "recordedCalls": [
+    {
+      "url": "https://api.whop.com/api/v1/checkout_configurations/",
+      "body": {
+        "plan": { "title": "Funding", "description": "Credit repair" },
+        "metadata": { "product_code": "blueprint-self-funding" }
+      }
+    }
+  ],
+  "providerCalls": 0,
+  "productionWrites": 0
+}

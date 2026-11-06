@@ -18,7 +18,7 @@ const ENV = { WHOP_API_KEY: 'test-only-key', WHOP_ACCOUNT_ID: 'biz_test',
   WHOP_CONSULTING_PACKAGE_PRODUCT_ID: 'prod_test', WHOP_WEBHOOK_SECRET: 'ws_test', ADAPTERS_DRY_RUN: '0' };
 const cfg = whopConfig(ENV);
 const NOW = Date.parse('2026-10-20T17:00:00Z');
-const linkOf = (over = {}) => ({ id: LINK, org_id: ORG, client_id: CLIENT, product_id: PRODUCT,
+const linkOf = (over = {}) => ({ whop_metadata_version: 2, id: LINK, org_id: ORG, client_id: CLIENT, product_id: PRODUCT,
   product_code: 'consulting-package', amount_cents: '750000', currency: 'USD', provider: 'whop',
   link_ref: 'opaque-test-ref', status: 'created', purpose: 'custom',
   whop_checkout_configuration_id: 'ch_test', whop_plan_id: 'plan_test', ...over });
@@ -94,7 +94,8 @@ test('full-package Whop receipt preserves the actual SKU, agreed price and packa
   const link = linkOf({product_code:'blueprint-self-funding',amount_cents:'2500000'});
   const checkout = buildWhopBlueprintCheckout(link,cfg);
   assert.equal(checkout.plan.initial_price,25000);
-  assert.equal(checkout.metadata.offer_key,'BLUEPRINT_SELF_FUNDING');
+  assert.equal(checkout.metadata.fh_schema,'2');
+  assert.ok(!JSON.stringify(checkout).includes('blueprint-self-funding'));
   const payment = paymentOf(link,{total:{amount:'25000.00',currency:'usd',decimals:2}});
   assert.equal(validateWhopBlueprintPayment(payment,link,cfg),true);
   const db = billingDb(link);
@@ -111,13 +112,39 @@ test('checkout uses only the canonical product/title, exact amount and server or
   assert.equal(out.plan.initial_price, 7500);
   assert.equal(out.plan.title, 'Consulting Services Package');
   assert.equal(out.plan.product_id, 'prod_test');
-  assert.equal(out.metadata.offer_key, 'UWIQ_DELIVERABLES');
+  assert.equal(out.metadata.fh_schema, '2');
   assert.equal(out.metadata.fh_client_id, CLIENT);
   assert.equal(out.mode, 'payment');
   assert.equal(out.plan.plan_type, 'one_time');
   assert.equal('payment_method_configuration' in out, false);
   assert.equal('split_pay_required_payments' in out.plan, false);
-  assert.equal(Object.keys(out.metadata).length, 9);
+  assert.deepEqual(Object.keys(out.metadata).sort(), ['fh_schema','fh_payment_link_id','fh_org_id','fh_client_id','fh_amount_cents','fh_currency'].sort());
+});
+
+test('legacy package metadata remains exact and read-only while new orders cannot downgrade', () => {
+  const legacy=linkOf({whop_metadata_version:1});
+  assert.equal(whopBlueprintMetadata(legacy).offer_key,'UWIQ_DELIVERABLES');
+  assert.equal(validateWhopBlueprintPayment(paymentOf(legacy),legacy,cfg),true);
+  assert.throws(()=>buildWhopBlueprintCheckout(legacy,cfg),/only be recovered via GET/);
+  for (const link of [legacy,linkOf()]) {
+    const other=linkOf({whop_metadata_version:link.whop_metadata_version===2?1:2});
+    assert.throws(()=>validateWhopBlueprintPayment(paymentOf(other),link,cfg),/metadata mismatch/);
+    assert.throws(()=>validateWhopBlueprintPayment(paymentOf(link,{metadata:{...whopBlueprintMetadata(link),extra:'unexpected'}}),link,cfg),/metadata mismatch/);
+  }
+  assert.throws(()=>whopBlueprintMetadata({...legacy,whop_metadata_version:3}),/Unknown/);
+});
+
+test('package checkout verification binds the selected Whop origin before reading a variant', async () => {
+  const link=linkOf();
+  const sandbox={...ENV,WHOP_ENV:'sandbox'};
+  const checked=checkoutOf(link,{purchase_url:'https://sandbox.whop.com/checkout/ch_test/'});
+  assert.equal(validateWhopCheckout(checked,cfg,link,sandbox).id,'ch_test');
+  assert.throws(()=>validateWhopCheckout(checked,cfg,link,ENV));
+  for (const invalid of ['https://whop.com/checkout/ch_test/','https://sandbox.whop.com:9443/checkout/ch_test/',
+    'https://user@sandbox.whop.com/checkout/ch_test/','https://sandbox.whop.com/checkout/ch_other/']) {
+    await assert.rejects(verifyWhopCheckout({...checked,purchase_url:invalid},cfg,link,{env:sandbox,
+      fetchImpl:()=>assert.fail('an invalid checkout cannot fetch a variant')}));
+  }
 });
 
 test('checkout reserves local identity and validates agreement before posting to provider', async () => {
@@ -147,7 +174,7 @@ test('checkout reserves local identity and validates agreement before posting to
       posted = JSON.parse(init.body);
       assert.equal(url, 'https://api.whop.com/api/v1/checkout_configurations');
       assert.equal(init.headers['Api-Version-Date'], WHOP_API_VERSION);
-      assert.equal(init.headers['Idempotency-Key'], `whop-blueprint:${saved.id}`);
+      assert.equal(init.headers['Idempotency-Key'], `fh-order:${saved.id}`);
       return response(checkoutOf(saved));
     } });
   assert.equal(out.checkout_url, 'https://whop.com/checkout/ch_test/');
@@ -314,12 +341,12 @@ test('reconciliation recovers a missing callback via GET only and the shared dur
   assert.equal(db.writes.length, 0);
 });
 
-test('reconciliation heals provider-created checkout after interrupted local response save', async () => {
-  const link = linkOf({ whop_checkout_configuration_id: null, whop_plan_id: null, checkout_url: '' });
+for (const version of [1,2]) test(`v${version} GET reconciliation heals a provider checkout after interrupted local save`, async () => {
+  const link = linkOf({ whop_metadata_version: version, whop_checkout_configuration_id: null, whop_plan_id: null, checkout_url: '' });
   const db = billingDb(link);
   await reconcileWhopBilling(db, { env: ENV, fetchImpl: async (url) => url.endsWith('/variants/plan_test')
     ? response(variantOf()) : response({ data: url.includes('/checkout_configurations?') ? [checkoutOf(link)]
-      : url.includes('/payments?') ? [paymentOf()] : [], page_info: { has_next_page: false } }) });
+      : url.includes('/payments?') ? [paymentOf(link)] : [], page_info: { has_next_page: false } }) });
   assert.equal(db.link.whop_checkout_configuration_id, 'ch_test');
   assert.equal(db.inbox.size, 1);
 });
@@ -336,12 +363,12 @@ test('Whop checkout cannot bypass the adapter fence even with an injected transp
   const fetchImpl = async () => { calls += 1; return response({ id: 'ch_test' }); };
   for (const env of [{}, { ADAPTERS_DRY_RUN: '1' }, { ADAPTERS_DRY_RUN: 'unknown' }]) {
     await assert.rejects(whopRequest('/checkout_configurations', {
-      apiKey: 'test', method: 'POST', body: { mode: 'payment' }, env, fetchImpl
+      apiKey: 'test', method: 'POST', body: buildWhopBlueprintCheckout(linkOf(),cfg), idempotencyKey: 'fh-order:'+LINK, env, fetchImpl
     }), /held by adapter fence/);
   }
   assert.equal(calls, 0, 'held checkout must never reach even the fake provider');
   assert.deepEqual(await whopRequest('/checkout_configurations', {
-    apiKey: 'test', method: 'POST', body: { mode: 'payment' }, env: ENV, fetchImpl
+    apiKey: 'test', method: 'POST', body: buildWhopBlueprintCheckout(linkOf(),cfg), idempotencyKey: 'fh-order:'+LINK, env: ENV, fetchImpl
   }), { id: 'ch_test' });
   assert.equal(calls, 1);
 });

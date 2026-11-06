@@ -1,4 +1,4 @@
-import { whopConfig, whopMoneyCents, WHOP_BLUEPRINT_TITLE } from '../payments/whop-blueprint.mjs';
+import { whopConfig, whopMoneyCents, WHOP_BLUEPRINT_TITLE, matchesWhopMetadata, isWhopCheckoutUrl } from '../payments/whop-blueprint.mjs';
 import { whopRequest } from '../messaging/providers/whop-payments.mjs';
 import { withTransaction } from '../db/with-transaction.mjs';
 import { checkoutExpiresAt } from '../paid-services/checkout.mjs';
@@ -16,6 +16,12 @@ export function blueprintServiceCheckoutProviders(env = process.env) {
 }
 
 export function whopServiceMetadata(service) {
+  if (service.whop_metadata_version === 2) {
+    return { fh_schema: '2', fh_service_request_id: service.id, fh_org_id: service.org_id, fh_client_id: service.client_id,
+      fh_engagement_id: service.engagement_id, fh_target_id: service.target_id,
+      fh_amount_cents: String(service.accepted_price_cents), fh_currency: 'USD' };
+  }
+  if (service.whop_metadata_version != null && service.whop_metadata_version !== 1) throw new TypeError('Unknown Whop service metadata version');
   return { fh_schema: '1', fh_service_request_id: service.id, fh_org_id: service.org_id,
     fh_client_id: service.client_id, fh_engagement_id: service.engagement_id,
     product_code: `blueprint-help-${service.service_kind}`, fh_service_kind: service.service_kind,
@@ -23,7 +29,7 @@ export function whopServiceMetadata(service) {
     fh_amount_cents: String(service.accepted_price_cents), fh_currency: 'USD' };
 }
 
-export function buildWhopServiceCheckout(service, cfg) {
+function acceptedWhopAmount(service, cfg) {
   const amount = Number(service.accepted_price_cents);
   if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 100000000
     || amount !== Number(service.price_total_cents) || !service.authorized_at
@@ -31,6 +37,12 @@ export function buildWhopServiceCheckout(service, cfg) {
     || service.whop_account_id !== cfg.accountId || service.whop_product_id !== cfg.productId) {
     throw new Error('Whop service requires its exact saved accepted quote');
   }
+  return amount;
+}
+
+export function buildWhopServiceCheckout(service, cfg) {
+  if (service.whop_metadata_version !== 2) throw new TypeError('An existing Whop checkout can only be recovered via GET');
+  const amount = acceptedWhopAmount(service, cfg);
   return { account_id: cfg.accountId, mode: 'payment', metadata: whopServiceMetadata(service),
     plan: { product_id: cfg.productId, plan_type: 'one_time', release_method: 'buy_now',
       initial_price: amount / 100, currency: 'usd', title: WHOP_BLUEPRINT_TITLE,
@@ -42,19 +54,19 @@ export async function mintBlueprintServiceWhopCheckout({ service, env = process.
   if (!cfg.ok) throw new Error('Whop service financing is not configured');
   const body = buildWhopServiceCheckout(service, cfg);
   const out = await whopRequest('/checkout_configurations', { apiKey: cfg.apiKey, method: 'POST', body,
-    idempotencyKey: `whop-blueprint-service:${service.id}`, env, fetchImpl });
+    idempotencyKey: `fh-request:${service.id}`, env, fetchImpl });
   await verifyWhopServiceCheckout(out, service, cfg, { env, fetchImpl });
   return { ok: true, checkoutUrl: out.purchase_url, checkoutId: out.id, planId: out.plan.id };
 }
 
 export async function verifyWhopServiceCheckout(out, service, cfg, { env = process.env, fetchImpl = fetch } = {}) {
-  const body = buildWhopServiceCheckout(service, cfg);
-  const url = new URL(out.purchase_url || '', 'https://invalid.local');
+  const expectedMetadata = whopServiceMetadata(service);
+  const amount = acceptedWhopAmount(service, cfg);
   if (out.account_id !== cfg.accountId || out.mode !== 'payment' || !/^ch_[A-Za-z0-9]+$/.test(out.id || '')
-    || !/^plan_[A-Za-z0-9]+$/.test(out.plan?.id || '') || url.protocol !== 'https:' || url.hostname !== 'whop.com'
-    || url.pathname !== `/checkout/${out.id}/` || out.plan.currency !== 'usd' || out.plan.plan_type !== 'one_time'
-    || whopMoneyCents({ amount: String(out.plan.initial_price), currency: 'usd', decimals: 2 }) !== Number(service.accepted_price_cents)
-    || Object.entries(body.metadata).some(([key, value]) => out.metadata?.[key] !== value)) {
+    || !/^plan_[A-Za-z0-9]+$/.test(out.plan?.id || '') || !isWhopCheckoutUrl(out.purchase_url, out.id, env)
+    || out.plan.currency !== 'usd' || out.plan.plan_type !== 'one_time'
+    || whopMoneyCents({ amount: String(out.plan.initial_price), currency: 'usd', decimals: 2 }) !== amount
+    || !matchesWhopMetadata(out.metadata, expectedMetadata)) {
     throw new Error('Whop service checkout response does not match its accepted quote');
   }
   const variant = await whopRequest(`/variants/${out.plan.id}`, { apiKey: cfg.apiKey, env, fetchImpl });
@@ -86,7 +98,7 @@ export function validateWhopServicePayment(data, service, cfg) {
     || data.checkout_configuration_id !== service.whop_checkout_configuration_id || data.plan_id !== service.whop_plan_id
     || data.product_id !== service.whop_product_id || data.currency !== 'usd'
     || (service.whop_payment_id && service.whop_payment_id !== data.id)) throw new Error('Whop service payment identity mismatch');
-  if (Object.entries(whopServiceMetadata(service)).some(([key, value]) => data.metadata?.[key] !== value)) {
+  if (!matchesWhopMetadata(data.metadata, whopServiceMetadata(service))) {
     throw new Error('Whop service payment metadata mismatch');
   }
   const items = data.line_items;

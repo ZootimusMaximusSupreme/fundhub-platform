@@ -6,6 +6,8 @@ import { createServer } from 'node:http';
 import { writeFile } from 'node:fs/promises';
 import pg from 'pg';
 
+const receiptFile = process.argv[2] || 'result.json';
+assert.ok(['result.json','whop-neutral-http.json'].includes(receiptFile),'choose a supported local receipt name');
 const connection = new URL(process.env.DATABASE_URL || '');
 assert.equal(connection.protocol, 'postgres:');
 assert.equal(connection.hostname, '127.0.0.1');
@@ -17,7 +19,7 @@ for (const key of ['INNGEST_EVENT_KEY','CRS_API_PASSWORD','WHOP_API_KEY','COMMAS
 const id = () => randomUUID().replaceAll('-', '');
 const env = Object.assign(process.env, {
   CORTANA_COMMAS_API_KEY:'synthetic-only', FANBASIS_CHECKOUT_API_BASE:'https://checkout-fixture.example.invalid',
-  WHOP_API_KEY:'synthetic-only', WHOP_ACCOUNT_ID:'biz_synthetic', WHOP_CONSULTING_PACKAGE_PRODUCT_ID:'prod_synthetic',
+  WHOP_ENV:'sandbox', WHOP_API_KEY:'synthetic-only', WHOP_ACCOUNT_ID:'biz_synthetic', WHOP_CONSULTING_PACKAGE_PRODUCT_ID:'prod_synthetic',
   WHOP_WEBHOOK_SECRET:randomBytes(32).toString('hex'), COMMAS_WEBHOOK_SECRET:randomBytes(32).toString('hex'),
   PII_ENC_KEY:randomBytes(32).toString('base64'), DOCUMENT_STORE_PROVIDER:'memory', DOCUMENT_URL_SECRET:randomBytes(32).toString('hex'),
   ADAPTERS_DRY_RUN:'0', MESSAGING_DRY_RUN:'1', CRS_API_HOST:'api-sandbox.stitchcredit.com', CRS_API_USERNAME:'synthetic-only',
@@ -38,14 +40,21 @@ globalThis.fetch = async (input, init={}) => {
     receipt.wire.push({provider:'commasFixture',method:'POST',resource:'checkout-sessions'});
     return Response.json({data:{id:'checkout-'+body.metadata.link_ref,payment_link:'https://checkout.example.invalid/'+body.metadata.link_ref}});
   }
-  if(url.origin==='https://api.whop.com'  && path.startsWith('/api/v1/')) {
+  if(url.origin==='https://sandbox-api.whop.com'  && path.startsWith('/api/v1/')) {
     receipt.wire.push({provider:'whopFixture',method:init.method || 'GET',resource:path.split('/')[3]});
     if(path==='/api/v1/checkout_configurations' && init.method==='POST') {
-      const body=JSON.parse(init.body); assert.equal(body.account_id,env.WHOP_ACCOUNT_ID);assert.equal(body.plan.product_id,env.WHOP_CONSULTING_PACKAGE_PRODUCT_ID);
+      const body=JSON.parse(init.body);
+      assert.equal(body.metadata.fh_schema,'2');
+      assert.equal(body.plan.title,'Consulting Services Package');assert.equal(body.plan.description,body.plan.title);
+      assert.equal(init.headers['Idempotency-Key'],'fh-request:'+body.metadata.fh_service_request_id);
+      assert.deepEqual(Object.keys(body.metadata).sort(),['fh_schema','fh_service_request_id','fh_org_id','fh_client_id','fh_engagement_id','fh_target_id','fh_amount_cents','fh_currency'].sort());
+      receipt.wire.at(-1).outboundSchema=body.metadata.fh_schema;
+      receipt.wire.at(-1).metadataKeys=Object.keys(body.metadata).sort();
+      assert.equal(body.account_id,env.WHOP_ACCOUNT_ID);assert.equal(body.plan.product_id,env.WHOP_CONSULTING_PACKAGE_PRODUCT_ID);
       const ix=checkouts.size+1;
       const row={id:'ch_synthetic'+ix,account_id:env.WHOP_ACCOUNT_ID,mode:'payment',metadata:body.metadata,
         plan:{id:'plan_synthetic'+ix,initial_price:body.plan.initial_price,currency:'usd',plan_type:'one_time'},
-        purchase_url:'https://whop.com/checkout/ch_synthetic'+ix+'/'};
+        purchase_url:'https://sandbox.whop.com/checkout/ch_synthetic'+ix+'/'};
       checkouts.set(row.id,row);return Response.json(row);
     }
     for(const row of checkouts.values()) {
@@ -131,12 +140,14 @@ try {
   const staffId=(await one("INSERT INTO staff(org_id,name,role,status) VALUES($1,'Synthetic CSM','csm','active') RETURNING id",[orgId])).id;
   const staffToken=(await staffAuth.createSession(db,{orgId,staffId})).token;
   const link=await one(`INSERT INTO payment_links(org_id,client_id,product_id,purpose,description,amount_cents,currency,provider,link_ref,
-    checkout_url,whop_checkout_configuration_id,whop_plan_id)
+    checkout_url,whop_checkout_configuration_id,whop_plan_id,whop_metadata_version)
     SELECT $1,$2,id,'custom','Synthetic full package checkout',3000000,'USD','whop',$3,
-    'https://whop.com/checkout/ch_syntheticfull/','ch_syntheticfull','plan_syntheticfull'
+    'https://sandbox.whop.com/checkout/ch_syntheticfull/','ch_syntheticfull','plan_syntheticfull',2
     FROM products WHERE org_id=$1 AND code='blueprint-self-funding' RETURNING *`,[orgId,clientId,'synthetic-'+id()]);
   link.product_code='blueprint-self-funding';
   const full=paid({id:link.whop_checkout_configuration_id,plan:{id:link.whop_plan_id}},whopBlueprintMetadata(link),3000000);
+  assert.equal(full.data.metadata.fh_schema,'2');
+  assert.deepEqual(Object.keys(full.data.metadata).sort(),['fh_schema','fh_payment_link_id','fh_org_id','fh_client_id','fh_amount_cents','fh_currency'].sort());
   await webhook(full,{bad:true,status:401});
   assert.equal((await one('SELECT count(*)::int AS n FROM whop_billing_inbox')).n,0);
   const wrong=structuredClone(full);wrong.data.total.amount='29999.99';
@@ -227,5 +238,5 @@ try {
   receipt.status='failed';receipt.failure=error.message;process.exitCode=1;console.error(error.stack);
 } finally {
   server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await db.end();await close();
-  await writeFile(new URL('./result.json',import.meta.url),JSON.stringify(receipt,null,2)+'\n');
+  await writeFile(new URL('./'+receiptFile,import.meta.url),JSON.stringify(receipt,null,2)+'\n');
 }
