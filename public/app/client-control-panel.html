@@ -766,6 +766,7 @@
 <script src="demo-client-bootstrap.js"></script>
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-staff.css">
+<link rel="stylesheet" href="client-property-report.css">
 </head>
 <body class="ccp-workspace fh-astra fh-astra-staff fh-astra--client-control-panel">
 <div class="app">
@@ -1147,6 +1148,15 @@
     </section>
     <section class="workspace-view" id="ccp-view-credit" role="tabpanel" aria-labelledby="ccp-tab-credit" tabindex="0" hidden>
       <div class="workspace-section-head"><h2>Credit &amp; inquiries</h2><p>Check permission and identity before a bureau pull.</p></div>
+      <div class="group" id="ccp-property-report" hidden>
+        <div class="group-title card-title">Property ownership report</div>
+        <p class="fact-note">Recorded ownership and foreclosure facts from CRS/PitchPoint. Historical loan amounts do not show today's mortgage balance or equity.</p>
+        <p id="ccp-property-state" class="fact-note" role="status" aria-live="polite">Loading saved property report…</p>
+        <div id="ccp-property-result"></div>
+        <label hidden><input id="ccp-property-consent" type="checkbox"><span>The client gave this separate permission: <span id="ccp-property-consent-text"></span></span></label>
+        <button type="button" class="action-btn" id="ccp-property-order" hidden disabled>Run property report</button>
+        <button type="button" class="link-btn" id="ccp-property-refresh">Reload saved report</button>
+      </div>
       <div class="group" id="ccp-lead-enrichment" aria-live="polite">
         <div class="group-title card-title">Lead enrichment</div>
         <p class="fact-note">Internal fit drafts for staff review. These are not lender approvals or verified income.</p>
@@ -1451,6 +1461,7 @@ document.querySelectorAll('.group-title.tog').forEach(function(t){
 <script src="proxy-apply.js"></script>
 <script src="money-input.js"></script>
 <script defer src="ccp-declines.js"></script>
+<script defer src="client-property-report.js"></script>
 <script>
 /* FH-CCP-BEGIN
    THE TWO DECISIONS ON THIS SCREEN THAT CAN QUIETLY BECOME A LIE, kept pure

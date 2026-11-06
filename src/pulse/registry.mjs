@@ -199,6 +199,7 @@ const API_KEYS = [
   "finance/liabilities",
   "finance/model",
   "finance/paydown-simulator",
+  "finance/property-report",
   "finance/soft-pull",
   "finance/subscriptions",
   "gifts/message-blaster",

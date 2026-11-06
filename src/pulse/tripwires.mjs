@@ -158,7 +158,8 @@ export const TRIPWIRES = Object.freeze({
   "route:dashboard/seed": { impact: "money", checks: ["books:sample-rows"] },
   "route:read/affiliates": { impact: "money", checks: ["partners:payout-held", "trip:partner"] },
   "desk:products-commissions.html": { impact: "money", checks: ["commissions:ledger", "commissions:slo-map"] },
-  "desk:client-control-panel.html": { impact: "money", checks: ["funding:funded-no-bill", "funding:approved-no-amount"] },
+  "desk:client-control-panel.html": { impact: "money", checks: ["funding:funded-no-bill", "funding:approved-no-amount", "property:report-ledger"] },
+  "route:finance/property-report": { impact: "customer", checks: ["property:report-ledger"] },
   "desk:affiliate.html": { impact: "money", checks: ["partners:payout-held"] },
   // Coverage batch W2 (money B), 2026-10-10: checkout links, the FinanceOS setup fee, money that fits no plan,
   // past-due plans, stuck money moves, and what Meta says about our ad money. Each id is written in its lane
