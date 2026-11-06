@@ -62,4 +62,13 @@ ALTER TABLE public.blueprint_inquiry_evidence FORCE ROW LEVEL SECURITY;
 CREATE POLICY blueprint_inquiry_evidence_app ON public.blueprint_inquiry_evidence
   TO fundhub_app USING (true) WITH CHECK (true);
 REVOKE ALL ON public.blueprint_inquiry_evidence FROM PUBLIC;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN
+    REVOKE ALL ON public.blueprint_inquiry_evidence FROM anon;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN
+    REVOKE ALL ON public.blueprint_inquiry_evidence FROM authenticated;
+  END IF;
+END $$;
 GRANT SELECT, INSERT, UPDATE ON public.blueprint_inquiry_evidence TO fundhub_app;

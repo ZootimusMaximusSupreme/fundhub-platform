@@ -33,4 +33,13 @@ ALTER TABLE public.blueprint_repair_submissions FORCE ROW LEVEL SECURITY;
 CREATE POLICY blueprint_repair_submissions_app ON public.blueprint_repair_submissions
   TO fundhub_app USING (true) WITH CHECK (true);
 REVOKE ALL ON public.blueprint_repair_submissions FROM PUBLIC;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN
+    REVOKE ALL ON public.blueprint_repair_submissions FROM anon;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN
+    REVOKE ALL ON public.blueprint_repair_submissions FROM authenticated;
+  END IF;
+END $$;
 GRANT SELECT, INSERT ON public.blueprint_repair_submissions TO fundhub_app;
