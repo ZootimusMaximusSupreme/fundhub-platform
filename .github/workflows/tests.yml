@@ -86,6 +86,8 @@ concurrency:
 permissions:
   contents: read
 
+# Keep browser installers on Ubuntu 24.04 during the ubuntu-latest image rollout.
+# GitHub mitigation: https://github.com/actions/runner-images/issues/14748
 jobs:
   # ---------------------------------------------------------------------------
   # THE BLOCKING JOB. Fast, deterministic, no services. If this is red, the branch
@@ -93,7 +95,7 @@ jobs:
   # ---------------------------------------------------------------------------
   unit:
     name: suite (no database — unit shard ${{ matrix.shard }}/6)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -169,7 +171,7 @@ jobs:
   # ---------------------------------------------------------------------------
   browser:
     name: screens (real browser)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 75
     env:
       STAFF_E2E_PASSWORD: ${{ secrets.STAFF_E2E_PASSWORD }}
@@ -214,7 +216,7 @@ jobs:
   # ---------------------------------------------------------------------------
   postgres-unit:
     name: suite (real Postgres — unit shard ${{ matrix.shard }}/6)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 50
     strategy:
       fail-fast: false
