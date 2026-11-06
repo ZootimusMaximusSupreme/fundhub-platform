@@ -44,10 +44,13 @@ test("score floors use exact 619/620, 749/750 and 799/800 boundaries", () => {
   const expected = new Map([
     [619, ["below_score_floor", "below_score_floor", "below_score_floor"]],
     [620, ["score_floor_met", "below_score_floor", "below_score_floor"]],
+    [621, ["score_floor_met", "below_score_floor", "below_score_floor"]],
     [749, ["score_floor_met", "below_score_floor", "below_score_floor"]],
     [750, ["score_floor_met", "score_floor_met", "below_score_floor"]],
+    [751, ["score_floor_met", "score_floor_met", "below_score_floor"]],
     [799, ["score_floor_met", "score_floor_met", "below_score_floor"]],
-    [800, ["score_floor_met", "score_floor_met", "score_floor_met"]]
+    [800, ["score_floor_met", "score_floor_met", "score_floor_met"]],
+    [801, ["score_floor_met", "score_floor_met", "score_floor_met"]]
   ]);
   for (const [value, outcomes] of expected) {
     const cards = evaluateLeadFitModels({ creditScores: [score(value)] });

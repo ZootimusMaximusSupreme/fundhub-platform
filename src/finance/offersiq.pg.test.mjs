@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
-import { evaluateLeadOffersIq, getOffersIqStatus } from "./offersiq.mjs";
+import { evaluateLeadOffersIq, getOffersIqStatus, offersIqSummaryForClient } from "./offersiq.mjs";
+import { updateSetterHandoff } from "../setter/dashboard.mjs";
 
 const SCRATCH_URL = process.env.APP_DATABASE_URL || process.env.DATABASE_URL;
 const ENV = {
@@ -142,6 +143,28 @@ test("OffersIQ ledger persists one synthetic receipt and shared summary as fundh
     assert.equal(historical.length, 1);
     assert.equal(historical[0].status, "matched");
     assert.equal(historical[0].normalized_response.credit_score, 610);
+
+    // Save B again through the setter's own action. Its historical wire finished
+    // while C was current. No provider call is needed to restore B's receipt.
+    const returned = await updateSetterHandoff(writer, staff, { client_id: clientId, action: "save_address",
+      address: { ...addressB, confirmed: true } }, { env: ENV });
+    assert.equal(returned.status, 200);
+    const currentRecord = (await writer.query(
+      "SELECT id, first_name, last_name, phone, custom_fields FROM clients WHERE id=$1 AND org_id=$2", [clientId, orgId]
+    )).rows[0];
+    const detail = await getOffersIqStatus(writer, staff, { clientId }, { env: ENV });
+    assert.equal(detail.body.result.credit_score, 610);
+    assert.deepEqual(offersIqSummaryForClient(currentRecord), detail.body.result);
+    // An unchanged save also repairs a cached mismatch left by an older build.
+    await writer.query("UPDATE clients SET custom_fields=jsonb_set(custom_fields,'{offersiq}',$2::jsonb) WHERE id=$1",
+      [clientId, JSON.stringify(afterStale.offersiq)]);
+    await updateSetterHandoff(writer, staff, { client_id: clientId, action: "save_address",
+      address: { ...addressB, confirmed: true } }, { env: ENV });
+    const refreshed = (await writer.query("SELECT custom_fields FROM clients WHERE id=$1", [clientId])).rows[0].custom_fields;
+    assert.equal(refreshed.offersiq.credit_score, 610);
+    assert.deepEqual(refreshed.setter_residential_address_history, currentRecord.custom_fields.setter_residential_address_history);
+    assert.equal(Number((await writer.query("SELECT count(*) AS n FROM offersiq_requests WHERE client_id=$1",
+      [clientId])).rows[0].n), 2);
 
     // The database itself rejects two pending claims for one lead.
     const claimSql = `INSERT INTO offersiq_requests

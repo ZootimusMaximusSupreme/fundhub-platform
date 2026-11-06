@@ -86,8 +86,9 @@ export function clientFinancialProfile({ client = {}, crsResults = [], incomeEst
   const creditScores = reportScores(rows);
   const offerMatch = offersIqSummaryForClient(client);
   const modelScores = [...creditScores];
-  if (offerMatch && !offerMatch.stale && offerMatch.environment === "production"
-      && Number.isInteger(offerMatch.credit_score)) {
+  const scoredOffer = offerMatch && ["matched", "not_matched"].includes(offerMatch.outcome)
+    && !offerMatch.stale && offerMatch.environment === "production";
+  if (scoredOffer && Number.isInteger(offerMatch.credit_score)) {
     modelScores.push({ bureau: "EQ", score: offerMatch.credit_score, model: null,
       source: "CRS OffersIQ Equifax", asOf: date(offerMatch.checked_at) });
   }
@@ -106,8 +107,7 @@ export function clientFinancialProfile({ client = {}, crsResults = [], incomeEst
   }
   const tuIncome = tuIncomeModel(rows);
   if (tuIncome) incomeModels.push(tuIncome);
-  const attributes = offerMatch && !offerMatch.stale && offerMatch.environment === "production"
-    ? object(offerMatch.offers_iq_summary) : {};
+  const attributes = scoredOffer ? object(offerMatch.offers_iq_summary) : {};
   const bankruptcyCount = number(attributes.publicRecordBankruptcyCount);
   return {
     version: "2026-11-04", offerMatch, creditScores, incomeModels,
