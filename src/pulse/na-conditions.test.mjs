@@ -25,10 +25,10 @@ function fakeDb(answer) {
 
 const fn = (id, opts = {}) => ({ opts: { id, triggers: [], ...opts } });
 
-test("the list of codes is closed: exactly these twenty-five", () => {
+test("the list of codes is closed: exactly these twenty-six", () => {
   assert.deepEqual([...NA_CODES].sort(), [
     "catalog-data-empty", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-flow-step-not-shipped", "catalog-route-retired-action", "feature-not-set-up", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-client-on-watch", "no-real-funding-round", "no-real-lead",
-    "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered", "owner-hold-client", "owner-paused"
+    "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered", "offersiq-sort-not-ready", "owner-hold-client", "owner-paused"
   ]);
   assert.equal(Object.isFrozen(NA_CONDITIONS), true);
   for (const code of NA_CODES) assert.equal(Object.isFrozen(NA_CONDITIONS[code]), true, code);
@@ -41,7 +41,7 @@ test("the nine core codes verify here; the lane codes say \"lane\"", () => {
   for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting", "feature-not-set-up", "owner-paused", "no-real-funding-round", "no-real-client-on-watch"]) {
     assert.equal(typeof NA_CONDITIONS[code].verify, "function", code);
   }
-  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-flow-step-not-shipped", "owner-hold-client"]) {
+  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-flow-step-not-shipped", "owner-hold-client", "offersiq-sort-not-ready"]) {
     assert.equal(NA_CONDITIONS[code].verify, "lane", code);
   }
 });

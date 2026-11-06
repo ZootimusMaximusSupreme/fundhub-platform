@@ -5,7 +5,7 @@ import { clientFinancialProfile } from "../http/client-financial-profile.mjs";
 import { parseOffersIqResponse } from "./offersiq-contract.mjs";
 import {
   evaluateLeadOffersIq, getOffersIqStatus, offersIqConfigFromEnv,
-  offersIqIdentityKeyForClient, offersIqSummaryForClient
+  offersIqIdentityKeyForClient, offersIqSummaryForClient, safeOffersIqSummary
 } from "./offersiq.mjs";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
@@ -69,7 +69,10 @@ function fakeDb() {
         && value.client_id === params[2] && value.status === "in_flight");
       if (!row) return { rows: [] };
       Object.assign(row, { status: params[3], provider_request_id: params[4],
-        normalized_response: JSON.parse(params[5]), error_code: params[6], finished_at: params[7] });
+        normalized_response: JSON.parse(params[5]), error_code: params[6], finished_at: params[7],
+        lead_sort_bucket: params[8], lead_sort_points: params[9], lead_sort_version: params[10],
+        lead_sort_reasons: JSON.parse(params[11]), lead_sort_result: JSON.parse(params[12]),
+        lead_sort_receipt: JSON.parse(params[13]) });
       return { rows: [{ id: row.id }] };
     }
     if (sql.includes("UPDATE clients SET custom_fields")) {
@@ -172,6 +175,10 @@ test("one evaluated lead yields one provider call, a safe shared summary, and re
   assert.equal(ledger[0].requester_staff_id, STAFF);
   assert.equal(ledger[0].consent_terms_url, CONSENT.termsUrl);
   assert.equal(ledger[0].status, "matched");
+  assert.equal(ledger[0].lead_sort_bucket, "can_not_tell");
+  assert.equal(ledger[0].lead_sort_points, 0);
+  assert.ok(ledger[0].lead_sort_version);
+  assert.equal(client.custom_fields.offersiq.lead_sort_bucket, undefined);
   assert.doesNotMatch(JSON.stringify(ledger[0]), /privateRawValue|never stored/);
   assert.doesNotMatch(JSON.stringify(ledger[0]), /income|fullName/);
   const retry = await evaluateLeadOffersIq(db, ACTOR, { clientId: CLIENT, operationId, consent: CONSENT }, opts);
@@ -190,6 +197,29 @@ test("one evaluated lead yields one provider call, a safe shared summary, and re
   assert.equal(calls, 1);
 });
 
+test("range retention accepts finite numbers and pairs only and keeps more than 125 questions", () => {
+  const conditions = Array.from({ length: 130 }, (_, n) => ({
+    attributeCode: `SYNTHETIC_${n}`, attributeName: "Synthetic band", operator: "BETWEEN",
+    expectedValue: [n, n + 1], passed: false, status: "FAILED", raw: "private"
+  }));
+  const malformed = ["private", [1], [1, 2, 3], [1, "private"], true, null, {}, NaN, Infinity];
+  conditions.push(...malformed.map(expectedValue => ({ expectedValue })));
+  conditions.push({ expectedValue: 0 }, { expectedValue: -1.5 });
+  const summary = safeOffersIqSummary({ outcome: "matched", ruleEvaluation: {
+    individualResults: conditions, rootGroup: { conditions }
+  } }, { ruleSetId: 1232, environment: "sandbox", fingerprint: "a".repeat(64),
+    checkedAt: "2026-11-06T18:00:00Z" });
+  assert.equal(summary.individual_results.length, conditions.length);
+  assert.deepEqual(summary.individual_results[129].expectedValue, [129, 130]);
+  assert.deepEqual(summary.root_group.conditions[129].expectedValue, [129, 130]);
+  for (const condition of summary.individual_results.slice(130, 130 + malformed.length)) {
+    assert.equal(Object.hasOwn(condition, "expectedValue"), false);
+  }
+  assert.equal(summary.individual_results.at(-2).expectedValue, 0);
+  assert.equal(summary.individual_results.at(-1).expectedValue, -1.5);
+  assert.doesNotMatch(JSON.stringify(summary), /private/);
+});
+
 test("a sparse provider response stays sparse and never invents profile metrics", async () => {
   const { db, client } = fakeDb();
   const provider = { async evaluateOffersIq() {
@@ -206,7 +236,8 @@ test("a sparse provider response stays sparse and never invents profile metrics"
   assert.equal(result.body.status, "not_matched");
   assert.equal(client.custom_fields.offersiq.credit_score, undefined);
   assert.equal(client.custom_fields.offersiq.offers_iq_summary, undefined);
-  assert.doesNotMatch(JSON.stringify(client.custom_fields.offersiq), /actualValue|expectedValue/);
+  assert.doesNotMatch(JSON.stringify(client.custom_fields.offersiq), /actualValue/);
+  assert.equal(client.custom_fields.offersiq.individual_results[0].expectedValue, 700);
 });
 
 test("an ambiguous provider failure is recorded once and cannot cause an automatic second call", async () => {

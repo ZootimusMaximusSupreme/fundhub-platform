@@ -47,7 +47,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 32 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 141 routes]
+    WHO -->|Yes| CANT[Blocked — 142 routes]
     CANT --> B_affiliates[affiliates — 3 blocked]
     CANT --> B_auth[Signing in and out — 10 blocked]
     CANT --> B_banking[banking — 1 blocked]
@@ -59,7 +59,7 @@ flowchart TD
     CANT --> B_content[content — 2 blocked]
     CANT --> B_dashboard[The dashboard — 1 blocked]
     CANT --> B_demo[demo — 2 blocked]
-    CANT --> B_finance[Finance — 2 blocked]
+    CANT --> B_finance[Finance — 3 blocked]
     CANT --> B_hiring[Hiring — 7 blocked]
     CANT --> B_journeys[journeys — 2 blocked]
     CANT --> B_marketing[marketing — 44 blocked]
@@ -82,7 +82,7 @@ flowchart TD
 
 ## What they can reach
 
-**218 of 359 routes.**
+**218 of 360 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -314,7 +314,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**141 of 359 routes.**
+**142 of 360 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -351,6 +351,7 @@ flowchart TD
 | `/api/demo/mode` | DELETE, GET, POST | owner, admin |
 | `/api/demo/simulate` | DELETE, POST | owner, admin |
 | `/api/finance/crs-pull` | POST | owner, admin, closer, funding_advisor |
+| `/api/finance/property-report` | GET, POST | owner, admin, funding_advisor |
 | `/api/finance/soft-pull` | GET, POST | employees: owner, admin, closer, funding_advisor<br>plus: client |
 | `/api/hiring/application` | GET | owner, admin |
 | `/api/hiring/bench` | GET | owner, admin |

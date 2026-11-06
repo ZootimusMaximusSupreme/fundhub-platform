@@ -9,6 +9,7 @@
 //   softpull:paid-form-not-filled-2h   a paid roadmap buyer left the pull form empty over 2 hours and got no reminder
 //   softpull:approve-click-no-pull     a client approved the pull and paid, and no pull started 15 minutes later
 //   softpull:offersiq-ledger           an OffersIQ request stalled, lost its receipt, or has a recent unresolved error
+//   property:report-ledger             a property request lost its permission, scope, identity, normalized data or receipt
 //   keys:credit-pull-live-allowed      the live settings allow a real pull (CRS_ALLOW_LIVE on, production host,
 //                                      login set). Judged only on the live server; on a laptop it is a skip.
 // Test clients are left out the same way the lanes leave them out.
@@ -31,6 +32,8 @@ import {
 } from "./lib/soft-pull-truth.mjs";
 import { creditPullLiveAllowed } from "./lib/credit-pull-key-truth.mjs";
 import { webFromHttp } from "./lib/web-reader.mjs";
+import { CHECK_IDS as SORT_CHECK_IDS, checkOffersIqLeadSort } from "./lib/offersiq-lead-sort-truth.mjs";
+import { CHECK_IDS as PROPERTY_CHECK_IDS, PROPERTY_LEDGER_SQL, PROPERTY_LEDGER_COUNTS, readPropertyReportTruth } from "./lib/crs-property-truth.mjs";
 
 export const HOURLY_CHECK_IDS = Object.freeze([
   "soft-pull:approve-page",
@@ -39,12 +42,16 @@ export const HOURLY_CHECK_IDS = Object.freeze([
   "softpull:paid-form-not-filled-2h",
   "softpull:approve-click-no-pull",
   "softpull:offersiq-ledger",
+  ...SORT_CHECK_IDS,
+  ...PROPERTY_CHECK_IDS,
   "keys:credit-pull-live-allowed"
 ]);
 
 /** The deep checks a covered surface names that run hourly in another beat: check id -> [beat id, step]. */
 export const RUNS_ELSEWHERE = Object.freeze({
-  "consent:slo-store": Object.freeze(["consent-capture", "consent-slo-store"])
+  "consent:slo-store": Object.freeze(["consent-capture", "consent-slo-store"]),
+  "funding:funded-no-bill": Object.freeze(["money-funding", "funding-funded-no-bill"]),
+  "funding:approved-no-amount": Object.freeze(["money-funding", "funding-approved-no-amount"])
 });
 
 const SITE = "https://fundhub.ai";
@@ -69,9 +76,11 @@ export const LANE = Object.freeze({
       checkRequestFailedOrStuck(reader),
       checkPaidFormNotFilled(reader),
       checkApproveClickNoPull(reader),
-      checkOffersIqLedger(reader)
+      checkOffersIqLedger(reader),
+      checkOffersIqLeadSort({ read: io.read, orgId: io.orgId })
     ]);
-    return [...rows, creditPullLiveAllowed(io.env)];
+    const properties = await readPropertyReportTruth({ read: io.read, orgId: io.orgId });
+    return [...rows, ...properties, creditPullLiveAllowed(io.env)];
   },
   selfTest: Object.freeze({
     passHttp: Object.freeze({
@@ -80,7 +89,8 @@ export const LANE = Object.freeze({
     }),
     passEnv: LIVE_SETUP,
     passRows: Object.freeze([
-      Object.freeze([OFFERSIQ_LEDGER_SQL, Object.freeze([Object.freeze({ stale: 0, missing_receipt: 0, errors: 0 })])])
+      Object.freeze([OFFERSIQ_LEDGER_SQL, Object.freeze([Object.freeze({ stale: 0, missing_receipt: 0, errors: 0 })])]),
+      Object.freeze([PROPERTY_LEDGER_SQL, Object.freeze([PROPERTY_LEDGER_COUNTS])])
     ]),
     // A pull C-00 ran for a paid buyer failed an hour ago and nobody retried it: red at the ledger step.
     failRows: Object.freeze([
@@ -105,7 +115,9 @@ export const covers = [
   "desk:soft-pull-approve.html",
   "route:soft-pull-approve",
   "route:public/slo-pull",
-  "job:c-00-crs-soft-pull-request"
+  "job:c-00-crs-soft-pull-request",
+  "route:finance/property-report",
+  "desk:client-control-panel.html"
 ];
 export const box = false;
 export const reads = [{ host: "SITE", methods: ["GET"] }];
@@ -120,18 +132,21 @@ export async function run(ctx) {
 }
 
 export const fixGuide = [
-  "A soft pull or OffersIQ request did not run, failed or stalled, the approve screen broke, or real pulls are not allowed.",
+  "A credit, OffersIQ or property request stalled or lost valid data, or the approve screen or live settings failed.",
   "",
   "Likely causes:",
   "- C-00 stopped with no pull row: the client has no portal account, or no live soft-pull consent.",
   "- The credit vendor refused or timed out, so the pull row is failed or stuck in processing.",
   "- OffersIQ left a request in flight, failed recently, or completed without a provider receipt.",
+  "- A saved OffersIQ check lost its bucket, points or version, or CRS changed the expected rule list.",
   "- CRS_ALLOW_LIVE, CRS_API_HOST or the CRS login on Netlify changed, so the pull refuses the real host.",
   "",
   "Steps:",
   "- Run node scripts/pulse/run-beat.mjs soft-pull and read the red step: it names the count, the age and short client ids.",
   "- Read soft_pull_requests and the C-00 run for that payment; for a paid buyer with an empty form, read the slo-paid-form-nudge run.",
   "- Read offersiq_requests for a red OffersIQ ledger step. Resolve the recorded cause; the beat makes no provider request.",
+  "- For a sort failure, compare the saved rule list with the versioned config and rescore saved receipts; wait for CRS before free reevaluation.",
+  "- For property:report-ledger, inspect the scoped crs_property_requests row and saved receipt. Uncertain provider work needs review; never order again from the pulse.",
   "- Fix the cause, then use the staff pull button. Never pull credit or send bureau mail from the pulse.",
   "Files: src/pulse/beats/lib/soft-pull-truth.mjs, src/workflows/c-00-crs-soft-pull-request.mjs, api/soft-pull-approve.mjs, src/finance/crs-identities.mjs"
 ].join("\n");
