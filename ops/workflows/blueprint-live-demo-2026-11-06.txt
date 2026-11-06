@@ -1,0 +1,54 @@
+BLUEPRINT LIVE DEMO READINESS — 2026-11-06
+Owner: Codex session 01a1b24f-3720-7562-960e-1b2095ec63ad
+Worktree: /Users/chrisstanbridge/.codex/worktrees/blueprint-demo-readiness/fundhub-platform
+Baseline: origin/main f332f1df9. No new product scope; no live charges, messages, credit pulls or customer mutations.
+Ground truth: docs/journeys/capital-blueprint-intended.md CB-01..CB-10. Intended has required event order; demo screens are a subset and cannot prove payment/provider delivery.
+Shared ownership: PR429 owns Whop helper/metadata; Blake lane owns variable-price seller/contract work. No competing implementation.
+
+PARALLEL WORKFLOWS — independent until integration
+A / root: live signed-in demo navigation, screens and final readiness judgment. Browser owned exclusively here.
+B / demo tests: inspect current Blueprint Present/demo routes, run existing focused tests and isolated browser specs. Read-only app source. Own evidence ops/workflows/blueprint-live-demo-2026-11-06-tests.txt.
+C / release: inspect exact-main 14 checks, latest Ship/version receipts and pending Blueprint/Blake dependencies. Read-only services. Own evidence ops/workflows/blueprint-live-demo-2026-11-06-release.txt.
+Final integration waits for B/C evidence. No agents edit app source or the other evidence file.
+
+COPY/PASTE PROMPT B
+Work in /Users/chrisstanbridge/.codex/worktrees/blueprint-demo-readiness/fundhub-platform. Read this board plus Fundhub auditor/system-map skills and intended Blueprint journey. Read-only demo-readiness check: identify the existing Present Blueprint/demo routes, fixtures, and safe runnable focused unit/Playwright tests; execute relevant existing tests against local isolated fixtures (never live DB). Do not use shared MCP browser, modify code/tests, or write customer data. Record exact results, skips, missing prerequisites, route instructions and source refs in ops/workflows/blueprint-live-demo-2026-11-06-tests.txt only. Source tests are not live proof. Return concise findings to root.
+
+COPY/PASTE PROMPT C
+Work in /Users/chrisstanbridge/.codex/worktrees/blueprint-demo-readiness/fundhub-platform. Read this board and intended Blueprint journey. Read-only release/demo dependency check: verify newest exact-main CI all14, latest Ship plus public version, pending PR429 and Blake-owned checkout/contract dependencies. Use connector/API; do not merge, ship, replay webhooks, mutate providers, or touch app source. Record dated receipts and genuine blockers in ops/workflows/blueprint-live-demo-2026-11-06-release.txt only. Confirm which paths are usable now vs pending. Return concise findings to root.
+
+STATUS
+A: STARTING
+B: READY
+C: READY
+Verdict: UNVERIFIED until live navigation + evidence reviewed.
+
+READ-ONLY RESULTS — 2026-11-06 19:27 UTC
+A: COMPLETE for public sample path; current full buyer demo FAIL / not ready.
+B: COMPLETE — 138 source tests +115 isolated Chromium cases passed, 0 skipped. Those are fixture results, not production buyer/provider proof.
+C: COMPLETE — published portal, Present, CSM and full fulfillment script match deployed source. Last successful Ship42271449259 at6c9a10d7; later9a53 stopped before publication on checkout timing. Latest-main/PR429 release remains owned elsewhere.
+
+FAILURE BP-DEMO-01
+Journey: Capital Blueprint CB-05/CB-08 and real buyer preparation/full implementation.
+Expected: a safe demo can walk the current preparation plan and purchased full implementation screens.
+Observed LIVE: https://fundhub.ai/app/client-portal.html?demo=1 opens the generic sample portal. Capital Blueprint Open DOES expand the legacy five-row mini-course; it is not broken. The current #blueprint-plan and #blueprint-fulfillment both remain hidden. No Blueprint API request is attempted.
+Source: public/app/blueprint-plan.js:6 and public/app/blueprint-fulfillment.js:5 explicitly exclude demo=1. Signed-in sample bundle also has no Blueprint API data. Removing client/paid/auth gates is not a repair.
+Evidence: ops/workflows/build-evidence/blueprint-live-demo-2026-11-06/sample-blueprint-legacy-MARKED.png. Numbered red callout/yellow arrow marks the legacy card. Initial mistaken no-op observation was corrected after the expansion completed; it is NOT an accepted finding.
+
+CURRENT USABLE ALTERNATIVE
+The existing Present B-03 interactive preview passed24 browser cases with price/context/journey, with no saves/sends/charges. Normal authorized staff route /app/present.html?contact=<client-id>, phase6 then next twice. A fixture run and published-asset match do not prove a fresh authenticated live navigation.
+
+KEPT OPEN
+- Full client workflow demo entry/data is absent. Owner asked asynchronously whether the needed demo is full client workflow or sales presentation; no response is approval.
+- Live financing/payment callback, seller variable price and automatic agreement remain with PR429/Blake owners; no competing source edits here.
+- No real provider/bureau call, customer change, payment, send, production test account or entitlement was created.
+- Local browser connection disabled in Work settings; existing legitimate staff session was unavailable through that surface. Used isolated Playwright public sample only, no browser/session extraction.
+- The historical system map is absent on current main; recovered through git object3ba3e42f38a0e3e6db1a746ee3e3cb3e6b0db604 for evidence standards only, not current flow facts.
+
+NAMED FOLLOW-UP (not executed during the read-only audit)
+Make the current Blueprint preparation and full implementation workspaces demonstrable with clearly labelled synthetic data and inert actions, reusing the existing demo architecture. Preserve paid-client/session/tenant gates and provider modes; do not put fake clients in production. Own separate module/sample data paths only after coordinating portal/Present ownership. Prove desktop/mobile navigation, refresh, clear/reset and that no customer/provider/money writes occur. Show marked draft before authorized publication. Retest independently.
+
+DELIVERY CHECKS
+Preflight exited0:3 evidence paths,46 peer sources scanned, no shared files. Warning48 historical branches is retained; no branch cleanup done. rules:check passed. Installed TypeScript npx tsc --noEmit passed. Full lint pending below. No app code or test source changed. Source tests138/138 and isolated browser115/115, zero DB tests selected/skipped in these selections; real persisted PostgreSQL/provider delivery remains unproved by this run.
+Release refresh: exact-main tests42277340745 now14/14 completed/success via connected GitHub jobs API. This supersedes the earlier pending-main snapshot; last verified successful Ship remains separate. Evidence saver refused a text export outside its configured root; existing marked screenshot and tool DOM output were retained, no path override used.
+Final lint PASS:4,746 files/inline blocks parse clean. TypeScript, rules and diff checks PASS. Evidence-only publication via normal ship-change; this does not repair the demo or authorize a product go-live.
