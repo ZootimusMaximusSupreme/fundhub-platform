@@ -58,8 +58,12 @@ CREATE TABLE auth_passkey_recovery_codes (
   code_hash text NOT NULL UNIQUE,
   created_at timestamptz NOT NULL DEFAULT now(),
   used_at timestamptz,
-  revoked_at timestamptz
+  revoked_at timestamptz,
+  UNIQUE (id,subject_id)
 );
+ALTER TABLE auth_passkey_challenges ADD COLUMN recovery_code_id uuid;
+ALTER TABLE auth_passkey_challenges ADD CONSTRAINT auth_passkey_recovery_code_scope
+  FOREIGN KEY (recovery_code_id,subject_id) REFERENCES auth_passkey_recovery_codes(id,subject_id);
 -- Server-side principals, orgs, sessions and target ownership must agree even
 -- when a future application writer forgets a scope predicate.
 CREATE FUNCTION auth_passkey_subject_scope() RETURNS trigger LANGUAGE plpgsql AS $$

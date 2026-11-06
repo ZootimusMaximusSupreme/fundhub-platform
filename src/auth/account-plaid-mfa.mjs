@@ -29,10 +29,11 @@ export async function authorizeAccountPlaidLink(db, {
       `INSERT INTO account_plaid_link_grants
          (token_hash,org_id,account_id,account_session_id,target_kind,target_id,
           consent_scope,consent_version,consent_text,privacy_url,mfa_verified_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11)
+       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,
+         (SELECT verified_at FROM auth_passkey_assurances WHERE id=$11))
        RETURNING id,consent_granted_at,expires_at`,
       [hashToken(token), orgId, accountId, sessionId, targetKind, targetId,
-        JSON.stringify(scope), CONSENT_VERSION, CONSENT_TEXT[targetKind], PRIVACY_URL, proof.verified_at]
+        JSON.stringify(scope), CONSENT_VERSION, CONSENT_TEXT[targetKind], PRIVACY_URL, proof.id]
     )).rows[0];
     return { ok: true, grant_token: token, grant_id: receipt.id,
       consent_granted_at: receipt.consent_granted_at, expires_at: receipt.expires_at };

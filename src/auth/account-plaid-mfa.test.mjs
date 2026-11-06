@@ -13,13 +13,13 @@ function fakeDb({ assured = true } = {}) {
   return { grants, async query(sql, params = []) {
     if (sql.includes("FROM auth_passkey_subjects")) return { rows: [{ id: "subject-1" }] };
     if (sql.includes("SELECT a.email,a.name")) return { rows: [{ email: "e2e+passkey@example.test", fresh_primary: true }] };
-    if (sql.includes("FROM auth_passkey_assurances")) return { rows: assured
+    if (sql.includes("SELECT a.id,a.verified_at")) return { rows: assured
       ? [{ id: "proof-1", verified_at: "2026-11-06T20:00:00Z", expires_at: "2026-11-06T20:15:00Z" }] : [] };
     if (sql.includes("INSERT INTO account_plaid_link_grants")) {
       const grant = { id: `grant-${grants.length + 1}`, token_hash: params[0],
         org_id: params[1], account_id: params[2], account_session_id: params[3],
         target_kind: params[4], target_id: params[5], consent_scope: JSON.parse(params[6]),
-        consent_version: params[7], consent_text: params[8], privacy_url: params[9], mfa_verified_at: params[10],
+        consent_version: params[7], consent_text: params[8], privacy_url: params[9], mfa_verified_at: params[10] === "proof-1" ? "2026-11-06T20:00:00Z" : null,
         consent_granted_at: new Date().toISOString(), expires_at: new Date(Date.now() + 600000).toISOString(),
         link_opened_at: null, consumed_at: null };
       grants.push(grant);

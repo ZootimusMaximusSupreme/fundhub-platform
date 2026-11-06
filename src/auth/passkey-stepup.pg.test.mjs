@@ -69,6 +69,8 @@ describe("bank passkey real PostgreSQL app-role and signed assertion proof", {
     const grant=await authorizeAccountPlaidLink(app,{...i,consent:true});assert.equal(grant.ok,true);
     const row=(await app.query("SELECT * FROM account_plaid_link_grants WHERE id=$1",[grant.grant_id])).rows[0];
     assert.equal(row.mfa_verified_at.toISOString(),proof.verified_at.toISOString());assert.equal(row.account_session_id,i.sessionId);
+    assert.equal((await app.query(`SELECT g.mfa_verified_at=a.verified_at AS exact FROM account_plaid_link_grants g
+      JOIN auth_passkey_assurances a ON a.id=$2 WHERE g.id=$1`,[grant.grant_id,proof.id])).rows[0].exact,true);
     const codes=(await app.query("SELECT code_hash FROM auth_passkey_recovery_codes WHERE subject_id IN (SELECT id FROM auth_passkey_subjects WHERE account_id=$1)",[i.accountId])).rows;
     assert.equal(codes.length,10);assert.ok(codes.every(c=>/^[a-f0-9]{64}$/.test(c.code_hash)));
     for(const code of result.recovery_codes)assert.ok(!JSON.stringify(codes).includes(code));
@@ -128,16 +130,63 @@ describe("bank passkey real PostgreSQL app-role and signed assertion proof", {
     const removed=await act({action:"remove",credential_id:status.credentials[1].id});assert.equal(removed.ok,true);
     assert.equal((await act({action:"remove",credential_id:status.credentials[0].id})).error,"last_passkey_required");assert.ok(second);
   }));
-  test("one-use recovery plus fresh login only permits reenrollment; new registration still needs a new assertion",async()=>fixture(async({i,act,enroll,verify,app})=>{
+  test("one-use recovery plus fresh login only permits reenrollment; new registration still needs a new assertion",async()=>fixture(async({i,act,enroll,verify,app,admin})=>{
     const key=await enroll();const {result}=await verify(key);const code=result.recovery_codes[0];
+    await admin.query("UPDATE auth_passkey_assurances SET expires_at=now()-interval '1 second' WHERE session_id=$1",[i.sessionId]);
     const recovered=await act({action:"recover",recovery_code:code});assert.equal(recovered.ok,true);
     assert.equal(await bankPasskeyAssurance(app,i),null);assert.equal((await authorizeAccountPlaidLink(app,{...i,consent:true})).error,"passkey_required");
-    assert.equal((await act({action:"recover",recovery_code:code})).error,"passkey_verification_failed");
+    assert.equal((await act({action:"recover",recovery_code:code})).ok,true,"an unused code survives lost/cancelled authorizations");
     assert.equal((await act({action:"register_options"})).error,"passkey_required");
     const replacement=await enroll(syntheticPasskey(),{recovery_token:recovered.recovery_token});
     assert.equal(await bankPasskeyAssurance(app,i),null);assert.equal((await verify(replacement)).result.recovery_codes.length,10);
     assert.ok(await bankPasskeyAssurance(app,i));
+    assert.equal((await act({action:"recover",recovery_code:code})).error,"passkey_verification_failed");
     assert.equal((await act({action:"register_options",recovery_token:recovered.recovery_token})).error,"passkey_verification_failed");
+  }));
+  test("lost/cancelled/expired recovery and stale final identity preserve the last code and existing key",async()=>fixture(async({i,act,enroll,verify,app,admin})=>{
+    const old=await enroll();const {result}=await verify(old),code=result.recovery_codes[0];
+    const subjectId=(await app.query("SELECT id FROM auth_passkey_subjects WHERE account_id=$1",[i.accountId])).rows[0].id;
+    // Keep the selected code as the sole usable recovery code.
+    const selected=hashToken(code.replaceAll("-","").toUpperCase());
+    await admin.query("UPDATE auth_passkey_recovery_codes SET used_at=now() WHERE subject_id=$1 AND code_hash<>$2",[subjectId,selected]);
+    await admin.query("UPDATE auth_passkey_assurances SET expires_at=now()-interval '1 second' WHERE session_id=$1",[i.sessionId]);
+    const remaining=async()=>Number((await app.query("SELECT count(*)::int AS n FROM auth_passkey_recovery_codes WHERE subject_id=$1 AND used_at IS NULL AND revoked_at IS NULL",[subjectId])).rows[0].n);
+    const preserved=async()=>{assert.equal(await remaining(),1);assert.equal((await app.query("SELECT count(*)::int AS n FROM auth_passkeys WHERE subject_id=$1 AND revoked_at IS NULL",[subjectId])).rows[0].n,1);};
+    const lost=await act({action:"recover",recovery_code:code});assert.equal(lost.ok,true);await preserved();
+    await admin.query("UPDATE auth_passkey_challenges SET expires_at=now()-interval '1 second' WHERE token_hash=$1",[hashToken(lost.recovery_token)]);
+    assert.equal((await act({action:"register_options",recovery_token:lost.recovery_token})).error,"passkey_verification_failed");await preserved();
+    const retry=await act({action:"recover",recovery_code:code});assert.equal(retry.ok,true);
+    const setup=await act({action:"register_options",recovery_token:retry.recovery_token}),replacement=syntheticPasskey();
+    await preserved();
+    await admin.query("UPDATE auth_passkey_challenges SET expires_at=now()-interval '1 second' WHERE token_hash=$1",[hashToken(setup.challenge_token)]);
+    assert.equal((await act({action:"register_verify",challenge_token:setup.challenge_token,response:replacement.registration(setup.options)})).error,"passkey_verification_failed");await preserved();
+    const recovery=await act({action:"recover",recovery_code:code}),o=await act({action:"register_options",recovery_token:recovery.recovery_token});
+    const otherSession=(await admin.query("INSERT INTO account_sessions(org_id,account_id,token_hash,expires_at) VALUES ($1,$2,$3,now()+interval '7 days') RETURNING id",[i.orgId,i.accountId,hashToken(randomUUID())])).rows[0].id;
+    assert.equal((await act({action:"register_verify",challenge_token:o.challenge_token,response:replacement.registration(o.options)},{...i,sessionId:otherSession})).error,"passkey_verification_failed");await preserved();
+    const bound=await act({action:"recover",recovery_code:code});
+    assert.equal((await act({action:"register_options",recovery_token:bound.recovery_token},{...i,sessionId:otherSession})).error,"passkey_verification_failed");
+    assert.equal((await act({action:"register_options",recovery_token:bound.recovery_token})).ok,true);await preserved();
+    await admin.query("UPDATE account_sessions SET created_at=now()-interval '11 minutes' WHERE id=$1",[i.sessionId]);
+    assert.equal((await act({action:"register_verify",challenge_token:o.challenge_token,response:replacement.registration(o.options)})).error,"passkey_verification_failed");await preserved();
+    await admin.query("UPDATE account_sessions SET created_at=now() WHERE id=$1",[i.sessionId]);
+    const cancelled=await act({action:"recover",recovery_code:code});assert.equal(cancelled.ok,true);
+    await act({action:"register_options",recovery_token:cancelled.recovery_token});await preserved();
+    assert.equal((await verify(old,{counter:2})).result.ok,true,"existing key still works after every abandoned recovery");
+  }));
+  test("parallel recovery replacement registrations consume one code once and keep one new key",async()=>fixture(async({i,act,enroll,verify,app})=>{
+    const old=await enroll(),initial=(await verify(old)).result,code=initial.recovery_codes[0];
+    const a=await act({action:"recover",recovery_code:code}),b=await act({action:"recover",recovery_code:code});
+    const ao=await act({action:"register_options",recovery_token:a.recovery_token}),bo=await act({action:"register_options",recovery_token:b.recovery_token});
+    const ak=syntheticPasskey(),bk=syntheticPasskey();
+    const outcomes=await Promise.all([act({action:"register_verify",challenge_token:ao.challenge_token,response:ak.registration(ao.options)}),
+      act({action:"register_verify",challenge_token:bo.challenge_token,response:bk.registration(bo.options)})]);
+    assert.equal(outcomes.filter(x=>x.ok).length,1);assert.equal(outcomes.filter(x=>x.error==="passkey_verification_failed").length,1);
+    const active=(await app.query("SELECT k.credential_id FROM auth_passkeys k JOIN auth_passkey_subjects s ON s.id=k.subject_id WHERE s.account_id=$1 AND k.revoked_at IS NULL",[i.accountId])).rows;
+    assert.equal(active.length,1);assert.equal(await bankPasskeyAssurance(app,i),null);
+    assert.equal((await act({action:"recover",recovery_code:code})).error,"passkey_verification_failed");
+    const winner=active[0].credential_id===ak.id?ak:bk;assert.equal((await verify(winner)).result.ok,true);
+    assert.equal((await act({action:"status"})).credentials.length,1);
+    assert.equal((await app.query("SELECT count(*)::int AS n FROM auth_passkey_recovery_codes c JOIN auth_passkey_subjects s ON s.id=c.subject_id WHERE s.account_id=$1 AND c.used_at IS NOT NULL",[i.accountId])).rows[0].n,1);
   }));
   test("legacy consent-only grants stay unusable and assurance does not renew ordinary login sessions",async()=>fixture(async({i,act,enroll,verify,app,admin})=>{
     const before=(await app.query("SELECT expires_at FROM account_sessions WHERE id=$1",[i.sessionId])).rows[0].expires_at;
