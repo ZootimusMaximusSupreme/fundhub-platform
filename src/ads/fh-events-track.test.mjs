@@ -27,14 +27,14 @@ describe("fhTrack and the queue", () => {
     assert.deepEqual(p.bodies().slice(3).map((b) => [b.event, b.seq]), [["continue", 4], ["payment_attempt", 5]]);
   });
 
-  test("the body is exactly the spec's shape (plus the Meta fields: url, meta_event_id)", () => {
+  test("the Roadmap contact step is recorded in Fundhub without a Meta conversion ID", () => {
     const attribution = JSON.stringify({ utm_source: "fb", utm_content: "42-phase", landing_path: "/roadmap", referrer_domain: "facebook.com", email: "x@y.z" });
     const p = makePage({ pathname: "/roadmap/", search: "?utm_source=fb&email=x@y.z", storage: { fh_sid: "sess-abcdef12", fh_attribution: attribution } }).run();
     p.win.fhTrack("continue", { step: 1 });
     assert.deepEqual(p.bodies()[1], {
       kind: "track", event: "continue", seq: 2, session_id: "sess-abcdef12", page: "/roadmap", props: { step: 1 },
       utm_source: "fb", utm_content: "42-phase", landing_path: "/roadmap", referrer_domain: "facebook.com", webdriver: false,
-      url: "https://apply.fundhub.ai/roadmap/", meta_event_id: "sess-abcdef12.2",
+      url: "https://apply.fundhub.ai/roadmap/",
     });
   });
 

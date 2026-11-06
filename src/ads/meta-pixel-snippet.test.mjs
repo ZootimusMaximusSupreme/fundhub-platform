@@ -1,23 +1,10 @@
-// src/ads/meta-pixel-snippet.test.mjs — the Meta pixel head snippet (Phase 4, page side).
-//
-// Contract: docs/tracking/meta-events.md "Phase 4 contract":
-//   PageView: the head pixel snippet sets window.__fhPv = "pv.<fh_sid>.<random>" and fires
-//   fbq('track','PageView',{}, {eventID: window.__fhPv}); the tracker's page_view carries
-//   meta_event_id = window.__fhPv.
-//   META_PIXEL_ID env (fallback 2403674420141513).
-//
-// Every page must fire exactly ONE PageView, and it must carry that event id. The
-// sources: the ClickFunnels funnel head of 968281 (builder steps), the custom HTML
-// wrapper (/apply, /roadmap, /roadmap-book, /roadmap-thank-you), and the fundhub.ai
-// homepage (public/index.html). The snippet's own script is RUN here in a vm.
-//
-// npm test's glob is src/** and scripts/** only (CLAUDE.md §12).
-
+// The browser SDK runs only on public marketing URLs with neutral referrers.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -25,6 +12,7 @@ import {
   metaPixelId,
   metaPixelHeadHtml,
   nextFunnelHeadCode,
+  neutralizeHostedTracking,
   nextHeadCode,
   wrapCustomHtmlDocument,
   headBlocksHtml,
@@ -38,23 +26,21 @@ const count = (hay, needle) => String(hay).split(needle).length - 1;
 const BARE_PAGEVIEW = "fbq('track', 'PageView');";
 const ID_PAGEVIEW = "fbq('track', 'PageView', {}, {eventID: window.__fhPv});";
 
-/** Run the snippet's <script> the way a browser would: a window with sessionStorage,
-    a document the fbevents loader can insert into. Returns the window. */
-function runSnippet(html, { storage = {}, storageThrows = false, win = null } = {}) {
-  const scripts = [...String(html).matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-  assert.ok(scripts.length >= 1, "a script block");
+function runSnippet(html, { href = "https://apply.fundhub.ai/blueprint", referrer = "", frame = false, secure = true, loading = false, form = false, win = null } = {}) {
+  const scripts = [...String(html).matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+  assert.ok(scripts.length >= 1);
   const w = win || (() => {
     const inserted = [];
-    const sessionStorage = {
-      getItem(k) { if (storageThrows) throw new Error("blocked"); return Object.hasOwn(storage, k) ? storage[k] : null; },
-      setItem(k, v) { if (storageThrows) throw new Error("blocked"); storage[k] = String(v); },
-    };
     const document = {
-      createElement: (tag) => ({ tagName: tag.toUpperCase() }),
-      getElementsByTagName: () => [{ parentNode: { insertBefore: (n) => inserted.push(n) } }],
+      referrer, readyState: loading ? "loading" : "complete", form,
+      querySelector: () => document.form ? { tagName: "FORM", hidden: true } : null,
+      addEventListener: (name, cb) => { if (name === "DOMContentLoaded") document.ready = cb; },
+      createElement: tag => ({ tagName: tag.toUpperCase() }),
+      getElementsByTagName: () => [{ parentNode: { insertBefore: node => inserted.push(node) } }],
     };
-    const ctx = { sessionStorage, document, Math, Date, __inserted: inserted, __storage: storage };
-    ctx.window = ctx;
+    const ctx = { URL, document, location: { href }, crypto: secure ? { randomUUID } : {}, __inserted: inserted };
+    ctx.window = ctx.self = ctx;
+    ctx.top = frame ? {} : ctx;
     return vm.createContext(ctx);
   })();
   for (const code of scripts) vm.runInContext(code, w);
@@ -65,8 +51,7 @@ function runSnippet(html, { storage = {}, storageThrows = false, win = null } = 
 const calls = (w) => JSON.parse(JSON.stringify((w.fbq?.queue || []).map((a) => Array.from(a))));
 const pageViews = (w) => calls(w).filter((c) => c[0] === "track" && c[1] === "PageView");
 
-const SID = "abc123def456ghi789";
-const PV_RE = new RegExp(`^pv\\.${SID}\\.[a-z0-9]{1,8}$`);
+const PV_RE = /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i;
 
 describe("pixel id: META_PIXEL_ID env, fallback when missing", () => {
   test("META_PIXEL_ID wins", () => {
@@ -95,7 +80,7 @@ describe("pixel id: META_PIXEL_ID env, fallback when missing", () => {
   test("the snippet carries whatever id it is given", () => {
     const html = metaPixelHeadHtml(metaPixelId({ META_PIXEL_ID: "1234567890" }).id);
     assert.ok(html.includes("fbq('init', '1234567890');"));
-    assert.ok(html.includes("tr?id=1234567890&ev=PageView&noscript=1"));
+    assert.equal(html.includes("facebook.com/tr"), false);
     assert.equal(html.includes(META_PIXEL_FALLBACK_ID), false);
   });
 });
@@ -105,71 +90,76 @@ describe("the head snippet: one PageView, with eventID window.__fhPv", () => {
 
   test("source: one init, one PageView call, and it carries the event id; no bare PageView", () => {
     assert.equal(count(html, "fbq('init'"), 1);
-    assert.equal(count(html, "fbq('track'"), 1);
+    assert.equal(count(html, "fbq('track'"), 2);
     assert.equal(count(html, ID_PAGEVIEW), 1);
     assert.equal(count(html, BARE_PAGEVIEW), 0);
     assert.ok(html.startsWith("<!-- Meta Pixel (Fundhub) -->\n<script>"), "the comment the push uses to find it");
   });
 
-  test("an existing session id: __fhPv = pv.<fh_sid>.<random>, and that is the PageView's eventID", () => {
-    const w = runSnippet(html, { storage: { fh_sid: SID } });
+  test("public landing visits use independent UUIDs, with automatic collection disabled before init", () => {
+    const w = runSnippet(html, { loading: true });
     assert.match(w.__fhPv, PV_RE);
+    assert.equal(w.fbq, undefined, "the neutral id is available before the third-party SDK");
+    w.document.ready();
+    assert.equal(w.__fhMetaPixelAllowed, true);
     assert.deepEqual(calls(w), [
+      ["set", "autoConfig", false, META_PIXEL_FALLBACK_ID],
       ["init", META_PIXEL_FALLBACK_ID],
       ["track", "PageView", {}, { eventID: w.__fhPv }],
+      ["track", "ViewContent", {}, { eventID: w.__fhPv + ".vc" }],
     ]);
-    assert.equal(w.__storage.fh_sid, SID, "the session id is left alone");
-    assert.equal(w.__inserted.length, 1, "fbevents.js is requested once");
+    assert.equal(w.__inserted.length, 1);
+    assert.equal(w.__inserted[0].referrerPolicy, "no-referrer");
     assert.equal(w.__inserted[0].src, "https://connect.facebook.net/en_US/fbevents.js");
-  });
-
-  test("no session id yet: one is made and saved as fh_sid, the way fh-events.js makes it", () => {
-    const w = runSnippet(html);
-    const sid = w.__storage.fh_sid;
-    assert.match(sid, /^[A-Za-z0-9_-]{8,40}$/);
-    assert.ok(w.__fhPv.startsWith(`pv.${sid}.`));
-    assert.equal(pageViews(w).length, 1);
-    // fh-events.js keeps a stored id that passes this exact check, so both agree.
-    const tracker = read("public/funnel/fh-events.js");
-    assert.ok(tracker.includes('sessionStorage.getItem("fh_sid")'));
-    assert.ok(tracker.includes("/^[A-Za-z0-9_-]{8,80}$/"));
-  });
-
-  test("a junk stored id is replaced, like the tracker does", () => {
-    const w = runSnippet(html, { storage: { fh_sid: "x" } });
-    assert.notEqual(w.__storage.fh_sid, "x");
-    assert.ok(w.__fhPv.startsWith(`pv.${w.__storage.fh_sid}.`));
-  });
-
-  test("storage blocked (private mode, some in-app browsers): still one PageView with an id", () => {
-    const w = runSnippet(html, { storageThrows: true });
-    assert.match(w.__fhPv, /^pv\.[A-Za-z0-9_-]{8,40}\.[a-z0-9]{1,8}$/);
-    assert.equal(pageViews(w).length, 1);
-    assert.deepEqual(pageViews(w)[0][3], { eventID: w.__fhPv });
-  });
-
-  test("two page loads get two different ids in the same session", () => {
-    const storage = { fh_sid: SID };
-    const a = runSnippet(html, { storage }).__fhPv;
-    const b = runSnippet(html, { storage }).__fhPv;
-    assert.notEqual(a, b);
-    assert.ok(a.startsWith(`pv.${SID}.`) && b.startsWith(`pv.${SID}.`));
-  });
-
-  test("the block twice on one page still fires ONE PageView and one init", () => {
-    const w = runSnippet(html, { storage: { fh_sid: SID } });
-    const id = w.__fhPv;
+    assert.notEqual(runSnippet(html).__fhPv, w.__fhPv);
     runSnippet(html, { win: w });
-    assert.equal(w.__fhPv, id, "the id is not replaced");
+    assert.equal(w.__inserted.length, 1);
     assert.equal(pageViews(w).length, 1);
-    assert.equal(calls(w).filter((c) => c[0] === "init").length, 1);
   });
 
-  test("noscript: on by default, off on request (the funnel head keeps its own in the funnel footer)", () => {
-    assert.equal(count(html, "<noscript>"), 1);
-    const bare = metaPixelHeadHtml(META_PIXEL_FALLBACK_ID, { noscript: false });
-    assert.equal(count(bare, "<noscript>"), 0);
-    assert.ok(html.startsWith(bare));
+  test("hosted contact forms and fields added during HTML parsing use only the server copy", () => {
+    const watch = runSnippet(html, { href: "https://apply.fundhub.ai/watch", form: false });
+    assert.match(watch.__fhPv, PV_RE);
+    assert.equal(watch.fbq, undefined);
+    const w = runSnippet(html, { loading: true });
+    w.document.form = true;
+    w.document.ready();
+    assert.match(w.__fhPv, PV_RE);
+    assert.equal(w.__inserted.length, 0);
+    assert.equal(w.fbq, undefined);
+    assert.equal(w.__fhMetaPixelAllowed, undefined);
+  });
+
+  test("paid visits and private referrers keep an opaque CAPI-only page id, without the browser SDK", () => {
+    for (const options of [
+      { href: "https://apply.fundhub.ai/watch?utm_source=facebook&fbclid=opaque" },
+      { href: "https://apply.fundhub.ai/blueprint?utm_campaign=summer&ad_id=123" },
+      { referrer: "https://apply.fundhub.ai/funding-book-call--02424" },
+      { referrer: "https://external.example/private?token=example" },
+      { referrer: "https://m.facebook.com/stories/123" },
+    ]) {
+      const w = runSnippet(html, options);
+      assert.match(w.__fhPv, PV_RE);
+      assert.equal(w.__inserted.length, 0);
+      assert.equal(w.__fhMetaPixelAllowed, undefined);
+    }
+  });
+
+  test("restricted surfaces never request a script, publish an id or expose a no-JS beacon", () => {
+    const base = "https://apply.fundhub.ai";
+    const blocked = [
+      ...["apply", "watch?ticket=secret", "watch#private", "funding-book-call", "funding-book-call--02424", "roadmap", "order", "blueprint-book"].map(path => ({ href: base + "/" + path })),
+      { href: "https://fundhub.ai/" }, { href: "https://unknown.example/watch" }, { frame: true }, { secure: false },
+      { href: base + "/watch?utm_source=facebook&resume=signed" }, { href: base + "/blueprint?utm_source=facebook#secret" },
+    ];
+    for (const options of blocked) {
+      const w = runSnippet(html, options);
+      assert.equal(w.__inserted.length, 0, JSON.stringify(options));
+      assert.equal(w.fbq, undefined);
+      assert.equal(w.__fhMetaPixelAllowed, undefined);
+      assert.equal(w.__fhPv, undefined);
+    }
+    assert.doesNotMatch(html, /<noscript|facebook\.com\/tr/i);
   });
 
   test("the push's page-head cleanup still finds the new block (one kept, or dropped under a funnel pixel)", () => {
@@ -228,15 +218,15 @@ fbq('track', 'PageView');
   const PRE = '<link rel="preconnect" href="https://use.fontawesome.com" crossorigin>\n';
   const ROAS = '\n\n<script async src="https://app.directroas.com/api/hub/v1/cmsdutl8e00mukv041vwuo39w"></script>';
 
-  test("the bare pixel becomes the snippet; preconnect and Direct ROAS stay byte for byte", () => {
+  test("the old pixel and independent Direct ROAS relay are replaced, with preconnect preserved", () => {
     const plan = nextFunnelHeadCode(LIVE_968281, META_PIXEL_FALLBACK_ID);
     assert.equal(plan.changed, true);
-    assert.equal(plan.next, PRE + metaPixelHeadHtml(META_PIXEL_FALLBACK_ID, { noscript: false }) + ROAS);
+    assert.equal(plan.next, PRE + metaPixelHeadHtml(META_PIXEL_FALLBACK_ID) + "\n\n");
     assert.equal(count(plan.next, "fbq('init'"), 1);
     assert.equal(count(plan.next, ID_PAGEVIEW), 1);
     assert.equal(count(plan.next, BARE_PAGEVIEW), 0);
-    assert.equal(count(plan.next, "<noscript>"), 0, "the funnel footer already has the no-JavaScript image");
-    const w = runSnippet(plan.next, { storage: { fh_sid: SID } });
+    assert.equal(count(plan.next, "<noscript>"), 0, "no fallback fires outside the guard");
+    const w = runSnippet(plan.next);
     assert.equal(pageViews(w).length, 1);
     assert.match(w.__fhPv, PV_RE);
   });
@@ -254,10 +244,12 @@ fbq('track', 'PageView');
     assert.equal(count(moved.next, "fbq('init'"), 1);
   });
 
-  test("a marked block with its noscript keeps its noscript", () => {
-    const live = `${PRE}${metaPixelHeadHtml("1234567890")}${ROAS}`;
+  test("migration removes the old fallback and leaves unrelated noscript elements alone", () => {
+    const fallback = '<noscript><img src="https://www.facebook.com/tr?id=1234567890&ev=PageView&noscript=1"/></noscript>';
+    const ordinary = "<noscript>Please enable JavaScript.</noscript>";
+    const live = `${PRE}${metaPixelHeadHtml("1234567890")}\n${fallback}${ordinary}${ROAS}`;
     const plan = nextFunnelHeadCode(live, META_PIXEL_FALLBACK_ID);
-    assert.equal(plan.next, `${PRE}${metaPixelHeadHtml(META_PIXEL_FALLBACK_ID)}${ROAS}`);
+    assert.equal(plan.next, `${PRE}${metaPixelHeadHtml(META_PIXEL_FALLBACK_ID)}\n${ordinary}\n\n`);
   });
 
   test("no pixel, or two, is refused: nothing is written blind", () => {
@@ -295,20 +287,52 @@ describe("fundhub.ai homepage (public/index.html)", () => {
     assert.equal(count(HOME, block), 1);
     assert.ok(HOME.indexOf(block) < HOME.indexOf("</head>"));
     assert.equal(count(HOME, "fbq('init'"), 1);
-    assert.equal(count(HOME, "fbq("), 2, "init and PageView only: the homepage sends no other Meta event itself");
+    assert.equal(count(HOME, "fbq("), 4, "configuration, init and explicit safe landing events");
     assert.equal(count(HOME, BARE_PAGEVIEW), 0);
   });
 
-  test("the homepage's snippet runs: one PageView with eventID", () => {
+  test("home survey never loads the Pixel", () => {
     const head = HOME.slice(HOME.indexOf("<!-- Meta Pixel (Fundhub) -->"), HOME.indexOf("</head>"));
-    const w = runSnippet(head, { storage: { fh_sid: SID } });
-    assert.equal(pageViews(w).length, 1);
-    assert.deepEqual(pageViews(w)[0], ["track", "PageView", {}, { eventID: w.__fhPv }]);
+    const w = runSnippet(head, { href: "https://fundhub.ai/" });
+    assert.equal(w.__inserted.length, 0);
+    assert.equal(pageViews(w).length, 0);
   });
 });
 
-test("inside a frame the pixel snippet fires no PageView (the parent page counts that visit)", async () => {
-  const { metaPixelHeadHtml } = await import("../../marketing/landing-pages/tracking-manifest.mjs");
-  const h = metaPixelHeadHtml("2403674420141513");
-  assert.match(h, /if\(!window\.__fhPv&&window\.self===window\.top\)\{/);
+test("surgical migration retains unrelated markup and removes only the known financial event hooks", () => {
+  const keep = '<noscript>Independent content</noscript><script>trackLocally();</script>';
+  const input = keep + "<script>try{ if(typeof fbq!=='undefined') fbq('trackCustom','PreviewOpened',{content_name:d}); }catch(x){} savePreview();</script>";
+  const output = neutralizeHostedTracking(input, META_PIXEL_FALLBACK_ID);
+  assert.equal(output.next, keep + '<script> savePreview();</script>');
+  assert.equal(neutralizeHostedTracking(output.next, META_PIXEL_FALLBACK_ID).changed, false);
+  assert.throws(() => neutralizeHostedTracking("<script>fbq('trackCustom','Unknown')</script>", META_PIXEL_FALLBACK_ID), /unrecognized/);
+});
+
+
+test("the targeted hosted repair preserves both calendar URLs, form controls and independent first-party script tags", () => {
+  const calendar = '<iframe data-src="https://apply.fundhub.ai/funding-book-call" data-src-unqualified="https://apply.fundhub.ai/funding-book-call--02424"></iframe>';
+  const own = '<form><input name="answer" value="synthetic"></form><script src="https://fundhub.ai/funnel/fh-events.js"></script>';
+  const css = '<style>.booking { height: 640px; }</style>';
+  const reviewed = metaPixelHeadHtml(META_PIXEL_FALLBACK_ID);
+  const fallback = '<noscript><img src="https://www.facebook.com/tr?id=123456"/></noscript>';
+  const s = css + reviewed + fallback + calendar + own;
+  assert.equal(neutralizeHostedTracking(s, META_PIXEL_FALLBACK_ID).next, css + reviewed + calendar + own);
+});
+
+
+test("the hosted plan rejects unknown Meta code without editing surrounding content", () => {
+  const guarded = metaPixelHeadHtml(META_PIXEL_FALLBACK_ID);
+  const copy = "<p>We use fbq and connect.facebook.net for public analytics.</p>";
+  assert.equal(neutralizeHostedTracking(guarded + copy, META_PIXEL_FALLBACK_ID).changed, false);
+  for (const unknown of [
+    '<script>fbq("init", "123"); fbq("track", "PageView");</script>',
+    "<script> fbq ( 'init' , '123' ); </script>",
+    '<ScRiPt SrC="https://connect.facebook.net/en_US/fbevents.js"></ScRiPt>',
+    "<script>window['fbq']('track', 'Lead');</script>",
+    '<img src="https://www.facebook.com/tr?id=1">',
+    '<script src="https://app.directroas.com/api/hub/custom"></script>',
+    guarded.replace("  function publicVisit()", "  doSomethingElse(); function publicVisit()"),
+  ]) {
+    assert.throws(() => neutralizeHostedTracking(guarded + unknown, META_PIXEL_FALLBACK_ID), /unrecognized/);
+  }
 });

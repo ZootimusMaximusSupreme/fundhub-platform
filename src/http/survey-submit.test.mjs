@@ -102,6 +102,8 @@ test("a partial PASS survey is saved but cannot open the top-level calendar", as
   assert.equal(result.ok, true);
   assert.equal(result.qualification, PASS);
   assert.equal(result.redirect, "https://apply.fundhub.ai/apply");
+  assert.equal(result.survey_completed, false);
+  assert.equal(result.public_contact_receipt, undefined);
   assert.deepEqual(
     names.map((n) => n.name),
     ["entry.captured", "survey.submitted"]
@@ -112,7 +114,8 @@ test("a partial PASS survey is saved but cannot open the top-level calendar", as
 test("runSurveySubmit: a homepage survey with the last answer also emits survey.completed", async () => {
   const seen = [];
   const order = [];
-  const emit = async (_db, name, payload, opts) => { seen.push({ name, payload, opts }); order.push(name); return { id: name, deduped: false }; };
+  const receipt = "10000000-0072-4ace-8a77-100000000001";
+  const emit = async (_db, name, payload, opts) => { seen.push({ name, payload, opts }); order.push(name); return { id: name === "survey.completed" ? receipt : name, deduped: false }; };
   const result = await runSurveySubmit(
     { name: "Ada", email: "ada@example.com", phone: "555", source: "website:home",
       answers: FULL_PASS_ANSWERS },
@@ -120,6 +123,8 @@ test("runSurveySubmit: a homepage survey with the last answer also emits survey.
       orgId: "org-ada", resolveClient: async () => "client-ada",
       hasSavedCompleteSurvey: async () => { order.push("saved-answer-readback"); return true; } }
   );
+  assert.equal(result.survey_completed, true);
+  assert.equal(result.public_contact_receipt, receipt);
   assert.deepEqual(order, ["entry.captured", "survey.submitted", "saved-answer-readback", "survey.completed"]);
   assert.deepEqual(seen.map((e) => e.name), ["entry.captured", "survey.submitted", "survey.completed"]);
   assert.equal(seen[2].payload.answers.cf_svy_available_capital, "$5k - $9,999");

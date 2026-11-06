@@ -1,421 +1,205 @@
-// src/ads/fh-events-meta.test.mjs — the shared tracker's Meta side.
-//
-// public/funnel/fh-events.js against the "Phase 4 contract" in
-// docs/tracking/meta-events.md: for every event the map sends to Meta, the
-// browser calls fbq with eventID "<fh_sid>.<seq>" and posts the same id to our
-// database as meta_event_id, so Meta counts the browser copy and the server
-// copy once. PageView is the head snippet's (never fired here); ViewContent is
-// "<__fhPv>.vc"; Purchase is "purchase.<order_ref>", once per order;
-// InitiateCheckout once per session; ReachedBuyBox once per page load. Every
-// post carries url (no query), fbc and fbp; fbc is built from fbclid when
-// Meta's _fbc cookie is missing.
-//
-// Runs the real script on the fake page in src/ads/fh-events-harness.mjs.
-// WHAT THIS CANNOT TEST: the real Meta pixel or Test Events. The live check is
-// the phone checklist in docs/tracking/tracking-spec.md.
-
+// Run the actual tracker against a fake browser. Network receipt is verified separately.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-
 import { makePage } from "./fh-events-harness.mjs";
-import fs from "node:fs";
-import { fileURLToPath } from "node:url";
-import { SLO_VALUE, CURRENCY } from "../meta/map.mjs";
+import { metaEventsFor } from "../meta/map.mjs";
 
 const SID = "sess-abcdef12";
-const PV = `pv.${SID}.k3j9x`;
+const PV = "c01345a7-3526-4b84-bc13-d97a7a3e88b2";
+const UUID = /^[\da-f]{8}-(?:[\da-f]{4}-)4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i;
+const SOURCE = "https://apply.fundhub.ai/apply";
 const FBCLID = "IwAR0x_9-AbC";
 const FBP = "fb.1.1700000000000.1234567890";
 
-function page(opts = {}) {
-  return makePage({ fbq: true, fhPv: PV, ...opts, storage: { fh_sid: SID, ...(opts.storage || {}) } });
+function page({ permitted = false, ...opts } = {}) {
+  const p = makePage({ fbq: true, fhPv: PV, ...opts, storage: { fh_sid: SID, ...opts.storage } });
+  if (permitted) p.win.__fhMetaPixelAllowed = true;
+  if (opts.pathname && opts.pathname.startsWith("/blueprint")) {
+    p.win.FH_FUNNEL = { tag: "fnl-blueprint", page: { path: opts.pathname } };
+  }
+  return p;
 }
 
-/** [method, name, custom_data, eventID] per fbq call. */
-const fbqs = (p) => p.fbqCalls.map(([m, n, cd, o]) => [m, n, cd, o && o.eventID]);
-const named = (p, name) => fbqs(p).filter((c) => c[1] === name);
-
-describe("page_view: PageView id and ViewContent", () => {
-  test("page_view carries __fhPv as meta_event_id; PageView is never fired by the tracker", () => {
-    const p = page({ pathname: "/roadmap" }).run();
-    const pv = p.events("page_view")[0];
-    assert.equal(pv.meta_event_id, PV);
-    assert.equal(named(p, "PageView").length, 0, "the head snippet fires PageView, not the tracker");
-    assert.deepEqual(fbqs(p), [["track", "ViewContent", { content_name: "/roadmap" }, `${PV}.vc`]]);
-  });
-
-  test("ViewContent on /roadmap, /watch, /apply and /home only", () => {
-    for (const [hostname, pathname, name] of [
-      ["apply.fundhub.ai", "/roadmap/", "/roadmap"], ["apply.fundhub.ai", "/watch", "/watch"],
-      ["apply.fundhub.ai", "/apply", "/apply"], ["fundhub.ai", "/", "/home"],
-    ]) {
-      const p = page({ hostname, pathname }).run();
-      assert.deepEqual(fbqs(p), [["track", "ViewContent", { content_name: name }, `${PV}.vc`]], name);
-    }
-    for (const pathname of ["/thank-you", "/roadmap-book", "/funding-book-call", "/order", "/roadmap-thank-you"]) {
-      const p = page({ pathname }).run();
-      assert.equal(p.fbqCalls.length, 0, pathname);
-      assert.equal(p.events("page_view")[0].meta_event_id, PV, `${pathname} still carries the PageView id`);
-    }
-  });
-
-  test("no __fhPv (or a junk one): pv.<sid>.<seq>, and ViewContent still goes", () => {
-    for (const fhPv of [undefined, "", "has space", { x: 1 }, "x".repeat(200)]) {
-      const p = page({ pathname: "/watch", fhPv, storage: { fh_seq: "6" } }).run();
-      const id = `pv.${SID}.7`;
-      assert.equal(p.events("page_view")[0].meta_event_id, id, JSON.stringify(fhPv));
-      assert.deepEqual(fbqs(p), [["track", "ViewContent", { content_name: "/watch" }, `${id}.vc`]]);
-    }
-  });
-
-  test("a second load in the same session sends no page_view and no ViewContent", () => {
-    const p = page({ pathname: "/roadmap" }).run();
-    const again = page({ pathname: "/roadmap", storage: p.store }).run();
-    assert.equal(again.sent.length, 0);
-    assert.equal(again.fbqCalls.length, 0);
-  });
-});
-
-describe("the same eventID on fbq and on the database post", () => {
-  test("every mapped event: fbq eventID === meta_event_id === <sid>.<seq>", () => {
-    const p = page({ pathname: "/roadmap" }).run();
-    const cases = [
-      ["continue", { step: 1, bbv: 2 }, "Lead"],
-      ["booking_confirmed", { calendar: "funding-book-call" }, "Schedule"],
-      ["survey_route", { survey: "apply", offer: "slo" }, "SurveyRouted"],
-      ["video", { video: "slo-vsl", action: "progress", pct: 50 }, "VideoProgress"],
-      ["softpull_submit", { businesses: 2, bbv: 2 }, "SoftPullSubmitted"],
-    ];
-    for (const [event, props, meta] of cases) {
-      p.win.fhTrack(event, props);
-      const body = p.bodies().at(-1);
-      assert.equal(body.event, event);
-      assert.equal(body.meta_event_id, `${SID}.${body.seq}`, event);
-      const call = fbqs(p).at(-1);
-      assert.equal(call[1], meta, event);
-      assert.equal(call[3], body.meta_event_id, `${event}: the browser and the server use one id`);
-    }
-  });
-
-  test("standard events use track, custom events use trackCustom, with the contract's custom_data", () => {
-    const p = page({ pathname: "/roadmap" }).run();
-    p.fbqCalls.length = 0;
-    p.win.fhTrack("continue", { step: 1, bbv: 2 });
-    p.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
-    p.win.fhTrack("survey_route", { survey: "apply", offer: "slo" });
-    p.win.fhTrack("video", { video: "slo-vsl", action: "progress", pct: 25, current_s: 50, duration_s: 200 });
-    p.win.fhTrack("softpull_submit", { businesses: 2, bbv: 2 });
-    assert.deepEqual(fbqs(p).map(([m, n, cd]) => [m, n, cd]), [
-      ["track", "Lead", { content_name: "roadmap_buybox" }],
-      ["track", "Schedule", { content_name: "funding-book-call" }],
-      ["trackCustom", "SurveyRouted", { offer: "slo" }],
-      ["trackCustom", "VideoProgress", { video: "slo-vsl", pct: 25 }],
-      ["trackCustom", "SoftPullSubmitted", { businesses: 2 }],
-    ]);
-  });
-
-  test("events the map does not name carry no meta_event_id and call no fbq", () => {
-    const p = page({ pathname: "/roadmap" }).run();
-    p.fbqCalls.length = 0;
-    p.win.fhTrack("continue", { step: 2 });
-    p.win.fhTrack("payment_attempt", { amount_cents: 29700 });
-    p.win.fhTrack("field_focus", { form: "s1", field: "email" });
-    p.win.fhTrack("video", { video: "slo-vsl", action: "play" });
-    p.win.fhTrack("video", { video: "slo-vsl", action: "progress", pct: 10 });
-    p.win.fhTrack("section_view", { section: "fh-order" });
-    p.advance(16_000);
-    p.scrollTo(4000);
-    for (const b of p.bodies().slice(1)) assert.equal("meta_event_id" in b, false, b.event);
-    assert.equal(p.fbqCalls.length, 0);
-  });
-
-  test("a booking confirmed in the framed calendar becomes Schedule on the parent page", () => {
-    const p = page({ pathname: "/apply" }).run();
-    const frame = p.node("iframe", { id: "fh-book-frame" });
-    frame.contentWindow = {};
-    p.add(frame);
-    const confirm = { origin: "https://apply.fundhub.ai", data: { fh: "track", event: "booking_confirmed", props: { calendar: "funding-book-call" } } };
-    p.fireWin("message", { ...confirm, source: {} });
-    assert.equal(p.events("booking_confirmed").length, 0, "an unrelated same-origin frame is not a Meta Schedule");
-    p.fireWin("message", { ...confirm, source: frame.contentWindow });
-    const body = p.events("booking_confirmed")[0];
-    assert.deepEqual(named(p, "Schedule"), [["track", "Schedule", { content_name: "funding-book-call" }, body.meta_event_id]]);
-  });
-});
-
-describe("qualified vs unqualified credit (owner-set 2026-10-29)", () => {
-  const lastAnswer = (tier) => ({ survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true, credit_tier: tier });
-  function relayBooking(p) {
-    const frame = p.node("iframe", { id: "fh-book-frame" });
-    frame.contentWindow = {};
-    p.add(frame);
-    p.fireWin("message", { origin: "https://apply.fundhub.ai", source: frame.contentWindow,
-      data: { fh: "track", event: "booking_confirmed", props: { calendar: "funding-book-call" } } });
-    return p.events("booking_confirmed")[0];
-  }
-
-  for (const [tier, name] of [["qualified", "Qualified"], ["unqualified", "Unqualified"]]) {
-    test(`${tier}: the last answer adds ${name}Lead and the framed booking adds ${name}Schedule, each on the post's one id`, () => {
-      const p = page({ pathname: "/apply" }).run();
-      p.fbqCalls.length = 0;
-      p.win.fhTrack("survey_answer", lastAnswer(tier));
-      const last = p.events("survey_answer")[0];
-      assert.equal(last.props.credit_tier, tier);
-      assert.deepEqual(fbqs(p), [
-        ["track", "Lead", { content_name: "apply" }, last.meta_event_id],
-        ["trackCustom", "SurveyStep", { survey: "apply", step: 9 }, last.meta_event_id],
-        ["trackCustom", `${name}Lead`, { content_name: "apply" }, last.meta_event_id],
-      ]);
-      p.fbqCalls.length = 0;
-      const booking = relayBooking(p);
-      assert.equal(booking.props.credit_tier, tier, "the booking carries the tab's tier for the server copy");
-      assert.deepEqual(fbqs(p), [
-        ["track", "Schedule", { content_name: "funding-book-call" }, booking.meta_event_id],
-        ["trackCustom", `${name}Schedule`, { content_name: "funding-book-call" }, booking.meta_event_id],
-      ]);
+describe("public landing pages", () => {
+  for (const path of ["/watch", "/blueprint"]) {
+    test(path + " uses the guarded head's opaque PageView ID for ViewContent", () => {
+      const p = page({ pathname: path }).run();
+      assert.equal(p.events("page_view")[0].meta_event_id, PV);
+      assert.deepEqual(p.fbqCalls, [], "the page head owns both browser copies");
+      const reload = page({ pathname: path, storage: p.store, permitted: true }).run();
+      assert.deepEqual(reload.sent, []);
+      assert.deepEqual(reload.fbqCalls, []);
     });
   }
 
-  test("a booking on a later page of the same tab still carries the tier", () => {
-    const apply = page({ pathname: "/apply" }).run();
-    apply.win.fhTrack("survey_answer", lastAnswer("qualified"));
-    const direct = page({ pathname: "/funding-book-call", storage: apply.store }).run();
-    direct.fbqCalls.length = 0;
-    direct.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
-    assert.equal(direct.events("booking_confirmed")[0].props.credit_tier, "qualified");
-    assert.deepEqual(named(direct, "QualifiedSchedule").length, 1);
+  test("an existing fbq without the approved head cannot send events", () => {
+    const p = page({ pathname: "/watch", search: "?fh_tier=q", fhPv: undefined }).run();
+    p.win.fhTrack("video", { action: "progress", pct: 50, video: "qualified-800" });
+    assert.ok(p.sent.length);
+    assert.ok(p.bodies().every(row => !row.meta_event_id));
+    assert.deepEqual(p.fbqCalls, []);
   });
 
-  test("no /apply survey in this tab: Schedule only and no tier on the post", () => {
-    const p = page({ pathname: "/apply" }).run();
+  test("only predeclared nonfinancial pages can use even an installed pixel", () => {
+    for (const pathname of ["/apply", "/funding-book-call", "/funding-book-call--02424", "/order",
+      "/roadmap", "/roadmap-book", "/roadmap-thank-you", "/thank-you", "/thank-you--80c5a", "/blueprint-book", "/portal-login.html"]) {
+      const p = page({ pathname, permitted: true }).run();
+      p.win.fhTrack("video", { action: "progress", pct: 25, video: "pending" });
+      assert.ok(p.sent.length, pathname);
+      assert.ok(p.bodies().every(row => !row.meta_event_id), pathname);
+      assert.deepEqual(p.fbqCalls, [], pathname);
+    }
+  });
+
+  test("missing or legacy PageView IDs do not create an unmatched second PageView", () => {
+    for (const fhPv of [undefined, "", "pv.qualified.800", "012345678900", { id: PV }]) {
+      const p = page({ pathname: "/watch", permitted: true, fhPv }).run();
+      assert.equal(p.events("page_view")[0].meta_event_id, undefined);
+      assert.deepEqual(p.fbqCalls, []);
+    }
+  });
+
+  test("public video milestones and their labels stay in Fundhub", () => {
+    const p = page({ pathname: "/watch", permitted: true }).run();
     p.fbqCalls.length = 0;
-    const booking = relayBooking(p);
-    assert.equal("credit_tier" in booking.props, false);
-    assert.deepEqual(fbqs(p).map((c) => c[1]), ["Schedule"]);
+    for (const pct of [10, 25, 50, 75, 100]) p.win.fhTrack("video", { action: "progress", pct, video: "private-800" });
+    assert.deepEqual(p.events("video").map(row => row.props.pct), [10, 25, 50, 75, 100]);
+    assert.ok(p.events("video").every(row => !row.meta_event_id));
+    assert.deepEqual(p.fbqCalls, []);
   });
 
-  test("a junk tier is never posted, kept or turned into a Meta event", () => {
-    const p = page({ pathname: "/apply" }).run();
-    p.fbqCalls.length = 0;
-    p.win.fhTrack("survey_answer", lastAnswer("maybe"));
-    assert.equal("credit_tier" in p.events("survey_answer")[0].props, false);
-    assert.deepEqual(fbqs(p).map((c) => c[1]), ["Lead", "SurveyStep"]);
-    const booking = relayBooking(p);
-    assert.equal("credit_tier" in booking.props, false);
+  test("an absent or broken pixel does not drop the Fundhub row", () => {
+    for (const fbq of [undefined, () => { throw Error("broken SDK"); }]) {
+      const p = page({ pathname: "/watch", permitted: true });
+      p.win.fbq = fbq;
+      p.run();
+      p.win.fhTrack("video", { action: "progress", pct: 25 });
+      assert.equal(p.events("video")[0].meta_event_id, undefined);
+    }
+    const p = page({ pathname: "/watch", permitted: true, webdriver: true }).run();
+    assert.deepEqual(p.fbqCalls, []);
+    assert.equal(p.events("page_view")[0].webdriver, true);
   });
+});
 
-  // Text and email links (owner-set 2026-10-30): the server picks the calendar and the
-  // one-letter fh_tier from the lead's saved score answer (src/workflows/messaging.mjs).
-  test("a text link to the first calendar, marked q: the direct booking adds QualifiedSchedule", () => {
-    const p = page({ pathname: "/funding-book-call", search: "?fh_tier=q" }).run();
-    p.fbqCalls.length = 0;
-    p.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
-    const booking = p.events("booking_confirmed")[0];
-    assert.equal(booking.page, "/funding-book-call");
-    assert.equal(booking.props.credit_tier, "qualified", "the server copy gets the tier too");
-    assert.ok(!booking.url.includes("fh_tier"), "the mark never rides in the posted url");
-    assert.deepEqual(fbqs(p), [
-      ["track", "Schedule", { content_name: "funding-book-call" }, booking.meta_event_id],
-      ["trackCustom", "QualifiedSchedule", { content_name: "funding-book-call" }, booking.meta_event_id],
-    ]);
-  });
+describe("server-only conversions", () => {
+  const confirmed = { origin: "https://apply.fundhub.ai",
+    data: { fh: "track", event: "booking_confirmed", props: { calendar: "funding-book-call" } } };
+  for (const tier of ["qualified", "unqualified", undefined]) {
+    test("all completed surveys receive the same clean conversion (" + tier + ")", () => {
+      for (const [hostname, pathname, survey] of [["fundhub.ai", "/", "home"], ["apply.fundhub.ai", "/apply", "apply"]]) {
+        const p = page({ hostname, pathname, permitted: true }).run();
+        for (const last of [false, true, false]) p.win.fhTrack("survey_answer", { survey, step_num: 9, last, completion_acknowledged: last,
+          credit_tier: tier, question_id: "cf_svy_available_capital", email: "private@example.invalid" });
+        const [early, lead, retry] = p.events("survey_answer");
+        assert.equal(early.meta_event_id, undefined);
+        assert.match(lead.meta_event_id, UUID);
+        assert.equal(lead.url, "https://" + hostname + pathname);
+        assert.equal(lead.props.credit_tier, tier);
+        assert.deepEqual(metaEventsFor(lead), [{ event_name: "Lead", event_source_url: SOURCE, event_id: lead.meta_event_id }]);
+        assert.equal(retry.meta_event_id, undefined);
+        assert.equal(p.store.fh_credit_tier_v1, tier);
+        assert.deepEqual(p.fbqCalls, []);
+      }
+    });
+  }
 
-  test("a text link to the second calendar, marked u: that page sends, and the booking adds UnqualifiedSchedule", () => {
-    const p = page({ pathname: "/funding-book-call--02424", search: "?fh_tier=u" }).run();
-    assert.ok(p.events("page_view").length >= 1, "the second calendar is on the page list");
-    p.fbqCalls.length = 0;
-    p.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
-    const booking = p.events("booking_confirmed")[0];
-    assert.equal(booking.page, "/funding-book-call--02424");
-    assert.equal(booking.props.credit_tier, "unqualified");
-    assert.deepEqual(fbqs(p).map((c) => c[1]), ["Schedule", "UnqualifiedSchedule"]);
-  });
+  for (const pathname of ["/apply", "/blueprint-book"]) {
+    test(pathname + " counts one confirmed booking only from its own frame", () => {
+      const p = page({ pathname, permitted: true }).run();
+      const frame = p.node("iframe", { id: "fh-book-frame" });
+      frame.contentWindow = {};
+      p.add(frame);
+      p.fireWin("message", { ...confirmed, source: {} });
+      p.fireWin("message", { ...confirmed, source: frame.contentWindow, data: { ...confirmed.data, props: { calendar: "private-tier" } } });
+      assert.equal(p.events("booking_confirmed").length, 0);
+      for (let i = 0; i < 2; i++) p.fireWin("message", { ...confirmed, source: frame.contentWindow });
+      const rows = p.events("booking_confirmed");
+      assert.equal(rows.length, 2, "Fundhub retains both observations");
+      assert.equal(rows[1].meta_event_id, undefined, "only the first observation counts");
+      assert.match(rows[0].meta_event_id, UUID);
+      assert.equal(rows[0].url, "https://apply.fundhub.ai" + pathname);
+      assert.deepEqual(metaEventsFor(rows[0]), [{ event_name: "Schedule", event_source_url: SOURCE, event_id: rows[0].meta_event_id }]);
+      assert.deepEqual(p.fbqCalls, []);
+    });
+  }
 
-  test("a calendar link with no mark, a junk mark, or a mark on another page keeps no tier", () => {
-    for (const [pathname, search] of [["/funding-book-call", ""], ["/funding-book-call", "?fh_tier=x"],
-      ["/funding-book-call--02424", "?fh_tier=qualified"], ["/watch", "?fh_tier=q"]]) {
-      const p = page({ pathname, search }).run();
-      assert.equal(p.store.fh_credit_tier_v1, undefined, pathname + search);
-      if (pathname === "/watch") continue;
-      p.fbqCalls.length = 0;
+  for (const [pathname, mark] of [["/funding-book-call", "q"], ["/funding-book-call--02424", "u"]]) {
+    test(pathname + " records a confirmed direct booking with the shared source and no SDK activity", () => {
+      const search = "?fh_tier=" + mark + "&ticket=private-ticket";
+      const p = page({ pathname, search, permitted: true, storage: { fh_credit_tier_v1: "stale-tier" } }).run();
+      p.win.fhTrack("calendar_view", { calendar: "funding-book-call" });
       p.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
-      assert.equal("credit_tier" in p.events("booking_confirmed")[0].props, false, pathname + search);
-      assert.deepEqual(fbqs(p).map((c) => c[1]), ["Schedule"], pathname + search);
+      const row = p.events("booking_confirmed")[0];
+      assert.equal(row.url, "https://apply.fundhub.ai" + pathname);
+      assert.deepEqual(metaEventsFor(row), [{ event_name: "Schedule", event_source_url: SOURCE, event_id: row.meta_event_id }]);
+      assert.match(row.meta_event_id, UUID);
+      assert.equal(row.props.credit_tier, mark === "q" ? "qualified" : "unqualified");
+      assert.equal(p.events("page_view")[0].meta_event_id, undefined);
+      assert.equal(p.events("calendar_view")[0].meta_event_id, undefined);
+      assert.deepEqual(p.fbqCalls, []);
+      const child = page({ pathname, search, permitted: true, framed: true }).run();
+      assert.equal(child.win.fhTrack, undefined);
+      assert.deepEqual(child.sent, []);
+    });
+  }
+
+  test("a booking in the same tab retains its survey tier only on the first-party row", () => {
+    for (const tier of ["qualified", "unqualified"]) {
+      const apply = page({ pathname: "/apply" }).run();
+      apply.win.fhTrack("survey_answer", { survey: "apply", completion_acknowledged: true, last: true, credit_tier: tier });
+      const next = page({ pathname: "/funding-book-call", storage: apply.store }).run();
+      next.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
+      const [row] = next.events("booking_confirmed");
+      assert.equal(row.props.credit_tier, tier);
+      assert.deepEqual(metaEventsFor(row), [{ event_name: "Schedule", event_id: row.meta_event_id, event_source_url: SOURCE }]);
+      assert.deepEqual(next.fbqCalls, []);
+    }
+    const invalid = page({ pathname: "/funding-book-call", search: "?fh_tier=private", storage: { fh_credit_tier_v1: "private" } }).run();
+    invalid.win.fhTrack("booking_confirmed", { calendar: "funding-book-call", credit_tier: "other" });
+    assert.equal(invalid.events("booking_confirmed")[0].props.credit_tier, undefined);
+  });
+
+  test("matching route and actual step are required; first-party rows still land", () => {
+    for (const [path, event, props] of [
+      ["/apply", "survey_answer", { survey: "private-tier", last: true, completion_acknowledged: true }],
+      ["/apply", "survey_answer", { survey: "apply", last: true, public_contact_receipt: PV }],
+      ["/watch", "survey_answer", { survey: "apply", last: true }],
+      ["/apply", "booking_confirmed", { calendar: "private-tier" }],
+      ["/roadmap-book", "booking_confirmed", { calendar: "funding-book-call" }]
+    ]) {
+      const p = page({ pathname: path }).run();
+      p.win.fhTrack(event, props);
+      assert.equal(p.events(event)[0].meta_event_id, undefined);
+      assert.deepEqual(p.fbqCalls, []);
     }
   });
 
-  test("inside the /apply frame the calendar still says nothing, mark or not", () => {
-    const p = page({ pathname: "/funding-book-call--02424", search: "?fh_tier=u", framed: true }).run();
-    p.win.fhTrack && p.win.fhTrack("booking_confirmed", { calendar: "funding-book-call" });
-    assert.equal(p.events("booking_confirmed").length, 0);
-    assert.equal(p.store.fh_credit_tier_v1, undefined);
-  });
-
-  test("a tier on an earlier answer is not a tier Lead and is not kept", () => {
-    const p = page({ pathname: "/apply" }).run();
-    p.fbqCalls.length = 0;
-    p.win.fhTrack("survey_answer", { survey: "apply", step_num: 3, question_id: "cf_svy_planned_use", credit_tier: "qualified" });
-    assert.deepEqual(fbqs(p).map((c) => c[1]), ["SurveyStep"]);
-    assert.equal("credit_tier" in relayBooking(p).props, false);
+  test("the internal session ID cannot appear in an outbound conversion ID", () => {
+    const p = page({ pathname: "/apply", storage: { fh_sid: "qualified-score-800" } }).run();
+    p.win.fhTrack("survey_answer", { survey: "apply", last: true, completion_acknowledged: true, public_contact_receipt: PV });
+    assert.match(p.events("survey_answer")[0].meta_event_id, UUID);
+    assert.notEqual(p.events("survey_answer")[0].meta_event_id, PV, "the Fundhub receipt is never used as the Meta event ID");
+    assert.ok(!p.events("survey_answer")[0].meta_event_id.includes("qualified"));
   });
 });
 
-describe("Lead", () => {
-  test("continue on /roadmap step 1 is Lead, every press", () => {
-    const p = page({ pathname: "/roadmap" }).run();
-    p.win.fhTrack("continue", { step: 1, bbv: 2 });
-    p.win.fhTrack("continue", { step: 1, bbv: 2 });
-    const ids = p.events("continue").map((b) => b.meta_event_id);
-    assert.deepEqual(named(p, "Lead").map((c) => c[3]), ids);
-    assert.equal(new Set(ids).size, 2);
-  });
-
-  test("continue anywhere but /roadmap is not a Lead", () => {
-    const p = page({ pathname: "/apply" }).run();
-    p.win.fhTrack("continue", { step: 1 });
-    assert.equal(named(p, "Lead").length, 0);
-    assert.equal("meta_event_id" in p.events("continue")[0], false);
-  });
-
-  test("/apply: the last question (page marks last:true) is Lead + SurveyStep on one id; earlier ones SurveyStep only", () => {
-    const p = page({ pathname: "/apply" }).run();
-    p.fbqCalls.length = 0;
-    p.win.fhTrack("survey_answer", { survey: "apply", step_num: 1, question_id: "contact" });
-    p.win.fhTrack("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", last: true });
-    const [first, last] = p.events("survey_answer");
-    assert.deepEqual(fbqs(p), [
-      ["trackCustom", "SurveyStep", { survey: "apply", step: 1 }, first.meta_event_id],
-      ["track", "Lead", { content_name: "apply" }, last.meta_event_id],
-      ["trackCustom", "SurveyStep", { survey: "apply", step: 9 }, last.meta_event_id],
-    ]);
-    assert.equal(last.meta_event_id, `${SID}.${last.seq}`);
-  });
-
-  test("/home: Lead only on the page's once-only last:true — a resend after a failed submit (no last) is not a second Lead", () => {
-    const home = page({ hostname: "fundhub.ai", pathname: "/" }).run();
-    home.win.fhTrack("survey_answer", { survey: "home", step_num: 1, question_id: "funding_target_amount" });
-    home.win.fhTrack("survey_answer", { survey: "home", step_num: 10, question_id: "contact", last: true });
-    home.win.fhTrack("survey_answer", { survey: "home", step_num: 10, question_id: "contact" });
-    assert.deepEqual(named(home, "Lead").map((c) => c[2]), [{ content_name: "home" }]);
-
-    const marked = page({ pathname: "/apply" }).run();
-    marked.win.fhTrack("survey_answer", { survey: "apply", step_num: 8, question_id: "some_new_last_question", last: true });
-    assert.equal(named(marked, "Lead").length, 1);
-    assert.equal(marked.events("survey_answer")[0].props.last, true, "last rides to the database too");
-  });
-});
-
-describe("InitiateCheckout, Purchase, ReachedBuyBox", () => {
-  test("InitiateCheckout on the first buybox_tab tab 2 per session, 147 USD; tab 1 and repeats send nothing", () => {
-    const p = page({ pathname: "/roadmap" }).run();
-    p.win.fhTrack("buybox_tab", { tab: 1, bbv: 2 });
-    p.win.fhTrack("buybox_tab", { tab: 2, bbv: 2 });
-    p.win.fhTrack("buybox_tab", { tab: 1, bbv: 2 });
-    p.win.fhTrack("buybox_tab", { tab: 2, bbv: 2 });
-    const tabs = p.events("buybox_tab");
-    assert.deepEqual(named(p, "InitiateCheckout"), [["track", "InitiateCheckout", { value: 147, currency: "USD" }, tabs[1].meta_event_id]]);
-    assert.deepEqual(tabs.map((b) => "meta_event_id" in b), [false, true, false, false]);
-
-    const reload = page({ pathname: "/roadmap", storage: p.store }).run();
-    reload.win.fhTrack("buybox_tab", { tab: 2, bbv: 2 });
-    assert.equal(named(reload, "InitiateCheckout").length, 0, "once per session, not per page load");
-  });
-
-  test("Purchase: eventID purchase.<order_ref>, 147 USD, once per order", () => {
-    const ref = "slo_0123456789abcdef01234567";
-    const p = page({ pathname: "/roadmap" }).run();
-    p.win.fhTrack("payment_result", { result: "fail", code: "card_declined", bbv: 2 });
-    p.win.fhTrack("payment_result", { result: "success", order_ref: ref, bbv: 2 });
-    p.win.fhTrack("payment_result", { result: "success", order_ref: ref, bbv: 2 });
-    const results = p.events("payment_result");
-    assert.deepEqual(named(p, "Purchase"), [["track", "Purchase", { value: 147, currency: "USD" }, `purchase.${ref}`]]);
-    assert.deepEqual(results.map((b) => b.meta_event_id), [undefined, `purchase.${ref}`, undefined]);
-    assert.equal(results[1].props.order_ref, ref, "order_ref is posted with the event");
-
-    const reload = page({ pathname: "/roadmap", storage: p.store }).run();
-    reload.win.fhTrack("payment_result", { result: "success", order_ref: ref, bbv: 2 });
-    assert.equal(named(reload, "Purchase").length, 0, "a reload of the paid page is not a second Purchase");
-    reload.win.fhTrack("payment_result", { result: "success", order_ref: "slo_ffffffffffffffffffffffff", bbv: 2 });
-    assert.deepEqual(named(reload, "Purchase").map((c) => c[3]), ["purchase.slo_ffffffffffffffffffffffff"], "a new order is a new Purchase");
-  });
-
-  test("no usable order_ref: no browser Purchase (the payment webhook sends it), and a junk ref is not posted", () => {
-    const p = page({ pathname: "/roadmap" }).run();
-    p.win.fhTrack("payment_result", { result: "success", bbv: 2 });
-    for (const bad of ["has space", "a@b.co", "x".repeat(65), "slo_1;drop", 12345]) {
-      p.win.fhTrack("payment_result", { result: "success", order_ref: bad, bbv: 2 });
-    }
-    assert.equal(named(p, "Purchase").length, 0);
-    for (const b of p.events("payment_result")) {
-      assert.equal("order_ref" in b.props, false);
-      assert.equal("meta_event_id" in b, false);
-    }
-  });
-
-  test("ReachedBuyBox: the first section_view of fh-cf-form or fhw per page load", () => {
-    const p = page({ pathname: "/roadmap" }).run();
-    p.win.fhTrack("section_view", { section: "fh-order" });
-    p.win.fhTrack("section_view", { section: "fh-cf-form" });
-    p.win.fhTrack("section_view", { section: "fhw" });
-    const views = p.events("section_view");
-    assert.deepEqual(named(p, "ReachedBuyBox"), [["trackCustom", "ReachedBuyBox", {}, views[1].meta_event_id]]);
-    assert.deepEqual(views.map((b) => "meta_event_id" in b), [false, true, false]);
-
-    const reload = page({ pathname: "/roadmap", storage: p.store }).run();
-    reload.win.fhTrack("section_view", { section: "fhw" });
-    assert.equal(named(reload, "ReachedBuyBox").length, 1, "per page load: a new load counts again");
-  });
-});
-
-describe("never PII in custom_data; fbq never breaks the page", () => {
-  test("field values, survey answers, email and phone never reach fbq", () => {
-    const p = page({ pathname: "/apply" }).run();
-    const junk = { answer: "$50,000", email: "pat@gmail.com", phone: "4155550134", value: "742 Evergreen", first_name: "Pat", ssn: "123456789", dob: "01/02/1980" };
-    p.win.fhTrack("survey_answer", { survey: "apply", step_num: 9, question_id: "cf_svy_available_capital", ...junk });
-    p.win.fhTrack("booking_confirmed", { calendar: "funding-book-call", ...junk });
-    p.win.fhTrack("softpull_submit", { businesses: 1, ...junk });
-    p.win.fhTrack("survey_route", { survey: "apply", offer: "slo", ...junk });
-    const allowed = { ViewContent: ["content_name"], Lead: ["content_name"], SurveyStep: ["survey", "step"], Schedule: ["content_name"],
-      SoftPullSubmitted: ["businesses"], SurveyRouted: ["offer"] };
-    for (const [, name, cd] of fbqs(p)) {
-      assert.ok(allowed[name], name);
-      for (const k of Object.keys(cd)) assert.ok(allowed[name].includes(k), `${name}.${k}`);
-    }
-    const all = JSON.stringify(p.fbqCalls);
-    for (const v of ["50,000", "pat@gmail.com", "4155550134", "Evergreen", "Pat", "123456789", "1980"]) {
-      assert.equal(all.includes(v), false, `${v} must never reach Meta`);
-    }
-  });
-
-  test("no pixel on the page: the post still carries meta_event_id, and nothing throws", () => {
-    const p = makePage({ pathname: "/roadmap", fhPv: PV, storage: { fh_sid: SID } }).run();
-    p.win.fhTrack("continue", { step: 1, bbv: 2 });
-    assert.equal(p.events("continue")[0].meta_event_id, `${SID}.2`);
-  });
-
-  test("an fbq that throws does not stop the post", () => {
-    const p = makePage({ pathname: "/roadmap", storage: { fh_sid: SID } });
-    p.win.fbq = () => { throw new Error("pixel broke"); };
-    p.run();
-    p.win.fhTrack("continue", { step: 1 });
-    assert.equal(p.events("continue").length, 1);
-  });
-
-  test("fbq loaded after the tracker is used from then on", () => {
-    const p = makePage({ pathname: "/roadmap", storage: { fh_sid: SID } }).run();
-    const late = [];
-    p.win.fbq = (...a) => late.push(a);
-    p.win.fhTrack("continue", { step: 1 });
-    assert.deepEqual(late.map((a) => [a[1], a[3].eventID]), [["Lead", `${SID}.2`]]);
-  });
-
-  test("an automated browser never calls fbq; the post still carries the id for the server to judge", () => {
-    const p = page({ pathname: "/roadmap", webdriver: true }).run();
-    p.win.fhTrack("continue", { step: 1 });
-    p.win.fhTrack("buybox_tab", { tab: 2 });
-    assert.equal(p.fbqCalls.length, 0);
-    assert.equal(p.events("continue")[0].meta_event_id, `${SID}.2`);
-    assert.equal(p.events("buybox_tab")[0].webdriver, true);
+describe("financial steps stay in Fundhub", () => {
+  test("checkout, purchase, score, survey route and credit checks have no Meta copy", () => {
+    const p = page({ pathname: "/roadmap", permitted: true }).run();
+    const events = [
+      ["continue", { step: 1 }], ["buybox_tab", { tab: 2 }], ["section_view", { section: "fh-cf-form" }],
+      ["payment_attempt", { amount_cents: 14700 }], ["payment_result", { result: "success", order_ref: "slo_abc" }],
+      ["payment_result", { result: "fail", code: "card_declined" }], ["softpull_submit", { businesses: 2 }],
+      ["survey_route", { offer: "repair" }], ["survey_answer", { survey: "apply", last: true, credit_tier: "qualified" }]
+    ];
+    for (const [event, props] of events) p.win.fhTrack(event, props);
+    assert.deepEqual(p.bodies().slice(1).map(row => row.event), events.map(([name]) => name));
+    assert.ok(p.bodies().every(row => !row.meta_event_id));
+    assert.deepEqual(p.fbqCalls, []);
+    assert.equal(p.events("payment_result")[0].props.order_ref, "slo_abc");
+    assert.equal(p.events("payment_result")[1].props.code, "card_declined");
+    assert.equal(p.events("softpull_submit")[0].props.businesses, 2);
   });
 });
 
@@ -472,12 +256,4 @@ describe("fbclid, fbc, fbp and url on every post", () => {
     const p = page({ pathname: "/watch", search: `?fbclid=${FBCLID}` }).run();
     assert.equal("fbclid" in p.bodies()[0], false);
   });
-});
-
-test("the browser's price is the server's price (src/meta/map.mjs SLO_VALUE, from SLO_PRICE_CENTS)", () => {
-  const src = fs.readFileSync(fileURLToPath(new URL("../../public/funnel/fh-events.js", import.meta.url)), "utf8");
-  const m = src.match(/var PRICE = \{ value: (\d+(?:\.\d+)?), currency: "([A-Z]{3})" \};/);
-  assert.ok(m, "fh-events.js has one PRICE line");
-  assert.equal(Number(m[1]), SLO_VALUE, "Meta keeps the copy it gets first, usually the browser's");
-  assert.equal(m[2], CURRENCY);
 });
