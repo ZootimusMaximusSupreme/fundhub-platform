@@ -59,6 +59,10 @@ test("Blueprint paid services preserve exact scope, payments and one shared incl
     await assert.rejects(quoteBlueprintHelp(db, { ...scope, staffId }, { requestId: help.request.id, priceCents: 50000 }), { code: "quote_locked" });
     const wrongPayment = await onPaidServicePaymentReceived({ orgId, payload: { ref: help.request.id, amountCents: 99999, paymentId: "fixture_short" } }, db);
     assert.equal(wrongPayment.done, false);
+    const foreignPayment = await onPaidServicePaymentReceived({ orgId, clientId: randomUUID(), payload: { ref: help.request.id, amountCents: 100000, paymentId: "fixture_wrong_client" } }, db);
+    assert.equal(foreignPayment.done, false);
+    const wrongCurrency = await onPaidServicePaymentReceived({ orgId, clientId, payload: { ref: help.request.id, amountCents: 100000, paymentId: "fixture_wrong_currency", currency: "EUR" } }, db);
+    assert.equal(wrongCurrency.done, false);
     assert.equal((await db.query("SELECT status FROM paid_service_requests WHERE id=$1", [help.request.id])).rows[0].status, "awaiting_payment");
     const event = { orgId, payload: { ref: help.request.id, amountCents: 100000, paymentId: `fixture-help-${help.request.id}` } };
     assert.equal((await onPaidServicePaymentReceived(event, db)).done, true);

@@ -117,8 +117,12 @@ export async function onPaidServicePaymentReceived(event, db) {
   }
 
   const blueprintService = String(row.idempotency_key || "").startsWith("blueprint-help:");
+  const paidClientId = event?.clientId || event?.payload?.client_id || null;
+  const currency = event?.payload?.currency;
   if (blueprintService && (!orgId || !paymentRefOf(event) || paidCentsFromEvent(event) !== Number(row.price_total_cents)
-    || (row.payment_ref && row.payment_ref !== paymentRefOf(event)))) {
+    || (row.payment_ref && row.payment_ref !== paymentRefOf(event))
+    || (paidClientId && String(paidClientId) !== String(row.client_id))
+    || (currency && String(currency).toUpperCase() !== "USD"))) {
     if (orgId) {
       await db.query(`UPDATE blueprint_client_services SET state='needs_review',updated_at=now()
         WHERE id=$1 AND org_id=$2 AND state NOT IN ('in_progress','completed')`, [row.id, orgId]);
