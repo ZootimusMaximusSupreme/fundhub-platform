@@ -192,7 +192,10 @@ export async function plan(dbh, { orgId } = {}) {
     if (!("retainDays" in row)) {
       items.push({
         dataClass: name, label: handler.label, action: row.action,
-        skipped: "no retention period set — nobody has decided how long this is kept"
+        signedOff: !!row.signedOffAt,
+        skipped: row.action === "retain" && row.signedOffAt
+          ? "owner-approved retain in full; no scheduled purge"
+          : "no retention period set — nobody has decided how long this is kept"
       });
       continue;
     }
