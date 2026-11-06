@@ -28,3 +28,17 @@ test("ended engagement cannot mutate, while GET remains a scoped read", async ()
   const read = response(); await handler({ method: "GET" }, read, deps);
   assert.deepEqual(read.body, { ok: true, cases: [] });
 });
+
+test("saved-evidence check accepts request metadata without granting client proof or identity", async () => {
+  let calls = 0;
+  const deps = { requireBlueprintFulfillmentScope: async () => scope,
+    services: { checkEvidence: async (_db, received, input) => {
+      calls++; assert.equal(received, scope); assert.equal(input.caseId, "case"); return { ok: true, removed: 0 };
+    } } };
+  const res = response();
+  await handler({ method: "POST", body: { action: "check_evidence", caseId: "case", idempotencyKey: "saved-check-1" } }, res, deps);
+  assert.equal(res.statusCode, 200); assert.equal(calls, 1); assert.equal(res.body.removed, 0);
+  const forbidden = response();
+  await handler({ method: "POST", body: { action: "check_evidence", caseId: "case", idempotencyKey: "saved-check-1", verified: true } }, forbidden, deps);
+  assert.equal(forbidden.statusCode, 400); assert.equal(calls, 1);
+});

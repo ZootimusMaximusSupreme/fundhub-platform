@@ -37,6 +37,6 @@ test("repair gateway rejects arbitrary rounds, staff flags, client clear and for
     { action: "mark_complete" }, { action: "generate", clientId: id }]) {
     const res = response(); await handler({ method: "POST", body }, res, deps); assert.equal(res.statusCode, 400);
   }
-  const res = response(); await handler({ method: "POST", body: { action: "generate" } }, res, deps);
+  const res = response(); await handler({ method: "POST", body: { action: "generate", idempotencyKey: "prepare-1" } }, res, deps);
   assert.equal(calls, 1); assert.equal(res.statusCode, 200);
 });

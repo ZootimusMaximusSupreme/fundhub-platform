@@ -179,6 +179,27 @@ describe("POST /api/documents-upload", () => {
     assert.deepEqual(f.tables.documents.map((d) => d.subtype), ["other", "other"]);
   });
 
+  test("self-run submission receipts and bank/bureau responses retain the exact kind and label for their readers", async () => {
+    for (const [kind, subtype] of [
+      ["inquiry_doc", "inquiry_submission_receipt"],
+      ["client_upload", "inquiry_submission_receipt"],
+      ["client_upload", "repair_submission_receipt"],
+      ["client_upload", "funding_bank_response"],
+      ["bureau_response", "bureau_letter"]
+    ]) {
+      const f = uploadFile();
+      const { res } = await call({ fields: { kind, subtype, client_id: OTHER_CLIENT }, files: [file(pdf(), "evidence.pdf", "application/pdf")] }, f, asClient());
+      assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+      const [doc] = f.tables.documents;
+      assert.deepEqual([doc.client_id, doc.kind, doc.subtype], [CLIENT, kind, subtype]);
+      assert.deepEqual(JSON.parse(doc.metadata).label, { given: subtype, filed_as: subtype, source: "given" });
+      assert.deepEqual([f.tables.events[0].payload.kind, f.tables.events[0].payload.subtype], [kind, subtype]);
+    }
+    const wrongDoor = uploadFile();
+    await call({ fields: { kind: "bureau_response", subtype: "inquiry_submission_receipt" }, files: [file(pdf(), "receipt.pdf", "application/pdf")] }, wrongDoor, asClient());
+    assert.equal(wrongDoor.tables.documents[0].subtype, "other", "a receipt must not masquerade as a classified bureau reply");
+  });
+
   test("a business paper is filed under one of this client's own active businesses, and another client's business is refused", async () => {
     const f = uploadFile();
     const ok = await call({ fields: { client_id: CLIENT, subtype: "bank_statement", entity_id: BIZ }, files: [file(pdf(), "s.pdf", "application/pdf")] }, f, asClient());
