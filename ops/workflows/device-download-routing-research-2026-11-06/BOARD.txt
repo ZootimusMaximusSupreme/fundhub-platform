@@ -288,3 +288,70 @@ devices.html/page:devices.html. Pending patch stays unapplied while Plaid
 owner is resolving its own current merge conflicts. No competing file edits.
 Local WIP commit preserves source and marked evidence while that external
 ownership prerequisite is unresolved. A local commit is not a release claim.
+
+HANDOFF CLEARED / READY FOR ORDERED SOURCE DELIVERY
+PR437 body explicitly hands registry.mjs and tripwires.mjs to this exact branch.
+Tether note22:22:31UTC confirms twoadditivedevicelines allowed after normal
+inheritance/merge proof. Applied both, removed nowobsolete ownpendingpatch.
+Required registry/tripwire plus portaldeep/hourly suites:120passed/0failed/
+0skipped. Earlier18/2and98/2reds retained in private logs, not rewritten.
+Bothnewfeature browser specs now48/48green on Chromium and WebKit. Existing
+portal suite11/11Chrome;3extraWebKitTabfocuscases reproduce in a plain control
+fixture, remain recorded and unchanged. ActualcontrolledWebKitclientmenu ->
+devices -> Back nowverified with exactsession shape, tokenunchanged/noquery.
+FullLighthouse12.8.2 audit ran from existingcachedtool with officialmobile
+Slow4G/4xCPU: performance89/FCP1.355s/simulatedLCP1.955s/CLS0/TBT0/147688bytes.
+Rawobservedpaint8.317s is retained and being diagnosed with a clean isolated
+browser, not hidden. OfficialCDP LCP1.964s, CLS0, copyinteraction104ms; original
+400Kbps customstress run retained separately. Newpage is the app device-transfer
+utility, not a sign-in form; login forms remain on their existing routes.
+Marked screenshots/fullreports stay gitignored per repository evidence policy.
+CurrentlocalWIPsourcecommit9eb5d2041 preserves allowned implementation.
+Next: normalship-change inherits437; protectedchecks/Ship/liveproof still
+required. No source/provider/nativephysical/live-release success is inferred.
+
+REQUIRED PREFLIGHT COMPARISON REPAIR — parent owns integration/review
+New claimed files: scripts/preflight-collisions.mjs and its existing test file.
+App_availability agent owns this exact pair; read-only independent review will
+run before publication. Copy-paste task: correct ONLY false sibling inherited-
+file conflicts when exact ordered expectedbase is proven as ancestor of both
+ourhead and candidatebranch, and candidatefileblob equals parentfileblob. Do
+not exclude real sibling edits, workingtree changes, PRclaims, unknown/missing
+proof or an unpublished/stale parent. Preserve ordinary default scanning.
+Evidence: preflight-handoff blocked clean active434branch for registry/tripwire
+auth/passkey lines inherited from exact437parent. gitdiff437...434 for bothfiles
+is empty. PR437 gives the exactbranch handoff. This is a requiredgate repair,
+not permission to ignore an actual owner or skip preflight. Normalship-change
+will inherit437 before its required expected-base comparison. No manualstack.
+
+PERFORMANCE ANOMALY DIAGNOSIS
+Lighthouse used its own cleanprocess/profile. Its rawobserved8.317spaint had
+all12resources finishedby75ms, DCL53ms/load70ms and no longtasks; exactcause
+unknown. Separatefreshprofile, passiveobserverbeforeload, no mocks or CDP
+throttle: actualLCP/FCP116ms, CLS0, no errors; earlierfreshFCP136ms. Retainall
+receipts; mostconsistentwithbrowser/hostrenderstall, not provenrootcause.
+OfficialSlow4GCDP LCP1.964s and simulatedLighthouseLCP1.955s are separate
+measurements, under the apputility2.5s budget, with zeroCLS/TBT; no fullapp,
+realdevice, provider or liveperformance claim follows from localmeasurements.
+
+REVIEWED RELEASE PREREQUISITE / CRS HANDOFF
+Preflight pair independently CLEAR, no P1/P2; agent191/191 combined controller
+tests and independent83/83 preflight tests, all zero skip. Exact reviewed blobs:
+ scripts/preflight-collisions.mjs 1d32445a856cf21c1a893c463a85739f6c2f0804
+ scripts/preflight-collisions.test.mjs 39b30165ccb108011f82e124ad9cd5936752f4ce
+Moved byte-exact to isolated managedworktree device-release-guards, branch
+codex/device-release-guards-20261106, Owner lane: ci. This prerequisite PR
+will carry only that pair plus minimal official restacker Draft-preservation
+repair, pending independent review. No ship-change redesign or manualstack.
+Sourceowner434 explicitly removed its own ship-order/4 and preserved head/base/
+body hold. Freshgh confirms Draft434 has no labels. This session did not alter
+434 metadata. Ready437 now chosen by existing official chooseBase.
+CRS owner coordination requests reviewed guard receipt and later additive
+registry/tripwire handoff for property route/report ledger. After committed
+normal inheritance, File handoff: src/pulse/registry.mjs -> codex/crs-property-connector-20261106
+File handoff: src/pulse/tripwires.mjs -> codex/crs-property-connector-20261106
+These are additive property entries only, preserving our devices.html entries
+and inherited Plaid entries with clean merge proof. No customer report order,
+provider write or production release is authorized by this coordination.
+Current app feature remains localWIP9eb5d2041 plus two verified registrations;
+not deployed. Guard branch/commit/PR and final app receipt will be added here.

@@ -8,11 +8,8 @@
   "native_binary_changes": false,
   "tracking_sender_changes": false,
   "base": "b53c30f052b966017189052ecc063b3824674d30",
-  "publication": "not deployed; pending shared registration handoff",
-  "pending_shared_files": [
-    "src/pulse/registry.mjs",
-    "src/pulse/tripwires.mjs"
-  ],
+  "publication": "not deployed; feature checks passed, required release prerequisite and parent repair pending",
+  "pending_shared_files": [],
   "files": [
     {
       "path": "docs/journeys/fundhub-ios-actual.md",
@@ -101,6 +98,15 @@
     {
       "path": "public/_headers",
       "sha256": "8b0e71fabe4282495fc16dc77bfc8554ce8846f17a1698d2712d160473109929"
+    },
+    {
+      "path": "src/pulse/registry.mjs",
+      "sha256": "9a00878c2f86ca47ac2ff32ccbb07b417717a9dd5fc741092b08d8a827bd94fd"
+    },
+    {
+      "path": "src/pulse/tripwires.mjs",
+      "sha256": "c8a10cdc6e1508450e2dd00f0db39421c1d4fc1e990212de59fbb11087f26f51"
     }
-  ]
+  ],
+  "file_handoff": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/437"
 }
