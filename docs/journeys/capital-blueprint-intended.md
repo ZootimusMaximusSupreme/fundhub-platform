@@ -102,3 +102,14 @@ The later owner price97 overrides the tentative100. Clients who choose Fundhub m
 ## Publication and external proof
 
 The owner requested the real build and its delivery. Continue through the repository's existing review/release gates and record the deployed authenticated result. This scope does not itself form an entity, submit a credit application, move money, make a new live charge/pull/call or activate FinanceOS. Tests and source existence do not establish any such external result.
+
+
+## Dashboard and FinanceOS demo — owner additions November 6
+
+The owner rejected the isolated unbranded demo panels and explicitly authorized correction using the real portal and existing FinanceOS code. The client sees one obvious next action, why it matters, the needed tools and a Fundhub team/CSM help path. Keep the existing onboarding, add-business, state filing, EIN, banking, personal-credit and business-credit work in the same journey.
+
+- Preparation at $5,000–$10,000 has no funding engine; full implementation at $20,000–$30,000 includes it. Preparation buyers can ask the CSM about upgrading or paid funding execution. DIY, optional aged-business assistance, repair per round/full and the selected $97 mailing batch remain distinct choices with existing quote/payment gates.
+- Show compact next-action, fundability, credit/report, waypoint/progress, FinanceOS and contextual help areas on one overview. Details open one step deeper. Full reports and soft-pull status must be reachable.
+- Use a pastel checklist progress bar, completion checkmarks and small milestone feedback. The denominator is applicable saved work. Self-reported completion, reviewed evidence, verified credit changes and funding status remain separate.
+- Explain modeled funding capacity and supported step impact for personal credit and each business. Use the current full UnderwriteIQ/CRS engine, current report identity/date and explicit unknown states. Do not invent dollar gains for formation/EIN/banking work, multiply a single business estimate across companies or add overlapping personal guarantees. The combined view remains under review where the model cannot establish a total.
+- The fictional demo includes the existing FinanceOS workspace using the same sample client, companies, credit facts and accounts. Demo stage jumps/reset change local samples only; no real auth, banking, provider, payment or customer action may escape to a private API. This addition authorizes the demo and connected navigation; it does not establish actual bank/provider receipts or override their gates.

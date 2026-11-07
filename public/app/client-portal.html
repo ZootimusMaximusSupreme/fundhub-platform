@@ -2,10 +2,17 @@
 <html lang="en">
 <head>
 <script>
-/* The explicit full-package sample has its own local data transport. */
+/* Full samples use native Response objects from their local adapter only. */
 (function () {
   var q = new URLSearchParams(location.search);
-  window.__fhBlueprintFullDemoRoute = location.pathname === "/app/client-portal.html" && q.get("demo") === "1" && q.get("blueprint") === "full";
+  window.__fhBlueprintFullDemoRoute = ['/app/client-portal.html','/progress.html','/app/financeos.html'].indexOf(location.pathname) !== -1 && q.get('demo') === '1' && q.get('blueprint') === 'full';
+  var nativeFetch = window.fetch.bind(window);
+  window.FHClientFetch = function (path, init) {
+    if (!window.__fhBlueprintFullDemoRoute) return nativeFetch(path, init);
+    var demo = window.FHBlueprintDemo;
+    if (demo && demo.active && typeof demo.fetchResponse === 'function') return demo.fetchResponse(path, init);
+    return Promise.resolve(new Response(JSON.stringify({ok:false,error:'demo_unavailable',message:'The sample dashboard could not load. Reload this page to try again.',sample:true}), {status:503,headers:{'content-type':'application/json','cache-control':'no-store'}}));
+  };
   if (window.__fhBlueprintFullDemoRoute) document.write('<script defer src="/app/blueprint-demo.js"><' + '/script>');
 })();
 </script>
@@ -518,6 +525,8 @@ if (!window.__fhBlueprintFullDemoRoute) document.write('<script defer src="shell
 </script>
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-client.css">
+<link rel="stylesheet" href="/app/blueprint-journey.css">
+<script defer src="/app/blueprint-journey.js"></script>
 <link rel="stylesheet" href="/app/blueprint-plan.css">
 <script defer src="/app/blueprint-plan.js"></script>
 <link rel="stylesheet" href="/app/blueprint-fulfillment.css">
@@ -525,9 +534,10 @@ if (!window.__fhBlueprintFullDemoRoute) document.write('<script defer src="shell
 </head>
 <body class="no-funding no-docs no-own no-funding-door no-inquiry-door no-bureau-door no-upload-doors no-dispute-consent fh-astra fh-astra-client fh-astra-portal" data-client-page="client-portal" data-portal-state="loading">
 <script>
+(function(){var view=new URLSearchParams(location.search).get('view');document.body.dataset.portalView=['documents','agreements','payments','messages','activity'].indexOf(view)!==-1?view:'home';})();
 if (window.__fhBlueprintFullDemoRoute) {
   document.body.dataset.blueprintDemo = 'full';
-  document.body.dataset.clientPublic = 'true';
+  document.body.setAttribute('data-client-ready','');
   // The public frame can show its existing plan skeleton while the local
   // sample adapter loads; private-account loading rules must not hide it.
   document.body.dataset.portalState = 'ready';
@@ -582,7 +592,7 @@ if (window.__fhBlueprintFullDemoRoute) {
     </div>
   </header>
   <script>
-if (!window.__fhBlueprintFullDemoRoute) document.write('<script async src="/app/client-ios.js"><' + '/script>');
+document.write('<script ' + (window.__fhBlueprintFullDemoRoute ? 'defer' : 'async') + ' src="/app/client-ios.js"><' + '/script>');
 </script>
 
   <main id="portal-home">
@@ -598,15 +608,16 @@ if (!window.__fhBlueprintFullDemoRoute) document.write('<script async src="/app/
       <div class="welcome-sub funding-only" id="greeting-sub">Here's where things stand on your funding.</div>
       <div class="rep-files" id="rep-files" hidden></div>
       <section id="blueprint-demo-banner" aria-label="Blueprint demo controls" hidden>
-        <p class="bf-demo-label">$30,000 full implementation · Demo</p>
-        <h1>Explore your full Blueprint dashboard</h1>
-        <p>Fictional client, businesses and bank applications. Changes stay in this demo on this device.</p>
         <div class="bf-demo-controls">
-          <label>Demo stage<select data-blueprint-demo-control="scenario"><option value="start">Getting started</option><option value="optimize">Credit and business preparation</option><option value="ready">Ready for sample applications</option><option value="completed">Completed sample round</option></select></label>
-          <button type="button" data-blueprint-demo-control="advance">Advance demo</button>
-          <button type="button" data-blueprint-demo-control="reset">Reset demo</button>
+          <strong class="bf-demo-label">Sample · fictional data</strong>
+          <label>Offer<select data-blueprint-demo-control="offer"><option value="preparation">Preparation · $10,000 sample</option><option value="implementation">Full implementation · $30,000 sample</option></select></label>
+          <details><summary>Demo controls</summary><div class="bf-demo-stage-controls">
+            <label>Demo stage<select data-blueprint-demo-control="scenario"><option value="start">Getting started</option><option value="optimize">Credit and business preparation</option><option value="ready">Ready for sample applications</option><option value="completed">Completed sample round</option></select></label>
+            <button type="button" data-blueprint-demo-control="advance">Advance demo</button>
+            <button type="button" data-blueprint-demo-control="reset">Reset demo</button>
+          </div></details>
         </div>
-        <p data-blueprint-demo-status role="status">Sample actions never send applications, messages, documents or payments to a provider.</p>
+        <p data-blueprint-demo-status role="status">Changes stay in this sample on this device.</p>
       </section>
       <section id="blueprint-fulfillment" aria-label="Your funding workspace" hidden></section>
       <section id="blueprint-plan" aria-label="Your Capital Blueprint plan"><div role="status" aria-label="Loading your plan"><div class="bp-skeleton"></div><div class="bp-skeleton large"></div><p class="bp-caption">Loading your saved account plan…</p></div></section>
@@ -1312,6 +1323,7 @@ if (!window.__fhBlueprintFullDemoRoute) document.write('<script async src="/app/
 </div>
 
 <script>
+
 /* ═══════════════════════════════════════════════════════════════════════════
    CLIENT PORTAL — live file or honest empty. Missing facts are dashes.
    Do not invent people. Uploads go through FHData.uploadFiles only.
@@ -1544,6 +1556,11 @@ var PRODUCTS = {
    it scans the comments too, so do not name one here — because a clock ticking
    with no video behind it is the exact fake this card used to be. */
 document.addEventListener('DOMContentLoaded', function(){
+  function fetch(path, init) {
+    if (typeof window.FHClientFetch === "function") return window.FHClientFetch(path, init);
+    if (window.__fhBlueprintFullDemoRoute) return Promise.resolve(new Response(JSON.stringify({ok:false,error:"demo_unavailable",sample:true}),{status:503,headers:{"content-type":"application/json"}}));
+    return globalThis.fetch(path, init);
+  }
   if (window.__fhBlueprintFullDemoRoute) return;
   var player = document.getElementById('player');
   var empty  = document.getElementById('video-empty');
@@ -1714,7 +1731,7 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 <script>
-if (!window.__fhBlueprintFullDemoRoute) document.write('<script defer src="data.js"><' + '/script>');
+document.write('<script defer src="data.js"><' + '/script>');
 </script>
 <script>
 
@@ -1742,7 +1759,13 @@ if (!window.__fhBlueprintFullDemoRoute) document.write('<script defer src="data.
 // that answer is back.
 document.addEventListener("DOMContentLoaded", async function () {
   "use strict";
-  if (window.__fhBlueprintFullDemoRoute) return;
+  function fetch(path, init) {
+    if (typeof window.FHClientFetch === "function") return window.FHClientFetch(path, init);
+    if (window.__fhBlueprintFullDemoRoute) return Promise.resolve(new Response(JSON.stringify({ok:false,error:"demo_unavailable",sample:true}),{status:503,headers:{"content-type":"application/json"}}));
+    return globalThis.fetch(path, init);
+  }
+
+  if (window.FHBlueprintDemo && window.FHBlueprintDemo.isPreview) return;
   // Screen tile keys (src/config/offers.mjs) → entitlement catalog codes (032).
   var MAP = {
     SOFT_PULL:         "credit-analysis-report",
@@ -2350,6 +2373,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (!note.hasAttribute("data-diagnostic-note")) note.setAttribute("data-diagnostic-note", note.textContent);
       note.textContent = blueprintIncluded ? "Your credit analysis is included with Blueprint. Other offers — book a call for pricing"
         : softPullDone ? "Everything here — book a call for pricing" : note.getAttribute("data-diagnostic-note");
+    }
+    var heading = document.getElementById("unlock-t");
+    if (heading) {
+      if (!heading.hasAttribute("data-original-heading")) heading.setAttribute("data-original-heading", heading.textContent);
+      heading.textContent = blueprintIncluded ? "Your included credit assessment" : heading.getAttribute("data-original-heading");
     }
     paintBlueprintReportEntry(blueprintIncluded, blueprintReportReady);
     return out;
@@ -2988,13 +3016,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       var o = d && d.ok && d.offers;
       if (!o || !o.blueprint || o.blueprint.owned !== true || !o.financeos || o.financeos.entitled !== false) return;
-      var href = "/app/financeos.html" + q + "#setup";
+      var href = window.__fhBlueprintFullDemoRoute ? "/app/financeos.html?demo=1&blueprint=full&offer=" + encodeURIComponent(window.FHBlueprintDemo.offer) + "#overview" : "/app/financeos.html" + q + "#setup";
       card.setAttribute("href", href);
       card.setAttribute("data-fh-href", href);
       var desc = card.querySelector(".fb-d");
-      if (desc) desc.textContent = "Add FinanceOS to your Capital Blueprint: your bank accounts, cards, bills, and business credit in one place.";
+      if (desc) desc.textContent = window.__fhBlueprintFullDemoRoute ? "Explore the same fictional client file in FinanceOS." : "Add FinanceOS to your Capital Blueprint: your bank accounts, cards, bills, and business credit in one place.";
       var go = card.querySelector(".fb-go");
-      if (go) go.textContent = "Set up FinanceOS";
+      if (go) go.textContent = window.__fhBlueprintFullDemoRoute ? "Open FinanceOS" : "Set up FinanceOS";
     }, function () {});
   }
 
@@ -3040,6 +3068,7 @@ document.addEventListener("DOMContentLoaded", async function () {
      paint with `sample: true`, which is what puts "Sample scores. Not a real
      credit pull." under them. */
   function isDemoPortal() {
+    if (typeof window !== "undefined" && window.__fhBlueprintFullDemoRoute) return false;
     try {
       if (FHData.param("demo") === "1") return true;
       return localStorage.getItem("fh_demo") === "1";
@@ -3177,6 +3206,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   async function paintRepFiles() {
+    if (window.__fhBlueprintFullDemoRoute) return;
     if (typeof isDemoPortal === "function" && isDemoPortal()) return;
     var box = document.getElementById("rep-files");
     if (!box) return;
@@ -3403,21 +3433,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
   }
 
-  FHData.wire(FHData.portalContracts(clientId ? { client_id: clientId } : {}),
-    "agreements", function (data) {
+  function paintPortalAgreements(data) {
       var items = data.items || [];
       paintAgreements(items);
       if (!items.length) return "live agreements · none yet";
       var pending = items.filter(function (a) { return a.needs_signature; }).length;
       return "live agreements · " + items.length + " on file" + (pending ? " · " + pending + " to sign" : "");
-    });
+  }
+  FHData.wire(FHData.portalContracts(clientId ? { client_id: clientId } : {}), "agreements", paintPortalAgreements);
 
   var callSummary = FHData.portalSummary(clientId ? { client_id: clientId } : {});
   callSummary.then(function (res) {
     if (!res || !res.ok) paintCallConfirm({ unavailable: true });
   }).catch(function () { paintCallConfirm({ unavailable: true }); });
-  FHData.wire(callSummary,
-    "portal-summary", function (data) {
+  function paintPortalSummaryData(data) {
       paintCallConfirm(data.upcoming_call);
       docsOnFile = Array.isArray(data.documents) ? data.documents : [];
       softPullDone = data.soft_pull_complete === true;
@@ -3495,14 +3524,14 @@ document.addEventListener("DOMContentLoaded", async function () {
       paintPrequal(amt, data.prequal_sample === true);
       if (!amt) return "live pre-qual · none yet";
       return (data.prequal_sample === true ? "sample estimate · " : "live pre-qual · ") + amt;
-    });
+  }
+  FHData.wire(callSummary, "portal-summary", paintPortalSummaryData);
 
   /* Clients get their own document metadata from portal-summary above. Staff
      use the one master Documents home instead of a duplicate portal list. */
   if (STAFF_ROLES[roleHint()]) paintStaffDocsLink(clientId);
 
-  FHData.wire(FHData.entitlements({ client_id: clientId, limit: 200 }),
-    "entitlements", function (data) {
+  function paintPortalEntitlements(data) {
       var rows = data.items || [];
       var active = {};
       rows.forEach(function (e) { if (e.active) active[e.entitlement_code] = e; });
@@ -3521,7 +3550,13 @@ document.addEventListener("DOMContentLoaded", async function () {
       var counts = repaintTiles();
       if (!counts.unlocked && !counts.locked) return null;
       return "live entitlements · " + counts.unlocked + " unlocked · " + counts.locked + " locked";
-    });
+  }
+  FHData.wire(FHData.entitlements({ client_id: clientId, limit: 200 }), "entitlements", paintPortalEntitlements);
+  if (window.__fhBlueprintFullDemoRoute) window.addEventListener('fh:blueprint-demo-change', function () {
+    FHData.portalSummary({client_id:clientId}).then(function(r){if(r.ok)paintPortalSummaryData(r.data);});
+    FHData.portalContracts({client_id:clientId}).then(function(r){if(r.ok)paintPortalAgreements(r.data);});
+    FHData.entitlements({client_id:clientId,limit:200}).then(function(r){if(r.ok)paintPortalEntitlements(r.data);});
+  });
 });
 </script>
 <script>
@@ -3531,6 +3566,12 @@ document.addEventListener("DOMContentLoaded", async function () {
    client-side gate; POST sends name + method, not a new upload. */
 (function () {
   "use strict";
+  function fetch(path, init) {
+    if (typeof window.FHClientFetch === "function") return window.FHClientFetch(path, init);
+    if (window.__fhBlueprintFullDemoRoute) return Promise.resolve(new Response(JSON.stringify({ok:false,error:"demo_unavailable",sample:true}),{status:503,headers:{"content-type":"application/json"}}));
+    return globalThis.fetch(path, init);
+  }
+
   if (window.__fhBlueprintFullDemoRoute) return;
   var KIND = "dispute_authorization";
   var card = document.getElementById("dispute-auth-card");
@@ -3859,7 +3900,12 @@ document.addEventListener("DOMContentLoaded", async function () {
    ═══════════════════════════════════════════════════════════════════════════ */
 (function () {
   "use strict";
-  if (window.__fhBlueprintFullDemoRoute) return;
+  function fetch(path, init) {
+    if (typeof window.FHClientFetch === "function") return window.FHClientFetch(path, init);
+    if (window.__fhBlueprintFullDemoRoute) return Promise.resolve(new Response(JSON.stringify({ok:false,error:"demo_unavailable",sample:true}),{status:503,headers:{"content-type":"application/json"}}));
+    return globalThis.fetch(path, init);
+  }
+
 
   function escape2(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -3956,9 +4002,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function load() {
     var t = token();
-    if (!t) return;                          // signed out: not this block's message to write
+    if (!t && !window.__fhBlueprintFullDemoRoute) return; // signed out: not this block's message to write
     fetch(progressPath(), {
-      headers: { authorization: "Bearer " + t, accept: "application/json" },
+      headers: t ? { authorization: "Bearer " + t, accept: "application/json" } : { accept:"application/json" },
       credentials: "same-origin"
     }).then(function (r) {
       return r.ok ? r.json() : null;
@@ -4010,6 +4056,12 @@ document.addEventListener("DOMContentLoaded", async function () {
  */
 (function () {
   "use strict";
+  function fetch(path, init) {
+    if (typeof window.FHClientFetch === "function") return window.FHClientFetch(path, init);
+    if (window.__fhBlueprintFullDemoRoute) return Promise.resolve(new Response(JSON.stringify({ok:false,error:"demo_unavailable",sample:true}),{status:503,headers:{"content-type":"application/json"}}));
+    return globalThis.fetch(path, init);
+  }
+
   if (window.__fhBlueprintFullDemoRoute) return;
 
   var SW_URL = "/app/client-portal-sw.js";
@@ -4422,6 +4474,12 @@ document.addEventListener("DOMContentLoaded", async function () {
 <script>
 (function () {
   "use strict";
+  function fetch(path, init) {
+    if (typeof window.FHClientFetch === "function") return window.FHClientFetch(path, init);
+    if (window.__fhBlueprintFullDemoRoute) return Promise.resolve(new Response(JSON.stringify({ok:false,error:"demo_unavailable",sample:true}),{status:503,headers:{"content-type":"application/json"}}));
+    return globalThis.fetch(path, init);
+  }
+
   if (window.__fhBlueprintFullDemoRoute) return;
 
   var READ_PATH  = "/api/read/affiliate-portal";
@@ -4617,7 +4675,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 <script>
 (function () {
-  if (window.__fhBlueprintFullDemoRoute) return;
   function openAccount() {
     if (!document.body.hasAttribute("data-client-ios")) return;
     var view = new URLSearchParams(location.search).get("view");
@@ -4640,12 +4697,17 @@ document.addEventListener("DOMContentLoaded", async function () {
    their staff-scoped painter. Sample mode cannot reveal real conversations. */
 (function () {
   "use strict";
-  if (window.__fhBlueprintFullDemoRoute) return;
+  function fetch(path, init) {
+    if (typeof window.FHClientFetch === "function") return window.FHClientFetch(path, init);
+    if (window.__fhBlueprintFullDemoRoute) return Promise.resolve(new Response(JSON.stringify({ok:false,error:"demo_unavailable",sample:true}),{status:503,headers:{"content-type":"application/json"}}));
+    return globalThis.fetch(path, init);
+  }
+
   var pane = document.getElementById("tp-msg"), authorized = false, seq = 0;
   if (!pane) return;
   try {
-    if (new URLSearchParams(location.search).get("demo") === "1" ||
-        localStorage.getItem("fh_demo") === "1") return;
+    if (!window.__fhBlueprintFullDemoRoute && (new URLSearchParams(location.search).get("demo") === "1" ||
+        localStorage.getItem("fh_demo") === "1")) return;
   } catch (_) {}
   function headers() {
     var h = { accept: "application/json" }, t = "";
@@ -4714,7 +4776,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     var tab = event.target.closest && event.target.closest('#acct-tabs [data-tab="msg"]');
     if (tab && authorized) load();
   });
-  fetch("/api/auth/session", { headers: headers(), credentials: "same-origin" })
+  function startConversation() { return fetch("/api/auth/session", { headers: headers(), credentials: "same-origin" })
     .then(function (r) { return r.json().catch(function () { return null; }).then(function (d) {
       return r.ok && d && d.ok === true ? d : null;
     }); })
@@ -4725,7 +4787,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
       }
       authorized = true; load();
-    }).catch(function () { /* A failed session check must not expose messages. */ });
+    }).catch(function () { /* A failed session check must not expose messages. */ }); }
+  if (window.__fhBlueprintFullDemoRoute && document.readyState === "loading") document.addEventListener("DOMContentLoaded", startConversation, {once:true}); else startConversation();
+  if (window.__fhBlueprintFullDemoRoute) window.addEventListener("fh:blueprint-demo-change", load);
 })();
 </script>
 
@@ -4748,7 +4812,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       return;
     }
     var stage = banner.querySelector('[data-blueprint-demo-control="scenario"]');
-    function sync() { stage.value = demo.scenario; }
+    var offer = banner.querySelector('[data-blueprint-demo-control="offer"]');
+    function sync() { stage.value = demo.scenario; offer.value = demo.offer; }
+    offer.addEventListener('change', function () { demo.setOffer(offer.value); var next = new URL(location.href); next.searchParams.set('offer', offer.value); location.href = next.href; });
     stage.addEventListener('change', function () { demo.setScenario(stage.value); sync(); });
     banner.querySelector('[data-blueprint-demo-control="advance"]').addEventListener('click', function () { demo.advance(); sync(); });
     banner.querySelector('[data-blueprint-demo-control="reset"]').addEventListener('click', function () { demo.reset(); location.reload(); });
@@ -4760,8 +4826,12 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (!link) return;
       var url;
       try { url = new URL(link.href, location.origin); } catch (_) { event.preventDefault(); return; }
-      if (url.origin === location.origin && url.pathname === '/app/client-portal.html' && url.searchParams.get('demo') === '1' && url.searchParams.get('blueprint') === 'full' && ['bank','document','payment'].indexOf(url.searchParams.get('preview')) !== -1) return;
+      if (link.getAttribute('href').charAt(0) === '#') return;
+      if (url.origin === location.origin && ['/app/client-portal.html','/progress.html','/app/financeos.html'].indexOf(url.pathname) !== -1) {
+        url.searchParams.set('demo','1'); url.searchParams.set('blueprint','full'); url.searchParams.set('offer',demo.offer); link.href = url.href; if(link.hasAttribute('data-fh-href'))link.setAttribute('data-fh-href',url.href); return;
+      }
       event.preventDefault();
+      event.stopImmediatePropagation();
       status.textContent = 'This demo stays in the sample workspace. Use its sample documents, bank applications and payment previews.';
     }, true);
     sync();
