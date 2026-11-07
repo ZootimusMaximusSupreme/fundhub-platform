@@ -18,7 +18,11 @@
       catch (e) { return { id: "", token: "", role: "" }; }
     }
     function same(snapshot) { var value = context(); return snapshot.id === value.id && snapshot.token === value.token && snapshot.role === value.role; }
-    function clear() { generation += 1; current = null; result.replaceChildren(); consent.checked = false; order.hidden = true; }
+    function clear() {
+      generation += 1; current = null; loading = false; result.replaceChildren();
+      consent.checked = false; consent.disabled = false; consentText.textContent = "";
+      consent.closest("label").hidden = true; order.hidden = true; order.disabled = true;
+    }
     function headers() { return { "Content-Type": "application/json", Authorization: "Bearer " + token }; }
     function line(parent, tag, words) { var el = document.createElement(tag); el.textContent = words; parent.appendChild(el); return el; }
     function money(value) { return typeof value === "number" ? value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }) : "Unknown"; }
@@ -36,6 +40,7 @@
       current = data;
       result.replaceChildren();
       consent.checked = false;
+      consent.disabled = false;
       consentText.textContent = data.consent ? data.consent.text : consentText.textContent;
       var mayOrder = data.mayOrder === true;
       order.hidden = !mayOrder;
@@ -79,7 +84,7 @@
         .then(function (r) { return r.json().then(function (data) { if (!r.ok || !data.ok) throw new Error(data.error); return data; }); })
         .then(function (data) { if (run === generation && same(snapshot)) render(data); })
         .catch(function () { if (run === generation && same(snapshot)) { clear(); consent.closest("label").hidden = true; state.textContent = words.property_service_unavailable; } })
-        .finally(function () { if (same(snapshot)) loading = false; });
+        .finally(function () { if (run === generation && same(snapshot)) loading = false; });
     }
     consent.addEventListener("change", function () { order.disabled = !consent.checked || !current || current.mayOrder !== true; });
     refresh.addEventListener("click", load);
@@ -98,7 +103,7 @@
       }) }).then(function (r) { return r.json().then(function (data) { if (!r.ok || !data.ok) throw new Error(data.error); return data; }); })
         .then(function (data) { if (run === generation && same(snapshot)) render(data); })
         .catch(function (error) { if (run === generation && same(snapshot)) { clear(); consent.closest("label").hidden = true; state.textContent = words[error.message] || words.property_provider_uncertain; } })
-        .finally(function () { if (same(snapshot)) { loading = false; consent.disabled = false; } });
+        .finally(function () { if (run === generation && same(snapshot)) { loading = false; consent.disabled = false; } });
     });
     document.addEventListener("click", function (event) {
       if (event.target.closest && event.target.closest('[data-workspace-tab="credit"], [data-workspace-open="credit"]')) setTimeout(load, 0);
