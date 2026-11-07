@@ -1,0 +1,41 @@
+/* "Your funding paths" (funding-paths.js) — one card, three paths side by side
+   with hairline dividers between them (a group, not three raised cards:
+   UI-STANDARDS §12.5). Every rule is under .fp-card, so the card can sit on the
+   Fundability tab or anywhere else it is mounted. Every control at least 44px
+   tall; status is a word in a pill (§12.6); one column on a phone (§11). */
+
+.fp-card{display:block;min-width:0}
+.fp-card .fp-title{font-weight:600;color:var(--ink);margin:0 0 8px}
+.fp-card .fp-paths{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;min-width:0}
+.fp-card .fp-path{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;padding:16px 24px;border-left:1px solid var(--line)}
+.fp-card .fp-path:first-child{border-left:0;padding-left:0}
+.fp-card .fp-path:last-child{padding-right:0}
+.fp-card .fp-name{display:flex;align-items:center;gap:8px;margin:0 0 4px;font-weight:600;color:var(--ink)}
+.fp-card .fp-num{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:24px;height:24px;border:1px solid var(--ink);border-radius:999px;font-size:var(--fs-caption,.8125rem);font-weight:600;color:var(--ink)}
+.fp-card .big{display:block;font-weight:700;color:var(--ink);line-height:1.15;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.fp-card .caption{font-size:var(--fs-caption,.8125rem);color:var(--text-dim,var(--gray));overflow-wrap:anywhere;margin:0}
+.fp-card .fp-lead{font-weight:600;color:var(--ink);margin:0}
+.fp-card .fp-line{color:var(--ink);margin:0;overflow-wrap:anywhere}
+.fp-card .num{font-variant-numeric:tabular-nums}
+.fp-card .fp-url{max-width:100%;margin:0;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--soft,#F4F5F2);color:var(--ink);overflow-wrap:anywhere;word-break:break-all}
+.fp-card .fp-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;max-width:100%}
+.fp-card .fp-state{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0}
+.fp-card .fp-pill{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border:1px solid var(--ink);border-radius:999px;font-size:var(--fs-caption,.8125rem);font-weight:600;color:var(--ink);white-space:nowrap}
+
+/* Buttons and links. One filled button on the card: I'm ready to get funded. */
+.fp-card .fp-btn-primary,.fp-card .fp-btn-line{display:inline-flex;align-items:center;justify-content:center;min-height:44px;max-width:100%;padding:8px 16px;border-radius:8px;border:1px solid var(--ink);font:inherit;font-weight:600;text-align:center;text-decoration:none;cursor:pointer}
+.fp-card .fp-btn-primary{background:var(--ink);color:var(--paper,#FFFFFF)}
+.fp-card .fp-btn-line{background:transparent;color:var(--ink)}
+.fp-card :is(.fp-btn-primary,.fp-btn-line)[disabled]{opacity:.6;cursor:default}
+.fp-card :is(.fp-btn-primary,.fp-btn-line,.fp-link):focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.fp-card .fp-link{display:inline-flex;align-items:center;min-height:44px;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+
+.fp-card .fp-msg{color:#92400E}
+.fp-card .fp-msg[hidden]{display:none}
+
+/* Narrow windows and phones: the three paths stack, divided by hairlines. */
+@media (max-width:1050px){
+  .fp-card .fp-paths{grid-template-columns:minmax(0,1fr)}
+  .fp-card .fp-path{border-left:0;border-top:1px solid var(--line);padding:16px 0}
+  .fp-card .fp-path:first-child{border-top:0;padding-top:8px}
+}

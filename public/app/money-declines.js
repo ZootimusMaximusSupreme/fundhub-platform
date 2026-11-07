@@ -10,6 +10,13 @@
  * POST /api/blueprint/declines { action: "paste" }. Every reason, quote and step
  * is a field from the server; nothing here invents one.
  *
+ * "Your bank applications" is the tracker card (money-applications.js,
+ * window.FHApplications, Finance OS wave 3 unit O) when that script is on the
+ * page and the server sent view.tracker: every application with its bank logo,
+ * status and approved amount, and a way to add one. It is painted from the same
+ * GET and wired with FHApplications.attach(). Without that script the plain
+ * list below is shown, exactly as before.
+ *
  * THE HONESTY RULES
  *   - "Your letter says" quotes the client's own letter, exactly as the server
  *     sent it back.
@@ -70,9 +77,9 @@
 
   /* ── pieces ────────────────────────────────────────────────────────────── */
 
+  /* The title alone: each card below says what it is (short client words, QA15). */
   function renderHead() {
-    return '<div class="dc-head"><div><h1>Your applications</h1>' +
-      '<p class="caption">When a bank says no, paste its letter here. We read it, show the likely reasons, and start the plan to ask the bank to look again.</p></div></div>';
+    return '<div class="dc-head"><div><h1>Your applications</h1></div></div>';
   }
 
   function renderSteps(steps) {
@@ -127,8 +134,7 @@
 
   function renderPaste(v, flash) {
     if (!v.can_paste) {
-      return '<section class="card dc-paste dc-locked"><h2>Decline help comes with the Capital Blueprint</h2>' +
-        '<p>When a bank says no, Capital Blueprint clients paste the letter here and Fundhub works on getting a second look. Ask your advisor about it.</p></section>';
+      return '<section class="card dc-paste dc-locked"><p>Decline help comes with the Capital Blueprint.</p></section>';
     }
     var opts = list(v.applications).filter(function (a) { return !a.decline_id; }).map(function (a) {
       return '<option value="' + esc(a.id) + '">' + esc(what(a.bank, a.product)) + '</option>';
@@ -147,7 +153,15 @@
       '<div class="dc-result" data-slot="result" aria-live="polite"></div></section>';
   }
 
+  /* The tracker card when its script is loaded and the server sent it. */
+  function trackerCard(v) {
+    var A = root.FHApplications;
+    return A && v && v.tracker ? '<div class="dc-block dc-apps-card" data-slot="apps">' + A.renderCard(v.tracker) + '</div>' : "";
+  }
+
   function renderApplications(v) {
+    var card = trackerCard(v);
+    if (card) return card;
     var apps = list(v.applications);
     var body = apps.length
       ? '<ul class="dc-apps">' + apps.map(function (a) {
@@ -160,7 +174,10 @@
 
   /* ── the four states ───────────────────────────────────────────────────── */
 
-  function isEmpty(v) { return !list(v && v.applications).length && !list(v && v.declines).length; }
+  function isEmpty(v) {
+    return !list(v && v.applications).length && !list(v && v.declines).length &&
+      !list(v && v.tracker && v.tracker.rows).length;
+  }
 
   /* After a paste the page scrolls to the declines, so the answer ("we read
      your letter") sits there, where the client is looking (UI-STANDARDS §5). */
@@ -175,6 +192,8 @@
   }
 
   function renderEmpty(v, flash) {
+    var card = trackerCard(v);
+    if (card) return renderHead() + renderPaste(v, flash) + card;
     return renderHead() + renderPaste(v, flash) +
       '<section class="dc-block"><h2>Your bank applications</h2><p class="caption">No bank applications on your file yet. When Fundhub applies for you, each one shows up here. If a bank already said no, paste its letter above.</p></section>';
   }
@@ -301,8 +320,21 @@
     var send = typeof ctx.apiPost === "function" ? function (p, b) { return normal(ctx.apiPost(p, b)); } : function (p, b) { return call("POST", p, b); };
     var view = null;
     var flash = "";
+    var apps = null;
 
-    function paint(html) { el.innerHTML = '<div class="fh-declines">' + html + '</div>'; }
+    function paint(html) {
+      if (apps) { apps.detach(); apps = null; }
+      el.innerHTML = '<div class="fh-declines">' + html + '</div>';
+      var slot = q('[data-slot="apps"]');
+      if (slot && root.FHApplications && view && view.tracker) {
+        apps = root.FHApplications.attach(slot, {
+          clientId: cid,
+          apiPost: typeof ctx.apiPost === "function" ? ctx.apiPost : null,
+          onSignIn: ctx.onSignIn,
+          reload: function () { return load(); }
+        }, view.tracker, function (t) { if (view) view.tracker = t; });
+      }
+    }
     function q(sel) { return el.querySelector ? el.querySelector(sel) : null; }
 
     function load() {
@@ -386,6 +418,7 @@
     return {
       reload: load,
       unmount: function () {
+        if (apps) { apps.detach(); apps = null; }
         el.removeEventListener("click", onClick);
         el.removeEventListener("change", onChange);
         el.innerHTML = "";

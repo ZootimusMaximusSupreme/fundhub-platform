@@ -83,6 +83,7 @@ import {
 } from "../blueprint/next-funding-sequence.mjs";
 import { updateBankRelationshipTodoState } from "../blueprint/bank-relationship.mjs";
 import { readSequenceFacts, planFromRows } from "../blueprint/next-sequence-facts.mjs";
+import { bankSteps, depositPlanRows } from "../waypoints/blueprint-path.mjs";
 
 /* ------------------------------------------------------------------ *
  * Small readers
@@ -155,6 +156,41 @@ export function monthsBetween(a, b) {
   let m = (by - ay) * 12 + (bm - am);
   if (bd < ad) m -= 1;
   return Math.max(0, m);
+}
+
+/* ------------------------------------------------------------------ *
+ * Bank logos (owner rule, Chris 2026-11-07)
+ * ------------------------------------------------------------------ */
+
+/* Every bank shows its own logo. Plaid's institution logo wins when the bank is
+   connected through Plaid (unit H builds that read and hands it in here); the
+   bank book's own file (lenders.logo_path, migration 254, files under
+   public/assets/lenders/) is next. No file means no logo: the name shows alone.
+   A logo is never drawn, guessed or borrowed from another bank. */
+const BOOK_LOGO_RE = /^\/assets\/lenders\/[a-z0-9][a-z0-9._-]*\.(?:png|svg|jpe?g|webp)$/i;
+const PLAID_LOGO_RE = /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/;
+const BARE_BASE64_RE = /^[A-Za-z0-9+/]{16,}={0,2}$/;
+
+/**
+ * pickBankLogo({ plaidLogo, logoPath, name }) → { src, alt, source } | null
+ *
+ * The one seam for a bank's logo. `plaidLogo` is Plaid's institution logo (a
+ * base64 PNG, with or without the data: prefix); `logoPath` is the bank book's
+ * lenders.logo_path. Anything that is not one of those two shapes is ignored.
+ */
+export function pickBankLogo({ plaidLogo = null, logoPath = null, name = null } = {}) {
+  const bank = text(name);
+  const alt = `${bank || "Bank"} logo`;
+  const plaid = typeof plaidLogo === "string" ? plaidLogo.trim() : "";
+  if (plaid) {
+    const src = PLAID_LOGO_RE.test(plaid) ? plaid : (BARE_BASE64_RE.test(plaid) ? `data:image/png;base64,${plaid}` : null);
+    if (src) return { src, alt, source: { label: "Plaid institution logo", ref: "plaid institution logo (connected bank)" } };
+  }
+  const path = text(logoPath);
+  if (path && BOOK_LOGO_RE.test(path)) {
+    return { src: path, alt, source: { label: `Bank book · ${bank || "this bank"}`, ref: "lenders.logo_path (migration 254)" } };
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------ *
@@ -287,6 +323,33 @@ export function noAccountNeeded(lender) {
     if (NO_ACCOUNT_PATTERNS.some((re) => re.test(c.text))) return { quote: c.text.slice(0, 200), field: c.field };
   }
   return null;
+}
+
+/* MEMBERSHIP THE CLIENT MAY NOT MEET (owner rule, Chris 2026-11-07: "never
+   recommend a bank whose membership rule the client cannot meet, for example
+   Navy Federal"). The book's own words decide: an owner who must ALREADY be a
+   member ("Every owner must already be a Navy Federal member." — 504), or a
+   military or veteran rule. Nothing on the client's file says they meet it, so
+   the bank is not a bank to open; it is named in left_out with the quote. A
+   plain "Membership is required." is a credit union's account opening itself,
+   so it stays, and the screen shows the bank's own sentence. */
+const MEMBERSHIP_BLOCK_PATTERNS = [
+  /\bmust\s+already\s+be\s+(?:an?\s+)?[\w .'-]{0,40}?member\b/i,
+  /\b(?:existing|current)\s+members?\s+only\b/i,
+  /\b(?:military|armed\s+forces|veterans?|active[- ]duty)\b/i
+];
+
+/** → the book's own sentence naming a membership the client may not meet, or null. */
+export function membershipBlock(lender) {
+  for (const c of clauses(lender)) {
+    if (MEMBERSHIP_BLOCK_PATTERNS.some((re) => re.test(c.text))) return { quote: c.text.slice(0, 200), field: c.field };
+  }
+  return null;
+}
+
+/** "credit_union" when the bank's own name says so, else "bank". */
+export function institutionKind(name) {
+  return /\bcredit\s+union\b|\bF?CU\b|\bfederal\s+credit\b/i.test(String(name || "")) ? "credit_union" : "bank";
 }
 
 /* SPACING. A bank's own sentence about the gap before the next application
@@ -427,6 +490,7 @@ export function recommendBank(lender, { states = [] } = {}) {
   return {
     lender_id: lender.id || null,
     name: lender.name,
+    kind: institutionKind(lender.name),
     products: [productWords(lender)],
     lender_table: lender.lender_table,
     serves_state: serves,
@@ -434,6 +498,8 @@ export function recommendBank(lender, { states = [] } = {}) {
     tier: lender.priority_tier ?? null,
     minimum_deposit_cents: signals.deposit_cents,
     seasoning_days: signals.seasoning ? signals.seasoning.days : null,
+    /* The bank book's own logo file (lenders.logo_path), or null: name only. */
+    logo: pickBankLogo({ logoPath: lender.logo_path, name: lender.name }),
     why,
     relationship_steps: relationshipSteps(lender, signals),
     source: bookSource(lender, "external_row_id"),
@@ -458,11 +524,21 @@ export function recommendedBanks(matches = [], { states = [] } = {}) {
   const banks = [];
   const byName = new Map();
   const leftOut = [];
+  /* A membership rule on ANY of a bank's rows keeps the whole bank off the list. */
+  const memberBlocked = new Map();
+  for (const m of Array.isArray(matches) ? matches : []) {
+    if (!m || !m.name) continue;
+    const key = String(m.name).trim().toLowerCase();
+    const member = memberBlocked.has(key) ? null : membershipBlock(m);
+    if (member) memberBlocked.set(key, { name: m.name, reason: "book_says_membership_client_may_not_meet",
+      quote: member.quote, source: bookSource(m, member.field) });
+  }
   for (const m of Array.isArray(matches) ? matches : []) {
     if (!m || !m.name) continue;
     const sig = relationshipSignals(m);
     if (!sig.any) continue;
     const key = String(m.name).trim().toLowerCase();
+    if (memberBlocked.has(key)) continue;
     if (!sig.is_relationship_bank) {
       if (!leftOut.some((x) => x.name.toLowerCase() === key)) {
         leftOut.push({ name: m.name, reason: "book_says_no_account_needed", quote: sig.contradicted.quote,
@@ -474,6 +550,8 @@ export function recommendedBanks(matches = [], { states = [] } = {}) {
     if (seen) {
       const p = productWords(m);
       if (!seen.products.includes(p)) seen.products.push(p);
+      /* The same bank's second row may carry the logo file the first one lacked. */
+      if (!seen.logo) seen.logo = pickBankLogo({ logoPath: m.logo_path, name: seen.name });
       continue;
     }
     const rec = recommendBank(m, { states });
@@ -481,7 +559,7 @@ export function recommendedBanks(matches = [], { states = [] } = {}) {
     banks.push(rec);
   }
   /* A bank listed through one of its rows is not also "left out" by another. */
-  return { banks, left_out: leftOut.filter((x) => !byName.has(x.name.trim().toLowerCase())) };
+  return { banks, left_out: [...leftOut.filter((x) => !byName.has(x.name.trim().toLowerCase())), ...memberBlocked.values()] };
 }
 
 /* ------------------------------------------------------------------ *
@@ -696,6 +774,8 @@ export function relationshipView(row, { today, deposits = [], book = null, conta
     deposits_total_cents: deps.length ? total : null,
     seasoning: season ? { days: season.days, quote: season.quote, source: bookSource(book, season.field) } : null,
     seasoned_on: opened && season ? addDays(opened, season.days) : null,
+    /* The bank book's logo file for the book row behind this line, or null. */
+    logo: pickBankLogo({ logoPath: book ? book.logo_path : null, name }),
     notes: text(row.notes),
     source: SOURCES.staffPlan
   };
@@ -726,7 +806,7 @@ const DEPOSIT_SQL = `
    ORDER BY deposited_on ASC, created_at ASC`;
 const BOOK_COLS = `id, name, lender_table, eligible_states, minimum_deposit, requires_account_opening,
   relationship_required, stated_requirements, insider_tips, intro_offers, priority_tier,
-  bureaus_pulled, product_name, external_row_id`;
+  bureaus_pulled, product_name, external_row_id, logo_path`;
 
 /** Tracker rows, their deposits and their book rows — the read the plan pins share. */
 export async function readRelationships(db, { orgId, clientId, today }) {
@@ -1226,6 +1306,10 @@ export async function bankStrategy(db, { orgId, clientId, asOf = new Date(), mat
        screen reads `next_sequence`. */
     next_round: nextSequence,
     relationships: rels,
+    /* The deposit plan (owner order 2026-11-07): up to five banks from the bank
+       match, merged with the tracker, in plan order. src/waypoints/blueprint-path.mjs
+       depositPlanRows() names every field. The Blueprint path reads the same rows. */
+    deposit_plan: depositPlanRows(bankSteps({ recommended: banks, relationships: rels })),
     not_set: notSetList({ nextSequence, relationships: rels, stacking })
   };
 }

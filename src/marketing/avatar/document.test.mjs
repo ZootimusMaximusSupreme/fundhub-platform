@@ -107,7 +107,7 @@ describe("campaigns", () => {
   });
 
   test("What we sell is pre-filled with the price from the offer config, never typed", () => {
-    assert.match(defaultServiceDescription("partner"), /^The Fundhub \$10,000 white-label partnership/);
+    assert.match(defaultServiceDescription("partner"), /^The Fundhub \$30,000 white-label partnership/);
     assert.doesNotMatch(defaultServiceDescription("partner"), /FundHub/);
     assert.equal(defaultServiceDescription("no-such-offer"), null);
   });

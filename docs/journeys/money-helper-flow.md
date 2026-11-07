@@ -56,6 +56,46 @@ A turn left queued when the Mac stops is answered by rules on the client's next 
 - A transfer is a **proposal** (W5's `proposeTransfer`, a `money_agent_tasks` row at
   `needs_approval`) and the reply says it needs the client's approval.
 - A client who says they cannot pay gets a CSM task (once per chat).
+- An answer that talks about a lesson it was handed names that lesson's doc
+  (`From: <doc>.`); no answer names Net 30 accounts, DUNS, D&B or Nav without saying they are
+  not part of the client's Fundhub plan (`topicReplyProblems`, see "A question about a money topic").
+
+## A question about a money topic (Finance OS wave 4, unit ED)
+
+Owner order (Chris, 2026-11-07, `ops/workflows/finance-os-wave4-brief.txt`): give the helper an
+education source drawn from Fundhub's own material, for ChexSystems, opening accounts, seasoning,
+card use, inquiries, business credit and gas cards, with short answers that cite the doc they come
+from. Code: `src/finance/money-education.mjs` (the lessons, pure), wired in
+`src/finance/money-agent-ai.mjs`; the screen's buttons in `public/app/money-helper.js`.
+
+```mermaid
+flowchart TD
+    Q[Client asks, or taps a Learn the basics button] --> T{matchTopics: does the question<br/>name a lesson? at most two}
+    T -->|no, or a task press, a pasted letter,<br/>or a question about a decline in this chat| OLD[Answered exactly as before]
+    T -->|yes| F[FACTS.topic_guidance: each lesson's words<br/>and its from_line, no ids, no file paths]
+    F --> R{Who answers}
+    R -->|rules brain, intent question| RB[The lesson's own words,<br/>then From: doc on its own line]
+    R -->|AI| AI[The prompt adds a LESSONS note:<br/>answer from it, end with its from_line]
+    AI --> V{Talks about a lesson it was handed<br/>without its From line? Names Net 30,<br/>DUNS, D&B or Nav without saying not part<br/>of your Fundhub plan?}
+    V -->|yes| BL[Blocked: the rules brain answers with the lesson]
+    V -->|no| OK[AI answer used]
+```
+
+- **Where the words come from.** Each lesson rests on lines from the repo: the Blueprint's own
+  lessons (`src/blueprint/preparation-guidance.mjs`), Chris's lesson talk tracks
+  (`marketing/slideshows/talk/card-paydown.txt`, `apply-yourself.txt`, `business-one-two.txt`),
+  `docs/finance/file-protection-alerts.md`, the bank book (`docs/legacy-strong/lenders-legacy-strong.csv`)
+  and `docs/journeys/capital-blueprint-intended.md` R12. `src/finance/money-education.test.mjs` opens
+  each file and finds the backing words in it. Owner calls on the board are kept with their date.
+- **What the client reads.** "From: Blueprint lessons.", "From: Card Paydown lesson.", "From: Applying
+  On Your Own lesson.", "From: Business One, Two lesson.", "From: Fundhub bank book." or "From: Capital
+  Blueprint plan." on its own small line under the answer. A ChexSystems answer also gets one
+  "Open chexsystems.com" button whose address is fixed in the screen's code.
+- **Numbers.** A lesson's numbers (30, 60 and 90 days, 10%) are in FACTS only on a turn that carries
+  that lesson, so the helper may say them there and nowhere else.
+- **Not changed.** The agent row's prompt (migrations 465 and 468, word for word), the decline path,
+  STOP / a lawyer / a person, a task press, and every answer to a question about the client's own money.
+  No route, no migration, no new table.
 
 ## A pasted bank decline (Capital Blueprint launch, unit B1b, migration 468)
 
@@ -145,7 +185,9 @@ W6 never claims an approved money row without W7's engine and never moves money.
 
 ## Where it shows
 
-- The chat: `/app/money-helper.html` (section `FinanceOS.sections.helper`).
+- The chat: `/app/money-helper.html` (section `FinanceOS.sections.helper`). Above the box to type
+  in, "Learn the basics" holds seven topic buttons; each one sends its question (none show when
+  the helper is stopped or off).
 - Reminders and plan steps: the Plan, through plan source `agent`
   (`src/finance/plan-sources/agent.mjs`, registered by the orchestrator).
 - The daily ladder (`src/finance/money-agent.mjs`) holds its texts for a client who stopped the

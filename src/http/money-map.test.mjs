@@ -68,15 +68,26 @@ const authDenies = () => async (req, res) => {
 
 const CLIENT_ID = "11111111-2222-3333-4444-555555555555";
 
-async function call({ staff = OWNER, query = {}, method = "GET", db, auth, now } = {}) {
+/* Money coming in is read through src/banking/income.mjs loadIncome(), which
+   has its own tests (src/banking/income.test.mjs). Here it is a recorded stand-in
+   so the handler's own six-table read is what these tests count. */
+function incomeSpy(answer = { ok: true, by_kind: {}, items: [], not_counted: [] }) {
+  const calls = [];
+  const fn = async (database, args) => { calls.push({ database, args }); return answer; };
+  fn.calls = calls;
+  return fn;
+}
+
+async function call({ staff = OWNER, query = {}, method = "GET", db, auth, now, loadIncome } = {}) {
   const res = makeRes();
   const database = db ?? makeDb();
+  const income = loadIncome ?? incomeSpy();
   await handler(
     { method, query: { client_id: CLIENT_ID, ...query } },
     res,
-    { db: database, requireAuth: auth ?? authAs(staff), now: now ?? (() => new Date("2026-07-31T12:00:00Z")) }
+    { db: database, requireAuth: auth ?? authAs(staff), now: now ?? (() => new Date("2026-07-31T12:00:00Z")), loadIncome: income }
   );
-  return { res, db: database };
+  return { res, db: database, income };
 }
 
 /* ------------------------------------------------------------------ *
@@ -195,6 +206,45 @@ test("all six tables are read", async () => {
   for (const t of ["clients", "tradelines", "card_liabilities", "bank_accounts", "recurring_bills", "cashflow_reminders"]) {
     assert.match(sql, new RegExp("FROM " + t), `${t} was never read`);
   }
+});
+
+/* MONEY COMING IN. The income read gets the SESSION's org and the proven
+   client, never anything from the query string, and runs only after the scope
+   check. Its answer reaches moneyMap, which prints it. */
+test("money coming in is read for the session's org and the proven client", async () => {
+  const { res, income } = await call({ query: { org_id: "org-2" } });
+  assert.equal(res.statusCode, 200);
+  assert.equal(income.calls.length, 1, "the income read never ran");
+  assert.equal(income.calls[0].args.orgId, "org-1");
+  assert.equal(income.calls[0].args.clientId, CLIENT_ID);
+  assert.equal(income.calls[0].args.asOf, "2026-07-31");
+});
+
+test("the income read does not run for a client in another org", async () => {
+  const income = incomeSpy();
+  const { res } = await call({ db: makeDb({}, { clientRows: [] }), loadIncome: income });
+  assert.equal(res.statusCode, 404);
+  assert.equal(income.calls.length, 0);
+});
+
+test("what the income read found reaches the money map", async () => {
+  const found = {
+    ok: true,
+    by_kind: { personal: { sure_monthly_cents: 750000 }, business: null, unknown: null },
+    items: [],
+    not_counted: []
+  };
+  const { res } = await call({ loadIncome: incomeSpy(found) });
+  assert.equal(res.statusCode, 200);
+  assert.ok(res.body.income, "income is missing from the payload");
+  assert.deepEqual(res.body.income.by_kind, found.by_kind);
+});
+
+test("a failed income read says so and does not fail the map", async () => {
+  const { res } = await call({ loadIncome: incomeSpy({ ok: false, reason: "read_failed" }) });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.income.unavailable, true);
+  assert.equal(res.body.income.reason, "read_failed");
 });
 
 /* SELECTED COLUMNS, NOT SELECT *. plaid_items.encrypted_access_token is one

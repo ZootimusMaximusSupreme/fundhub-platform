@@ -28,6 +28,7 @@
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 <link id="fh-workspace-css" rel="stylesheet" href="/app/workspace-ui.css">
+<link rel="stylesheet" href="/app/fundhub-plan-card.css">
 </head>
 <body class="closer-workspace fh-astra fh-astra-staff fh-astra--closer-dashboard">
 <script>
@@ -209,6 +210,14 @@
               <table><tr><td>Latest payment on file</td><td class="hi">—</td></tr><tr><td>Product</td><td>—</td></tr><tr><td>Success fee</td><td>—</td></tr></table>
             </div>
           </div>
+
+          <!-- "If they follow the plan" (owner-set 2026-11-07): the Fundhub score
+               today against month 9 (or any month 1-24), the closing line and the
+               dated path, from GET /api/money/fundability?view=plan. Painted by
+               fundhub-plan-card.js; hidden until it knows the client. It sits
+               after the credit facts so they stay inside the first phone screen.
+               Not part of the Present flow. -->
+          <section class="sec fh-plan-card" id="fh-plan-card" data-fh-plan-card aria-labelledby="fh-plan-title" hidden></section>
 
           <div class="sec precall-context">
             <div class="ctx">
@@ -1225,5 +1234,6 @@ document.addEventListener("DOMContentLoaded", function () {
 <script src="contract-send.js"></script>
 <script src="closer-call.js"></script>
 <script src="closer-report.js"></script>
+<script defer src="/app/fundhub-plan-card.js"></script>
 </body>
 </html>

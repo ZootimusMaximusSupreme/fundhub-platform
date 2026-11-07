@@ -109,7 +109,7 @@ main{padding:24px 24px 64px}
 
 /* forms — collapsed by default (UI-STANDARDS §9) */
 details.form{margin-top:16px}
-details.form>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-weight:600;color:var(--ink)}
+details.form>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--ink)}
 .fields{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-top:16px}
 .f{display:flex;flex-direction:column;gap:8px;grid-column:span 4;min-width:0}
 .f.wide{grid-column:span 8}
@@ -146,8 +146,10 @@ details.form>summary{cursor:pointer;min-height:40px;display:flex;align-items:cen
   .head-act .btn-primary,.head-act .btn{flex:1 1 auto}
 }
 </style>
+<link rel="stylesheet" href="fuel-cards.css">
 <link rel="stylesheet" href="client-ios.css">
 <link rel="stylesheet" href="money-accounts-ios.css">
+<link rel="stylesheet" href="/app/bank-logo.css">
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-client.css">
 <link rel="stylesheet" href="/app/plaid-stepup.css">
@@ -177,6 +179,8 @@ details.form>summary{cursor:pointer;min-height:40px;display:flex;align-items:cen
   </main>
 </div>
 <script defer src="plaid-stepup.js"></script>
+<script defer src="/app/bank-logo.js"></script>
+<script defer src="fuel-cards.js"></script>
 <script defer src="money-accounts.js"></script>
 <script defer src="client-ios.js"></script>
 </body>

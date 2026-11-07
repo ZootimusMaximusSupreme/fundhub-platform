@@ -1,5 +1,203 @@
 # Capital Blueprint — actual
 
+## November 7 the $97 "we mail it" for repair letters — branch candidate, not live
+
+Source: branch `claude/fos-mail-repair-letters-20261107` (Finance OS unit MAIL), stacked on `claude/fos-cycle-20261107`. Not merged, not shipped. Migration 591 is not applied anywhere yet. Chris (2026-11-07), on repair letters: "if you want us to print, generate and send them, we can do that." The existing $97 batch mailing (`src/blueprint/letter-mailing.mjs`, migration 546) now also takes repair-round bureau letters. No new route, no new price, no new job.
+
+```mermaid
+flowchart TD
+  RL[Credit repair: a round letter, metro2_dispute_letter_pack HTML file with metadata.letterId] --> OPEN{Open for $97? target bureau, dispute letter generated or ready, not claimed or mailed, no client submission, no paid Fundhub repair service for the round, dispute authorization current}
+  OPEN -->|no| SELF[Mail it yourself only: the existing Save my letter submission form]
+  OPEN -->|yes| CHOICE[How to send it: Mail it yourself / Mail it for me · $97]
+  CHOICE -->|Mail it for me| QUOTE[POST letter-mailing quote: the round's open letters, pre-checked, up to 6, one $97]
+  QUOTE --> YES[Client checks I read these letters, Pay $97: POST confirm, MAILING_AUTHORIZATION saved]
+  YES --> CHECKOUT[Commas hosted checkout, the existing one-time $97 link]
+  CHECKOUT --> PAID[Check payment or the 5-minute sweep: reconcile, paid]
+  PAID --> CLAIM[Sweep fulfil: claim the envelope AND the dispute letter in one transaction, the staff send's rules]
+  CLAIM -->|letter taken another way| HOLD[Order needs_review, reason repair_letter_already_handled, nothing mailed]
+  CLAIM --> SEND[PostGrid letters create, the same provider call, html = the saved file]
+  SEND -->|accepted| REC[Envelope accepted with PostGrid's id; the dispute letter stays sending with that postgrid_letter_id; tracker says Sending]
+  SEND -->|nothing left the process| BACK[Dispute letter given back to its file; envelope held for review]
+  SEND -->|unknown| KEEP[Claim kept; held for a person]
+  REC --> TRACK[Sweep step read-mail-tracker: GET PostGrid letter, at most 3 per run, every 6 hours]
+  TRACK -->|ready or printing| WAIT[Still Sending; only the read time moves]
+  TRACK -->|processed_for_delivery or completed| HAND[Mailed: mailed_at = PostGrid's handoff report, or an earlier post office scan; dispute letter sent with that mailed_at; round items sent; case awaiting_response]
+  HAND --> EVENT[repair.letters.sent once per batch per tracker run: card to in_transit, the existing letters-sent email]
+  HAND --> EXP[PostGrid completed: expected_delivery_at, then reply_due_at = expected + 30 days, and the case response_due_at if empty]
+  EXP --> SHOW[Tracker on the letter: Mailed date, Out for delivery or Expected delivery date, Reply due date once known]
+```
+
+| Piece | What the code does |
+|---|---|
+| Letters read | `GET /api/blueprint/letter-mailing` lists a repair letter only while it is open for the $97 mailing (`REPAIR_LETTER_OPEN_SQL`) or already in a mailing, with `kind:'repair'`, `round` and `letterId`. Funding letters are unchanged. The readiness count includes open repair letters. |
+| Quote and confirm | The same functions and the same $97. A repair file must be the saved HTML (512 KB cap), checksum-matched, bureau target, with its letter id frozen in the snapshot and on the envelope (`dispute_letter_id`). Quote and confirm re-check that the letter is still open; a letter taken another way refuses with "Nothing was charged." |
+| Mail | The envelope claim also claims the dispute letter (status `sending`, `send_claimed_at`), in one transaction. The same `sendEnvelope` posts PostGrid's `html` field instead of `pdf`. Acceptance saves PostGrid's id on the envelope and on the dispute letter, which stays `sending`: the mail house has the letter, but it is not mailed yet (Codex CX28). The staff stuck-send list skips a letter that carries a PostGrid id, and migration 334's provider-id rule and migration 591's trigger both refuse a staff clear while the mail house holds it. A send PostGrid never received gives the letter back; an unknown outcome keeps the claim for a person. |
+| Self-mail guard | `readClientRepair` closes "Save my letter submission" when a paid Fundhub mailing holds the letter, and `recordClientRepairSubmission` refuses it (`fundhub_mailing_this_letter`). |
+| Tracker | `trackLetterMailings` reads PostGrid's `status` and `imbStatus` (GET only, MESSAGING fence, 5-second timeout) and saves dates once. Mailed starts only when PostGrid reports `processed_for_delivery`, its own "handed off to the local postal service" (or the later `completed`); `ready` and `printing` stay Sending (Codex CX28). The mailed date is that report's time, or an earlier post office scan, never before the acceptance. In the same transaction the repair file moves: the dispute letter becomes `sent` with that `mailed_at`, the round's items `sent`, the case `awaiting_response`, and after the run `repair.letters.sent` fires once per batch (card to in transit, the existing letters-sent email), never at acceptance. Returned is saved at "returned_to_sender". PostGrid never confirms delivery and its letter has no estimate field, so its "completed" date (its own "most likely delivered") is saved as `expected_delivery_at` and shown as "Expected delivery <date>", never "Delivered" (Codex CX26). The post office's last scan shows "Out for delivery". The bureau's 30 days start when it gets the letter, so `reply_due_at` = the expected delivery date + 30 days, set when that date first lands, with the same date on the repair case's empty `response_due_at` (the client's progress page shows that one); no reply date shows before then (Codex CX27). `mailTracker()` turns them into the three client steps: Sending, then Mailed with its date; Delivery, Out for delivery, then Expected delivery with its date; Reply due, with its date only once known. |
+| One word per envelope | `publicMailingOrder` gives each envelope `mailStatus`, so every screen that counts letters reads "mailed" the same way: `sending` (our call is out, or PostGrid has the letter but has not reported the handoff), `mailed` (PostGrid reported the handoff; `tracker.mail.at` is the date), or null (paid and waiting, held for review, or stopped by the mail house). The order's own `status` of `mailed` still means only that the mail house accepted every envelope. |
+| Monitoring | `blueprint:letter-mailing` (morning gap check and hourly beat) now also accepts a repair HTML envelope, and goes red on a stopped or returned letter, a letter never read in its first 2 days, a letter not handed to the post office 7 days after the mail house took it, a letter with no expected delivery date 21 days after the mail house took it (its reply clock would never start), and a paid repair letter whose file does not match its envelope (sending with PostGrid's id before the handoff, sent with a mailed date after it). The last four rules look back 45 days, the tracker's own window. The desk check `fin-b07-row-send` leaves a paid letter to this check while its accepted envelope waits on the handoff or the expected delivery date, and still goes red on any other claim older than a day or any other mailed letter with no bureau clock. |
+| Database | Migration 591: the repair envelope rules in the 546 guard, tracker columns (set once, accepted envelopes only; a mailed date only with a handoff status), one live envelope per repair letter, and a staff clear refused while a paid mailing is sending or the mail house holds the letter. |
+
+Screen: `public/app/blueprint-repair-mail.js` (+ `.css`), drawn inside each Credit repair letter by one hook in `blueprint-fulfillment.js`, which also reads the mailing with its other reads. Not done here: the live demo (`blueprint-demo.js`, unit G) has no repair letter in its sample mailing data, so the demo shows only "Mail it yourself" on repair letters.
+
+## November 7 the client fulfillment cycle — branch candidate, not live
+
+Source: branch `claude/fos-cycle-20261107` (Finance OS unit CYCLE), stacked on `claude/fos-wave12-20261107`. Not merged, not shipped. Migration 589 is not applied anywhere yet. Pure functions and reads: `src/blueprint/fulfillment-cycle.mjs`. Screen pieces: `public/app/blueprint-cycle.js` (+ `.css`), mounted by one-line hooks in the existing Blueprint views. No new page and no new route.
+
+```mermaid
+flowchart TD
+  PULL[Real soft pull: analysis.completed] --> FR[crs-full-report saves a new version of the Complete Credit Report]
+  FR --> CR[GET /api/blueprint/plan cycle.fullReports, one row per version]
+  CR --> OPEN[Credit and reports: Open, via /api/documents-download?id&version]
+  LET[Saved letter version: funding letters and repair round letters] --> TO[Mail to: the bureau address from BUREAU_MAIL_ADDRESSES, or the address on the letter]
+  TO --> AP[Approve letter: POST letter-mailing approve_letter, row in 589]
+  AP --> PR[Open and print]
+  PR --> AD[The address is right: check_address, refused before approval]
+  AD --> MAIL[Existing: mail it yourself and save the receipt, or the $97 mailing]
+  FUND{UnderwriteIQ fundable on the plan path, and which buyer from the fulfillment engagement}
+  FUND -->|preparation and fundable| STOP[Your next step: Book a call with your CSM]
+  STOP --> TASK[POST /api/money/ready-to-fund opens the Blueprint closing prep call task for the CSM]
+  FUND -->|implementation, funding state ready or awaiting_response| GUIDE[Applications: application guide from income on file]
+  CASE[Open inquiry case the client runs] --> CALL[Inquiry removal: Call bureau, number from bureauDialPlan, short script, have ready]
+
+## November 7 premium pass (Finance OS + Blueprint) — branch candidate, not live
+
+Source: branch `claude/fos-prem-polish-20261107` (Finance OS wave 4, unit PREM), stacked on `claude/fos-wave12-20261107`. Not merged, not shipped. No migration, no new route. Traced from `public/app/money-premium.js`, `public/app/money.js`, `api/money/overview.mjs`, `src/finance/monthly-report.mjs`, `src/finance/ready-to-fund.mjs` and `src/blueprint/fulfillment-access.mjs`.
+
+```mermaid
+flowchart TD
+  FUND["GET /api/money/fundability: opportunity.personal + now N of 6"] --> HERO["Overview hero: Funding you qualify for, counts up, fundability ring"]
+  READY["GET /api/money/ready-to-fund: advisor (CSM on the file) + book_url"] --> ADV["Advisor card: name, Book a call"]
+  REP["GET /api/blueprint/repair + /letter-mailing"] --> RC["Repair card: one line"]
+  FUNDR["GET /api/blueprint/funding: engagement.roundNumber + applications"] --> FC["Funding card: one line"]
+  RC -->|FinanceOS, progress page| LINK["/app/client-portal.html#repair or #letters"]
+  FC -->|FinanceOS, progress page| LINK2["/app/client-portal.html#funding"]
+  RC -->|Blueprint home| VIEW["Existing fulfillment view: repair by round"]
+  FC -->|Blueprint home| VIEW2["Existing fulfillment view: applications"]
+  LINK --> VIEW
+  LINK2 --> VIEW2
+  PLAN["fh:blueprint-plan-updated: path.funding + path.fundability"] --> BPHERO["Blueprint path panel: count-up when the printed amount matches, ring"]
+  REPORT["GET /api/money/overview?report=monthly&month=YYYY-MM"] --> PDF["PDF: designed cover, what changed, what is next"]
+```
+
+| Piece | What the code does |
+|---|---|
+| Full report per soft pull | `readFullReports()` lists every `document_versions` row of the client's `crs_full_credit_report` document (one version per real pull, newest first, capped at 24). `GET /api/documents-download` takes an optional `version` (same ownership gate; `getVersion()` signs that version). Without the field, the old "Open full credit report" button (the Credit Analysis Report) is unchanged. |
+| Letter steps | Both letter lists (Letters and responses: `funding_inquiry_removal`, `funding_personal_info`; Credit repair: `metro2_dispute_letter_pack`) gain `to`, `versionId` and `approval`. `saveLetterStep()` writes one `blueprint_letter_approvals` row per letter version (approve once, then the address check once; the database refuses an address check before approval and any later change). A letter whose target is not the bureau shows "Use the address on the letter". The $97 mailing and self-mailing paths are unchanged. |
+| Fundable stop | `readBlueprintCycle()` reads the offer from `getBlueprintFulfillmentAccess()` (an active or completed $30,000 engagement is "implementation") and fundable from `path.fundability.tier`. A started preparation plan that is fundable shows "You are fundable. Book a call with your CSM."; the press opens `BOOK_CALL_URL` and posts `/api/money/ready-to-fund` (the same CSM task the hourly closer-ready sweeper opens). |
+| Application guide | `GET /api/blueprint/funding` adds `guide` when the state is `ready` or `awaiting_response` and the client runs the round: personal = the plan's monthly income, household = counted repeat pay into personal accounts (`src/banking/income.mjs`), business = counted business deposits and payouts when one business is on file. Yearly = monthly × 12 exactly; shown in whole dollars rounded down; unknown says "Not on file"; two or more businesses say "Not split by business yet". |
+| Call the bureau | `GET /api/blueprint/inquiries` adds `selfCall` to each open case the client runs: the bureau's number from `bureauDialPlan()` (shown only when it passes the dial check), five short lines naming the open inquiries (no fraud claim), what to have ready, and any identity papers still to upload. The existing submission form saves the confirmation number. |
+
+Not done here: the live demo (`blueprint-demo.js`, unit G) has none of these fields yet, so the demo shows the old screens until its data is regenerated. Unit O's application tracker is on its own branch.
+
+## November 7 local banks by address — branch candidate, not live
+
+Source: branch `claude/fos-loc-local-banks-20261107` (Finance OS wave 4, unit LOC), stacked on `claude/fos-wave12-20261107`. Not merged, not shipped. No migration.
+
+`GET /api/money/banks` runs `attachLocalBanks()` (`src/finance/local-banks.mjs`) after `bankStrategy()` and before the logo step. It adds `local_banks` and replaces `deposit_plan` with the merged plan; `?view=local_banks` sends only those two. The Blueprint path (`GET /api/blueprint/plan`) does not read it yet: it still builds its bank steps from `recommended_banks` alone.
+
+```mermaid
+flowchart TD
+  R[bankStrategy: recommended_banks, banks_left_out, relationships] --> A[attachLocalBanks]
+  H[pii_identity.addresses: ZIP, city, state only] --> PL[Places: home, then each business; one search per ZIP]
+  BP[Blueprint setup ZIP, then person fields, when no identity address] --> PL
+  BZ[businesses.entity_data ZIP, city, state] --> PL
+  PL --> A
+  F[FDIC BankFind offices, file dated 2026-11-06] --> N[Closest branch per bank or credit union within 50 miles, ZIP area to ZIP area]
+  U[NCUA branch file and membership codes, 2026-06-30] --> N
+  A --> N
+  N --> K{Keep it?}
+  K -->|A plan bank on Giovanni's list| L[On our list]
+  K -->|Every branch in the client's states, a walk-in bank, more than one group can join| M[Local]
+  K -->|Book says cannot join or no account needed, one-group credit union, other big banks| X[Left out]
+  L --> O[Plan order: list banks near, local finds nearest first, list banks not near; tracker banks never pushed off; cap 5]
+  M --> O
+  O --> D[deposit_plan rows from bankSteps and depositPlanRows]
+  D --> G[Logos: Plaid, then the bank book, then the name only]
+```
+
+| Piece | What the code does |
+|---|---|
+| Places | Home = the first identity address with a ZIP (soft-pull form), else the Blueprint setup ZIP, else `custom_fields` postal_code / zip. Each business row adds its own ZIP. Only ZIP, city and state are selected; a business in the home ZIP is searched once, as Home. No ZIP and no city: `needs_address`, and the read's own `deposit_plan` goes out untouched. |
+| Directory | `src/finance/fdic-branch-data.json`: 73,447 full-service offices of 4,203 active FDIC banks (SERVTYPE 11 and 12, US addresses), built by `scripts/build-fdic-branch-data.mjs` from `api.fdic.gov/banks` (no key). Credit unions: `src/blueprint/local-credit-union-data.json` (NCUA, already in the repo) and `src/finance/ncua-membership-data.json` (TOM_CODE per charter from the same call-report file, SHA-256 checked, built by `scripts/build-ncua-membership-data.mjs`). Distance is between Census ZIP-area points; a ZIP without one matches its own ZIP, then its city, with no miles. |
+| Giovanni's list | A list bank is tied to an FDIC certificate or NCUA charter by `LIST_INSTITUTIONS` (21 institutions, each pinned by test to the legal name in the files). Banks with no single match (Eagle Bank, Evergreen Bank, Spirit Bank, Old Point, American National) or no branches (Elan, American Express, Barclays, Intuit) are not tied. "On our list" means `recommended_banks`, so a list bank the match did not keep for this state is not marked. |
+| Local | Every office in the client's home and business states (owner words 2026-09-04: "local banks that only do business in those two states"). Not local or offered: FDIC credit-card, consumer-lending and international specialists; one-office banks with $1 billion or more (online, trust, foreign and industrial banks); credit unions only one group can join (NCUA TOM 01-24: one employer, church, school, the military or a government); banks in `banks_left_out`. A community charter (TOM 00, 66, 77) needs no note; any other credit union shows "Check who can join". |
+| Plan | Up to 5 for the next 6 months (`window`). Order: list banks with a branch near, local finds nearest first, list banks with no branch near. A tracker bank keeps its place; a skipped bank stays off. A local find has no bank book amount, so its deposit reads "Not set" and its reason says where it is ("Local credit union in the same ZIP as your home."). No open-by date is made up. |
+| Screen | `public/app/local-banks.js` + `.css`, a self-contained component: `<div data-fh-local-banks>` auto-mounts, and the script registers `window.FinanceOS.extras.banks`, so the Finance OS Banks tab shows it in its own box after the bank section once `financeos.html` loads the two files. "Your bank plan" (numbered rows, deposit, status in words) and "Branches near you" (address, distance from Home or the business, On our list / Local / Credit union / Check who can join). Four states. Checked at 1440, 390 and 320, alone and inside the real Finance OS page. |
+
+Not done here: `financeos.html` does not load the two files yet, and the Blueprint path, its cash plan and the demo data read the merged plan only after root applies the patches in the unit report.
+
+## November 7 tradeline inventory and the banks a client already uses — branch candidate, not live
+
+Source: branch `claude/fos-tl-tradelines-20261107` (Finance OS wave 4, unit TL), stacked on the wave12 integration branch. Not merged, not shipped. Migration 590 is not applied anywhere yet. This is in addition to UnderwriteIQ: nothing here feeds the engine or changes a funding number.
+
+```mermaid
+flowchart TD
+  CRS[Saved credit pulls: per bureau, the newest pull with lines] --> INV
+  BIZ[Each saved business's Experian Business report] --> INV
+  PL[Plaid accounts: cards, loans, checking, savings] --> INV
+  YOU[Typed by the client in Add an account: Track the balance, or Just record it 590] --> INV
+  STAFF[Typed by staff: hand accounts, card-stack tradelines] --> INV
+  INV[One row per real account: merge only on the same bank and kind plus the same last 4, or the one card with that limit] --> GR[Grouped: Personal, each business, Not sorted yet]
+  INV --> ID{Name on the known-names list for a bank on Giovanni's active list?}
+  ID -->|No: look-alike or unknown name| NOREL[Shown with no bank tag]
+  ID -->|Yes, open, not an authorized user| REL[Existing relationship]
+  REL --> PLAN[Bank plan: those banks first in recommended banks, card stacking and the deposit plan]
+  REL --> ODDS[Approval odds: those banks first, once L4 lands]
+  REL --> OWN{Holds a named book product at that bank?}
+  OWN -->|Some| NEXT["You already have this; the line moves to the book's next product"]
+  OWN -->|All| OUT[The line leaves the apply order: already_have]
+```
+
+| Piece | Actual behavior |
+|---|---|
+| Read | `GET /api/money/accounts?view=tradelines` (no new route) → `tradelineView()` in `src/finance/tradeline-inventory.mjs`. Seven reads, each naming `org_id` and the client (the bank book: `org_id`, `active = true`). Report lines skip collections; an account that dropped off a bureau's newest pull is not shown. Closed accounts are counted per group, not listed. Bureau capitals are shown in title case. A loan never shows a limit. |
+| Add an account | One form in the Accounts section (`public/app/money-accounts.js`) with two choices. Track the balance posts `add_account` as before. Just record it posts `POST /api/money/accounts { action: "add_tradeline", creditor, product?, type, limit?, opened?, belongs_to }` → one row in `finance_tradeline_entries` (590). The business is proven to be the client's (container: same org and client, business, not archived; or a saved business with no container, kept by name). The session decides the client; a body `client_id` is never read for a client. Nothing changes or deletes a row. |
+| Banks | `KNOWN_BANKS`: exact names and distinctive prefixes for Chase, American Express, Bank of America, Wells Fargo, PNC, Truist, Navy Federal, Citizens, Elan, FNBO and Flagstar. The book's own names ("Citizens Bank") are trusted only for book rows. Any other name never matches. |
+| Bank plan | `GET /api/money/banks` and `GET /api/blueprint/plan` read `bankStrategyWithHoldings()`: `existing_relationship`, `has_account`, `you_have`, `next_product` on each bank and card line; existing relationships first (card stacking stays personal before business); a fully held line moves to `card_stacking.already_have` with its bank's logo; the deposit plan is rebuilt with `bankSteps()`/`depositPlanRows()` from the ranked banks. If the inventory read fails the plan answers untouched. |
+| Screen | Finance OS → Accounts: the "What you have" card (`public/app/money-tradelines.js` + `.css`) mounts as `FinanceOS.extras.accounts` under the Accounts section. Chips: Report, Plaid, Added by you, Added by Fundhub, Authorized user. Logos in H's order: Plaid, then the bank book, then the name only. The card has no add form of its own: it hands its type and Belongs to choices to the Accounts form (`FHTradelines.addOptions`, `fh:tradelines-ready`), and reads again when the Accounts section fires `fh:accounts-changed` after a save. A read that does not know this view shows nothing rather than "No accounts yet". The sample demo answers this view with `tradelineView()` run at build time over Alex Sample's own accounts and the stage's sample pulls. The Banks tab tags are a root patch to `public/app/money-banks.js` (unit H's file). |
+
+| Hero (FinanceOS Overview) | `money.js` paints two empty slots (`data-fh-premium-slot` top, after Next due, and more, after the tiles) and calls `FinanceOS.premium.mount`. The hero prints `opportunity.personal.currentCents` (the same UnderwriteIQ figure the Blueprint path prints), "With your plan" only when `projectedCents` is higher, "Estimate · UnderwriteIQ · <pull day>", and the ring from `now.score` / `now.score_max` / `now.tier`. No figure: "Not ready yet" with the blocker in words; no pull: "Not measured yet". A failed read shows "We could not load your estimate." and Try again. |
+| Advisor | `readyToFundStatus` adds `advisor` (the CSM's name from `clients.assigned_csm_staff_id`, same org, active, not demo; else null → "Fundhub team · Not assigned yet") and `book_url` = `BOOK_CALL_URL`. Staff see no Book a call. |
+| Repair / Funding | One line each. Repair: round (`currentRound`), then each letter in one place only (Codex CX22, CX23): mailed only with a receipt (status sent or delivered with no client submission, which the staff send and the $97 mailing write only when the mail house takes it and its id is saved; or the client's mail submission with its uploaded receipt), sent online (a `portal` submission, never counted as mailed), sending (`sending`, no receipt yet), mailing requested (a repair letter named by an open $97 envelope) and ready; the plan's other letters from the letter-mailing read (an envelope accepted with the mail house's id is mailed, `sending` is sending, an open order is mailing requested, a letter ready to mail is ready); the soonest `responseDueAt` once one was mailed or sent online. Without the full engagement, the letter-mailing read alone. Funding: `engagement.roundNumber` (new field on the fulfillment read), applied and approved counts, else the state in words. 403/404 → no card. On the Blueprint home the buttons open the existing views in place (fulfillment `view` repair / funding, or the plan's letters view); elsewhere they link to the portal with `#repair`, `#funding`, `#letters`, which open once the workspace loads. |
+| Monthly report | `?report=monthly` on the overview read, same gate. `monthlyReport()` reads `moneyTrends` (the month's days), `creditOverview().credit_history`, `fundability()` and `moneyTasks()`; `renderMonthlyReportPdf()` draws a cover (wordmark, month, hero, ring, three numbers, scores, next step) and a details page (what changed, this month, what's next). Unknown is "—"; cash kinds are their own rows; a month with no pull says so; a part whose read failed is named. |
+| Charts and motion | Overview cashflow uses the demo's bars; tile sparklines are weekly points from the Trends section's own `GET /api/money/trends` answer (money.js hands it over; no second read). `smoothCharts()` lays a monotone curve over each straight line the Trends, Credit and Strategy sections draw (their markup kept), soft fill under a lone line, FICO bands and newest values on the score chart. Numbers count up only to the exact printed words; charts draw in when first seen; reduced motion moves nothing. |
+
+Not done here: the sample workspace has no CSM name or booking link (G's demo data), so the demo shows "Fundhub team"; the demo's ring is `buildFundability()` run at build time on the stage's sample pulls (3 of 6 on the first pull, 5 of 6 on the newer one, "Not measured yet" before a pull); the monthly report is hidden in the demo. Nothing sends the report on a schedule.
+
+## November 7 "your path" inside the dashboard — branch candidate, not live
+
+Source: branch `claude/fos-e-blueprint-banks-20261107` (Finance OS CFO build unit E). Not merged, not shipped. Migration 574 is not applied anywhere yet.
+
+`GET /api/blueprint/plan` adds a `path` field, built by `src/waypoints/blueprint-path-read.mjs` (reads) and `src/waypoints/blueprint-path.mjs` (pure, no imports). `src/blueprint/client-plan.mjs` calls it after its other reads; a failure leaves `path: null` and the warning `blueprint_path_unavailable`. `GET /api/money/banks` adds `deposit_plan` from the same bank steps.
+
+```mermaid
+flowchart TD
+  CL[Checklist waypoints] --> P[Path steps in order]
+  CX[check_chexsystems waypoint 574, or plan step 'chexsystems'] --> P
+  BS[bankStrategy recommended_banks + relationships tracker] --> BK[Bank steps, up to 5]
+  BK --> P
+  P --> G{Bank step: LLC, EIN and ChexSystems done?}
+  G -->|No| W[Waiting, names the steps]
+  G -->|Yes| N[Plan picks the next step]
+  CASH[Connected personal cash, else reported cash] --> AL[Allocate cash minus cushion, bank by bank]
+  BK --> AL
+  AL --> NX["Your next $X goes to bank"]
+  PULLS[First and newest genuine pull] --> UW[UnderwriteIQ findings, card use and checks per pull]
+  UW --> IMP[Impact label per step and milestones on the pulls]
+```
+
+| Piece | What the code does |
+|---|---|
+| ChexSystems step | Migration 574 adds `check_chexsystems` (position 55, client, verify_kind NULL, Blueprint-only via `BLUEPRINT_ONLY_DEFINITION_KEYS`). A checklist seeded before 574 shows the same step from the plan's `chexsystems` progress key. The client uploads `client_upload` / `chexsystems_report` (new subtype in `src/pulse/beats/lib/document-kinds.mjs`); the path keeps file id, name, date and vault review status only. The client closes it with `/api/waypoint-tick` (stored row) or `save_step` (plan key). It sits before every bank step. |
+| Bank steps | One per bank from `recommended_banks` (the bank match on Giovanni's active list, state-gated), then tracker banks the match did not list; skipped banks are left out; cap 5. Title "Open a Chase business checking account and deposit $5,000" when a target exists, else no amount and "Deposit amount: not set". Target = staff `planned_deposit_cents`, else the book minimum. Open-by = staff `planned_open_on`, else "Not set". Reason = the book's own `stated_requirements` sentence. Stages from the tracker: planned, opened, deposited, seasoned. A bank whose book text says owners must already be members (or names a military rule) is left out with the quote. The generic `business_checking` step is hidden while bank steps exist. |
+| Logos | `pickBankLogo()` in `src/finance/bank-strategy.mjs`: a Plaid institution logo when one is handed in (unit H), else `lenders.logo_path` under `/assets/lenders/`, else none. The screen draws only those two shapes, 28px, with alt "<bank> logo". |
+| Cash plan | Connected personal cash (Money overview `cash.personal`) when the client has connected accounts, else `availableCashCents`. Business cash is never added. Cash above `cashBufferCents` fills each bank up to its target in plan order; a part is allowed ("Start with $1,000. Add $4,000 to reach …"); an unset target gets nothing, and "Every bank on your plan is covered" shows only when every target is known and covered; otherwise the bank with no amount is named ("Deposit not set yet for …", status `partly_set`). Unknown cash or cushion plans nothing. A what-if slider ($100 steps) and an exact dollar field stay in sync and re-run the same fill in the browser; nothing is saved. The note reads "The more you put in and leave in, the stronger your bank relationship." |
+| What UnderwriteIQ measures (no points) | No points anywhere (owner correction 2026-11-07). Each step carries an impact label from the first and newest genuine pull: a paydown step shows its card's use before → after (for example "Card use 30% → 5%", read the way the paydown step closes itself); an inquiry step shows the `no_inquiries` check on or off; the LLC step shows "UnderwriteIQ estimate: $X business funding", the same number the Fundability read prints for that business slice: a business the Fundability read lists keeps its own `funding_estimate_cents`; a planned one is sized by that file's own `businessRead()` on the personal engine read (`readBusinessPoint` in `src/waypoints/blueprint-path-read.mjs`, the same rows, UnderwriteIQ itself unchanged): the engine's card funding × 0.5 under 12 months, × 1 from 12, × 2 from 24, only while the file is fundable; one business on its own; EIN, ChexSystems, the generic bank step and every bank step read "Bank requirement" because UnderwriteIQ reads no bank data. Milestones measured on the pulls: "All cards together under 10%" with the engine's own dollar change and the modifier that moved (×0.9 → ×1.0), "Score over 700" (Fundable when the file read says so), then any other measured finding or fundability check that moved or is open. "Fundability N of 6" reads `src/finance/fundability.mjs` for the whole file. One pull means nothing has moved yet. The screen shows the labels and impact chips only: no explanation lines under steps or milestones, no Q&A, one-line captions (owner rule 2026-11-07, short client words). |
+| Businesses | Per business: name check, NAICS, website, LinkedIn (from `src/underwrite/company-audit.mjs`), then LLC and EIN status from the plan's evidence. "Add a business" opens the existing businesses view. No price is shown. |
+
+Not done here: the AI coach, FinanceOS tasks and `/progress.html` still read stored waypoints only, so they do not see bank steps. The money helper has no topic-guidance slot, so ChexSystems answers live on the path, not in the helper. Seasoning counts from the recorded opening day (the tracker's existing rule), not the deposit day.
+
 ## November 6 full implementation — deployed
 
 The deployed implementation adds `blueprint-self-funding` / `BLUEPRINT_SELF_FUNDING`, a separate `BLUEPRINT-SELF-FUNDING-AGREEMENT`, and a paid-receipt-installed fulfillment engagement. `src/blueprint/fulfillment-access.mjs` scopes current and completed-history access to the actual company/client/purchase. The new `blueprint/funding`, `blueprint/inquiries`, `blueprint/repair` and `blueprint/services` routes are registered in the real Netlify router. The existing client portal and CSM queue load their scoped workspaces.

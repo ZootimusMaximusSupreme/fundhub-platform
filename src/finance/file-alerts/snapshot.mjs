@@ -38,7 +38,7 @@ const ACCOUNT_META_SQL = `
    monthly payment" of a plan, whatever its length. (Args: org, client.) */
 const CLARITY_SQL = `
   SELECT DISTINCT ON (p.id) p.id AS plan_id, p.kind, p.owed_to, p.label,
-         i.seq, i.due_on::text AS due_on, (i.amount_cents - i.paid_cents) AS left_cents
+         i.id AS installment_id, i.seq, i.due_on::text AS due_on, (i.amount_cents - i.paid_cents) AS left_cents
     FROM clarity_payments p
     JOIN clarity_payment_installments i ON i.clarity_payment_id = p.id
    WHERE p.org_id = $1 AND p.client_id = $2 AND p.status = 'open'

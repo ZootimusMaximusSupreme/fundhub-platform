@@ -21,9 +21,9 @@ import {
 } from "./constants.mjs";
 
 describe("prices are integer cents", () => {
-  test("$297 and $10,000, as whole cents", () => {
+  test("$297 and $30,000, as whole cents", () => {
     assert.equal(LIVE_TRIAL_PRICE_CENTS, 29700);
-    assert.equal(PARTNER_ENTRY_PRICE_CENTS, 1000000);
+    assert.equal(PARTNER_ENTRY_PRICE_CENTS, 3000000);
     assert.ok(Number.isInteger(LIVE_TRIAL_PRICE_CENTS));
     assert.ok(Number.isInteger(PARTNER_ENTRY_PRICE_CENTS));
   });

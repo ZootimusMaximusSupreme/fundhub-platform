@@ -417,19 +417,20 @@ export function formatDay(day) {
   return `${String(day.y).padStart(4, "0")}-${String(day.m).padStart(2, "0")}-${String(day.d).padStart(2, "0")}`;
 }
 
-/** { y, m, d } -> whole days since the epoch. Ordering and differencing only. */
-function dayNumber(day) {
+/** { y, m, d } -> whole days since the epoch. Ordering and differencing only.
+ *  Exported for src/banking/income.mjs, which reads deposits on the same calendar. */
+export function dayNumber(day) {
   return Math.round(Date.UTC(day.y, day.m - 1, day.d) / MS_PER_DAY);
 }
 
 /** Whole days since the epoch -> { y, m, d }. */
-function fromDayNumber(n) {
+export function fromDayNumber(n) {
   const dt = new Date(n * MS_PER_DAY);
   return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
 }
 
 /** Whole days from `a` to `b`. Negative if b precedes a. */
-function daysBetween(a, b) {
+export function daysBetween(a, b) {
   return dayNumber(b) - dayNumber(a);
 }
 
@@ -447,7 +448,7 @@ function daysBetween(a, b) {
  * the largest observed day recovers the 31st, clamped down only for months that
  * are genuinely shorter.
  */
-function advance(day, cadence, k, anchorDom) {
+export function advance(day, cadence, k, anchorDom) {
   if (cadence.months === 0) {
     return fromDayNumber(dayNumber(day) + cadence.stepDays * k);
   }
@@ -665,7 +666,7 @@ export function medianCents(values) {
  * reported as biweekly-with-every-other-one-missing: both "fit", but monthly
  * explains the same data with fewer events nobody ever saw.
  */
-function fitCadence(days, cadence, anchorDom) {
+export function fitCadence(days, cadence, anchorDom) {
   let fits = 0;
   let missedPeriods = 0;
   let totalError = 0;
@@ -730,7 +731,7 @@ function chooseCadence(days, anchorDom) {
  * Confidence
  * ========================================================================== */
 
-function labelFor(pct) {
+export function labelFor(pct) {
   for (const band of LABEL_THRESHOLDS) {
     if (pct >= band.min) return band.label;
   }
@@ -786,7 +787,7 @@ export function capLabelForEvidence(label, occurrenceCount) {
  *                   they paid it recently. This is the only `now`-dependent
  *                   term, and it is why `now` is a required parameter.
  */
-function scoreConfidence({ occurrenceCount, fit, relSpreadPct, periodsSinceLast }) {
+export function scoreConfidence({ occurrenceCount, fit, relSpreadPct, periodsSinceLast }) {
   // Two occurrences start at 42 — comfortably inside 'low' (>= 30) and
   // comfortably below 'medium' (>= 55), with room for a penalty or two before
   // it drops out of 'low' altogether. Starting it AT the 'low' floor would have

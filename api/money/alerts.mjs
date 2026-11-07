@@ -2,6 +2,17 @@
 // POST /api/money/alerts  { action: "set_alert", kind, enabled, client_id? }
 //                         { action: "set_promo", account_id, ends_on, apr_pct?, client_id? }
 //                         { action: "set_statement_close_day", account_id, day, client_id? }
+//                         { action: "set_bill_important", bill_id, important, client_id? }
+//                         { action: "set_phone_alerts", enabled, client_id? }
+//                         { action: "add_custom", kind, name, amount_cents?, cadence, day_of_month? | start_on?,
+//                           scope, entity_id?, phone_alert?, client_id? }
+//                         { action: "update_custom", id, (the same fields but kind), client_id? }
+//                         { action: "set_custom_phone", id, enabled, client_id? }
+//                         { action: "remove_custom", id, client_id? }
+//
+// The four *_custom actions (unit AL2, 2026-11-07) save the client's own alerts and
+// repeat bills (src/finance/file-alerts/custom.mjs, migration 583). Removing one
+// sets archived_at; nothing is deleted.
 //
 // File-protection alerts (Capital Blueprint launch, unit B2): pay a card down before
 // its statement closes, a promo rate ending (60 / 30 / 7 days), the cash cushion
@@ -13,10 +24,13 @@
 // two cash-cushion verdicts (personal and business, never added together), and the
 // alerts that already went out.
 //
-// POST changes three things a person owns: which kinds are on (set_alert), a card's
-// promo end date and rate (set_promo — ends_on null clears it), and the day of the
+// POST changes five things a person owns: which kinds are on (set_alert), a card's
+// promo end date and rate (set_promo — ends_on null clears it), the day of the
 // month a card's statement closes (set_statement_close_day — a hand-entered card has
-// no close day, and the pay-before-close text cannot go without one).
+// no close day, and the pay-before-close text cannot go without one), whether a
+// repeat bill is Important (set_bill_important — an Important bill gets a phone
+// alert a few days before it charges), and the one switch for every phone alert
+// (set_phone_alerts). Phone alerts: src/push/finance-alerts.mjs, unit D 2026-11-06.
 //
 // SAME TWO CALLERS AND SAME GATE AS api/money/overview.mjs:
 //   * a signed-in CLIENT reads and changes their own file only. client_id comes off
@@ -31,14 +45,25 @@ import { ROLE_SETS, requireRole, isUuid, CLIENT_DATA_ERRORS } from "../../src/ht
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { fileAlertsPayload } from "../../src/finance/file-alerts/read.mjs";
 import {
-  setAlertEnabled, setPromo, setStatementCloseDay, readCloseDay, FileAlertInputError
+  setAlertEnabled, setPromo, setStatementCloseDay, setPhoneAlerts, readCloseDay, FileAlertInputError
 } from "../../src/finance/file-alerts/store.mjs";
+import { setBillImportant } from "../../src/finance/file-alerts/bills.mjs";
+import {
+  readCustomInput, addCustomItem, updateCustomItem, removeCustomItem, setCustomPhone, customKindOf, customView
+} from "../../src/finance/file-alerts/custom.mjs";
 import { readPromoInput, PromoInputError } from "../../src/finance/file-alerts/promo.mjs";
 import { KINDS } from "../../src/finance/file-alerts/common.mjs";
+import { alertsBundlePayload, setBundleAlert } from "../../src/finance/file-alerts/bundle.mjs";
 import { readBody } from "../banking/sync-accounts.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 
-export const ACTIONS = Object.freeze(["set_alert", "set_promo", "set_statement_close_day"]);
+// set_bundle_alert and GET ?part=bundle: the alerts bundle (unit AL, 2026-11-07) —
+// src/finance/file-alerts/bundle.mjs. add_custom, update_custom, set_custom_phone
+// and remove_custom: the client's own alerts and bills (unit AL2). No new route.
+export const ACTIONS = Object.freeze([
+  "set_alert", "set_promo", "set_statement_close_day", "set_bill_important", "set_phone_alerts",
+  "set_bundle_alert", "add_custom", "update_custom", "set_custom_phone", "remove_custom"
+]);
 
 /** Who is asking, and for which file. Same block as api/money/strategy.mjs. */
 async function scope(req, res, { database, gate, body }) {
@@ -80,7 +105,14 @@ export default async function handler(req, res, deps = {}) {
   const writes = {
     setAlertEnabled: deps.setAlertEnabled || setAlertEnabled,
     setPromo: deps.setPromo || setPromo,
-    setStatementCloseDay: deps.setStatementCloseDay || setStatementCloseDay
+    setStatementCloseDay: deps.setStatementCloseDay || setStatementCloseDay,
+    setBillImportant: deps.setBillImportant || setBillImportant,
+    setPhoneAlerts: deps.setPhoneAlerts || setPhoneAlerts,
+    addCustomItem: deps.addCustomItem || addCustomItem,
+    updateCustomItem: deps.updateCustomItem || updateCustomItem,
+    setCustomPhone: deps.setCustomPhone || setCustomPhone,
+    removeCustomItem: deps.removeCustomItem || removeCustomItem,
+    customKindOf: deps.customKindOf || customKindOf
   };
 
   const method = req.method || "GET";
@@ -102,6 +134,13 @@ export default async function handler(req, res, deps = {}) {
 
   try {
     if (method === "GET") {
+      // ?part=bundle answers only the alerts bundle (the box under the Alerts section), so the
+      // section's own read is not built a second time.
+      if (req.query && req.query.part === "bundle") {
+        const bundle = await (deps.alertsBundlePayload || alertsBundlePayload)(database, { orgId, clientId, now, env });
+        if (!bundle) return res.status(404).json({ ok: false, error: "not_found" });
+        return res.status(200).json({ ok: true, bundle });
+      }
       const payload = await load(database, { orgId, clientId, now, env });
       if (!payload) return res.status(404).json({ ok: false, error: "not_found" });
       return res.status(200).json(payload);
@@ -109,6 +148,11 @@ export default async function handler(req, res, deps = {}) {
 
     const action = body.action;
     if (!ACTIONS.includes(action)) return res.status(400).json({ ok: false, error: "unknown_action", actions: ACTIONS });
+
+    if (action === "set_bundle_alert") {
+      const saved = await (deps.setBundleAlert || setBundleAlert)(database, { orgId, clientId, body, by: who.kind });
+      return res.status(200).json({ ok: true, action, saved });
+    }
 
     if (action === "set_alert") {
       const kind = typeof body.kind === "string" ? body.kind.trim() : "";
@@ -120,6 +164,56 @@ export default async function handler(req, res, deps = {}) {
       }
       await writes.setAlertEnabled(database, { orgId, clientId, kind, enabled: body.enabled, by: who.kind });
       return res.status(200).json({ ok: true, action, saved: { kind, enabled: body.enabled } });
+    }
+
+    if (action === "set_phone_alerts") {
+      if (typeof body.enabled !== "boolean") {
+        return badInput(res, new FileAlertInputError("enabled", "enabled must be true or false"));
+      }
+      await writes.setPhoneAlerts(database, { orgId, clientId, enabled: body.enabled, by: who.kind });
+      return res.status(200).json({ ok: true, action, saved: { phone_alerts: body.enabled } });
+    }
+
+    if (action === "set_bill_important") {
+      if (!isUuid(body.bill_id)) {
+        return badInput(res, new FileAlertInputError("bill_id", "bill_id is required and must be a uuid"));
+      }
+      if (typeof body.important !== "boolean") {
+        return badInput(res, new FileAlertInputError("important", "important must be true or false"));
+      }
+      const r = await writes.setBillImportant(database, {
+        orgId, clientId, billId: String(body.bill_id).trim(), important: body.important, by: who.kind
+      });
+      return res.status(200).json({ ok: true, action, saved: { bill_id: r.bill_id, important: r.important } });
+    }
+
+    /* The client's own alerts and repeat bills (unit AL2). */
+    const today = now.toISOString().slice(0, 10);
+    if (action === "add_custom") {
+      const input = readCustomInput(body, { today });
+      const row = await writes.addCustomItem(database, { orgId, clientId, input, by: who.kind });
+      return res.status(200).json({ ok: true, action, saved: customView(row, { today }) });
+    }
+    if (action === "update_custom") {
+      if (!isUuid(body.id)) return badInput(res, new FileAlertInputError("id", "id is required and must be a uuid"));
+      const id = String(body.id).trim();
+      const kind = await writes.customKindOf(database, { orgId, clientId, id });
+      const input = readCustomInput(body, { today, kind });
+      const row = await writes.updateCustomItem(database, { orgId, clientId, id, input, by: who.kind });
+      return res.status(200).json({ ok: true, action, saved: customView(row, { today }) });
+    }
+    if (action === "set_custom_phone") {
+      if (!isUuid(body.id)) return badInput(res, new FileAlertInputError("id", "id is required and must be a uuid"));
+      if (typeof body.enabled !== "boolean") {
+        return badInput(res, new FileAlertInputError("enabled", "enabled must be true or false"));
+      }
+      const r = await writes.setCustomPhone(database, { orgId, clientId, id: String(body.id).trim(), enabled: body.enabled, by: who.kind });
+      return res.status(200).json({ ok: true, action, saved: r });
+    }
+    if (action === "remove_custom") {
+      if (!isUuid(body.id)) return badInput(res, new FileAlertInputError("id", "id is required and must be a uuid"));
+      const r = await writes.removeCustomItem(database, { orgId, clientId, id: String(body.id).trim(), by: who.kind });
+      return res.status(200).json({ ok: true, action, saved: r });
     }
 
     const accountId = body.account_id;

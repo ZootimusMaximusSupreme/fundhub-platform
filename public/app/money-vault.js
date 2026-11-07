@@ -1,6 +1,13 @@
 /* Your funding papers — the application document vault screen
  * (/app/money-vault.html, Capital Blueprint launch unit B3).
  *
+ * LENDER PACKET (Finance OS unit I3). The read also carries `packets`: one for
+ * the personal file and one per business (src/finance/lender-packet.mjs). The
+ * "Lender packet" card lists each one, says what is still missing, and its
+ * Download packet button fetches GET /api/money/vault?packet=<key> — ONE PDF the
+ * server builds from the papers that are ready, saved straight to the device.
+ * The button only shows when the packet has at least one file to put in.
+ *
  * Offer line (docs/finance/capital-blueprint-next-2026-09-29.md): "The agent
  * collects bank statements, tax returns and ID ahead of time, so the file is
  * complete when the closer calls." This is where the client sends those papers
@@ -600,6 +607,102 @@
       "</form></details>";
   }
 
+  /* ── the lender packet ─────────────────────────────────────────────────── */
+
+  /* What a packet line that is not ready says. The server's status, in words. */
+  var PACKET_CLIENT = {
+    missing: "not sent yet", waiting: "sent, we're checking it", too_old: "too old, send a newer one",
+    redo: "not accepted, send a new one"
+  };
+  var PACKET_STAFF = {
+    missing: "the client has not sent it", waiting: "needs your review", too_old: "too old, needs a newer one",
+    redo: "not accepted, needs a new one"
+  };
+  function packetWord(m, staff) {
+    var words = staff ? PACKET_STAFF : PACKET_CLIENT;
+    if (m.from === "fundhub") return "not on file yet";
+    if (m.status === "missing" && whole(m.have) > 0) return whole(m.have) + " of " + units(m.unit, whole(m.need) || 1) + " ready";
+    return words[m.status] || words.missing;
+  }
+  function packetName(p) { return p.kind === "business" ? (p.name || "Your business") : "Personal"; }
+  function packetFileCount(p) { return whole(p && p.counts && p.counts.files); }
+
+  /* The packet that gets the one filled button: the first with a file in it,
+     and only when nothing else on the screen is the viewer's next step. */
+  function packetPrimary(v, ctx) {
+    if (ctx.primary) return "";
+    var ps = list(v && v.packets);
+    for (var i = 0; i < ps.length; i++) if (packetFileCount(ps[i]) > 0) return String(ps[i].key);
+    return "";
+  }
+
+  function renderPacketRow(p, ctx) {
+    var key = String(p.key || "");
+    var c = p.counts || {};
+    var files = packetFileCount(p);
+    var count = whole(c.ready) + " of " + whole(c.papers) + " papers ready" + (files ? " · " + plural(files, "file", "files") + " in the PDF" : "");
+    var missing = list(p.missing);
+    var body = missing.length
+      ? '<p class="caption vt-pk-miss-h">Still missing</p><ul class="caption vt-pk-miss">' + missing.map(function (m) {
+        return '<li><span class="vt-pk-dot" aria-hidden="true"></span><span>' + esc(m.title) + " — " + esc(packetWord(m, ctx.staff)) + "</span></li>";
+      }).join("") + "</ul>"
+      : '<p class="caption vt-pk-all"><span class="vt-pk-tick" aria-hidden="true">✓</span>Every paper is ready.</p>';
+    var act = files
+      ? '<button type="button" class="' + (ctx.packetPrimary === key ? "vt-btn-primary" : "vt-btn") + '" data-act="packet" data-packet="' + esc(key) + '">' +
+        'Download packet<span class="vt-sr"> — ' + esc(packetName(p)) + "</span></button>"
+      : '<p class="caption">Nothing is ready to put in it yet.</p>';
+    return '<li class="vt-pk' + (p.ready ? " is-done" : "") + '" data-packet-row="' + esc(key) + '">' +
+      '<div class="vt-pk-main"><div class="vt-title-row"><h3 class="vt-title">' + esc(packetName(p)) + "</h3>" +
+      (p.kind === "business" ? '<span class="tag vt-tag">Business</span>' : "") + "</div>" +
+      '<p class="caption">' + esc(count) + "</p>" + body + "</div>" +
+      '<div class="vt-pk-act">' + act + "</div></li>";
+  }
+
+  /* The card. No packets in the read (an older server, or the sample) → no card. */
+  function renderPackets(v, ctx) {
+    if (v && v.packets === null && v.packets_error) {
+      return '<section class="card vt-packet" aria-labelledby="vt-pk-h"><h2 id="vt-pk-h">Lender packet</h2>' +
+        '<p class="caption">We could not check the lender packet just now. Reload the page to try again.</p></section>';
+    }
+    var ps = list(v && v.packets);
+    if (!ps.length) return "";
+    return '<section class="card vt-packet" aria-labelledby="vt-pk-h"><h2 id="vt-pk-h">Lender packet</h2>' +
+      '<p class="caption">' + esc(ctx.staff
+        ? "One PDF of this client's ready papers."
+        : "One PDF of every paper that is ready. Send it to the lender.") + "</p>" +
+      '<ul class="vt-pk-list">' + ps.map(function (p) { return renderPacketRow(p, ctx); }).join("") + "</ul>" +
+      '<div class="vt-msg" data-msg="packet" aria-live="polite">' + flashHtml(ctx, "packet") + "</div></section>";
+  }
+
+  /* What a refused or failed download says. Codes are api/money/vault.mjs's own. */
+  function packetProblem(res) {
+    var b = (res && res.body) || {};
+    var s = res ? res.status : 0;
+    if (s === 0) return ERROR_WORDS.offline;
+    if (s === 503 || b.db === "down") return ERROR_WORDS.nodb;
+    if (s === 403) return "This login is not allowed to download this packet.";
+    if (s === 409 || b.error === "nothing_ready") return "Nothing is ready to put in the packet yet.";
+    if (s === 404) return "We could not find that packet. Reload the page and try again.";
+    return "We could not make the packet. Try again in a few minutes.";
+  }
+
+  var LEFT_WORDS = {
+    too_big: "too big to add", not_found: "could not be found", not_supported: "is not a PDF or photo",
+    could_not_open: "could not be opened"
+  };
+  /* After a download: the words, naming any file that did not fit. */
+  function packetSaved(p, leftOut) {
+    var names = {};
+    list(p && p.papers).forEach(function (paper) {
+      list(paper.files).forEach(function (f) { if (f && f.id) names[f.id] = f.name || paper.title; });
+    });
+    var left = list(leftOut).filter(function (x) { return x && x.id; });
+    if (!left.length) return "Saved your lender packet.";
+    return "Saved your lender packet. Not in it: " + left.map(function (x) {
+      return (names[x.id] || "one file") + " (" + (LEFT_WORDS[x.reason] || LEFT_WORDS.could_not_open) + ")";
+    }).join(", ") + ". Send " + (left.length === 1 ? "that one on its own." : "those on their own.");
+  }
+
   /* ── the four states ───────────────────────────────────────────────────── */
 
   function renderNoList(v, staff, ctx) {
@@ -623,8 +726,10 @@
     if (!items.length) return renderNoList(v, staff, ctx);
     var groups = groupsOf(v, staff);
     ctx.primary = primaryTarget(groups, staff);
+    ctx.packetPrimary = packetPrimary(v, ctx);
     return renderHead(staff) +
       (v.complete === true ? renderComplete(v, staff) : renderProgress(v, groups, ctx)) +
+      renderPackets(v, ctx) +
       (staff ? renderSort(v, ctx) : "") +
       '<div class="vt-groups">' + groups.map(function (g) { return renderGroup(g, ctx); }).join("") + "</div>" +
       (staff ? "" : renderOther(v, ctx)) +
@@ -759,6 +864,51 @@
     try {
       return answer(root.fetch(path, { method: "POST", headers: authHeaders(), body: form, credentials: "same-origin" }));
     } catch (e) { return Promise.resolve({ status: 0, body: null }); }
+  }
+
+  /* The packet PDF. A 200 with a PDF body comes back as a Blob; anything else
+     is read as the endpoint's JSON refusal. */
+  function headerOf(r, name) {
+    try { return (r && r.headers && r.headers.get && r.headers.get(name)) || ""; } catch (e) { return ""; }
+  }
+  function dispositionName(v) {
+    var m = /filename="([^"]+)"/i.exec(String(v || ""));
+    return m && /^[A-Za-z0-9._-]+$/.test(m[1]) ? m[1] : "lender-packet.pdf";
+  }
+  function parseLeftOut(v) {
+    try { var x = JSON.parse(String(v || "[]")); return Array.isArray(x) ? x : []; } catch (e) { return []; }
+  }
+  function fetchPdf(path) {
+    if (typeof root.fetch !== "function") return Promise.resolve({ status: 0, body: null });
+    var headers = authHeaders();
+    headers.accept = "application/pdf, application/json";
+    var started;
+    try { started = root.fetch(path, { method: "GET", headers: headers, credentials: "same-origin" }); } catch (e) { return Promise.resolve({ status: 0, body: null }); }
+    return Promise.resolve(started).then(function (r) {
+      var bad = r.status === 200 ? 500 : r.status;
+      if (r.status === 200 && /application\/pdf/i.test(headerOf(r, "content-type"))) {
+        return r.blob().then(function (b) {
+          return { status: 200, blob: b, filename: dispositionName(headerOf(r, "content-disposition")), leftOut: parseLeftOut(headerOf(r, "x-packet-left-out")) };
+        }, function () { return { status: 500, body: null }; });
+      }
+      return r.json().then(function (b) { return { status: bad, body: b }; }, function () { return { status: bad, body: null }; });
+    }, function () { return { status: 0, body: null }; });
+  }
+  /* Hand the PDF to the device: a temporary link to the Blob, clicked once. */
+  function saveBlob(blob, name) {
+    var U = root.URL;
+    var doc = root.document;
+    if (!U || typeof U.createObjectURL !== "function" || !doc || !doc.body) return false;
+    var url = U.createObjectURL(blob);
+    var a = doc.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.hidden = true;
+    doc.body.appendChild(a);
+    a.click();
+    a.parentNode.removeChild(a);
+    root.setTimeout(function () { try { U.revokeObjectURL(url); } catch (e) {} }, 60000);
+    return true;
   }
 
   function signInUrl() {
@@ -1048,6 +1198,25 @@
       }
     }
 
+    function packetByKey(key) {
+      var ps = list(view && view.packets);
+      for (var i = 0; i < ps.length; i++) if (String(ps[i].key) === key) return ps[i];
+      return null;
+    }
+    function onPacket(t) {
+      var key = t.getAttribute("data-packet") || "";
+      var p = packetByKey(key);
+      say("packet", "");
+      busy(t, true, "Making the packet…");
+      fetchPdf(API + "?packet=" + encodeURIComponent(key) + (cid ? "&client_id=" + encodeURIComponent(cid) : "")).then(function (res) {
+        if (gone) return;
+        busy(t, false);
+        if (res.status === 401) { signIn(); return; }
+        if (res.status === 200 && res.blob && saveBlob(res.blob, res.filename)) { say("packet", packetSaved(p, res.leftOut), false); return; }
+        say("packet", res.status === 200 ? "This browser could not save the file. Try a different browser." : packetProblem(res), true);
+      });
+    }
+
     function onClick(e) {
       var a = e.target && e.target.closest ? e.target.closest("a.vt-view") : null;
       if (a && el.contains(a)) { onView(a, e); return; }
@@ -1055,6 +1224,7 @@
       if (!t || (el.contains && !el.contains(t)) || t.disabled) return;
       var what = t.getAttribute("data-act");
       if (what === "retry") load();
+      else if (what === "packet") onPacket(t);
       else if (what === "pick") {
         var input = byAttr('input[type="file"]', "data-slot", t.getAttribute("data-slot"));
         if (input && input.click) input.click();
@@ -1125,7 +1295,9 @@
     isStaffView: isStaffView, primaryTarget: primaryTarget, uploadFields: uploadFields, uploadPath: uploadPath,
     sendUpload: sendUpload, okFile: okFile, canUpload: canUpload, render: render, renderLoading: renderLoading,
     renderError: renderError, classify: classify, uploadProblem: uploadProblem, actProblem: actProblem,
-    withClient: withClient, mount: mount, FILE_ACCEPT: FILE_ACCEPT
+    withClient: withClient, mount: mount, FILE_ACCEPT: FILE_ACCEPT,
+    renderPackets: renderPackets, packetWord: packetWord, packetProblem: packetProblem, packetSaved: packetSaved,
+    dispositionName: dispositionName, parseLeftOut: parseLeftOut
   };
 
   /* Auto-start only finds #vault-root on the standalone page. The combined

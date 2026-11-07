@@ -3,7 +3,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  planPromoEnd, thresholdFor, nextPromoAlert, promoPayoff, paymentsLeft, payoffDetail,
+  planPromoEnd, thresholdFor, nextPromoAlert, promoPayoff, paymentsLeft, payoffDetail, payoffAtRate, promoPct,
   readPromoInput, PromoInputError
 } from "./promo.mjs";
 import { TEMPLATES } from "./common.mjs";
@@ -117,10 +117,60 @@ describe("the payoff line is arithmetic on stored numbers", () => {
   });
 
   test("the sentence rounds the amount up to a whole dollar: $500.01 a month reads as about $501", () => {
-    assert.match(payoffDetail(100001, 60), /Pay about \$501 a month for the next 2 months/);
-    assert.match(payoffDetail(100001, 60), /You still owe \$1,000\.01\./);
+    assert.match(payoffDetail(100001, 60, 0), /Pay about \$501 a month for the next 2 months to clear it in time\./);
+    assert.match(payoffDetail(100001, 60, 0), /You still owe \$1,000\.01\./);
     // two payments of the rounded-up figure always cover the balance
     assert.ok(501 * 2 * 100 >= 100001);
+  });
+});
+
+/* Codex design review (binding, 2026-11-07): a promo that charges interest, or whose
+   rate is not on file, is never told that a no-interest amount clears it. */
+describe("the payoff at the promo rate", () => {
+  /* What is left after paying `monthly` each month, with APR ÷ 12 added before each payment. */
+  const leftAfter = (balance, aprPct, monthly, payments) => {
+    let left = balance;
+    for (let k = 0; k < payments; k++) left = left * (1 + aprPct / 100 / 12) - monthly;
+    return left;
+  };
+
+  test("0% is the even split; 9.99% is the level payment that really clears it; a cent less does not", () => {
+    assert.deepEqual(payoffAtRate({ balanceCents: 120000, daysLeft: 120, aprPct: 0 }),
+      { payments: 4, monthly_cents: 30000, total_cents: 120000, monthly_is_floor: false });
+    const at = payoffAtRate({ balanceCents: 120000, daysLeft: 120, aprPct: 9.99 });
+    assert.deepEqual(at, { payments: 4, monthly_cents: 30627, total_cents: 122508, monthly_is_floor: false });
+    assert.ok(leftAfter(120000, 9.99, at.monthly_cents, 4) <= 0.0001, "it clears by the last payment");
+    assert.ok(leftAfter(120000, 9.99, at.monthly_cents - 1, 4) > 0, "a cent less does not");
+    assert.ok(leftAfter(120000, 9.99, 30000, 4) > 0, "the no-interest split leaves a balance at 9.99%");
+    assert.equal(payoffAtRate({ balanceCents: 120000, daysLeft: 20, aprPct: 9.99 }).monthly_cents, 120999, "one payment: one month's interest, to the cent");
+    assert.equal(promoPct("0.09990"), 9.99);
+  });
+
+  test("no rate on file: the even split is only the least it can be", () => {
+    assert.deepEqual(payoffAtRate({ balanceCents: 120000, daysLeft: 120, aprPct: null }),
+      { payments: 4, monthly_cents: 30000, total_cents: 120000, monthly_is_floor: true });
+    assert.equal(payoffAtRate({ balanceCents: 0, daysLeft: 120, aprPct: 9.99 }), null, "nothing owed, no plan");
+  });
+
+  test("the text: a 9.99% promo says the amount with interest; no rate says at least, and never that it clears", () => {
+    const rated = planPromoEnd(AMEX, promoEnding("2026-12-06", { promo_apr: "0.09990" }), { today: "2026-10-07" });
+    const plan = payoffAtRate({ balanceCents: 540000, daysLeft: 60, aprPct: 9.99 });
+    assert.equal(rated.detail.monthly_cents, plan.monthly_cents);
+    assert.ok(plan.monthly_cents > 270000, "more than the no-interest $2,700");
+    assert.equal(rated.body,
+      "Fundhub reminder: the promo rate on your Business Amex ending 4404 ends Dec 6 (in 60 days). " +
+      `You still owe $5,400.00. Pay about $${Math.ceil(plan.monthly_cents / 100).toLocaleString("en-US")} a month for the next 2 months to clear it in time.`);
+    assert.doesNotMatch(rated.body, /\$2,700/);
+
+    const none = planPromoEnd(AMEX, promoEnding("2026-12-06", { promo_apr: null }), { today: "2026-10-07" });
+    assert.equal(none.body,
+      "Fundhub reminder: the promo rate on your Business Amex ending 4404 ends Dec 6 (in 60 days). " +
+      "You still owe $5,400.00. Pay at least $2,700 a month for the next 2 months. Rate not on file.");
+    assert.equal(none.detail.monthly_is_floor, true);
+    const last = planPromoEnd(AMEX, promoEnding("2026-12-06", { promo_apr: null }), { today: "2026-11-06" });
+    assert.match(last.body, /You still owe \$5,400\.00\. Pay all of it before then\. Rate not on file\.$/);
+    for (const p of [none, last]) assert.doesNotMatch(p.body, /to clear/);
+    assert.match(payoffDetail(100001, 60), /Pay at least \$501 a month for the next 2 months\. Rate not on file\./, "no rate given means not on file");
   });
 });
 

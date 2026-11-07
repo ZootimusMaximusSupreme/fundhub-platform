@@ -190,3 +190,17 @@ body[data-client-page] :is(#money-root,#fos-overview) .money-cash-notes{display:
  body[data-client-page] :is(#money-root,#fos-overview) .money-next-due>.caption{grid-column:1/-1;grid-row:3;font-size:13px}
  body[data-client-page] :is(#money-root,#fos-overview) .tiles>.tile-cash{gap:10px;padding-bottom:6px}
 }
+/* Cashflow numbers on a narrow card (QA11b, 2026-11-07). When a cashflow card is too narrow for
+   Month, In, Out and Left over side by side (a phone, or two cards side by side on a small
+   window), each month stacks: the month, then In, Out and Left over, each with its own name
+   (data-label, set by money.js). Every amount stays in view. The bar charts are not touched. */
+body[data-client-page] :is(#money-root,#fos-overview) .card.flow{container-type:inline-size}
+@container (max-width:419px){
+ body[data-client-page] :is(#money-root,#fos-overview) .flow .flow-table thead{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+ body[data-client-page] :is(#money-root,#fos-overview) .flow :is(.flow-table,.flow-table tbody){display:block;width:100%}
+ body[data-client-page] :is(#money-root,#fos-overview) .flow .flow-table tr{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;padding:12px 0;border-bottom:1px solid var(--money-line)}
+ body[data-client-page] :is(#money-root,#fos-overview) .flow .flow-table tr:last-child{border-bottom:0}
+ body[data-client-page] :is(#money-root,#fos-overview) .flow .flow-table td{display:flex;align-items:baseline;justify-content:flex-end;gap:8px;min-width:0;padding:0;border:0;white-space:normal;overflow-wrap:anywhere;text-align:right}
+ body[data-client-page] :is(#money-root,#fos-overview) .flow .flow-table td.flow-month{display:block;font-weight:600;text-align:left;padding-bottom:2px}
+ body[data-client-page] :is(#money-root,#fos-overview) .flow .flow-table td[data-label]::before{content:attr(data-label);margin-right:auto;color:var(--money-muted);font-size:13px;font-weight:400;text-align:left}
+}

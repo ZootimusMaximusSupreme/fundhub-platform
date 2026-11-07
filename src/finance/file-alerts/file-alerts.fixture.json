@@ -69,7 +69,8 @@
         "payoff": {
           "payments": 2,
           "monthly_cents": 270000,
-          "total_cents": 540000
+          "total_cents": 540000,
+          "monthly_is_floor": false
         },
         "next_alert": {
           "threshold": 30,
@@ -135,6 +136,511 @@
       "debts": 0,
       "minimums_cents": null
     }
+  },
+  "phone": {
+    "enabled": true,
+    "opted_out": false,
+    "has_phone": true,
+    "send_window": "9 a.m. to 5 p.m. Arizona time",
+    "kinds": {
+      "card_due": {
+        "on": true,
+        "label": "Card payment due"
+      },
+      "statement_close": {
+        "on": true,
+        "label": "Statement closes"
+      },
+      "important_bill": {
+        "on": true,
+        "label": "Important bill"
+      },
+      "loan_due": {
+        "on": true,
+        "label": "Loan payment due"
+      },
+      "credit_line_due": {
+        "on": true,
+        "label": "Credit line payment due"
+      },
+      "plan_due": {
+        "on": true,
+        "label": "Payment plan due"
+      },
+      "custom_alert": {
+        "on": true,
+        "label": "Alert you added"
+      },
+      "custom_bill": {
+        "on": true,
+        "label": "Bill you added"
+      }
+    },
+    "days_before": {
+      "card_due": 3,
+      "important_bill": 3,
+      "loan_due": 3,
+      "plan_due": 3
+    },
+    "cards": [
+      {
+        "account_id": "b81cc6c2-dddd-440c-9d5b-ae1c42d5724e",
+        "name": "Business Amex",
+        "mask": "4404",
+        "kind": "business",
+        "credit_line": false,
+        "due": {
+          "on": null,
+          "alert_on": null,
+          "reason": "no_due_date"
+        },
+        "close": {
+          "on": "2026-10-15",
+          "alert_on": "2026-10-12",
+          "reason": null
+        }
+      },
+      {
+        "account_id": "ef4e1149-3fc5-4e2c-9fa2-331c16da9a17",
+        "name": "Personal Visa",
+        "mask": "3303",
+        "kind": "personal",
+        "credit_line": false,
+        "due": {
+          "on": null,
+          "alert_on": null,
+          "reason": "no_due_date"
+        },
+        "close": {
+          "on": null,
+          "alert_on": null,
+          "reason": "no_statement_close_day"
+        }
+      }
+    ],
+    "loans": [
+      {
+        "account_id": "6af70e59-db5c-4220-95b7-69f6a4a87ff8",
+        "name": "SBA Loan",
+        "mask": null,
+        "kind": "business",
+        "credit_line": false,
+        "due": {
+          "on": "2026-11-01",
+          "alert_on": "2026-10-29",
+          "reason": "not_yet"
+        }
+      }
+    ],
+    "plans": [
+      {
+        "plan_id": "p1",
+        "installment_id": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e02",
+        "name": "Payment plan with Fundhub LLC",
+        "plan_kind": "clarity",
+        "on": "2026-10-03",
+        "alert_on": null,
+        "reason": "late"
+      }
+    ],
+    "important_count": 1,
+    "sent": [
+      {
+        "id": "5d2a7c10-3e4f-4a5b-8c6d-7e8f9a0b1c01",
+        "kind": "important_bill",
+        "kind_label": "Important bill",
+        "subject_id": "9e3c1f0a-4b2d-4c8e-9f11-2a3b4c5d6e01",
+        "about_on": "2026-10-14",
+        "state": "waiting",
+        "reason": null,
+        "send_at": "2026-10-12T16:00:00.000Z",
+        "created_at": "2026-10-12T07:30:00.000Z",
+        "updated_at": "2026-10-12T07:30:00.000Z"
+      },
+      {
+        "id": "5d2a7c10-3e4f-4a5b-8c6d-7e8f9a0b1c00",
+        "kind": "statement_close",
+        "kind_label": "Statement closes",
+        "subject_id": "b81cc6c2-dddd-440c-9d5b-ae1c42d5724e",
+        "about_on": "2026-10-15",
+        "state": "waiting",
+        "reason": null,
+        "send_at": "2026-10-12T16:00:00.000Z",
+        "created_at": "2026-10-12T07:30:00.000Z",
+        "updated_at": "2026-10-12T07:30:00.000Z"
+      },
+      {
+        "id": "5d2a7c10-3e4f-4a5b-8c6d-7e8f9a0b1c02",
+        "kind": "custom_alert",
+        "kind_label": "Alert you added",
+        "subject_id": "c0a1e2d3-4b5c-4d6e-8f70-81a2b3c4d5e1",
+        "about_on": "2026-10-14",
+        "state": "waiting",
+        "reason": null,
+        "send_at": "2026-10-12T16:00:00.000Z",
+        "created_at": "2026-10-12T07:30:00.000Z",
+        "updated_at": "2026-10-12T07:30:00.000Z"
+      }
+    ]
+  },
+  "bills": [
+    {
+      "id": "9e3c1f0a-4b2d-4c8e-9f11-2a3b4c5d6e01",
+      "name": "Google Workspace",
+      "cadence": "monthly",
+      "typical_cents": 7200,
+      "next_expected_on": "2026-10-14",
+      "next_unknown_reason": null,
+      "important": true,
+      "bank_account_id": "d7a81c3e-2222-4c2d-9d43-1b7d5b2f1c22",
+      "phone": {
+        "alert_on": "2026-10-12",
+        "reason": null,
+        "sent": "waiting"
+      }
+    },
+    {
+      "id": "9e3c1f0a-4b2d-4c8e-9f11-2a3b4c5d6e02",
+      "name": "QuickBooks Online",
+      "cadence": "monthly",
+      "typical_cents": 9000,
+      "next_expected_on": "2026-10-28",
+      "next_unknown_reason": null,
+      "important": false,
+      "bank_account_id": "d7a81c3e-2222-4c2d-9d43-1b7d5b2f1c22",
+      "phone": {
+        "alert_on": null,
+        "reason": null,
+        "sent": null
+      }
+    }
+  ],
+  "custom": [
+    {
+      "id": "c0a1e2d3-4b5c-4d6e-8f70-81a2b3c4d5e1",
+      "kind": "alert",
+      "name": "Move money to savings",
+      "amount_cents": null,
+      "cadence": "monthly",
+      "day_of_month": 14,
+      "start_on": null,
+      "scope": "personal",
+      "entity_id": null,
+      "phone_alert": true,
+      "next_on": "2026-10-14",
+      "phone": {
+        "alert_on": "2026-10-12",
+        "reason": null,
+        "sent": "waiting"
+      },
+      "added_by": "client"
+    },
+    {
+      "id": "c0a1e2d3-4b5c-4d6e-8f70-81a2b3c4d5e2",
+      "kind": "bill",
+      "name": "Office rent",
+      "amount_cents": 120000,
+      "cadence": "monthly",
+      "day_of_month": 1,
+      "start_on": null,
+      "scope": "business",
+      "entity_id": "5b0c7e1a-3d2f-4a6b-9c8d-7e6f5a4b3c21",
+      "phone_alert": true,
+      "next_on": "2026-11-01",
+      "phone": {
+        "alert_on": "2026-10-29",
+        "reason": "not_yet",
+        "sent": null
+      },
+      "added_by": "client"
+    }
+  ],
+  "board": {
+    "today": "2026-10-12",
+    "pay_by_days_before": 2,
+    "default_scope": "personal",
+    "checks": {
+      "pay_by": true,
+      "cash": true,
+      "bills": true,
+      "custom": true,
+      "bill_cleanup": true,
+      "seasoning": true
+    },
+    "scopes": [
+      {
+        "key": "personal",
+        "kind": "personal",
+        "name": "Personal",
+        "entity_id": null,
+        "payments": [
+          {
+            "id": "plan:3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e02",
+            "type": "plan",
+            "name": "Payment plan with Fundhub LLC",
+            "account_id": null,
+            "item_id": null,
+            "plan_id": "p1",
+            "institution": null,
+            "logo": null,
+            "due_on": "2026-10-03",
+            "amount_cents": 65000,
+            "amount_is": "left",
+            "close_on": null,
+            "needs_close_day": false,
+            "late": true,
+            "phone": {
+              "on": true,
+              "alert_on": null,
+              "reason": "late"
+            }
+          },
+          {
+            "id": "custom:c0a1e2d3-4b5c-4d6e-8f70-81a2b3c4d5e1",
+            "type": "alert",
+            "name": "Move money to savings",
+            "account_id": null,
+            "item_id": "c0a1e2d3-4b5c-4d6e-8f70-81a2b3c4d5e1",
+            "institution": null,
+            "logo": null,
+            "due_on": "2026-10-14",
+            "amount_cents": null,
+            "amount_is": null,
+            "cadence": "monthly",
+            "close_on": null,
+            "needs_close_day": false,
+            "late": false,
+            "phone_alert": true,
+            "phone": {
+              "on": true,
+              "alert_on": "2026-10-12",
+              "reason": null,
+              "sent": "waiting"
+            }
+          },
+          {
+            "id": "card:ef4e1149-3fc5-4e2c-9fa2-331c16da9a17",
+            "type": "card",
+            "name": "Personal Visa ending 3303",
+            "account_id": "ef4e1149-3fc5-4e2c-9fa2-331c16da9a17",
+            "item_id": null,
+            "institution": "First Platypus Bank (Plaid sandbox — test data)",
+            "logo": null,
+            "due_on": "2026-10-25",
+            "amount_cents": 6602,
+            "amount_is": "minimum",
+            "close_on": null,
+            "needs_close_day": true,
+            "late": false,
+            "phone": {
+              "on": true,
+              "alert_on": null,
+              "reason": "no_due_date"
+            }
+          }
+        ],
+        "bills": [],
+        "smart": [
+          {
+            "id": "pay_by:ef4e1149-3fc5-4e2c-9fa2-331c16da9a17:2026-10-23",
+            "kind": "pay_by",
+            "name": "Personal Visa ending 3303",
+            "account_id": "ef4e1149-3fc5-4e2c-9fa2-331c16da9a17",
+            "logo": null,
+            "institution": "First Platypus Bank (Plaid sandbox — test data)",
+            "on": "2026-10-23",
+            "for": "due_date",
+            "close_on": null,
+            "due_on": "2026-10-25",
+            "tight": false,
+            "days_left": 11,
+            "over": true,
+            "pay_cents": 52040,
+            "balance_cents": 132040,
+            "limit_cents": 800000,
+            "target_cents": 80000,
+            "used_pct": 17
+          },
+          {
+            "id": "cash_low:personal",
+            "kind": "cash_low",
+            "name": null,
+            "on": null,
+            "cash_cents": 421055,
+            "need_cents": 429612,
+            "short_cents": 8557,
+            "months": 6,
+            "minimums_is_floor": false
+          }
+        ],
+        "counts": {
+          "payments": 3,
+          "bills": 0,
+          "smart": 2
+        }
+      },
+      {
+        "key": "biz:5b0c7e1a-3d2f-4a6b-9c8d-7e6f5a4b3c21",
+        "kind": "business",
+        "name": "Sample Co LLC",
+        "entity_id": "5b0c7e1a-3d2f-4a6b-9c8d-7e6f5a4b3c21",
+        "payments": [
+          {
+            "id": "card:b81cc6c2-dddd-440c-9d5b-ae1c42d5724e",
+            "type": "card",
+            "name": "Business Amex ending 4404",
+            "account_id": "b81cc6c2-dddd-440c-9d5b-ae1c42d5724e",
+            "item_id": null,
+            "institution": "First Platypus Bank (Plaid sandbox — test data)",
+            "logo": null,
+            "due_on": "2026-10-15",
+            "amount_cents": 27000,
+            "amount_is": "minimum",
+            "close_on": "2026-10-15",
+            "needs_close_day": false,
+            "late": false,
+            "phone": {
+              "on": true,
+              "alert_on": null,
+              "reason": "no_due_date"
+            }
+          },
+          {
+            "id": "loan:6af70e59-db5c-4220-95b7-69f6a4a87ff8",
+            "type": "loan",
+            "name": "SBA Loan",
+            "account_id": "6af70e59-db5c-4220-95b7-69f6a4a87ff8",
+            "item_id": null,
+            "institution": null,
+            "logo": null,
+            "due_on": "2026-11-01",
+            "amount_cents": 105000,
+            "amount_is": "payment",
+            "close_on": null,
+            "needs_close_day": false,
+            "late": false,
+            "phone": {
+              "on": true,
+              "alert_on": "2026-10-29",
+              "reason": "not_yet"
+            }
+          }
+        ],
+        "bills": [
+          {
+            "id": "bill:9e3c1f0a-4b2d-4c8e-9f11-2a3b4c5d6e01",
+            "source": "found",
+            "bill_id": "9e3c1f0a-4b2d-4c8e-9f11-2a3b4c5d6e01",
+            "item_id": null,
+            "name": "Google Workspace",
+            "amount_cents": 7200,
+            "cadence": "monthly",
+            "next_on": "2026-10-14",
+            "next_unknown_reason": null,
+            "important": true,
+            "phone": {
+              "on": true,
+              "alert_on": "2026-10-12",
+              "reason": null,
+              "sent": "waiting"
+            }
+          },
+          {
+            "id": "bill:9e3c1f0a-4b2d-4c8e-9f11-2a3b4c5d6e02",
+            "source": "found",
+            "bill_id": "9e3c1f0a-4b2d-4c8e-9f11-2a3b4c5d6e02",
+            "item_id": null,
+            "name": "QuickBooks Online",
+            "amount_cents": 9000,
+            "cadence": "monthly",
+            "next_on": "2026-10-28",
+            "next_unknown_reason": null,
+            "important": false,
+            "phone": {
+              "on": false,
+              "alert_on": null,
+              "reason": null,
+              "sent": null
+            }
+          },
+          {
+            "id": "custom:c0a1e2d3-4b5c-4d6e-8f70-81a2b3c4d5e2",
+            "source": "added",
+            "bill_id": null,
+            "item_id": "c0a1e2d3-4b5c-4d6e-8f70-81a2b3c4d5e2",
+            "name": "Office rent",
+            "amount_cents": 120000,
+            "cadence": "monthly",
+            "next_on": "2026-11-01",
+            "next_unknown_reason": null,
+            "phone_alert": true,
+            "phone": {
+              "on": true,
+              "alert_on": "2026-10-29",
+              "reason": "not_yet",
+              "sent": null
+            }
+          }
+        ],
+        "smart": [
+          {
+            "id": "double_charge:d7a81c3e-2222-4c2d-9d43-1b7d5b2f1c22:google workspace:2026-09-15",
+            "name": "Google Workspace",
+            "on": "2026-09-14",
+            "bank_account_id": "d7a81c3e-2222-4c2d-9d43-1b7d5b2f1c22",
+            "kind": "charged_twice",
+            "amount_cents": 7200,
+            "times": 2
+          },
+          {
+            "id": "pay_by:b81cc6c2-dddd-440c-9d5b-ae1c42d5724e:2026-10-13",
+            "kind": "pay_by",
+            "name": "Business Amex ending 4404",
+            "account_id": "b81cc6c2-dddd-440c-9d5b-ae1c42d5724e",
+            "logo": null,
+            "institution": "First Platypus Bank (Plaid sandbox — test data)",
+            "on": "2026-10-13",
+            "for": "both",
+            "close_on": "2026-10-15",
+            "due_on": "2026-10-15",
+            "tight": false,
+            "days_left": 1,
+            "over": true,
+            "pay_cents": 290000,
+            "balance_cents": 540000,
+            "limit_cents": 2500000,
+            "target_cents": 250000,
+            "used_pct": 22
+          },
+          {
+            "id": "price_jump:d7a81c3e-2222-4c2d-9d43-1b7d5b2f1c22:quickbooks online:2026-09-28",
+            "name": "QuickBooks Online",
+            "on": "2026-09-28",
+            "bank_account_id": "d7a81c3e-2222-4c2d-9d43-1b7d5b2f1c22",
+            "kind": "price_up",
+            "from_cents": 8000,
+            "to_cents": 9000,
+            "change_cents": 1000
+          },
+          {
+            "id": "seasoning:7e1d2c3b-4a59-4687-8796-a5b4c3d2e1f0",
+            "kind": "seasoning",
+            "name": "Chase",
+            "on": "2026-10-30",
+            "opened_on": "2026-09-30",
+            "day": 12,
+            "days_left": 18,
+            "target_days": 30,
+            "logo": "/assets/lenders/chase.png"
+          }
+        ],
+        "counts": {
+          "payments": 2,
+          "bills": 3,
+          "smart": 4
+        }
+      }
+    ]
   },
   "alerts": [
     {

@@ -23,6 +23,17 @@
 import { fromCents, applySplit, percentOf } from "../commissions/money.mjs";
 import { BUCKETS, BUCKET_KEYS, BUCKET_LABELS, REPORT_DISCLOSURE } from "./fields.mjs";
 import { PARTNER_SHARE_PCT, SUCCESS_FEE_PCT } from "./score.mjs";
+import { OFFERS, formatCents } from "../config/offers.mjs";
+
+/** The partner door's price line, from the catalogue (src/config/offers.mjs
+ *  PARTNER_ENTRY, $30,000 owner-set 2026-11-07). An unusable price names no
+ *  figure rather than a guessed one. */
+export function partnerEntryTerm(entryPriceCents = OFFERS.PARTNER_ENTRY.priceCents) {
+  const price = Number.isSafeInteger(entryPriceCents) && entryPriceCents > 0 ? formatCents(entryPriceCents) : null;
+  return price
+    ? `${price} one time. No monthly fee on the base program.`
+    : "One entry fee, one time. No monthly fee on the base program.";
+}
 
 /** The product code this offer bills under. Named here so the test that proves
  *  it accrues NO partner and NO affiliate commission has something to assert
@@ -53,7 +64,8 @@ export function buildAutopsyReport({
   rows = [],
   buyerName = null,
   reviewedAt = new Date(),
-  retention = "Your upload is kept in full. We do not delete it on a clock — use the delete button below whenever you want it gone."
+  retention = "Your upload is kept in full. We do not delete it on a clock — use the delete button below whenever you want it gone.",
+  entryPriceCents = OFFERS.PARTNER_ENTRY.priceCents
 } = {}) {
   const list = Array.isArray(rows) ? rows : [];
 
@@ -157,7 +169,7 @@ export function buildAutopsyReport({
       key: "partner",
       title: "Become a partner and keep half",
       terms: [
-        "$10,000 one time. No monthly fee on the base program.",
+        partnerEntryTerm(entryPriceCents),
         "50% of funding and repair, front end and back end — including half the 10% success fee.",
         "Financeable through our own rails as a training product.",
         "Ten funded clients a month keeps the partnership open. That is the only filter.",

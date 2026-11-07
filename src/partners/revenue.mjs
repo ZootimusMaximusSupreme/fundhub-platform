@@ -74,10 +74,13 @@ const SHARED_CODES = new Set(PARTNER_SHARE_PRODUCT_CODES);
 const ACCRUABLE_KINDS = new Set(["deposit", "installment", "success_fee"]);
 
 /* THE RECRUIT BONUS (W0-decisions.md, W1 §5/D7). A partner who brings a partner
-   is owed 20% of the $10,000 entry fee — $2,000, once, nothing ongoing. It is a
+   is owed 20% of the $30,000 entry fee — $6,000, once, nothing ongoing. It is a
    fixed number set against the STICKER, not against what the lender remitted:
-   the remittance varies by credit band, the promise does not. */
-export const ENTRY_FEE_CENTS = 1_000_000;
+   the remittance varies by credit band, the promise does not.
+   owner-set 2026-11-07: the entry fee is $30,000 (src/config/offers.mjs
+   PARTNER_ENTRY) and the formula stays 20% of it, so the bonus is $6,000. It
+   was $2,000 on the $10,000 entry. */
+export const ENTRY_FEE_CENTS = 3_000_000;
 export const RECRUIT_BONUS_PCT = 20;
 
 /** One greppable prefix per refusal that costs somebody money. */
@@ -377,10 +380,10 @@ export async function accrueForPaymentSafe(db, args = {}) {
 
 /**
  * The recruit bonus (W1 §5, D7): a partner brought a partner, so they are owed
- * 20% of the $10,000 entry fee, once.
+ * 20% of the $30,000 entry fee, once.
  *
  * It is recorded as a partner_revenue row like any other earning, with
- * share_pct_applied = 20 against a gross of the $10,000 sticker, so the row's own
+ * share_pct_applied = 20 against a gross of the $30,000 sticker, so the row's own
  * arithmetic still reads gross x pct = share for anyone auditing the table. The
  * 20 here is the bonus rule as applied, NOT the recruiter's revenue share — the
  * recruiter's 50% on their own book is untouched by this row.
@@ -406,7 +409,7 @@ export async function accrueRecruitBonus(db, {
     console.warn(
       `${ACCRUAL_REFUSED}: no_idempotency_key (recruit bonus, org=${orgId} ` +
       `partner=${recruiterPartnerId}). Without a transaction or event row the ` +
-      `$2,000 could be paid twice on a replay, so it was not written.`
+      `bonus could be paid twice on a replay, so it was not written.`
     );
     return { accrued: false, reason: "no_idempotency_key" };
   }

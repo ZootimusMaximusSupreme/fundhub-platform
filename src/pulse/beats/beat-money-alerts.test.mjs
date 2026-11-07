@@ -8,6 +8,8 @@ import * as beat from "./beat-money-alerts.mjs";
 import * as alertsTruth from "./lib/alerts-truth.mjs";
 import * as cardDuePlan from "./lib/card-due-plan.mjs";
 import * as alertsLane from "../coverage/gap-alerts.mjs";
+import * as phoneTruth from "./lib/phone-alerts-truth.mjs";
+import * as phoneLane from "../coverage/gap-phone-alerts.mjs";
 import * as banking from "../../banking/card-due-reminders.mjs";
 import { TEST_ADDRESS_RE as GAP_SMS_TEST_ADDRESS_RE } from "../coverage/gap-sms.mjs";
 import { checkBeatSelfTest, runBeat, validateBeat } from "./contract.mjs";
@@ -26,7 +28,7 @@ test("money-alerts is valid, green when every promised text went out, red at ale
   assert.deepEqual(await checkBeatSelfTest(beat), []);
   const passed = await runBeat(beat, makeFakeCtx(beat, beat.selfTest.pass()));
   assert.equal(passed.ok, true, passed.detail);
-  assert.equal(passed.detail, "1 alert checks passed");
+  assert.equal(passed.detail, "2 alert checks passed");
   const failed = await runBeat(beat, makeFakeCtx(beat, beat.selfTest.fail()));
   assert.equal(failed.ok, false);
   assert.equal(failed.step, "alerts-texts-went-out");
@@ -61,7 +63,7 @@ test("money-alerts: a file-protection text that failed, a card-due text stuck in
 test("money-alerts: nothing queued and nothing owed is green and says what it counted; a failed read is skipped, never green", async () => {
   const empty = await runBeat(beat, makeFakeCtx(beat, withRows([])));
   assert.equal(empty.ok, true, empty.detail);
-  assert.equal(empty.detail, "1 alert checks passed");
+  assert.equal(empty.detail, "2 alert checks passed");
   assert.ok(empty.steps.find((step) => step.name === "alerts-texts-went-out" && step.ok && !step.skipped));
 
   const spec = withRows([]);
@@ -73,7 +75,7 @@ test("money-alerts: nothing queued and nothing owed is green and says what it co
     }
   }));
   assert.equal(broken.ok, true);
-  assert.match(broken.detail, /^0 alert checks passed; 1 had nothing safe to judge$/);
+  assert.match(broken.detail, /^1 alert checks passed; 1 had nothing safe to judge$/);
   assert.ok(broken.steps.find((step) => step.name === "alerts-texts-went-out").skipped);
 });
 
@@ -100,7 +102,9 @@ test("money-alerts: the daily lane, the hourly beat and the daily job share one 
   for (const name of ["ALERT_TEXTS_SQL", "CARD_CYCLES_SQL", "CARD_TEXTS_SQL", "CARD_TEMPLATE_SQL", "alertProblem", "owedReminders", "lastPassDate", "CHECK_IDS"]) {
     assert.equal(alertsLane[name], alertsTruth[name], `gap-alerts.mjs ${name} must be the shared truth's own export`);
   }
-  for (const checkId of beat.HOURLY_CHECK_IDS) assert.ok(alertsTruth.CHECK_IDS.includes(checkId), checkId);
+  for (const checkId of beat.HOURLY_CHECK_IDS) {
+    assert.ok(alertsTruth.CHECK_IDS.includes(checkId) || phoneTruth.CHECK_IDS.includes(checkId), checkId);
+  }
 
   // The job imports its planner from src/banking/card-due-reminders.mjs, which re-exports the library planner.
   for (const name of ["planCardDue", "planLoanDue", "TEMPLATE_KEY"]) assert.equal(banking[name], cardDuePlan[name], name);
@@ -125,11 +129,44 @@ test("money-alerts: the daily lane, the hourly beat and the daily job share one 
 
 test("money-alerts: every surface it covers has every named deep check run here", () => {
   assert.deepEqual([...beat.covers].sort(), [
-    "desk:money-alerts.html", "job:blueprint-finance-os-alerts", "job:finance-os-card-due-reminders", "route:money/alerts"
+    "desk:money-alerts.html", "job:blueprint-finance-os-alerts", "job:finance-os-card-due-reminders",
+    "job:finance-os-weekly-money", "route:money/alerts"
   ]);
   for (const surface of beat.covers) {
     const wire = TRIPWIRES[surface];
     assert.ok(wire, `${surface} is not a tripwire`);
     for (const checkId of wire.checks) assert.ok(beat.HOURLY_CHECK_IDS.includes(checkId), `${surface} needs ${checkId}`);
+  }
+});
+
+test("money-alerts: a phone alert the pass owed with no push row goes red at its own step; the texts stay green", async () => {
+  const missing = await runBeat(beat, makeFakeCtx(beat, withRows(swap(phoneTruth.OWED_PUSHES_SQL, []))));
+  assert.equal(missing.ok, false);
+  assert.equal(missing.step, "alerts-phone-alerts-went-out");
+  assert.match(missing.detail, /1 of 1 owed phone alert was never queued \(card Business Card due 2026-10-11\)/);
+  assert.ok(missing.steps.find((step) => step.name === "alerts-texts-went-out" && step.ok));
+
+  const refused = await runBeat(beat, makeFakeCtx(beat, withRows(swap(phoneTruth.RECENT_PUSHES_SQL, [{
+    provider_ref: "finance-push:card-due:a0000000-0000-4000-8000-000000000001:2026-10-11", template_key: "PUSH-FINANCE-CARD-DUE",
+    status: "failed", last_error: "No phone accepted this alert.", blocked_reason: null, scheduled_at: null,
+    created_at: "2026-10-09T07:30:00.000Z", updated_at: "2026-10-09T16:00:04.000Z", last_attempt_at: "2026-10-09T16:00:02.000Z"
+  }]))));
+  assert.equal(refused.ok, false);
+  assert.equal(refused.step, "alerts-phone-alerts-went-out");
+  assert.match(refused.detail, /did not go out: card_due for 2026-10-11: every phone refused it x1/);
+});
+
+test("money-alerts: the phone lane and the beat share one SQL and one judge", async () => {
+  assert.equal(phoneLane.runPhoneAlertChecks, phoneTruth.runPhoneAlertChecks);
+  for (const name of ["PHONE_CLIENTS_SQL", "PHONE_CARDS_SQL", "PHONE_BILLS_SQL", "OWED_PUSHES_SQL", "RECENT_PUSHES_SQL", "CHECK_IDS", "owedPushes", "pushProblem"]) {
+    assert.equal(phoneLane[name], phoneTruth[name], `gap-phone-alerts.mjs ${name} must be the shared truth's own export`);
+  }
+  for (const fail of [false, true]) {
+    const spec = beat.selfTest[fail ? "fail" : "pass"]();
+    const db = { query: (sql, params) => spec.read(sql, params) };
+    const [laneRow] = await phoneLane.gapChecks({ db, orgId: SELF_TEST_ORG, now: spec.now });
+    const rows = await beat.LANE.run({ read: spec.read, orgId: SELF_TEST_ORG, now: spec.now });
+    assert.deepEqual(rows.find((r) => r.id === "alerts:phone-alerts-went-out"), laneRow);
+    assert.equal(laneRow.status, fail ? "FAIL" : "PASS");
   }
 });

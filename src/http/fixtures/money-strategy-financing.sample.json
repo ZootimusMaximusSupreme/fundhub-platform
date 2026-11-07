@@ -1,0 +1,42 @@
+{
+  "_note": "Sample. Fictional data for units K and F on /app/money-strategy.html, joined to money-strategy.sample.json (as_of 2026-10-07). plan_debt is a payment plan as src/finance/payment-strategy.mjs financingDebts() builds it; payments are paid / late / due per debt name as paymentStatus() returns them; bill_cleanup is cleanupForPage() output.",
+  "plan_debt": {
+    "id": "clarity:sample-plan-1",
+    "name": "Sample Fundhub payment plan",
+    "type": "financing",
+    "kind": "unknown",
+    "container_id": null,
+    "owed_to": "Fundhub LLC",
+    "balance_cents": 200000,
+    "limit_cents": null,
+    "apr_pct": 0,
+    "apr_source": "schedule",
+    "min_cents": 50000,
+    "due_on": "2026-10-15",
+    "payment": { "source": "recorded", "status": "due", "due_on": "2026-10-15", "last_paid_on": null, "days_late": 0, "reason": null }
+  },
+  "payments": {
+    "Personal Visa": { "source": "plaid", "status": "paid", "due_on": "2026-10-25", "last_paid_on": "2026-10-01", "days_late": 0, "reason": null },
+    "Business Amex": { "source": "plaid", "status": "late", "due_on": "2026-10-01", "last_paid_on": "2026-09-02", "days_late": 6, "reason": null }
+  },
+  "bill_cleanup": {
+    "ok": true,
+    "as_of": "2026-10-07",
+    "window_days": 90,
+    "checked_bills": 4,
+    "flags": [
+      {
+        "key": "double_charge:sample-card:SAMPLE CLOUD SUITE:2026-10-03", "kind": "double_charge", "name": "SAMPLE CLOUD SUITE",
+        "money_kind": "business", "cadence": "monthly", "account_name": "Business Amex", "account_mask": "4404", "on": "2026-10-03",
+        "from_cents": null, "to_cents": null, "change_cents": null, "amount_cents": 1440,
+        "charges": [{ "on": "2026-10-03", "amount_cents": 1440 }, { "on": "2026-10-03", "amount_cents": 1440 }]
+      },
+      {
+        "key": "price_jump:sample-chk:SAMPLE DESIGN APP:2026-09-12", "kind": "price_jump", "name": "SAMPLE DESIGN APP",
+        "money_kind": "personal", "cadence": "monthly", "account_name": "Personal Checking", "account_mask": "1101", "on": "2026-09-12",
+        "from_cents": 5499, "to_cents": 5999, "change_cents": 500, "amount_cents": null,
+        "charges": [{ "on": "2026-07-12", "amount_cents": 5499 }, { "on": "2026-08-12", "amount_cents": 5499 }, { "on": "2026-09-12", "amount_cents": 5999 }]
+      }
+    ]
+  }
+}

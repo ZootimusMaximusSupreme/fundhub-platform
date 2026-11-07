@@ -48,6 +48,7 @@
 // a decision, and it needs a caller who has made it.
 
 import { fromCents } from "../commissions/money.mjs";
+import { claimStandInsForPlaid } from "../finance/applications-tracker.mjs";
 
 /* Transaction helper — the same shape as src/banking/store.mjs and
    src/inquiries/work.mjs, including the fallback for a handle with no
@@ -344,6 +345,13 @@ export async function saveAccounts(db, accounts, opts = {}) {
         WHERE org_id = $1 AND client_id = $2 AND provider = $3`,
       [orgId, clientId, provider]
     );
+
+    /* A card the client was approved for joined Finance OS as a stand-in
+       account before any bank connection could see it. When this Plaid read is
+       the first to show that card, the stand-in becomes this Plaid row in place
+       (same id, same history), so the upsert below updates it instead of adding
+       a second copy. src/finance/applications-tracker.mjs; it never throws. */
+    if (provider === "plaid") await claimStandInsForPlaid(tx, list, opts);
 
     const written = [];
     for (const a of list) written.push(await upsertBankAccount(tx, a, opts));

@@ -1,0 +1,81 @@
+/* Alerts bundle — window.FinanceOS.extras.alerts (money-alerts-bundle.js).
+   Unit AL, Finance OS CFO build, 2026-11-07. Every rule is under .fh-bundle, and
+   the file carries every rule the bundle needs, so it sits under the Alerts
+   section without borrowing from its neighbours or reaching them.
+
+   The Astra look (UI-STANDARDS §0 and §12): white 10px panels with the panel
+   shadow token, 13px sentence-case gray captions, black 8px buttons, status as a
+   word in a chip (never colour alone), every control at least 44 by 44. Type
+   sizes are the brand's semantic tokens (§12.7), never px. Phone: one column,
+   and the page never scrolls sideways (§11). */
+
+.fh-bundle{display:grid;gap:16px;margin-top:24px;min-width:0}
+.fh-bundle h2,.fh-bundle p,.fh-bundle ul,.fh-bundle li,.fh-bundle blockquote{margin:0;padding:0}
+.fh-bundle ul{list-style:none}
+.fh-bundle button{font:inherit;color:inherit}
+.fh-bundle b{font-weight:650;color:var(--ink)}
+.fh-bundle a{color:var(--ink);text-underline-offset:3px}
+
+/* The resting container (UI-STANDARDS §12.1). The shadow is the token. */
+.fh-bundle .fb-panel{background:var(--surface,#fff);border:1px solid var(--line);border-radius:10px;padding:24px;box-shadow:var(--panel-shadow);min-width:0}
+.fh-bundle .fb-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+/* A panel that is only its head (the over-10% text's switch) keeps no gap under it. */
+.fh-bundle .fb-head:last-child{margin-bottom:0}
+.fh-bundle .fb-l{display:grid;gap:4px;min-width:0;flex:1 1 280px}
+.fh-bundle .fb-head h2{font-size:var(--fs-title);font-weight:650;line-height:1.25;color:var(--ink);overflow-wrap:anywhere}
+.fh-bundle .fb-cap{font-size:var(--fs-caption);color:var(--gray);line-height:1.5}
+.fh-bundle .fb-note{display:block;font-size:var(--fs-body);color:var(--ink2,var(--ink));line-height:1.5}
+.fh-bundle .fb-big{display:block;font-size:var(--fs-title);font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.3}
+.fh-bundle .fb-empty{font-size:var(--fs-body);color:var(--gray)}
+
+/* Rows: a line between, no box around each (§7). */
+.fh-bundle .fb-rows{display:grid}
+.fh-bundle .fb-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px 0;border-top:1px solid var(--line);min-width:0}
+.fh-bundle .fb-row:first-child{border-top:0;padding-top:0}
+.fh-bundle .fb-t{display:grid;gap:4px;min-width:0;flex:1 1 auto;overflow-wrap:anywhere}
+
+/* Status is a word in a pill (§12.6). The tint is the status token, softened. */
+.fh-bundle .fb-chip{display:inline-flex;align-items:center;flex:0 0 auto;font-size:var(--fs-caption);font-weight:650;padding:3px 10px;border-radius:999px;background:var(--soft);color:var(--ink2,var(--ink));white-space:nowrap}
+.fh-bundle .fb-chip.is-ok{background:color-mix(in srgb,var(--ok) 50%,#fff);color:#245C30}
+.fh-bundle .fb-chip.is-warn{background:color-mix(in srgb,var(--warn) 55%,#fff);color:#6B4A0E}
+.fh-bundle .fb-chip.is-alert{background:color-mix(in srgb,var(--alert) 50%,#fff);color:#7E2C21}
+.fh-bundle .fb-chip.is-acc{background:color-mix(in srgb,var(--accent,#C4B3E5) 50%,#fff);color:#4F3C85}
+.fh-bundle .fb-t>.fb-tag{justify-self:start}
+.fh-bundle .fb-tag{display:inline-block;font-size:var(--fs-caption);color:var(--gray);border:1px solid var(--line);border-radius:999px;padding:0 8px;white-space:nowrap;vertical-align:middle}
+
+/* The switch: the words, a track whose thumb moves, and On / Off — never colour
+   alone. The whole button is the hit area: at least 44px tall. */
+.fh-bundle .fb-switch{display:inline-flex;align-items:center;gap:10px;min-height:44px;min-width:44px;padding:0 4px;border:0;border-radius:8px;background:transparent;cursor:pointer;max-width:100%;text-align:right}
+.fh-bundle .fb-switch:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.fh-bundle .fb-switch[disabled]{cursor:progress}
+.fh-bundle .fb-sw-label{font-size:var(--fs-caption);color:var(--gray);min-width:0}
+.fh-bundle .fb-track{position:relative;display:block;width:48px;height:28px;border-radius:999px;border:2px solid var(--ink);background:var(--surface,#fff);flex:0 0 auto;transition:background-color .15s ease}
+.fh-bundle .fb-thumb{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--ink);transition:transform .15s ease}
+.fh-bundle .fb-switch[aria-checked="true"] .fb-track{background:var(--ink)}
+.fh-bundle .fb-switch[aria-checked="true"] .fb-thumb{transform:translateX(20px);background:var(--paper)}
+.fh-bundle .fb-sw-word{font-weight:650;color:var(--ink);min-width:4ch;white-space:nowrap}
+
+/* The black 8px button. */
+.fh-bundle .fb-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;min-width:44px;padding:8px 16px;border:1px solid var(--ink);border-radius:8px;background:var(--ink);color:var(--paper);font-weight:600;text-decoration:none;cursor:pointer}
+.fh-bundle .fb-btn:hover{background:var(--ink2,var(--ink))}
+
+/* What the Monday text says: a flat tint inside the panel, not a second shadow (§12.5). */
+.fh-bundle .fb-preview{display:block;padding:16px;border-radius:10px;background:var(--soft);font-size:var(--fs-body);color:var(--ink);line-height:1.5;margin-bottom:12px;overflow-wrap:anywhere}
+
+/* Loading: grey bars where the panels will be. */
+.fh-bundle .fb-skel{display:grid;gap:12px}
+.fh-bundle .fb-skel span{display:block;height:16px;border-radius:8px;background:var(--soft)}
+.fh-bundle .fb-skel span:first-child{width:40%}
+.fh-bundle .fb-skel span:nth-child(2){width:80%}
+.fh-bundle .fb-skel span:nth-child(3){width:60%}
+
+.fh-bundle .fb-live{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+@media (max-width:760px){
+  .fh-bundle .fb-panel{padding:16px}
+  .fh-bundle .fb-head{flex-direction:column}
+  /* In a column the 280px basis would become a height: the text block is only as tall as its words. */
+  .fh-bundle .fb-l{flex:0 1 auto;width:100%}
+  .fh-bundle .fb-switch{justify-content:space-between;width:100%;text-align:left}
+  .fh-bundle .fb-sw-label{flex:1 1 auto}
+}

@@ -44,7 +44,7 @@
 import { db } from "../src/db.mjs";
 import { requirePrincipal } from "../src/http/middleware/requirePrincipal.mjs";
 import { ROLE_SETS, requireRole, isUuid } from "../src/http/read-api.mjs";
-import { getDocument } from "../src/documents/retrieve.mjs";
+import { getDocument, getVersion } from "../src/documents/retrieve.mjs";
 import { DEFAULT_TTL_SECONDS } from "../src/documents/signed-url.mjs";
 import { safeError } from "../src/http/health.mjs";
 
@@ -139,6 +139,21 @@ export default async function handler(req, res) {
 
     // A document may expire on its own schedule; an expired one has no link.
     if (document.expired) return GONE(res);
+
+    /* ONE SAVED VERSION, for the full credit report of each soft pull (the
+       fulfillment cycle, src/blueprint/fulfillment-cycle.mjs). Same document,
+       same ownership gate above; only which saved version is signed changes. */
+    const wanted = req.query && req.query.version;
+    if (wanted !== undefined && wanted !== null && wanted !== "") {
+      if (!/^[1-9]\d{0,5}$/.test(String(wanted))) return res.status(400).json({ ok: false, error: "invalid_version" });
+      const version = await getVersion(db, { orgId, documentId, version: Number(wanted),
+        sign: { ttlSeconds: DEFAULT_TTL_SECONDS } });
+      if (!version || !version.download) return GONE(res);
+      res.setHeader("cache-control", "private, no-store");
+      res.setHeader("x-content-type-options", "nosniff");
+      return res.status(200).json({ ok: true,
+        document: { ...publicShape(document), version: version.version, download: version.download } });
+    }
 
     /* A SIGNED URL IS A BEARER CREDENTIAL FOR ITS LIFETIME, so it must not sit
        in a shared cache. Same headers api/documents/[id].mjs sets on the bytes. */

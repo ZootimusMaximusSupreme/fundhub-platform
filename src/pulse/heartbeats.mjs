@@ -48,6 +48,8 @@ export const CLOCK_JOBS = Object.freeze([
   ["finance-os-money-transfers", "*/15 * * * *"],
   ["finance-os-pull-sweeper", "0 6 * * *"],
   ["finance-os-trend-snapshots", "30 7 * * *"],
+  ["finance-os-weekly-money", "TZ=America/Phoenix 0 9 * * 1"],
+  ["finance-os-whop-plans-sweeper", "0 7 * * *"],
   ["hiring-bench-sweeper", "30 13 * * *"],
   ["ops-manager-review", "TZ=America/Phoenix 15 7 * * *"],
   ["hiring-outreach-cadence", "*/30 * * * *"],

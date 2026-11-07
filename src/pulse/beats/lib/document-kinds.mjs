@@ -74,6 +74,9 @@ export const SUBTYPES = Object.freeze({
     "funding_bank_response",
     // A bank's decline letter, for decline defense (src/blueprint/decline-defense.mjs).
     "decline_letter",
+    // The client's own ChexSystems consumer disclosure, for the Capital Blueprint
+    // step check_chexsystems (db/migrations/574). Reviewed by staff in the vault.
+    "chexsystems_report",
     // The business half of the application document vault
     // (src/finance/document-vault-items.mjs). The three personal papers reuse
     // id_document / proof_of_address / tax_return above; these name the papers
@@ -146,6 +149,7 @@ export const SUBTYPE_TITLES = Object.freeze({
   repair_submission_receipt: "Repair Submission Receipt",
   funding_bank_response: "Bank Application Response",
   decline_letter: "Bank Decline Letter",
+  chexsystems_report: "ChexSystems Consumer Disclosure",
   bureau_letter: "Bureau Response Letter",
   ftc_report: "FTC Identity Theft Report",
   other: "Uploaded Document"

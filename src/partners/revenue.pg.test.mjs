@@ -354,7 +354,7 @@ describe("partner revenue accrual", { skip: !HAVE_DB ? "no DATABASE_URL" : false
 
   // ══════════ the recruit bonus ══════════
 
-  test("the recruit bonus writes $2,000 against the $10,000 entry fee, once", async () => {
+  test("the recruit bonus writes $6,000 against the $30,000 entry fee, once", async () => {
     const { transactionId } = await seedPayment({ clientId: partnerClient });
     const first = await accrueRecruitBonus(db, {
       orgId: org, recruiterPartnerId: partnerId, transactionId
@@ -367,10 +367,10 @@ describe("partner revenue accrual", { skip: !HAVE_DB ? "no DATABASE_URL" : false
     assert.equal(second.reason, "already_accrued");
     const rows = (await accruals()).filter((r) => r.client_id === null);
     assert.equal(rows.length, 1);
-    assert.equal(rows[0].gross_amount, "10000.00");
-    assert.equal(rows[0].share_amount, "2000.00");
+    assert.equal(rows[0].gross_amount, "30000.00");
+    assert.equal(rows[0].share_amount, "6000.00");
     assert.equal(Number(rows[0].share_pct_applied), 20);
-    assert.equal(ENTRY_FEE_CENTS, 1000000);
+    assert.equal(ENTRY_FEE_CENTS, 3000000);
   });
 
   // ══════════ the wire itself ══════════

@@ -186,3 +186,179 @@ test("error and loading states say what is happening in words", () => {
   assert.match(JS, /\/portal-login\.html/);
   assert.match(JS, /\/login\.html\?next=/);
 });
+
+/* ── Credit over time (spec item 4, 2026-11-06) ──────────────────────────
+   credit_history off the read (src/finance/credit-history.mjs): one line per
+   bureau from every saved pull, a picker with each saved business's lines,
+   and a break wherever the server marked a gap. */
+const P = (at, score, gap = false, extra = {}) => ({ pulled_at: at, score, sample: false, gap_before: gap, ...extra });
+const JUL = "2026-07-31T12:00:00.000Z", AUG = "2026-08-31T12:00:00.000Z", OCT = "2026-10-30T12:00:00.000Z";
+function withHistory() {
+  const d = fixture();
+  d.credit_history = {
+    personal: {
+      pulls: [JUL, AUG, OCT].map((at) => ({ pulled_at: at, sample: false })),
+      series: [
+        { bureau: "experian", points: [P(JUL, 740), P(AUG, 760), P(OCT, 771, true)] },
+        { bureau: "equifax", points: [P(JUL, 752), P(OCT, 778, true)] },
+        { bureau: "transunion", points: [P(JUL, 749), P(AUG, 770), P(OCT, 766, true)] }
+      ],
+      usage: [
+        { pulled_at: JUL, percent: 38, partial: false, source: "report_accounts", sample: false, gap_before: false },
+        { pulled_at: AUG, percent: 21.5, partial: false, source: "report_accounts", sample: false, gap_before: false },
+        { pulled_at: OCT, percent: 6.1, partial: false, source: "report_accounts", sample: false, gap_before: true }
+      ]
+    },
+    businesses: [
+      { id: "b1", name: "Fundhub LLC", state: "AZ", has_report: true,
+        reports: [{ pulled_at: JUL, sample: false }, { pulled_at: AUG, sample: false }],
+        series: [
+          { field: "commercialScore", points: [P(JUL, 61), P(AUG, 68)] },
+          { field: "fsrScore", points: [P(JUL, 40), P(AUG, 47)] }
+        ] },
+      { id: "b2", name: "Second Co", state: "NV", has_report: false, reports: [], series: [] }
+    ]
+  };
+  return d;
+}
+/* The score chart, or the cards-used chart, out of a render. */
+const chartOf = (html, use = false) =>
+  (html.match(/<svg class="chart[^"]*"[\s\S]*?<\/svg>/g) || []).filter((s) => /^<svg class="chart chart-use"/.test(s) === use)[0] || "";
+
+test("credit over time: one line per bureau, a point and a tick for every pull, breaks where the server said", () => {
+  const html = C.renderHistory(withHistory());
+  const t = text(html);
+  assert.match(t, /Credit over time/);
+  assert.match(t, /One line for each bureau, one point for each saved credit pull\./);
+  const svg = chartOf(html);
+  // Experian Jul–Aug joined, then Oct after a gap month: 1 line. Equifax: none
+  // (its two points are split by a gap). TransUnion: 1 line. Never bridged.
+  assert.equal((svg.match(/<polyline/g) || []).length, 2);
+  assert.equal((svg.match(/<circle class="dot"/g) || []).length, 8, "one dot per real point, no made-up ones");
+  for (const words of ["Experian 740 on Jul 31, 2026", "Equifax 778 on Oct 30, 2026", "TransUnion 770 on Aug 31, 2026"]) {
+    assert.ok(svg.includes("<title>" + words + "</title>"), words);
+  }
+  assert.doesNotMatch(svg, /Equifax \d+ on Aug 31/, "no Equifax point on the pull that lacked it");
+  assert.match(t, /Experian Equifax TransUnion/, "legend in words, not colour alone");
+  assert.match(t, /3 pulls · Jul 31, 2026 to Oct 30, 2026/);
+  assert.match(t, /A break in a line means a month with no pull, or a pull that did not have that score\./);
+  assert.doesNotMatch(t, /sample report, not a real bureau pull/, "no sample note on real pulls");
+});
+
+test("credit over time: the date of each pull is on the axis when there is room", () => {
+  const wide = chartOf(C.renderHistory(withHistory(), { width: 900 }));
+  assert.match(wide, /viewBox="0 0 900 220"/, "drawn at the card's real width");
+  for (const d of ["Jul 31", "Aug 31", "Oct 30"]) assert.match(wide, new RegExp(">" + d + "<"));
+  const phone = chartOf(C.renderHistory(withHistory(), { width: 300 }));
+  assert.match(phone, /viewBox="0 0 300 220"/);
+  assert.match(phone, />Oct 30</, "the newest pull is always labelled");
+  const lines = (phone.match(/<line class="chart-base"/g) || []).length;
+  assert.equal(lines, 3 + 3, "three gridlines plus one tick per pull, even when a label is left off");
+});
+
+test("credit over time: cards used at each pull is its own line, only from pulls that have it", () => {
+  const html = C.renderHistory(withHistory());
+  assert.match(text(html), /Cards used at each pull/);
+  const use = chartOf(html, true);
+  assert.ok(use, "the cards-used chart is drawn");
+  assert.equal((use.match(/<circle class="dot"/g) || []).length, 3);
+  assert.ok(use.includes("<title>Cards used 6.1% on Oct 30, 2026</title>"));
+  assert.equal((use.match(/<polyline/g) || []).length, 1, "Jul–Aug joined, Oct after the gap is a lone dot");
+  const none = withHistory();
+  none.credit_history.personal.usage = [];
+  assert.doesNotMatch(C.renderHistory(none), /chart-use|Cards used at each pull/, "no pull has it: no chart, never 0%");
+});
+
+/* The picker's options as [label, value, selected]. */
+const options = (html) => [...html.matchAll(/<option value="([^"]+)"( selected)?>([^<]+)<\/option>/g)]
+  .map((m) => [m[3], m[1], m[2] === " selected"]);
+
+test("business picker: Personal plus one choice per saved business; each shows only its own lines", () => {
+  const d = withHistory();
+  const personal = C.renderHistory(d);
+  assert.match(personal, /<label class="hist-pick"><span class="caption">Show credit for<\/span> <select data-hist-pick aria-controls="hist-panel">/,
+    "a labelled native select: the Astra client control, 48px tall, never sideways scroll");
+  assert.deepEqual(options(personal), [["Personal", "personal", true], ["Fundhub LLC", "biz:0", false], ["Second Co", "biz:1", false]]);
+  assert.doesNotMatch(personal, /role="tab"|fh-astra-tabs/, "no tab strip that can scroll sideways on a phone");
+
+  const biz = C.renderHistory(d, { view: "biz:0" });
+  const bt = text(biz);
+  assert.deepEqual(options(biz).filter((o) => o[2]).map((o) => o[1]), ["biz:0"]);
+  assert.match(bt, /Each score on the saved Experian business reports for Fundhub LLC\./);
+  assert.match(bt, /Intelliscore Financial stability \(FSR\)/, "the report's scores, named in words");
+  assert.match(bt, /2 reports · Jul 31, 2026 to Aug 31, 2026 · Experian business scores run 1 to 100\./);
+  const svg = chartOf(biz);
+  assert.equal((svg.match(/<polyline/g) || []).length, 2);
+  assert.ok(svg.includes("<title>Intelliscore 68 on Aug 31, 2026</title>"));
+  assert.doesNotMatch(svg, /Experian|Equifax|TransUnion/, "no bureau line on a business view");
+
+  const empty = C.renderHistory(d, { view: "biz:1" });
+  assert.match(text(empty), /No business credit report is saved for Second Co yet\./);
+  assert.doesNotMatch(empty, /<svg class="chart/);
+
+  assert.deepEqual(options(C.renderHistory(d, { view: "biz:9" })).filter((o) => o[2]).map((o) => o[1]), ["personal"],
+    "a business that is not there falls back to Personal");
+  assert.match(text(C.renderHistory(d, { view: "biz:9" })), /One line for each bureau/);
+});
+
+test("business picker: no saved business, no picker; one report says its numbers and draws no line", () => {
+  const d = withHistory();
+  d.credit_history.businesses = [];
+  assert.doesNotMatch(C.renderHistory(d), /data-hist-pick|<select/);
+  const one = withHistory();
+  one.credit_history.businesses[0].reports = [{ pulled_at: AUG, sample: false }];
+  one.credit_history.businesses[0].series = [
+    { field: "commercialScore", points: [P(AUG, 68)] }, { field: "fsrScore", points: [P(AUG, 47)] }
+  ];
+  const html = C.renderHistory(one, { view: "biz:0" });
+  assert.match(text(html), /One report so far, on Aug 31, 2026: Intelliscore 68, Financial stability \(FSR\) 47\. The lines start with the next report\./);
+  assert.doesNotMatch(html, /<svg class="chart/);
+});
+
+test("credit over time: one saved pull, and no pull at all, say so plainly", () => {
+  const one = withHistory();
+  one.credit_history.personal = {
+    pulls: [{ pulled_at: OCT, sample: false }],
+    series: [{ bureau: "experian", points: [P(OCT, 771)] }, { bureau: "equifax", points: [] }, { bureau: "transunion", points: [] }],
+    usage: []
+  };
+  const h1 = C.renderHistory(one);
+  assert.match(text(h1), /One pull so far, on Oct 30, 2026\. The lines start with your next pull\./);
+  assert.doesNotMatch(h1, /<svg class="chart/);
+  const none = withHistory();
+  none.has_pull = false;
+  none.credit_history.personal = { pulls: [], series: [], usage: [] };
+  assert.match(text(C.renderHistory(none)), /No credit pulls are saved yet\. Your score lines show up here after your first pull\./);
+  // With only a business score the page still renders, with the business picker.
+  none.business.intelliscore = 70;
+  assert.match(C.render(none), /No credit pulls are saved yet/);
+  assert.match(C.render(none), /<option value="biz:0">Fundhub LLC<\/option>/);
+});
+
+test("credit over time: a sample point says so in words, once", () => {
+  const d = withHistory();
+  d.sample = false;
+  d.credit_history.personal.series[0].points[2].sample = true;
+  assert.match(text(C.renderHistory(d)), /Some points came from a sample report, not a real bureau pull\./);
+  d.sample = true;
+  assert.doesNotMatch(text(C.renderHistory(d)), /Some points came from a sample report/,
+    "the page's Sample banner already says it; the card does not repeat it");
+  assert.match(C.render(d), /Sample report/);
+});
+
+test("credit over time styles use the shared tokens only, and the picker is never under 44px", () => {
+  const css = fs.readFileSync(path.join(APP, "money-credit-ios.css"), "utf8");
+  const block = css.slice(css.indexOf("/* Credit over time"));
+  assert.ok(block.length > 100, "the Credit over time block is in money-credit-ios.css");
+  assert.doesNotMatch(block, /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i, "no hard-coded colour; var(--line), var(--ink) and friends only");
+  for (const token of ["var(--line)", "var(--ink)", "var(--gray)", "var(--surface)"]) assert.ok(block.includes(token), token);
+  assert.match(block, /\.hist-pick select\{[^}]*min-height:48px/);
+  assert.match(block, /\.hist-pick select\{[^}]*max-width:100%/, "fits a 390px phone");
+});
+
+test("the section redraws at the card's real width, and the picker switches views, with no write", () => {
+  assert.match(JS, /new root\.ResizeObserver\(refit\)/);
+  assert.match(JS, /requestAnimationFrame/, "the redraw waits a frame, never inside the resize callback");
+  assert.match(JS, /el\.addEventListener\("change"[\s\S]{0,200}data-hist-pick/);
+  assert.doesNotMatch(JS, /method: "POST"|"POST"/, "switching a view sends nothing");
+});

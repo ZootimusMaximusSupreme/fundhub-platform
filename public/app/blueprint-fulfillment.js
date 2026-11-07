@@ -14,6 +14,7 @@
   let inquiries = null;
   let services = null;
   let repair = null;
+  let mailing = null;
   let preparation = null;
   let preparationLoading = false;
   let moneyOverview = null;
@@ -32,13 +33,38 @@
   const clientFundingActive = () => active() && funding?.engagement?.executionOwner === 'client' && funding?.state !== 'managed';
   const rows = value => Array.isArray(value) ? value : [];
   const stateNames = {needs_file:'Your report is needed',optimize:'Work on your file',held:'Waiting on a required step',ready:'Your next bank is ready',awaiting_response:'Waiting for bank responses',managed:'The Fundhub team is running this round',completed:'Your purchased funding round is complete'};
+  /* Saved codes in plain words (Chris, 2026-11-07). A code with no word below
+     still reads as words ("needs_review" -> "Needs review"), never as a code. */
+  const BUREAU_NAMES = {EX:'Experian',EQ:'Equifax',TU:'TransUnion'};
+  const bureauName = value => BUREAU_NAMES[String(value ?? '').trim().toUpperCase()] || String(value ?? '');
+  const words = value => {
+    const s = String(value ?? '').trim();
+    if (!/^[a-z0-9]+(_[a-z0-9]+)*$/.test(s)) return s;
+    const spaced = s.replaceAll('_', ' ');
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  };
+  const roundNumber = value => { const match = /^R(\d+)$/i.exec(String(value ?? '').trim()); return match ? Number(match[1]) : null; };
+  const roundName = value => roundNumber(value) ? 'Round ' + roundNumber(value) : String(value ?? '').toUpperCase() === 'FURNISHER' ? 'Creditor letters' : words(value);
+  const callWords = {idle:'Not called yet',not_requested:'Not called yet',claimed:'Calling now',sent:'Call placed',unknown:'Checking the call',failed:'Call did not go through'};
+  const reasonWords = {later_in_order:'Later',scheduled:'Scheduled'};
+  const repairCaseWords = {open:'Open',awaiting_response:'Waiting on the bureau',round_complete:'Round done',closed:'Closed',stalled:'On hold',cancelled:'Cancelled'};
+  const repairItemWords = {open:'Open',sent:'Sent',verified:'Bureau kept it',deleted:'Removed',updated:'Updated',unaddressed:'No answer yet',closed:'Closed',escalated:'Next round'};
+  const letterWords = {generated:'Ready',ready:'Ready',variance_failed:'The team is checking it',sending:'Sending',sent:'Sent',delivered:'Delivered',failed:'Did not send'};
+  const plainWord = (map, value) => map[String(value ?? '').trim()] || words(value);
+  function letterTitle(letter) {
+    const round = roundNumber(letter.round) ? ', round ' + roundNumber(letter.round) : '';
+    if (letter.target === 'furnisher') return 'Creditor letter' + round;
+    if (letter.target === 'cfpb') return 'CFPB complaint' + round;
+    if (letter.target === 'state_ag') return 'Attorney general complaint' + round;
+    return (bureauName(letter.bureau) || 'Repair') + ' letter' + round;
+  }
 
   function invalidate() {
     if (invalid) return;
     invalid = true;
     abort.abort();
     generation++;
-    funding = inquiries = services = repair = preparation = null;
+    funding = inquiries = services = repair = mailing = preparation = null;
     actionKeys.clear();
     for (const win of pendingWindows) { try { win.close(); } catch {} }
     pendingWindows.clear();
@@ -83,6 +109,8 @@
 
   async function refresh(initial = false) {
     const run = ++generation;
+    /* The look-ahead is read again too (CX30): the old estimate leaves the card now. */
+    window.FHBlueprintJourney?.refreshLookahead?.();
     try {
       const next = await request('/api/blueprint/funding');
       if (!current() || run !== generation) return;
@@ -102,7 +130,8 @@
       render();
       const results = await Promise.allSettled([
         request('/api/blueprint/inquiries'), request('/api/blueprint/services'),
-        request('/api/blueprint/repair'), request('/api/blueprint/plan'), request('/api/money/overview')
+        request('/api/blueprint/repair'), request('/api/blueprint/plan'), request('/api/money/overview'),
+        request('/api/blueprint/letter-mailing')
       ]);
       if (!current() || run !== generation) return;
       errors = {};
@@ -116,6 +145,8 @@
       else { preparation = null; errors.preparation = results[3].reason.message; }
       preparationLoading = false;
       moneyOverview = results[4].status === 'fulfilled' ? results[4].value : null;
+      /* The $97 mailing for repair letters (blueprint-repair-mail.js). Without it, Mail it yourself still works. */
+      mailing = results[5].status === 'fulfilled' ? results[5].value : null;
       render();
     } catch (error) {
       if (!current() || run !== generation) return;
@@ -140,6 +171,9 @@
       else host.querySelector('.bf-status').insertAdjacentHTML('beforebegin',navigation);
     }
     document.body.dataset.blueprintFulfillment = view === 'preparation' ? 'preparation' : 'active';
+    mountCards();
+    /* The look-ahead inside "Funding you qualify for" (unit S): the journey fills its own slot. */
+    window.FHBlueprintJourney?.lookahead?.(host, request);
   }
 
   function errorView(key) {
@@ -193,26 +227,27 @@
     const portal = httpsUrl(c.portalUrl);
     const upload = httpsUrl(c.documentUploadUrl);
     if (!portal && !upload) return '';
-    return `<div class="bf-row">${portal ? `<a class="bf-link" href="${esc(portal)}" target="_blank" rel="noopener noreferrer">Open ${esc(c.bureau)} portal ↗</a>` : ''}${upload ? `<a class="bf-link" href="${esc(upload)}" target="_blank" rel="noopener noreferrer">Upload documents for a pending ${esc(c.bureau)} request ↗</a>` : ''}</div>${upload ? '<p class="bf-caption">Use the portal to start or manage a dispute. Document upload adds files to a request already open.</p>' : ''}`;
+    return `<div class="bf-row">${portal ? `<a class="bf-link" href="${esc(portal)}" target="_blank" rel="noopener noreferrer">Open ${esc(bureauName(c.bureau))} portal ↗</a>` : ''}${upload ? `<a class="bf-link" href="${esc(upload)}" target="_blank" rel="noopener noreferrer">Upload documents for a pending ${esc(bureauName(c.bureau))} request ↗</a>` : ''}</div>${upload ? '<p class="bf-caption">Use the portal to start or manage a dispute. Document upload adds files to a request already open.</p>' : ''}`;
   }
 
   function caseView(c) {
     const documents = rows(c.documents);
     const items = rows(c.inquiries);
     const packet = c.packet || {};
-    return `<article class="bf-item"><h3>${esc(c.bureau)} · ${esc(c.status)}</h3>
+    return `<article class="bf-item"><h3>${esc(bureauName(c.bureau))} · ${esc(words(c.status))}</h3>
       ${packet.complete ? '<p>Required identity documents are on file.</p>' : `<p>Documents needed: ${esc(rows(packet.missing).map(item => typeof item === 'string' ? item : item.label).join(', ') || 'Open your document upload steps.')}</p>`}
       ${uploadForms(packet.uploads)}
       ${c.executionOwner === 'fundhub' ? '<p>The Fundhub team is running this case.</p>' : ''}
       <ul>${items.map(i => `<li>${esc(i.name)} · ${esc(i.state === 'removed_verified' ? 'Removal verified' : i.state === 'pending_verification' ? 'Waiting for verification' : 'Open')}${i.verifiedAt ? ' · ' + esc(date(i.verifiedAt)) : ''}</li>`).join('')}</ul>
+      ${window.FHBlueprintCycle?.call?.(c) || ''}
       ${c.nextCheckAt ? `<p>Next check: ${esc(date(c.nextCheckAt))}</p>` : ''}
       ${c.submissionReference ? `<p>Submission reference: ${esc(c.submissionReference)}</p>` : ''}
-      ${c.call?.status ? `<p>Bureau call: ${esc(c.call.status)}</p>` : ''}
+      ${c.call?.status ? `<p>${esc(plainWord(callWords, c.call.status))}</p>` : ''}
       ${bureauPortalLinks(c)}
       <div class="bf-row">
       ${documents.map(d => button(d.title || 'Open packet document','document',`data-id="${esc(d.id)}"`)).join('')}
       ${c.actions?.canCheckSavedEvidence ? button('Check saved bureau evidence','check-evidence',`data-id="${esc(c.id)}"`) : ''}</div>
-      ${c.actions?.canLaunchCall && active() ? `<form data-bf-form="bureau-call" data-case="${esc(c.id)}" class="bf-panel"><label class="bf-authorization"><input type="checkbox" name="authorization" required> I authorize my AI agent to contact ${esc(c.bureau)} about the inquiries in this case.</label><button type="submit">Call bureau with my AI agent</button></form>` : ''}
+      ${c.actions?.canLaunchCall && active() ? `<form data-bf-form="bureau-call" data-case="${esc(c.id)}" class="bf-panel"><label class="bf-authorization"><input type="checkbox" name="authorization" required> I authorize my AI agent to contact ${esc(bureauName(c.bureau))} about the inquiries in this case.</label><button type="submit">Call bureau with my AI agent</button></form>` : ''}
       ${c.actions?.canRecordSubmission && active() ? `<details class="bf-panel"><summary>Save my dispute submission</summary><form data-bf-form="submission" data-case="${esc(c.id)}"><div class="bf-fields"><label>Portal confirmation or mailing reference<input name="reference" required maxlength="500" value="${esc(c.submissionReference || '')}"></label><label>Submission receipt<input name="receipt" type="file" accept="application/pdf,image/jpeg,image/png" required></label></div><button type="submit">Save submission receipt</button></form></details>` : ''}
     </article>`;
   }
@@ -221,10 +256,29 @@
     if (errors.funding) return errorView('funding');
     const lenders = rows(funding?.lenders);
     const apps = rows(funding?.applications);
-    return `<section><h3>Your permitted banks</h3><p>${esc(funding?.nextAction || '')}</p>
-      ${lenders.length ? lenders.map((l,index) => `<article class="bf-item"><h3>${esc(l.name)}${l.productName ? ' · ' + esc(l.productName) : ''}</h3>${l.businessName ? `<p>${esc(l.businessName)}</p>` : ''}<p>${esc(l.reason || (l.available ? 'Ready for the current application step.' : 'Waiting on the current file.'))}</p>${l.nextEligibleAt ? `<p>Next check: ${esc(date(l.nextEligibleAt))}</p>` : ''}${l.available && clientFundingActive() ? button('Open bank application','open-lender',`data-id="${esc(l.id)}" data-business="${esc(l.businessId || '')}"`,l === lenders.find(item => item.available)) : ''}</article>`).join('') : '<p>Your next lenders will appear after the current file checks pass.</p>'}
+    return `<div class="bf-card-slot" data-bf-apply-gate></div><section><h3>Your permitted banks</h3><p>${esc(funding?.nextAction || '')}</p>
+      ${window.FHBlueprintCycle?.guide?.(funding) || ''}
+      ${lenders.length ? lenders.map((l,index) => `<article class="bf-item"><h3>${esc(l.name)}${l.productName ? ' · ' + esc(l.productName) : ''}</h3>${l.businessName ? `<p>${esc(l.businessName)}</p>` : ''}<p>${esc((l.reason && plainWord(reasonWords, l.reason)) || (l.available ? 'Ready for the current application step.' : 'Waiting on the current file.'))}</p>${l.nextEligibleAt ? `<p>Next check: ${esc(date(l.nextEligibleAt))}</p>` : ''}${l.available && clientFundingActive() ? button('Open bank application','open-lender',`data-id="${esc(l.id)}" data-business="${esc(l.businessId || '')}"`,l === lenders.find(item => item.available)) : ''}</article>`).join('') : '<p>Your next lenders will appear after the current file checks pass.</p>'}
       <div class="bf-panel"><h3>Your applications</h3>${apps.length ? apps.map(applicationView).join('') : '<p>You have no recorded bank applications for this round.</p>'}
-      ${funding?.canFinishSubmissions && clientFundingActive() ? `<p>When you have finished sending applications for this round, close new submissions. The system will continue checking bank outcomes and funding.</p>${button('I’m done applying for this round','finish-submissions')}` : funding?.submissionsClosed ? '<p>New submissions are closed. Recorded applications remain tracked through their final outcomes.</p>' : ''}</div></section>`;
+      ${funding?.canFinishSubmissions && clientFundingActive() ? `<p>When you have finished sending applications for this round, close new submissions. The system will continue checking bank outcomes and funding.</p>${button('I’m done applying for this round','finish-submissions')}` : funding?.submissionsClosed ? '<p>New submissions are closed. Recorded applications remain tracked through their final outcomes.</p>' : ''}</div>
+      <div class="bf-card-slot" data-bf-apps></div></section>`;
+  }
+
+  /* Finance OS cards on the Applications tab: "Can you apply yet?" (unit L4,
+     public/app/apply-gate.js) and "Your bank applications" (unit O,
+     public/app/money-applications.js). They read through this workspace's own
+     request(), so the sign-in checks and the sample demo apply to them too. */
+  function cardApi() {
+    const wrap = promise => promise.then(body => ({status:200, body}),
+      error => ({status:error?.status || 0, body:{ok:false, error:error?.code || 'server_error'}}));
+    return {apiGet:path => wrap(request(path)), apiPost:(path, body) => wrap(request(path, {method:'POST', body:JSON.stringify(body)}))};
+  }
+  function mountCards() {
+    if (view !== 'funding' || !current()) return;
+    const gate = host.querySelector('[data-bf-apply-gate]');
+    if (gate && window.FHApplyGate?.mount) window.FHApplyGate.mount(gate, cardApi());
+    const apps = host.querySelector('[data-bf-apps]');
+    if (apps && window.FHApplications?.mount) window.FHApplications.mount(apps, cardApi());
   }
 
   function applicationView(a) {
@@ -276,13 +330,15 @@
       ${uploadForms(authorization.uploads)}
       <p>${esc(repair.stage || 'Your current saved repair file')}</p>
       ${repair.actions?.canGenerate && active() ? button('Prepare my current repair letters','generate-repair','',true) : ''}
-      ${rows(repair.cases).map(c => `<article class="bf-item"><h3>${esc(c.bureau)} · ${esc(c.round)} · ${esc(c.status)}</h3>${bureauPortalLinks(c)}${rows(c.items).map(item => `<p>${esc(item.creditor || item.creditorName || item.name || '')}${item.status ? ' · ' + esc(item.status) : ''}</p>`).join('')}${rows(c.letters).map(letterView).join('')}</article>`).join('')}
+      ${rows(repair.cases).map(c => `<article class="bf-item"><h3>${esc(bureauName(c.bureau))} · ${esc(roundName(c.round))} · ${esc(plainWord(repairCaseWords, c.status))}</h3>${bureauPortalLinks(c)}${rows(c.items).map(item => `<p>${esc(item.creditor || item.creditorName || item.name || '')}${item.status ? ' · ' + esc(plainWord(repairItemWords, item.status)) : ''}</p>`).join('')}${rows(c.letters).map(letterView).join('')}</article>`).join('')}
       ${active() ? '<form data-bf-form="repair-response" class="bf-panel"><h3>Upload a bureau response</h3><label>Response document<input type="file" name="file" accept="application/pdf,image/jpeg,image/png" required></label><button type="submit">Upload response for review</button></form>' : ''}</section>`;
   }
 
   function letterView(letter) {
-    return `<div class="bf-panel"><h3>${esc(letter.target || letter.bureau || 'Repair letter')}</h3><p>${letter.submission ? 'Submitted by you; awaiting bureau response.' : esc(letter.status || 'Prepared')}</p>${letter.documentId ? button('Open repair letter','document',`data-id="${esc(letter.documentId)}"`) : ''}
-      ${letter.canRecordSubmission && active() ? `<details><summary>Save my letter submission</summary><form data-bf-form="repair-submission" data-letter="${esc(letter.id)}"><div class="bf-fields"><label>How did you submit it?<select name="channel"><option value="mail">Mail</option><option value="portal">Bureau portal</option></select></label><label>Submission reference<input name="reference" maxlength="200" required></label><label>Submission receipt<input type="file" name="file" accept="application/pdf,image/jpeg,image/png" required></label></div><button type="submit">Save letter submission</button></form></details>` : ''}</div>`;
+    const mail = window.FHBlueprintRepairMail;
+    return `<div class="bf-panel"><h3>${esc(letterTitle(letter))}</h3><p>${letter.submission ? 'Submitted by you; awaiting bureau response.' : esc(letter.status ? plainWord(letterWords, letter.status) : 'Prepared')}</p>${letter.documentId ? button('Open repair letter','document',`data-id="${esc(letter.documentId)}"`) : ''}${letter.submission ? '' : window.FHBlueprintCycle?.letterSteps?.(letter) || ''}
+      ${mail?.block?.(letter, {mailing, active:active()}) || ''}
+      ${letter.canRecordSubmission && active() && !mail?.held?.(letter, mailing) ? `<details data-brm-self><summary>Save my letter submission</summary><form data-bf-form="repair-submission" data-letter="${esc(letter.id)}"><div class="bf-fields"><label>How did you submit it?<select name="channel"><option value="mail">Mail</option><option value="portal">Bureau portal</option></select></label><label>Submission reference<input name="reference" maxlength="200" required></label><label>Submission receipt<input type="file" name="file" accept="application/pdf,image/jpeg,image/png" required></label></div><button type="submit">Save letter submission</button></form></details>` : ''}</div>`;
   }
 
   host.addEventListener('change',event => {
@@ -459,12 +515,14 @@
     preparation=event.detail;
     if(funding?.engagement&&view==='today')render();
   });
+  /* A $97 mailing answer (blueprint-repair-mail.js): read the letters and the mailing again. */
+  document.addEventListener('fh:blueprint-repair-mail-updated',()=>{ if(current()&&funding?.engagement) refresh(); });
   document.addEventListener('fh:blueprint-navigate',event=>{
     if(!current()||!funding?.engagement)return;
     const action=event.detail?.action;
     if(action==='funding'){view='funding';render();return;}
     if(action==='repair-help'){view='services';render();return;}
-    if(['onboarding','businesses','letters','lessons','support','credit','document','aged-help','upgrade'].includes(action)){view='preparation';render();}
+    if(['onboarding','businesses','letters','lessons','support','credit','document','aged-help','upgrade','chexsystems'].includes(action)){view='preparation';render();}
   });
   host.addEventListener('click', event => { if (!current()) { event.preventDefault(); event.stopImmediatePropagation(); } },true);
   window.addEventListener('storage', () => current());

@@ -149,13 +149,30 @@ export const STAGE_CANCELLED_SQL = stageSql("cancelled", `EXISTS (
 
 // ── Specialist desk: repair letters (dispute_letters) ────────────────────────────────────────
 
+// A client's paid $97 Fundhub mailing (src/blueprint/letter-mailing.mjs, migration 591) keeps its repair
+// letter on 'sending', with PostGrid's id, from the mail house's acceptance until PostGrid reports the
+// letter handed to the post office (Codex CX28), and starts the bureau clock only at PostGrid's expected
+// delivery date (Codex CX27). While its accepted envelope (this letter, this PostGrid id, not cancelled,
+// not returned) waits for one of those reports, the letter is not stuck here: blueprint:letter-mailing
+// judges that envelope (red after 7 days with no handoff, 21 days with no expected delivery). A claim with
+// no such envelope is still red after a day, and so is a missing clock once the expected date is known.
 export const ROW_SEND_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE dc.id IS NULL
          OR dc.client_id IS DISTINCT FROM dl.client_id
          OR (dl.status IN ('sent', 'delivered') AND (dl.mailed_at IS NULL OR dl.send_claimed_at IS NULL))
-         OR (dl.status = 'sending' AND dl.send_claimed_at < now() - interval '1 days')
-         OR (dl.mailed_at IS NOT NULL AND dc.response_due_at IS NULL))::int AS bad_count
+         OR (dl.status = 'sending' AND dl.send_claimed_at < now() - interval '1 days'
+           AND NOT EXISTS (
+                SELECT 1 FROM blueprint_letter_mailing_envelopes e
+                 WHERE e.org_id = dl.org_id AND e.client_id = dl.client_id AND e.dispute_letter_id = dl.id
+                   AND e.state = 'accepted' AND e.provider_id = dl.postgrid_letter_id
+                   AND e.provider_status IS DISTINCT FROM 'cancelled' AND e.mailed_at IS NULL))
+         OR (dl.mailed_at IS NOT NULL AND dc.response_due_at IS NULL
+           AND NOT EXISTS (
+                SELECT 1 FROM blueprint_letter_mailing_envelopes e
+                 WHERE e.org_id = dl.org_id AND e.client_id = dl.client_id AND e.dispute_letter_id = dl.id
+                   AND e.state = 'accepted' AND e.provider_id = dl.postgrid_letter_id
+                   AND e.returned_at IS NULL AND e.expected_delivery_at IS NULL)))::int AS bad_count
   FROM dispute_letters dl
   LEFT JOIN dispute_cases dc ON dc.org_id = dl.org_id AND dc.id = dl.case_id
  WHERE dl.org_id = $1::uuid

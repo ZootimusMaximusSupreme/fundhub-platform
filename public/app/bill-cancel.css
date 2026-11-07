@@ -1,0 +1,43 @@
+/* "Cancel it for me" — the Repeat bills card on the Strategy screen
+   (bill-cancel.js, mounted by money-strategy.js). Every rule is under
+   .fh-strategy, next to money-strategy.css. Rows are plain lines with hairline
+   dividers (UI-STANDARDS §12.5), not raised cards. Every control is at least
+   44px tall; the status says its word in a pill (§12.6), never colour alone. */
+
+.fh-strategy .bill-rows{display:flex;flex-direction:column;margin:8px 0 0;padding:0;list-style:none}
+.fh-strategy .bill-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;align-items:center;padding:12px 0;border-top:1px solid var(--line);min-width:0}
+.fh-strategy .bill-row:first-child{border-top:0}
+.fh-strategy .bill-main{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fh-strategy .bill-name{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fh-strategy .bill-main .caption{overflow-wrap:anywhere}
+.fh-strategy .bill-side{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 12px;min-width:0}
+.fh-strategy .bills-card .bill-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-align:center}
+
+/* The three words. Requested and Working sit in a hairline pill; Working's
+   pill is dashed; Cancelled is an ink pill — a shape as well as a word. */
+.fh-strategy .bill-state{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border:1px solid var(--line);border-radius:999px;font-size:13px;font-weight:600;color:var(--ink);background:var(--surface,#fff);white-space:nowrap}
+.fh-strategy .bill-state.bill-working{border-style:dashed;border-color:var(--ink)}
+.fh-strategy .bill-state.bill-done{border-color:var(--ink);background:var(--ink);color:var(--paper,#fff)}
+.fh-strategy .bill-side .warn-word{font-size:13px;white-space:nowrap}
+
+.fh-strategy .bill-link{display:inline-flex;align-items:center;min-height:44px;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+.fh-strategy .bill-link:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* Team view only: the merchant's own cancel page, saved by a person. */
+.fh-strategy .bill-link-form{grid-column:1 / -1;min-width:0}
+.fh-strategy .bill-link-form>summary{min-height:44px;font-weight:600;color:var(--ink)}
+.fh-strategy .bill-link-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;min-width:0}
+.fh-strategy .bill-link-row input{flex:1 1 220px;min-width:0;max-width:100%;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#fff);color:var(--ink);font-size:16px}
+.fh-strategy .bill-link-row input:focus{outline:2px solid var(--ink);outline-offset:1px}
+.fh-strategy .bill-link-row .btn-line{min-height:44px;margin-top:0}
+
+.fh-strategy .bill-err{grid-column:1 / -1;color:#92400E}
+.fh-strategy .bill-err[hidden]{display:none}
+.fh-strategy .bill-out{color:var(--ink);font-weight:600;margin-bottom:16px}
+.fh-strategy .bills-card>.bill-btn{margin-top:16px}
+
+/* A phone: the status and the button go under the name, on the left. */
+@media (max-width:760px){
+  .fh-strategy .bill-row{grid-template-columns:minmax(0,1fr)}
+  .fh-strategy .bill-side{justify-content:flex-start}
+}

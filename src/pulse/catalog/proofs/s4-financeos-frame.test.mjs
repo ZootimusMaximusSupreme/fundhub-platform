@@ -25,17 +25,38 @@ test("the frame lists every tab, names the client and shows the sandbox note", {
     assert.equal(await page.locator("#fos-sandbox").isVisible(), true, "the sandbox note shows for test data");
     const missing = await page.evaluate((keys) => keys.filter((k) => !(window.FinanceOS.sections[k] && typeof window.FinanceOS.sections[k].mount === "function")), TABS);
     assert.deepEqual(missing, [], "every tab has its section script loaded");
-    // 17 section scripts (the sixteen tabs and the trends script), the Plaid
-    // step-up script, then the frame's own script.
+    // Section scripts: the sixteen tabs, the trends script, and the cards that
+    // are not tabs (applications, Pay now, the alerts bundle, Cancel it for me,
+    // funding paths, gas cards, What you have), then the Plaid step-up script and
+    // the frame's own script.
     const scripts = await page.evaluate(() => [...document.scripts].map((el) => el.getAttribute("src")).filter(Boolean));
+    assert.ok(scripts.indexOf("money-applications.js") > -1 && scripts.indexOf("money-applications.js") < scripts.indexOf("money-declines.js"),
+      "the applications card loads before the Applications tab that paints it");
     assert.equal(scripts[0], "/app/fundhub-font.js", "the shared presentation adapter loads first");
     assert.ok(scripts.includes("/app/client-ios.js"), "client-only navigation is loaded");
     assert.ok(scripts.includes("plaid-stepup.js"), "bank connections load the verification gate");
     assert.ok(scripts.indexOf("plaid-stepup.js") < scripts.indexOf("money.js"), "verification loads before bank connections");
-    assert.equal(scripts.filter(src => !["/app/fundhub-font.js", "/app/client-ios.js"].includes(src)).length, 19);
+    // The shared bank-logo helper (owner rule 2026-11-07) is not a section: it
+    // loads before every section that draws a bank.
+    assert.ok(scripts.indexOf("/app/bank-logo.js") > -1 && scripts.indexOf("/app/bank-logo.js") < scripts.indexOf("money.js"),
+      "the bank-logo helper loads before the sections");
+    // The premium pass helper (2026-11-07) is not a section either: it adds the
+    // hero, the advisor, Repair and Funding cards and the smooth charts to the
+    // sections that are there, so it loads after money.js and the trends script.
+    assert.ok(scripts.indexOf("money-premium.js") > scripts.indexOf("money-trends.js") && scripts.indexOf("money-trends.js") > scripts.indexOf("money.js"),
+      "the premium helper loads after money.js and the trends script");
+    // The Whop plans and provider logos helper (unit W) is not a section either: it loads right
+    // before the Payments section, which paints with it.
+    assert.equal(scripts.indexOf("money-whop-plans.js") + 1, scripts.indexOf("money-payments.js"), "the Whop plans helper loads right before Payments");
+    // The apply gate (unit L4) loads before Fundability, which mounts it; the local banks box
+    // (unit LOC) mounts itself as the Banks extra and loads right before the frame script.
+    assert.ok(scripts.indexOf("/app/apply-gate.js") > -1 && scripts.indexOf("/app/apply-gate.js") < scripts.indexOf("money-fundability.js"), "the apply gate loads before Fundability");
+    assert.equal(scripts.indexOf("/app/local-banks.js") + 1, scripts.indexOf("financeos.js"), "the local banks box loads right before the frame script");
+    assert.equal(scripts.filter(src => !["/app/fundhub-font.js", "/app/client-ios.js", "/app/bank-logo.js", "money-premium.js", "money-whop-plans.js"].includes(src)).length, 28);
     assert.equal(scripts.at(-1), "financeos.js", "the frame script loads after every section");
     assert.deepEqual(refusedScripts, [], "every script answered");
     assert.equal(await page.evaluate(() => typeof window.FinanceOS.trends?.mount + "/" + typeof window.FinanceOS.extras?.connections?.mount), "function/function");
+    assert.equal(await page.evaluate(() => typeof window.FinanceOS.extras?.accounts?.mount), "function", "the tradeline card sits under Accounts");
     for (const tab of TABS) {
       await page.locator(`#tab-${tab}`).click();
       await page.waitForFunction((k) => document.querySelector(`#tab-${k}`).getAttribute("aria-selected") === "true", tab);

@@ -389,7 +389,7 @@ test("every exported Display CD key drives the real page and asserts its exact r
   prove(IDS.sandbox);
 
   assert.deepEqual(main.calls.get, ["/api/money/strategy"]);
-  assert.match(await main.page.locator(".fh-strategy .head").innerText(), /Test Test · Pick how much goes to debt each month/);
+  assert.equal((await main.page.locator(".fh-strategy .head").innerText()).replace(/\s+/g, " ").trim(), "Payment strategy Test Test");
   assert.match(await main.page.locator(".debts-card").innerText(), /Business Amex/);
   prove(IDS.read);
 

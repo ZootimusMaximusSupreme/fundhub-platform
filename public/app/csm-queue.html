@@ -119,6 +119,36 @@
         <p class="q-foot-note" id="qFootNote">Looking for one client? <a class="q-link" href="client-control-panel.html">Open the Client Control Panel</a>.</p>
         <span id="qStamp">Waiting for your queue</span>
       </div>
+      <section class="ct" id="csm-tracking" aria-labelledby="ctTitle">
+        <div class="ct-head">
+          <div class="ct-intro">
+            <h2 id="ctTitle">Where each client is</h2>
+            <p>Their step, late payments, bank seasoning and if they can apply. Clients falling behind come first.</p>
+          </div>
+          <div class="ct-filters">
+            <label class="ct-filter" for="ctShow"><span>Show</span>
+              <select class="q-select" id="ctShow"><option value="behind" selected>Falling behind</option><option value="all">All clients</option></select>
+            </label>
+            <label class="ct-filter" for="ctMine"><span>Clients</span>
+              <select class="q-select" id="ctMine"><option value="" selected>Every CSM's clients</option><option value="1">Only mine</option></select>
+            </label>
+          </div>
+        </div>
+        <div class="ct-count" aria-live="polite" aria-atomic="true">
+          <span class="vl" id="ctCount">—</span>
+          <span class="lb" id="ctCountLabel">falling behind</span>
+          <span class="cmp" id="ctCmp">Checking your clients…</span>
+        </div>
+        <div class="ct-banner" id="ctBanner" role="status" aria-live="polite"></div>
+        <div class="ct-list" id="ctList" aria-label="Where each client is" aria-busy="true">
+          <div class="ct-skel" aria-hidden="true"></div>
+          <div class="ct-skel" aria-hidden="true"></div>
+        </div>
+        <div class="ct-pages" id="ctPages" hidden></div>
+      </section>
+      <link rel="stylesheet" href="/app/bank-logo.css">
+      <script defer src="/app/bank-logo.js"></script>
+      <script defer src="/app/csm-tracking.js"></script>
       <section class="card" id="blueprint-csm-services" aria-label="Full-package client oversight" hidden></section>
       <script defer src="/app/blueprint-csm-services.js"></script>
     </main>

@@ -73,6 +73,8 @@
 .fh-strategy .chart .card-line,.fh-strategy .key .card-line{fill:none;stroke:var(--ink2);stroke-width:1.5;stroke-linejoin:round}
 .fh-strategy .chart .cross{fill:var(--surface,#fff);stroke:var(--ink);stroke-width:2}
 .fh-strategy .chart .tick,.fh-strategy .chart .target-label{fill:var(--text-dim,var(--gray));font-family:var(--sans)}
+/* A paper halo round the target words, drawn over the card lines. */
+.fh-strategy .chart .target-label{paint-order:stroke;stroke:var(--surface,#fff);stroke-width:4px;stroke-linejoin:round}
 /* THIS SECTION'S ONE TYPE ESCAPE HATCH (UI-STANDARDS §12.7). The chart's labels
    are SVG text. The brand file's `.app *{font-size:inherit !important}` would
    hand them the 16px body size. The section draws the chart at the box's real
@@ -81,6 +83,48 @@
 .fh-strategy .legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:8px}
 .fh-strategy .legend li{display:inline-flex;align-items:center;gap:8px}
 .fh-strategy .key{width:24px;height:8px;flex:0 0 auto}
+
+/* ── money coming in ── a group of plain cells with hairline dividers, not a
+   row of raised cards (UI-STANDARDS §12.5). The money is the hero; the label
+   sits above it and the formula under it. */
+.fh-strategy .income-kinds{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px 24px;margin:8px 0 16px}
+.fh-strategy .income-kind{grid-column:span 6;display:flex;flex-direction:column;gap:4px;min-width:0;padding-top:16px;border-top:1px solid var(--line)}
+.fh-strategy .income-kinds.three .income-kind{grid-column:span 4}
+.fh-strategy .income-kind .caption{overflow-wrap:anywhere}
+.fh-strategy .income-out{color:var(--ink);font-weight:600}
+.fh-strategy .income-card .tag{white-space:nowrap}
+.fh-strategy .income-card .warnings li{max-width:90ch}
+.fh-strategy .income-suggest{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:16px 0;padding-top:16px;border-top:1px solid var(--line)}
+.fh-strategy .income-suggest>div{display:flex;flex-direction:column;gap:4px;min-width:0;max-width:72ch}
+.fh-strategy .income-card>.btn-line,.fh-strategy .income-suggest .btn-line{min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+
+/* ── financing and payments (wave 3, unit K) ── "Pay financing first" is a
+   44px switch button, on or off in aria-checked and in the knob's position,
+   never colour alone. */
+.fh-strategy .fin-switch{display:inline-flex;align-items:center;gap:12px;min-height:44px;margin-top:8px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface,var(--paper));color:var(--ink);font-weight:600;cursor:pointer}
+.fh-strategy .fin-switch:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.fh-strategy .fin-track{position:relative;flex:0 0 auto;width:36px;height:20px;border-radius:999px;background:var(--line)}
+.fh-strategy .fin-track::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--surface,var(--paper))}
+.fh-strategy .fin-switch[aria-checked="true"] .fin-track{background:var(--ink)}
+.fh-strategy .fin-switch[aria-checked="true"] .fin-track::after{left:18px}
+.fh-strategy .pay-chip{white-space:nowrap}
+.fh-strategy .debt-tags{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:4px;white-space:normal}
+/* "Late 6 days" is the same chip size as "Business" beside it. */
+.fh-strategy .debt-tags .warn-word{font-size:var(--fs-caption)}
+/* The name and the paid-off day may wrap, so all seven columns fit the card
+   (inside FinanceOS at 1440 the Interest column was cut off). A chip and a
+   day never break inside. */
+.fh-strategy .debts-table td.debt-who,.fh-strategy .debts-table td[data-label="Paid off by"]{white-space:normal}
+.fh-strategy .debts-table .nw,.fh-strategy .debt-tags .tag{white-space:nowrap}
+
+/* ── things to check (wave 3, unit F) ── one plain row per flag on the paper
+   tint with a hairline, the wireframe's .flag; the word says what it is. */
+.fh-strategy .flags{display:grid;gap:8px;margin:8px 0 16px}
+.fh-strategy .flag{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.fh-strategy .flag-text{min-width:0;overflow-wrap:anywhere}
+.fh-strategy .flag-text>p{color:var(--ink)}
+.fh-strategy .flag-more>summary{min-height:44px;font-weight:600;color:var(--ink)}
+.fh-strategy .cleanup-card>.btn-line{min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 
 /* ── tables, lists, details ── */
 .fh-strategy .scroll-x{overflow-x:auto}
@@ -114,8 +158,22 @@
 @keyframes fh-strategy-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
 @media (prefers-reduced-motion:reduce){.fh-strategy .sk{animation:none}}
 
+/* Wider than a phone: seven columns fit the card only when the words may wrap;
+   the money and the dates stay on one line so a column of numbers lines up. */
+@media (min-width:761px){
+  .fh-strategy .income-table th,.fh-strategy .income-table td{white-space:normal}
+  .fh-strategy .income-table td.income-who{min-width:18ch}
+  .fh-strategy .income-table td.r,.fh-strategy .income-table td[data-label="Next"],.fh-strategy .income-table .num{white-space:nowrap}
+  /* "slowest month" sits under its amount, and every cell keeps 12px at the
+     sides (the strategy skin's own size), so the words in the other columns
+     are not squeezed one to a line (FinanceOS at 1440). !important: the page
+     skins pad cells from an id selector that loads after this file. */
+  .fh-strategy .income-table td.r .caption{display:block}
+  .fh-strategy th,.fh-strategy td{padding-left:12px !important;padding-right:12px !important}
+}
 @media (max-width:1100px){
   .fh-strategy .tiles>*{grid-column:span 6}
+  .fh-strategy .income-kinds.three .income-kind{grid-column:span 6}
 }
 @media (max-width:760px){
   .fh-strategy .card{padding:16px}
@@ -125,4 +183,38 @@
   .fh-strategy .amt-box{align-self:flex-start}
   .fh-strategy .save-row .btn-primary{width:100%}
   .fh-strategy .save-msg{justify-content:flex-start}
+  .fh-strategy .income-kind,.fh-strategy .income-kinds.three .income-kind{grid-column:span 12}
+  .fh-strategy .income-suggest .btn-line{width:100%}
+  .fh-strategy .flag{grid-template-columns:minmax(0,1fr)}
+  .fh-strategy .flag>.tag,.fh-strategy .flag>.warn-word{justify-self:start}
+  /* On a phone each payer is a short stack of label and value, not seven
+     squeezed columns — the Astra labelled-record pattern (fundhub-astra.css,
+     affiliate tables). The header row stays in the page for screen readers. */
+  .fh-strategy .income-table{display:block;min-width:0;width:100%}
+  .fh-strategy .income-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .fh-strategy .income-table tbody{display:block}
+  .fh-strategy .income-table tr{display:grid;grid-template-columns:minmax(0,1fr);gap:0;padding:8px 0;border-bottom:1px solid var(--line)}
+  /* The value drops under its label when both do not fit on one line, still
+     on the right — at 320 "Estimated monthly income" used to crush $4,200.00
+     to one character a line. */
+  .fh-strategy .income-table td{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:flex-end;gap:4px 16px;border-bottom:0;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:right}
+  .fh-strategy .income-table td.income-who{display:block;text-align:left}
+  .fh-strategy .income-table td[data-label]::before{content:attr(data-label);margin-right:auto;color:var(--text-dim,var(--gray));text-align:left}
+  /* The payoff order (QA02): each debt is a short stack — the number, the
+     name and its tags, then each amount under the name with its label —
+     not a seven-column table cut off at the card's edge. The header row
+     stays in the page for screen readers. */
+  .fh-strategy .debts-table{display:block;width:100%}
+  .fh-strategy .debts-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .fh-strategy .debts-table tbody{display:block}
+  .fh-strategy .debts-table tr{display:grid;grid-template-columns:24px minmax(0,1fr);gap:4px 12px;padding:16px 0;border-bottom:1px solid var(--line)}
+  .fh-strategy .debts-table tr:first-child{padding-top:4px}
+  .fh-strategy .debts-table tr:last-child{border-bottom:0}
+  /* padding !important: the page skins pad every cell from an id selector
+     that loads after this file (money-strategy-ios.css, money-workspace.css,
+     fundhub-astra-client.css); a stacked line needs none of it. */
+  .fh-strategy .debts-table td{grid-column:2;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:flex-end;gap:0 8px;min-width:0;padding:0 !important;border-bottom:0;white-space:normal;overflow-wrap:anywhere;text-align:right}
+  .fh-strategy .debts-table td[data-label]::before{content:attr(data-label);margin-right:auto;color:var(--text-dim,var(--gray));font-size:var(--fs-caption);text-align:left}
+  .fh-strategy .debts-table td.debt-pos{grid-column:1;grid-row:1;display:block;text-align:left}
+  .fh-strategy .debts-table td.debt-who{display:block;margin-bottom:4px;text-align:left}
 }

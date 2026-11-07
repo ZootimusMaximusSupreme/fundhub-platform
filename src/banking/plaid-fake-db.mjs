@@ -63,6 +63,51 @@ export function fakeBankDb({ items = [], accounts = [], now = () => new Date("20
 
       if (/\bDELETE\b/i.test(sql)) throw new Error(`fake db: a DELETE was issued: ${sql.slice(0, 80)}`);
 
+      // applications-tracker claimStandInsForPlaid (called by saveAccounts for
+      // Plaid): the client's open stand-in accounts an approval added
+      if (/raw->'fundhub_application' AS link\s+FROM bank_accounts/.test(sql)) {
+        const [orgId, clientId] = params;
+        return {
+          rows: state.accounts
+            .filter((a) => a.org_id === orgId && a.client_id === clientId && a.provider === "manual" &&
+              !a.plaid_item_id && !a.closed_at && a.raw && a.raw.fundhub_application)
+            .map((a) => ({ id: a.id, name: a.name, mask: a.mask ?? null, account_type: a.account_type ?? null,
+              account_subtype: a.account_subtype ?? null, link: a.raw.fundhub_application })),
+          rowCount: 0
+        };
+      }
+      // … the login's bank name
+      if (/SELECT institution_name FROM plaid_items WHERE id = \$1/.test(sql)) {
+        const [id, orgId, clientId] = params;
+        return {
+          rows: state.items.filter((i) => i.id === id && i.org_id === orgId && i.client_id === clientId)
+            .map((i) => ({ institution_name: i.institution_name ?? null })),
+          rowCount: 0
+        };
+      }
+      // … which of this read's accounts are stored already
+      if (/SELECT plaid_account_id FROM bank_accounts WHERE plaid_item_id = \$1/.test(sql)) {
+        const [itemId, ids] = params;
+        return {
+          rows: state.accounts.filter((a) => a.plaid_item_id === itemId && ids.includes(a.plaid_account_id))
+            .map((a) => ({ plaid_account_id: a.plaid_account_id })),
+          rowCount: 0
+        };
+      }
+      // … a stand-in becomes this Plaid row in place
+      if (/SET provider = 'plaid', plaid_item_id = \$3::uuid, plaid_account_id = \$4/.test(sql)) {
+        const [id, orgId, itemId, plaidAccountId] = params;
+        const taken = state.accounts.some((a) => a.plaid_item_id === itemId && a.plaid_account_id === plaidAccountId);
+        const a = state.accounts.find((x) => x.id === id && x.org_id === orgId && x.provider === "manual" && !x.plaid_item_id);
+        if (!a || taken) return { rows: [], rowCount: 0 };
+        a.provider = "plaid";
+        a.plaid_item_id = itemId;
+        a.plaid_account_id = plaidAccountId;
+        a.raw = { ...(a.raw || {}), fundhub_application: { ...(a.raw?.fundhub_application || {}), plaid_seen_at: now().toISOString() } };
+        a.updated_at = now();
+        return { rows: [{ id: a.id }], rowCount: 1 };
+      }
+
       // plaid-refresh: which logins can be read
       if (/FROM plaid_items/.test(sql) && /SELECT/.test(sql)) {
         return {
@@ -105,7 +150,12 @@ export function fakeBankDb({ items = [], accounts = [], now = () => new Date("20
           ? state.accounts.find((a) => a.plaid_item_id === row.plaid_item_id && a.plaid_account_id === row.plaid_account_id)
           : null;
         if (existing) {
-          for (const c of UPDATABLE) if (c in row) existing[c] = row[c];
+          // The real statement merges a Plaid row's raw (raw = old || new), so a
+          // key we saved on it, like fundhub_application, survives a re-read.
+          for (const c of UPDATABLE) {
+            if (!(c in row)) continue;
+            existing[c] = c === "raw" && row.provider === "plaid" ? { ...(existing.raw || {}), ...(row.raw || {}) } : row[c];
+          }
           existing.updated_at = now();
           return { rows: [{ ...existing }], rowCount: 1 };
         }

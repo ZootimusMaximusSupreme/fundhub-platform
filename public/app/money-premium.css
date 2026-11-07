@@ -1,0 +1,181 @@
+/* Finance OS + Blueprint premium pass (unit PREM, 2026-11-07) — the styles
+   for public/app/money-premium.js. Astra look: white 10px panels with a
+   hairline and the shared --panel-shadow token, 13px sentence-case gray
+   captions, 8px buttons at least 44x44, no sideways scroll at 390 and 320.
+   Chart inks are the FinanceOS literals (money-trends.js), so a one-hue
+   tenant brand cannot wash two lines into one; every series also has a word.
+   Loaded before fundhub-astra.css (UI-STANDARDS §0: Astra stays last). */
+
+.fh-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+
+/* ── panels ─────────────────────────────────────────────────────────────── */
+:is(.fh-hero,.fh-advisor,.fh-work-card,.fh-report){background:#fff;border:1px solid var(--line,#E3E5E0);border-radius:10px;box-shadow:var(--panel-shadow);padding:20px 24px;min-width:0;margin:0;color:var(--ink,#0D1113)}
+:is(.fh-hero,.fh-advisor,.fh-work-card,.fh-report) .eyebrow{display:block;margin:0 0 8px;font:550 13px/1.4 var(--sans);letter-spacing:0;text-transform:none;color:var(--gray,#626968)}
+:is(.fh-hero,.fh-advisor,.fh-work-card,.fh-report) .caption{margin:0;font-size:13px;line-height:1.5;color:var(--gray,#626968)}
+.fh-premium-slot:empty{display:none}
+.fh-premium-slot[data-fh-premium-slot="top"]{margin:0 0 16px}
+.fh-premium-slot[data-fh-premium-slot="more"]{margin:0 0 24px}
+
+/* ── buttons ────────────────────────────────────────────────────────────── */
+.fh-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:10px 18px;border:1px solid #cbd0cd;border-radius:8px;background:#fff;color:var(--ink,#0D1113);font:600 16px/1.2 var(--sans);text-decoration:none;cursor:pointer;white-space:normal;text-align:center}
+.fh-btn:hover{background:var(--soft,#F0F1ED);border-color:var(--gray2,#858C89)}
+.fh-btn[disabled]{opacity:.6;cursor:default}
+.fh-link{display:inline-flex;align-items:center;min-height:44px;padding:0 4px;border:0;background:none;color:var(--ink,#0D1113);font:600 16px/1.2 var(--sans);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+:is(.fh-btn,.fh-link):focus-visible{outline:2px solid var(--ink,#0D1113);outline-offset:2px}
+
+/* ── the hero: "Funding you qualify for" + the fundability ring ────────── */
+.fh-hero{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 24px;padding:24px}
+.fh-hero-main{display:grid;gap:6px;min-width:0;flex:1 1 150px}
+.fh-hero-main .eyebrow{margin:0}
+.fh-hero-num{display:block;font:750 44px/1.1 var(--sans);letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--ink,#0D1113);overflow-wrap:anywhere}
+.fh-hero-none{font-size:32px}
+.fh-hero-plan{margin:0;font-size:14px;font-weight:600;color:#245C30}
+.fh-hero-plan b{font-variant-numeric:tabular-nums}
+.fh-hero-ring{display:grid;justify-items:center;gap:6px;text-align:center;flex:0 0 auto}
+.fh-hero-ringtext{display:grid;gap:2px;justify-items:center}
+.fh-hero-tier{margin:0;font-size:14px;font-weight:700;color:var(--ink2,#252A2D)}
+.fh-hero-tier[data-tier="fundable"]{color:#245C30}
+.fh-hero-ring-none{padding:8px 0}
+.fh-ring{position:relative;display:inline-grid;place-items:center;width:88px;height:88px}
+.fh-ring svg{position:absolute;inset:0;width:100%;height:100%}
+.fh-ring-track,.fh-ring-fill{fill:none;stroke-width:8}
+.fh-ring-track{stroke:var(--soft,#F0F1ED)}
+.fh-ring-fill{stroke:#4F3C85;stroke-linecap:round}
+.fh-ring-num{position:relative;font-variant-numeric:tabular-nums;line-height:1}
+.fh-ring-num b{font-size:26px;font-weight:750;color:var(--ink,#0D1113)}
+.fh-ring-num small{font-size:13px;font-weight:600;color:var(--gray,#626968)}
+.fh-hero.fh-error .fh-hero-main{justify-items:start}
+
+/* ── the advisor, repair and funding cards ─────────────────────────────── */
+.fh-more-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.fh-more-grid>*{grid-column:span 12;min-width:0}
+.fh-more-grid[data-n="2"]>*{grid-column:span 6}
+.fh-more-grid[data-n="3"]>*{grid-column:span 4}
+.fh-advisor,.fh-work-card{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.fh-adv-row{display:flex;align-items:center;gap:12px;min-width:0}
+.fh-avatar{display:inline-grid;place-items:center;flex:0 0 auto;width:44px;height:44px;border-radius:50%;background:var(--soft,#F0F1ED);color:var(--ink,#0D1113);font-weight:700;font-size:15px}
+.fh-adv-who{min-width:0}
+.fh-adv-name{margin:0;font-size:16px;font-weight:700;overflow-wrap:anywhere}
+.fh-advisor .fh-btn,.fh-work-card .fh-work-act{margin-top:auto}
+.fh-work-line{margin:0;font-size:16px;font-weight:650;line-height:1.4;overflow-wrap:anywhere}
+.fh-work-act{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px}
+
+/* ── the monthly report ─────────────────────────────────────────────────── */
+.fh-report{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;margin-top:16px}
+.fh-report-text{min-width:0;flex:1 1 200px}
+.fh-report-text .eyebrow{margin:0 0 2px}
+.fh-report-line{margin:0;font-size:15px;font-weight:600}
+.fh-report-act{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.fh-report-act select{min-height:44px;max-width:100%;padding:8px 12px;border:1px solid var(--line,#E3E5E0);border-radius:8px;background:#fff;color:var(--ink,#0D1113);font:500 16px var(--sans)}
+.fh-report-msg{flex-basis:100%}
+.fh-report-msg:empty{display:none}
+
+/* ── weekly sparklines in the Overview tiles ────────────────────────────── */
+.fh-spark-slot{display:block;margin-top:4px;min-width:0}
+.fh-spark-slot[hidden]{display:none}
+.cash-line>.fh-spark-slot{grid-column:1/-1}
+.fh-spark{display:block;width:100%;max-width:220px;height:32px;overflow:visible}
+.fh-spark-line{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fh-spark-area{stroke:none}
+
+/* ── money in / money out bars ──────────────────────────────────────────── */
+.fh-bars{margin:8px 0 16px;min-width:0}
+.fh-bars-legend{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 8px}
+.fh-bars-legend>span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.fh-key{display:inline-block;width:12px;height:12px;border-radius:3px}
+.fh-key.fh-bar-in{background:#0D9488}
+.fh-key.fh-bar-out{background:#C2410C}
+.fh-bars-plot{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:140px auto;gap:0 8px;min-width:0}
+.fh-bars-y{grid-column:1;grid-row:1;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;line-height:1;font-variant-numeric:tabular-nums}
+.fh-bars-svg{grid-column:2;grid-row:1;display:block;width:100%;height:140px;overflow:visible}
+.fh-bars-x{grid-column:2;grid-row:2;display:flex;padding-top:6px;min-width:0}
+.fh-bars-x>span{flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;overflow:hidden}
+.fh-grid{stroke:var(--line,#E3E5E0);stroke-width:1}
+.fh-bar.fh-bar-in{fill:#0D9488}
+.fh-bar.fh-bar-out{fill:#C2410C}
+@media (max-width:560px){.fh-bars-x>span:nth-last-child(even){visibility:hidden}}
+/* QA11 (2026-11-07): at 400px and under, every third month shows, and a shown label may
+   spill into the hidden slots beside it, so "Dec" never reads "De". */
+@media (max-width:400px){.fh-bars-x>span{overflow:visible;visibility:hidden}.fh-bars-x>span:nth-last-child(3n+1){visibility:visible}}
+
+/* ── the other units' line charts, smoothed (money-premium.js smoothCharts) */
+svg[data-fh-smooth="1"] :is(polyline.tline,polyline.line,polyline.card-line,polyline.all-line){stroke-opacity:0}
+.fh-curve{fill:none}
+.fh-curve,.fh-area,.fh-bands{pointer-events:none}
+.fh-area{stroke:none}
+.fh-band{opacity:.22}
+.fh-bands-key{display:flex;flex-wrap:wrap;gap:4px 14px;margin:4px 0 8px}
+.fh-bands-key>span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.fh-band-sw{display:inline-block;width:12px;height:12px;border-radius:3px}
+.fh-band-sw[data-band="Fair"]{background:#F5CE8F}
+.fh-band-sw[data-band="Good"]{background:#A9C6E8}
+.fh-band-sw[data-band="Very good"]{background:#A8D8B0}
+.fh-band-sw[data-band="Exceptional"]{background:#C4B3E5}
+.fh-legend-val{margin-left:6px;color:var(--ink,#0D1113);font-variant-numeric:tabular-nums}
+
+/* ── the Blueprint home: the row added beside the journey ──────────────── */
+.fh-bp-row{min-width:0}
+/* The Blueprint hosts style every h2, h3, p and button by id; inside the
+   added row the cards keep their own Astra look. */
+:is(#blueprint-fulfillment,#blueprint-plan) .fh-bp-row :is(h2,h3).eyebrow{margin:0;font:550 13px/1.4 var(--sans);letter-spacing:0;color:var(--gray,#626968)}
+:is(#blueprint-fulfillment,#blueprint-plan) .fh-bp-row p{margin:0}
+:is(#blueprint-fulfillment,#blueprint-plan) .fh-bp-row .card{margin:0}
+:is(#blueprint-fulfillment,#blueprint-plan) .fh-bp-row .fh-btn{padding:10px 18px;border:1px solid #cbd0cd;border-radius:8px;background:#fff;font:600 16px/1.2 var(--sans);color:var(--ink,#0D1113)}
+:is(#blueprint-fulfillment,#blueprint-plan) .fh-bp-row .fh-btn:hover{background:var(--soft,#F0F1ED)}
+:is(#blueprint-fulfillment,#blueprint-plan) .fh-bp-row .fh-link{min-height:44px;padding:0 4px;border:0;border-radius:0;background:none;font:600 16px/1.2 var(--sans);color:var(--ink,#0D1113);text-decoration:underline;text-underline-offset:3px}
+.fh-bp-ring{display:flex;align-items:center;margin-left:auto}
+.bj-path .bj-heading:has(.fh-bp-ring){justify-content:flex-start}
+.fh-bp-ring .fh-ring{width:64px;height:64px}
+.fh-bp-ring .fh-ring-num b{font-size:20px}
+.bj-pathfund>span[data-fh-count]{font-size:inherit}
+
+/* ── the progress page ──────────────────────────────────────────────────── */
+[data-fh-premium="work"][hidden]{display:none}
+[data-fh-premium="work"] .fh-more-grid{margin:0 0 8px}
+[data-fh-premium="work"] .fh-more-grid>.card{margin:0}
+[data-client-ios] .progress-block[data-fh-premium="work"]{grid-column:span 12;order:2}
+
+/* ── loading ────────────────────────────────────────────────────────────── */
+.fh-skel{display:flex;flex-direction:column;gap:10px}
+.fh-sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--soft,#F0F1ED),var(--line,#E3E5E0),var(--soft,#F0F1ED));background-size:200% 100%;animation:fh-sk 1.2s ease-in-out infinite}
+.fh-sk-s{height:12px;width:40%}
+.fh-sk-m{height:16px;width:70%}
+.fh-sk-l{height:40px;width:55%}
+
+/* ── calm motion: bars grow, the ring fills, numbers count up (JS) ──────── */
+.fh-bars-svg .fh-bar{transform-box:fill-box;transform-origin:50% 100%}
+.fh-bars-svg.fh-wait .fh-bar{transform:scaleY(0)}
+.fh-ring.fh-wait .fh-ring-fill{stroke-dasharray:0 100}
+.fh-bars-svg.fh-in .fh-bar{animation:fh-grow .7s cubic-bezier(.2,.8,.2,1) both}
+.fh-ring.fh-in .fh-ring-fill{animation:fh-ring .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fh-grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes fh-ring{from{stroke-dasharray:0 100}}
+@keyframes fh-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+@media (max-width:1100px){
+  .fh-more-grid[data-n="3"]>:first-child{grid-column:span 12}
+  .fh-more-grid[data-n="3"]>:not(:first-child){grid-column:span 6}
+}
+@media (max-width:760px){
+  .fh-more-grid[data-n="2"]>*,.fh-more-grid[data-n="3"]>:first-child,.fh-more-grid[data-n="3"]>:not(:first-child){grid-column:span 12}
+  :is(.fh-hero,.fh-advisor,.fh-work-card,.fh-report){padding:16px}
+  .fh-hero-num{font-size:36px}
+  .fh-hero-none{font-size:28px}
+}
+@media (max-width:480px){
+  /* Under the amount, the ring sits beside its words, left-aligned. */
+  .fh-hero-ring{display:flex;align-items:center;gap:12px;text-align:left}
+  .fh-hero-ringtext{justify-items:start}
+}
+@media (max-width:400px){
+  .fh-hero{gap:12px}
+  .fh-hero-num{font-size:32px}
+  .fh-ring{width:72px;height:72px}
+  .fh-ring-num b{font-size:22px}
+  .fh-report-act{width:100%}
+  .fh-report-act select{flex:1 1 160px}
+}
+@media (prefers-reduced-motion:reduce){
+  .fh-sk,.fh-bars-svg.fh-in .fh-bar,.fh-ring.fh-in .fh-ring-fill{animation:none}
+  .fh-bars-svg.fh-wait .fh-bar{transform:none}
+}

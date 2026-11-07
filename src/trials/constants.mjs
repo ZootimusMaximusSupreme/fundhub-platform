@@ -1,7 +1,7 @@
 // The Live Trial — the numbers, the names, and the words that are fixed.
 //
 // $297 buys seven days in which FundHub builds and runs the buyer's first ad
-// campaign under the buyer's brand. Day 8 they pay $10,000 and become a partner,
+// campaign under the buyer's brand. Day 8 they pay $30,000 and become a partner,
 // or they walk away KEEPING every lead the trial produced, paid at the standard
 // affiliate 20% on the ones FundHub closes. Spec: docs/specs/W4-live-trial.md.
 //
@@ -34,10 +34,11 @@ export const LIVE_TRIAL_PRODUCT_CODE = "live-trial";
 /** $297.00 */
 export const LIVE_TRIAL_PRICE_CENTS = 29700;
 
-/** The partner entry fee, one time, no monthly. $10,000.00 */
+/** The partner entry fee, one time, no monthly. $30,000.00 */
 export const PARTNER_ENTRY_OFFER_KEY = "PARTNER_ENTRY";
 export const PARTNER_ENTRY_PRODUCT_CODE = "partner-entry";
-export const PARTNER_ENTRY_PRICE_CENTS = 1000000;
+/* owner-set 2026-11-07: $30,000 (mirrors src/config/offers.mjs PARTNER_ENTRY) */
+export const PARTNER_ENTRY_PRICE_CENTS = 3000000;
 
 /** Seven live days, counted from the first ad impression — not from checkout. */
 export const TRIAL_DAYS = 7;
@@ -57,7 +58,7 @@ export const REMEDY_MIN_SPEND_CENTS = 50000;
 /** Extra days of the machine granted by the service remedy. */
 export const REMEDY_EXTRA_DAYS = 7;
 
-/** How long the $297 stays creditable against the $10,000 after a zero-call
+/** How long the $297 stays creditable against the $30,000 after a zero-call
     trial ends. */
 export const REMEDY_CREDIT_WINDOW_DAYS = 30;
 

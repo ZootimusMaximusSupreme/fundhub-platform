@@ -1,0 +1,61 @@
+/* Pay now / I paid — the controls inside a card's due row (public/app/pay-now.js).
+ *
+ * Astra look (UI-STANDARDS §0, §5): 8px controls at least 44 by 44, 16px body
+ * and inputs, 13px gray captions, sentence case. The form inside a row is a
+ * group, so it takes a flat tint and a hairline, never a shadow (§12.5).
+ * Row buttons are outlined: the screen keeps its one filled primary action.
+ * Status is said in words; the colour mark beside it is only a second signal.
+ */
+.rows .row.has-pay-now{flex-wrap:wrap}
+.pay-now{flex:1 0 100%;min-width:0;margin-top:8px}
+.pay-now:empty{display:none}
+
+.pay-now .pay-now-actions{display:flex;flex-wrap:wrap;gap:8px}
+.pay-now .pay-now-btn{
+  display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
+  min-height:44px;min-width:44px;padding:8px 16px;margin:0;
+  background:#fff;color:var(--ink,#0D1113);border:1px solid #cbd0cd;border-radius:8px;
+  font:600 16px/1.3 var(--sans,system-ui,sans-serif);text-decoration:none;white-space:normal;text-align:center;cursor:pointer
+}
+.pay-now .pay-now-go{border-color:var(--ink,#0D1113)}
+.pay-now .pay-now-btn:hover{filter:brightness(.96)}
+.pay-now .pay-now-btn:focus-visible{outline:2px solid var(--ink,#0D1113);outline-offset:2px}
+.pay-now .pay-now-btn[disabled]{opacity:.6;cursor:default}
+
+.pay-now .pay-now-note,
+.pay-now .pay-now-status,
+.pay-now .pay-now-msg{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--gray,#626968);overflow-wrap:anywhere}
+.pay-now .pay-now-status{color:var(--ink,#0D1113);padding-left:10px;border-left:3px solid var(--line,#E3E5E0)}
+.pay-now .pay-now-status[data-state="confirmed"],
+.pay-now .pay-now-status[data-state="seen"]{border-left-color:var(--ok,#A8D8B0)}
+.pay-now .pay-now-status[data-state="waiting"],
+.pay-now .pay-now-status[data-state="hint"]{border-left-color:var(--warn,#F5CE8F)}
+.pay-now .pay-now-status[data-state="not_seen"]{border-left-color:var(--alert,#F2A69B)}
+.pay-now .pay-now-msg{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pay-now .pay-now-sk{display:inline-block;width:56px;height:12px;border-radius:6px;background:var(--line,#E3E5E0)}
+
+.pay-now .pay-now-form{
+  display:grid;gap:12px;margin-top:12px;padding:16px;
+  background:var(--soft,#F0F1ED);border:1px solid var(--line,#E3E5E0);border-radius:10px;box-shadow:none
+}
+.pay-now .pay-now-q{margin:0;font-size:16px;line-height:1.5;color:var(--ink,#0D1113)}
+.pay-now .pay-now-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px}
+.pay-now .pay-now-form label{display:grid;gap:4px;min-width:0;font-size:13px;line-height:1.4;color:var(--gray,#626968)}
+.pay-now .pay-now-form input{
+  box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:8px 12px;
+  font:400 16px/1.3 var(--sans,system-ui,sans-serif);color:var(--ink,#0D1113);
+  background:#fff;border:1px solid #cbd0cd;border-radius:8px
+}
+.pay-now .pay-now-form input:focus-visible{outline:2px solid var(--ink,#0D1113);outline-offset:1px}
+.pay-now .pay-now-form-acts{display:flex;flex-wrap:wrap;gap:8px}
+/* The form's own one primary: black 8px. */
+.pay-now .pay-now-save{background:var(--ink,#0D1113);color:#fff;border-color:var(--ink,#0D1113)}
+.pay-now .pay-now-err{margin:0;color:#8a2b1e;font-size:13px}
+.pay-now .pay-now-err:empty{display:none}
+
+.pay-now .pay-now-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+@media (max-width:420px){
+  .pay-now .pay-now-actions .pay-now-btn,
+  .pay-now .pay-now-form-acts .pay-now-btn{flex:1 1 120px}
+}

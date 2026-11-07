@@ -7,12 +7,13 @@
 //      recorded as recruiting themselves, and a recruiter in another org cannot
 //      be recorded at all.
 //   2. THE BONUS ACTUALLY FIRES. Before db/migrations/281 and this module, the
-//      $2,000 was correct code that could never run. Every band below drives the
+//      bonus was correct code that could never run. Every band below drives the
 //      real payment.received handler and reads the partner_revenue row back.
-//   3. THE FLAT $2,000 IS FLAT AT EVERY LENDER BAND. The entry is usually
-//      financed; the remittance moves from 85% to 30% of the $10,000 and the
-//      bonus does not move at all. That is the sharp edge W1 §5 names, proved
-//      band by band rather than described.
+//   3. THE FLAT $6,000 IS FLAT AT EVERY LENDER BAND. The entry is usually
+//      financed; the remittance moves from 85% to 30% of the $30,000 and the
+//      bonus does not move at all (20% of the sticker, owner-set 2026-11-07).
+//      That is the sharp edge W1 §5 names, proved band by band rather than
+//      described.
 //   4. CASH FIRST. Nothing accrues on an approval, a submission or a $0 payment.
 //   5. A REPLAY PAYS ONCE. Two deliveries of the same event write one row.
 //
@@ -32,16 +33,16 @@ const REF = "recruit-test";
 const SLUGS = ["recruit-test-recruiter", "recruit-test-brought", "recruit-test-stranger"];
 const OTHER_ORG_SLUG = "recruit-test-other-org";
 
-/** W1-money-model.md §5, the D5 lender bands. Cents, always. */
+/** W1-money-model.md §5, the D5 lender bands, on the $30,000 sticker. Cents, always. */
 const BANDS = [
-  { name: "prime-85", pct: 85, remitCents: 850_000 },
-  { name: "lb1-77",   pct: 77, remitCents: 770_000 },
-  { name: "near-75",  pct: 75, remitCents: 750_000 },
-  { name: "lb2-72",   pct: 72, remitCents: 720_000 },
-  { name: "lb3-62",   pct: 62, remitCents: 620_000 },
-  { name: "lb4-50",   pct: 50, remitCents: 500_000 },
-  { name: "sub-42",   pct: 42, remitCents: 420_000 },
-  { name: "lb5-30",   pct: 30, remitCents: 300_000 }
+  { name: "prime-85", pct: 85, remitCents: 2_550_000 },
+  { name: "lb1-77",   pct: 77, remitCents: 2_310_000 },
+  { name: "near-75",  pct: 75, remitCents: 2_250_000 },
+  { name: "lb2-72",   pct: 72, remitCents: 2_160_000 },
+  { name: "lb3-62",   pct: 62, remitCents: 1_860_000 },
+  { name: "lb4-50",   pct: 50, remitCents: 1_500_000 },
+  { name: "sub-42",   pct: 42, remitCents: 1_260_000 },
+  { name: "lb5-30",   pct: 30, remitCents:   900_000 }
 ];
 
 describe("partner recruit bonus", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () => {
@@ -57,7 +58,7 @@ describe("partner recruit bonus", { skip: !HAVE_DB ? "no DATABASE_URL" : false }
 
     entryProductId = (await db.query(
       `INSERT INTO products (org_id, code, name, category, default_price, price_is_variable)
-       VALUES ($1,'partner-entry','Recruit Test Partner Entry','partner','10000.00',false)
+       VALUES ($1,'partner-entry','Recruit Test Partner Entry','partner','30000.00',false)
        RETURNING id`, [org])).rows[0].id;
     addOnProductId = (await db.query(
       `INSERT INTO products (org_id, code, name, category, default_price, price_is_variable)
@@ -110,7 +111,7 @@ describe("partner recruit bonus", { skip: !HAVE_DB ? "no DATABASE_URL" : false }
     partnerId, amountCents = ENTRY_FEE_CENTS, productId = entryProductId
   } = {}) {
     const tag = `${REF}-${++seq}`;
-    // amount_paid is WHAT ARRIVED. The $10,000 sticker lives in raw_payload.
+    // amount_paid is WHAT ARRIVED. The $30,000 sticker lives in raw_payload.
     await db.query(
       `INSERT INTO transactions (org_id, product_name, amount_paid, status, provider,
                                  provider_ref, raw_payload)
@@ -239,9 +240,9 @@ describe("partner recruit bonus", { skip: !HAVE_DB ? "no DATABASE_URL" : false }
   });
 
   // ------------------------------------------------------------------
-  describe("the flat $2,000 at every lender band", () => {
+  describe("the flat $6,000 at every lender band", () => {
     for (const band of BANDS) {
-      test(`${band.pct}% band: $${band.remitCents / 100} arrives, the recruiter still earns exactly $2,000`,
+      test(`${band.pct}% band: $${band.remitCents / 100} arrives, the recruiter still earns exactly $6,000`,
         async () => {
           await setRecruiter(db, {
             orgId: org, partnerId: broughtId, recruiterPartnerId: recruiterId
@@ -257,8 +258,8 @@ describe("partner recruit bonus", { skip: !HAVE_DB ? "no DATABASE_URL" : false }
           const rows = await accrualsFor(recruiterId);
           assert.equal(rows.length, 1, "exactly one bonus row");
           const row = rows[0];
-          assert.equal(Number(row.share_amount), 2000, "the bonus is $2,000 flat");
-          assert.equal(Number(row.gross_amount), 10000, "against the $10,000 STICKER, not the remittance");
+          assert.equal(Number(row.share_amount), 6000, "the bonus is $6,000 flat");
+          assert.equal(Number(row.gross_amount), 30000, "against the $30,000 STICKER, not the remittance");
           assert.equal(Number(row.share_pct_applied), 20);
           assert.equal(row.status, "accrued");
           assert.equal(row.client_id, null, "a recruited partner is not a client");
@@ -268,14 +269,14 @@ describe("partner recruit bonus", { skip: !HAVE_DB ? "no DATABASE_URL" : false }
 
           // And FundHub's own net for this band, stated rather than implied.
           const econ = computeEntryEconomics({ remittedCents: band.remitCents });
-          assert.equal(econ.fundhubNetCents, band.remitCents - 200_000);
+          assert.equal(econ.fundhubNetCents, band.remitCents - 600_000);
           assert.equal(econ.negative, false, "no band on the D5 table is negative");
         });
     }
 
     test("the bonus does not scale with the band — 30% and 85% pay identically", async () => {
       await setRecruiter(db, { orgId: org, partnerId: broughtId, recruiterPartnerId: recruiterId });
-      const worst = await seedEntryPayment({ partnerId: broughtId, amountCents: 300_000 });
+      const worst = await seedEntryPayment({ partnerId: broughtId, amountCents: 900_000 });
       await onEntryFeePaid(worst, db);
       const low = (await accrualsFor(recruiterId))[0];
 
@@ -283,12 +284,12 @@ describe("partner recruit bonus", { skip: !HAVE_DB ? "no DATABASE_URL" : false }
       await db.query(`DELETE FROM partner_revenue WHERE partner_id = $1`, [recruiterId]);
       await db.query(`ALTER TABLE partner_revenue ENABLE TRIGGER trg_partner_revenue_no_delete`);
 
-      const best = await seedEntryPayment({ partnerId: broughtId, amountCents: 850_000 });
+      const best = await seedEntryPayment({ partnerId: broughtId, amountCents: 2_550_000 });
       await onEntryFeePaid(best, db);
       const high = (await accrualsFor(recruiterId))[0];
 
       assert.equal(Number(low.share_amount), Number(high.share_amount));
-      assert.equal(Number(low.share_amount), 2000);
+      assert.equal(Number(low.share_amount), 6000);
     });
   });
 
@@ -296,7 +297,7 @@ describe("partner recruit bonus", { skip: !HAVE_DB ? "no DATABASE_URL" : false }
   describe("cash first, and once only", () => {
     test("a replayed event pays the bonus once", async () => {
       await setRecruiter(db, { orgId: org, partnerId: broughtId, recruiterPartnerId: recruiterId });
-      const event = await seedEntryPayment({ partnerId: broughtId, amountCents: 420_000 });
+      const event = await seedEntryPayment({ partnerId: broughtId, amountCents: 1_260_000 });
 
       const first = await onEntryFeePaid(event, db);
       const second = await onEntryFeePaid(event, db);

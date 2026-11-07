@@ -4,6 +4,7 @@ import { APPLICATION_STATUS_SET } from "../lenders/tables.mjs";
 import { toCents, fromCents } from "../commissions/money.mjs";
 import { flagBilledFeeDrift } from "../funding/billed-fee-check.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
+import { syncApprovedApplication } from "../finance/applications-tracker.mjs";
 
 export class ApplicationStatusError extends Error {
   constructor(message, { code = "application_status_error", status = 400 } = {}) {
@@ -104,6 +105,10 @@ export async function setApplicationStatus(db, options = {}) {
   // Billing owns its own transaction. Save the bank answer and its evidence
   // together first; never hold the application's lock while correcting a bill.
   await flagBilledFeeDrift(db, { orgId: options.orgId, application: row });
+  // An approved card or line of credit joins the client's Finance OS accounts
+  // (src/finance/applications-tracker.mjs). It never throws and never undoes
+  // the bank answer saved above.
+  await syncApprovedApplication(db, { orgId: options.orgId, application: row });
   return row;
 }
 
@@ -205,6 +210,7 @@ async function writeApplicationStatus(db, {
 export async function logBankDecision(db, options = {}) {
   const row = await withTransaction(db, (writer) => writeBankDecision(writer, options));
   await flagBilledFeeDrift(db, { orgId: options.orgId, application: row });
+  await syncApprovedApplication(db, { orgId: options.orgId, application: row });
   return row;
 }
 

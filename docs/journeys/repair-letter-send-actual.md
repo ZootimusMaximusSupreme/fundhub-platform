@@ -321,3 +321,38 @@ flowchart LR
   receipt that does not add up is refused, a double press is one row, the
   program cap does not move.
 * `src/waypoints/pricing.test.mjs` — $100 / +$10 / +$20 in integer cents.
+
+## A second claimer: the client's paid $97 mailing (unit MAIL, branch candidate, not live)
+
+Source: branch `claude/fos-mail-repair-letters-20261107`, migration 591 (not applied anywhere yet).
+A Blueprint client can now pay the existing $97 batch mailing for a repair
+round's bureau letters (`src/blueprint/letter-mailing.mjs`). That path takes a
+`dispute_letters` row with the same claim this page describes — `status =
+'sending'`, `send_claimed_at` stamped, only from `generated` or `ready`, never
+with `mailed_at` set — inside the same transaction as its own envelope claim, and
+also requires the dispute authorization SQL this send loop uses
+(`currentRepairMailAuthorizationSql`). So whichever path claims first wins: a
+staff press on a letter the client's paid mailing holds is refused
+`send_claim_held` or `already_mailed`, and a paid mailing on a letter staff
+already claimed holds its order for review instead of mailing.
+
+Unlike this loop, it does not call the letter mailed when PostGrid accepts it
+(Codex CX28). On acceptance it only COALESCEs `postgrid_letter_id` (so PostGrid's
+delivery webhook finds the letter) and leaves the letter `sending`: the mail
+house has it, but it is not in the mail yet. `listStuckSendClaims` skips a
+letter that carries a PostGrid id, and this page's 334 provider-id rule refuses
+a clear on it. The mail tracker writes `status = 'sent'` and `mailed_at` only
+when PostGrid reports `processed_for_delivery` (handed off to the post office)
+or the later `completed`, dated by that report or an earlier post office scan;
+the round's items and the case move then too, and `repair.letters.sent` fires
+then. It also does not start the bureau's 30-day clock on mailing: the bureau's
+30 days start when the bureau gets the letter (Codex CX27). The mail tracker
+sets `response_due_at` to PostGrid's expected delivery date (its "completed"
+date) + 30 days when that date first lands, and only when the case has none.
+A send PostGrid never received releases the letter (the 333 rule); an unknown
+outcome keeps the claim. Migration 591 adds one database rule here: a
+`clearStuckSendClaim` is refused while the paid mailing's envelope is `sending`
+or `accepted`. An envelope held for review stays clearable by a person after
+checking PostGrid's own record, exactly like a stuck staff claim. The desk check
+`fin-b07-row-send` leaves such a letter to `blueprint:letter-mailing` while its
+accepted envelope waits on the handoff or the expected delivery date.

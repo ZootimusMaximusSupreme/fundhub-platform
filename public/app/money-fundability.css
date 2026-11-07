@@ -104,6 +104,24 @@
 .fh-fundability .fd-mini td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
 .fh-fundability .fd-mini .r{text-align:right}
 
+/* your Fundhub score — today, and N months on the plan (owner-set 2026-11-07).
+   Two cells side by side, stacked on a phone; four quick picks and any month,
+   every control 44px. */
+.fh-fundability .fd-fh-slot:empty{display:none}
+.fh-fundability .fd-fh{display:flex;flex-direction:column;gap:16px;margin-bottom:24px}
+.fh-fundability .fd-fh-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:16px}
+.fh-fundability .fd-fh-cell{display:flex;flex-direction:column;gap:8px;min-width:0;border:1px solid var(--line);border-radius:10px;padding:16px}
+.fh-fundability .fd-fh-head{color:var(--text-dim,var(--gray))}
+.fh-fundability .fd-fh-num{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.fh-fundability .fd-fh-picks{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fh-fundability .fd-fh-pick{min-height:44px;min-width:56px;padding:0 16px;border-radius:8px;border:1px solid var(--ink);background:var(--surface,#FFFFFF);color:var(--ink);font-weight:600}
+.fh-fundability .fd-fh-pick[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.fh-fundability .fd-fh-pick:focus-visible,.fh-fundability .fd-fh-any select:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.fh-fundability .fd-fh-any{display:inline-flex;align-items:center;gap:8px;color:var(--text-dim,var(--gray))}
+.fh-fundability .fd-fh-any select{min-height:44px;min-width:64px;max-width:100%;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#FFFFFF);color:var(--ink);font:inherit}
+.fh-fundability .fd-fh-sub{font-weight:600;color:var(--ink)}
+.fh-fundability .fd-fh-reasons{list-style:decimal;padding-left:24px;display:flex;flex-direction:column;gap:8px}
+
 /* empty and error */
 .fh-fundability .fd-empty,.fh-fundability .fd-error{display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:24px}
 
@@ -129,3 +147,6 @@
   .fh-fundability .fd-xl-long{display:none}
   .fh-fundability .fd-xl-short{display:inline}
 }
+/* "Can you apply yet?" (unit L4) sits right under the funding paths card. */
+.fh-fundability .fd-gate-slot{margin-bottom:24px}
+.fh-fundability .fd-gate-slot:empty{display:none}

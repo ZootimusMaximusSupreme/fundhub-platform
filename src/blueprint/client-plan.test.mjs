@@ -9,7 +9,7 @@ const NOW = new Date("2026-11-02T20:00:00.000Z");
 const scope = { orgId: ORG, clientId: CLIENT, now: NOW };
 
 function fixture({ credit = null, missingClient = false } = {}) {
-  const calls = { queries: [], plans: [], progress: [], bank: [], guidance: [], rank: [], prompts: [], engine: [] };
+  const calls = { queries: [], plans: [], progress: [], bank: [], local: [], guidance: [], rank: [], prompts: [], engine: [] };
   const client = { id: CLIENT, org_id: ORG, first_name: "Alex", last_name: "Buyer",
     custom_fields: { home_state: "CA", postal_code: "90001", must_not_return: "private-client-value" } };
   const businessPlans = { orgId: ORG, clientId: CLIENT, version: 1, targetBusinessCount: 4,
@@ -36,10 +36,15 @@ function fixture({ credit = null, missingClient = false } = {}) {
     readBusinessPlans: async (gotDb, gotScope) => { calls.plans.push({ gotDb, gotScope }); return businessPlans; },
     readClientProgress: async (gotDb, gotScope) => { calls.progress.push({ gotDb, gotScope }); return progress; },
     bankStrategy: async (gotDb, gotScope) => { calls.bank.push({ gotDb, gotScope }); return bankPlan; },
+    // The local banks read (src/finance/local-banks.mjs): here it hands the bank read back as it came.
+    attachLocalBanks: async (gotDb, args) => { calls.local.push({ gotDb, args }); return args.payload; },
     preparationGuidance: (context) => { calls.guidance.push(context); return [{ key: "real_lesson", applicability: context.creditContext.securedCreditReviewRequired === true ? "ready" : "review_needed" }]; },
     rankLocalCreditUnions: (context) => { calls.rank.push(context); return localBanks; },
     websitePrompt: (business) => { calls.prompts.push(business); return `Website for ${business.name}: ${business.activity}`; },
-    runTierEngine: (result) => { calls.engine.push(result); return result.analysis; }
+    runTierEngine: (result) => { calls.engine.push(result); return result.analysis; },
+    // Connected personal cash for "your path" (src/waypoints/blueprint-path-read.mjs): none here.
+    readConnectedCash: async () => null,
+    readFundability: async () => null
   };
   return { db, deps, calls, client, businessPlans, progress, bankPlan, localBanks };
 }
@@ -194,6 +199,61 @@ test("a bank source outage is explicit and preserves the saved primary plan", as
   assert.equal(out.progress, f.progress);
   assert.deepEqual(out.warnings, [{ code: "bank_plan_unavailable", source: "bank_strategy" }]);
   assert.doesNotMatch(JSON.stringify(out), /credential/);
+});
+
+test("the bank read goes through the local banks read for this client, and the path follows the merged plan", async () => {
+  const f = fixture();
+  const local = { lender_id: null, name: "Near Credit Union", kind: "credit_union", products: [], lender_table: null,
+    minimum_deposit_cents: null, seasoning_days: null, logo: null, why: [], relationship_steps: [], local: true };
+  f.deps.attachLocalBanks = async (gotDb, args) => {
+    f.calls.local.push({ gotDb, args });
+    return { ...args.payload, local_banks: { status: "ready", recommended: [local] }, deposit_plan: [{ name: "Near Credit Union" }] };
+  };
+  const out = await buildBlueprintClientPlan(f.db, scope, f.deps);
+  assert.equal(f.calls.local.length, 1);
+  assert.equal(f.calls.local[0].gotDb, f.db);
+  assert.deepEqual(f.calls.local[0].args, { orgId: ORG, clientId: CLIENT, payload: f.bankPlan, now: NOW });
+  assert.deepEqual(out.bankPlan.recommended_banks, f.bankPlan.recommended_banks, "the bank match's own list is kept");
+  assert.equal(out.bankPlan.local_banks.status, "ready");
+  assert.deepEqual(out.bankPlan.deposit_plan, [{ name: "Near Credit Union" }]);
+  assert.deepEqual(out.path.steps.filter((s) => s.kind === "bank").map((s) => s.bank.name), ["Near Credit Union"]);
+  assert.deepEqual(out.cashPlan.banks.map((b) => b.name), ["Saved Bank"], "the cash fit still reads the bank match's list");
+});
+
+test("a local banks read that fails keeps the bank read as it came", async () => {
+  const f = fixture();
+  f.deps.attachLocalBanks = async () => { throw new Error("directory offline"); };
+  const out = await buildBlueprintClientPlan(f.db, scope, f.deps);
+  assert.equal(out.bankPlan, f.bankPlan);
+  assert.deepEqual(out.path.steps.filter((s) => s.kind === "bank").map((s) => s.bank.name), ["Saved Bank"]);
+  assert.ok(!out.warnings.some((w) => w.code === "bank_plan_unavailable"));
+});
+
+test("the real local banks read finds branches near the saved home ZIP, scoped to this org and client", async () => {
+  const f = fixture();
+  delete f.deps.attachLocalBanks;
+  const loc = [];
+  const db = { async query(sql, params) {
+    if (/FROM pii_identity/.test(sql)) { loc.push({ sql, params }); return { rows: [{ zip: "85004", city: "PHOENIX", state: "AZ" }] }; }
+    if (/custom_fields->'blueprint_business_plans'/.test(sql)) { loc.push({ sql, params }); return { rows: [{}] }; }
+    if (/FROM businesses/.test(sql)) { loc.push({ sql, params }); return { rows: [] }; }
+    if (/FROM plaid_institutions|FROM lenders/.test(sql)) { loc.push({ sql, params }); return { rows: [] }; }
+    return f.db.query(sql, params);
+  } };
+  const out = await buildBlueprintClientPlan(db, scope, f.deps);
+  const lb = out.bankPlan.local_banks;
+  assert.equal(lb.status, "ready");
+  assert.deepEqual(lb.places.map((p) => [p.label, p.zip]), [["Home", "85004"]]);
+  assert.ok(lb.nearby.length > 0);
+  assert.ok(lb.recommended.length > 0 && lb.recommended.length <= 5);
+  assert.deepEqual(out.path.steps.filter((s) => s.kind === "bank").map((s) => s.bank.name), lb.recommended.map((r) => r.name),
+    "the path's bank steps are the merged plan");
+  assert.equal(out.bankPlan.deposit_plan.length, lb.recommended.length);
+  for (const q of loc.filter((x) => !/FROM plaid_institutions/.test(x.sql))) {
+    assert.equal(q.params[0], ORG);
+    if (!/FROM lenders/.test(q.sql)) assert.equal(q.params[1], CLIENT);
+    assert.doesNotMatch(q.sql, /INSERT|UPDATE|DELETE|ssn|street|line1/i);
+  }
 });
 
 test("a directory outage is unavailable, with no fabricated candidates or publication date", async () => {

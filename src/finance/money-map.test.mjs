@@ -15,6 +15,7 @@ import { test } from "node:test";
 import assert from "node:assert";
 
 import { moneyMap, ENGINES, DEPOSITORY, billRowToDetected } from "./money-map.mjs";
+import { detectIncome } from "../banking/income.mjs";
 
 const AS_OF = "2026-07-31";
 
@@ -320,6 +321,51 @@ test("money in is zero by construction and the screen is told to say so", () => 
   assert.equal(out.cashflow.ok, true);
   assert.equal(out.cashflow.total_in.display, "0.00");
   assert.ok(out.notes.some((n) => n.code === "no_income_modelled"));
+});
+
+/* ── money coming in (Finance OS CFO build, unit C) ────────────────────── */
+
+/* A biweekly paycheck into b1, found by src/banking/income.mjs from rows. */
+const paycheckIncome = () => {
+  const rows = [];
+  for (let t = Date.parse("2026-02-06T00:00:00Z"), i = 0; t <= Date.parse("2026-07-24T00:00:00Z"); t += 14 * 86_400_000, i += 1) {
+    rows.push({ bank_account_id: "b1", provider_transaction_id: `pay${i}`, amount_cents: "180000",
+      posted_on: new Date(t).toISOString().slice(0, 10), merchant_name: "ACME CORP PAYROLL" });
+  }
+  return detectIncome(rows, { now: AS_OF, accounts: [account()] });
+};
+
+test("found paydays go on the calendar; at the org's confidence floor they move the balance", () => {
+  const income = paycheckIncome();
+  assert.equal(income.items[0].next_expected_on, "2026-08-07");
+  const out = run({ bankAccounts: [account()], recurringBills: [bill()], thresholds: { confidenceFloor: 0.75 }, income });
+  /* Aug 7 and Aug 21 land inside Jul 31 – Aug 29. */
+  assert.equal(out.cashflow.total_in.cents, 360000);
+  assert.equal(out.cashflow.closing.cents, 240000 + 360000 - 1599);
+  assert.ok(out.notes.some((n) => n.code === "income_modelled"));
+  assert.ok(!out.notes.some((n) => n.code === "no_income_modelled"));
+  assert.equal(out.income.engine_label, ENGINES.income);
+  assert.equal(out.income.placed, 1);
+  assert.equal(out.income.confirmed, 1);
+  assert.equal(out.income.by_kind.personal.monthly_cents, 360000);
+  assert.equal(out.income.items[0].on_the_calendar, true);
+});
+
+test("with no confidence floor set, a found paycheck is shown but moves neither track", () => {
+  const out = run({ bankAccounts: [account()], recurringBills: [bill()], income: paycheckIncome() });
+  assert.equal(out.cashflow.total_in.cents, 0, "a maybe-paycheck never makes the careful line hopeful");
+  assert.equal(out.income.confirmed, 0);
+  assert.match(out.notes.find((n) => n.code === "income_modelled").note, /0 of them are steady enough/);
+});
+
+test("an income read that found nothing keeps the plain worst-case wording", () => {
+  const out = run({ bankAccounts: [account()], income: detectIncome([], { now: AS_OF, accounts: [account()] }) });
+  assert.equal(out.cashflow.total_in.cents, 0);
+  assert.match(out.notes.find((n) => n.code === "no_income_modelled").note, /No repeat deposit was found/);
+  const failed = run({ bankAccounts: [account()], income: { ok: false, reason: "read_failed" } });
+  assert.deepEqual([failed.income.unavailable, failed.income.reason], [true, "read_failed"]);
+  assert.ok(failed.notes.some((n) => n.code === "no_income_modelled"));
+  assert.equal(run({ bankAccounts: [account()] }).income, null, "no income read passed: nothing claimed");
 });
 
 test("a bill inside the window moves the closing balance by exactly its amount", () => {

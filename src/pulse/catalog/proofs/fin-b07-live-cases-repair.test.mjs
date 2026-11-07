@@ -24,10 +24,16 @@ const letter = (n, c, status, extra = {}) => ["dispute_letters", {
   body_text: "Dear bureau, please correct the following.", target: "bureau", created_at: ago(2), ...extra,
 }];
 const response = (n, c) => ["dispute_responses", { id: id(700 + n), case_id: id(501), org_id: ORG, client_id: id(c), created_at: ago(1) }];
+// The client's paid $97 mailing envelope for one repair letter (migration 591): accepted by the mail house
+// under PostGrid id `letter_paid_<n>`, not yet handed to the post office unless `extra` says so.
+const envelope = (n, c, letterN, extra = {}) => ["blueprint_letter_mailing_envelopes", {
+  id: id(800 + n), order_id: id(850 + n), org_id: ORG, client_id: id(c), dispute_letter_id: id(600 + letterN),
+  bureau: "EX", state: "accepted", provider_id: `letter_paid_${n}`, accepted_at: ago(3), ...extra,
+}];
 const clock = "COALESCE(c.entered_at, c.updated_at)";
 const BASE = [board(), ...stageRows(), client(1), dcase(1, 1)];
 const TABLES = ["cards", "pipelines", "pipeline_stages", "clients", "dispute_cases", "dispute_letters", "dispute_responses",
-  "repair_decision_log", "repair_programs", "events", "dispute_items"];
+  "repair_decision_log", "repair_programs", "events", "dispute_items", "blueprint_letter_mailing_envelopes"];
 
 runCases({
   "fin-b07-stage-intake": {
@@ -318,9 +324,59 @@ runCases({
       letter(1, 1, "sent", { case_id: id(520), mailed_at: ago(2), send_claimed_at: ago(2) })],
     bad: [
       { name: "a sent letter with no mailed stamp", rows: [letter(2, 1, "sent", { case_id: id(520), mailed_at: null, send_claimed_at: ago(2) })], breaks: "OR (dl.status IN ('sent', 'delivered') AND (dl.mailed_at IS NULL OR dl.send_claimed_at IS NULL))" },
-      { name: "a letter claimed over a day ago and never mailed", rows: [letter(3, 1, "sending", { case_id: id(520), send_claimed_at: ago(2) })], breaks: "OR (dl.status = 'sending' AND dl.send_claimed_at < now() - interval '1 days')" },
-      { name: "a mailed letter whose bureau clock never started", rows: [dcase(8, 1, { response_due_at: null }), letter(4, 1, "sent", { case_id: id(508), mailed_at: ago(2), send_claimed_at: ago(2) })], breaks: "OR (dl.mailed_at IS NOT NULL AND dc.response_due_at IS NULL)" },
+      { name: "a letter claimed over a day ago and never mailed", rows: [letter(3, 1, "sending", { case_id: id(520), send_claimed_at: ago(2) })], breaks: "OR (dl.status = 'sending' AND dl.send_claimed_at < now() - interval '1 days'" },
+      { name: "a mailed letter whose bureau clock never started", rows: [dcase(8, 1, { response_due_at: null }), letter(4, 1, "sent", { case_id: id(508), mailed_at: ago(2), send_claimed_at: ago(2) })], breaks: "OR (dl.mailed_at IS NOT NULL AND dc.response_due_at IS NULL" },
       { name: "a letter whose case is of another client", rows: [client(2), letter(5, 2, "sent", { case_id: id(520), mailed_at: ago(2), send_claimed_at: ago(2) })], breaks: "OR dc.client_id IS DISTINCT FROM dl.client_id" },
+      // A paid Fundhub mailing is let off only while its accepted envelope really waits on the mail house.
+      {
+        name: "a paid mailing letter claimed over a day ago that the mail house never accepted",
+        rows: [letter(10, 1, "sending", { case_id: id(520), send_claimed_at: ago(2) }),
+          envelope(10, 1, 10, { state: "needs_review", provider_id: null, accepted_at: null })],
+        breaks: "OR (dl.status = 'sending' AND dl.send_claimed_at < now() - interval '1 days'",
+      },
+      {
+        name: "a paid mailing letter the mail house cancelled, still claimed after a day",
+        rows: [letter(11, 1, "sending", { case_id: id(520), send_claimed_at: ago(3), postgrid_letter_id: "letter_paid_11" }),
+          envelope(11, 1, 11, { provider_status: "cancelled" })],
+        breaks: "OR (dl.status = 'sending' AND dl.send_claimed_at < now() - interval '1 days'",
+      },
+      {
+        name: "a paid mailing letter whose envelope names another PostGrid letter",
+        rows: [letter(12, 1, "sending", { case_id: id(520), send_claimed_at: ago(3), postgrid_letter_id: "letter_paid_other" }),
+          envelope(12, 1, 12)],
+        breaks: "OR (dl.status = 'sending' AND dl.send_claimed_at < now() - interval '1 days'",
+      },
+      {
+        name: "a paid mailing letter with an expected delivery date and no bureau clock",
+        rows: [dcase(12, 1, { response_due_at: null }),
+          letter(13, 1, "sent", { case_id: id(512), mailed_at: ago(6), send_claimed_at: ago(8), postgrid_letter_id: "letter_paid_13" }),
+          envelope(13, 1, 13, { mailed_at: ago(6), expected_delivery_at: ago(2), reply_due_at: ago(-28) })],
+        breaks: "OR (dl.mailed_at IS NOT NULL AND dc.response_due_at IS NULL",
+      },
+      {
+        name: "a returned paid mailing letter with no bureau clock",
+        rows: [dcase(13, 1, { response_due_at: null }),
+          letter(14, 1, "sent", { case_id: id(513), mailed_at: ago(6), send_claimed_at: ago(8), postgrid_letter_id: "letter_paid_14" }),
+          envelope(14, 1, 14, { mailed_at: ago(6), returned_at: ago(1), imb_status: "returned_to_sender" })],
+        breaks: "OR (dl.mailed_at IS NOT NULL AND dc.response_due_at IS NULL",
+      },
+    ],
+    ignored: [
+      {
+        name: "a paid Fundhub mailing the mail house holds, not yet handed to the post office (Codex CX28)",
+        rows: [letter(15, 1, "sending", { case_id: id(520), send_claimed_at: ago(3), postgrid_letter_id: "letter_paid_15" }),
+          envelope(15, 1, 15, { provider_status: "printing" })],
+        breaks: { piece: "AND e.mailed_at IS NULL)", with: "AND 1 = 0)" },
+        extraSamples: 1,
+      },
+      {
+        name: "a paid Fundhub mailing handed to the post office, before PostGrid's expected delivery date (Codex CX27)",
+        rows: [dcase(14, 1, { response_due_at: null }),
+          letter(16, 1, "sent", { case_id: id(514), mailed_at: ago(1), send_claimed_at: ago(3), postgrid_letter_id: "letter_paid_16" }),
+          envelope(16, 1, 16, { provider_status: "processed_for_delivery", mailed_at: ago(1) })],
+        breaks: { piece: "AND e.expected_delivery_at IS NULL)", with: "AND 1 = 0)" },
+        extraSamples: 1,
+      },
     ],
   },
 

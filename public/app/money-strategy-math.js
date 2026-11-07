@@ -61,6 +61,18 @@
  *   * Month k ends on the same day of the month as `as_of`, k months later
  *     (Oct 6 → Nov 6). A day past the end of a month uses its last day, the
  *     rule src/banking/statement-cycles.mjs already uses.
+ *
+ * FINANCING (Finance OS wave 3, unit K). A debt of type "financing" is a
+ * payment plan owed to Fundhub or a subsidiary (Clarity Pay, buy now pay later),
+ * read by src/finance/payment-strategy.mjs. settings.financing_first puts those
+ * plans at the front of the order, smallest balance first, ahead of the
+ * method's own order. It is a choice on top of a method, not a fourth method.
+ *
+ * MONEY COMING IN (Finance OS CFO build, unit C). When the read carries
+ * inputs.income, suggestExtra() works out each kind's extra for debt — money in
+ * minus bills minus minimums minus the floor — and the biggest monthly amount
+ * that never sends one kind's money to another kind's debts. It is a
+ * suggestion: the page shows it with a button, the client picks the amount.
  */
 
 export const MAX_MONTHS = 600; // 50 years. Past that the plan says "never".
@@ -104,6 +116,12 @@ export const METHOD_INFO = Object.freeze({
     detail: "Extra money goes to the smallest balance. Closes debts sooner.",
     source: "Owner direction 2026-10-06: snowball = smallest balance first"
   })
+});
+
+export const FINANCING_FIRST_INFO = Object.freeze({
+  label: "Pay financing first",
+  detail: "Extra money goes to your payment plans before the cards and loans, smallest plan first.",
+  source: "Owner direction 2026-11-07 (Finance OS wave 3, unit K): a 'Pay financing first' choice"
 });
 
 /* ── small readers ─────────────────────────────────────────────────────── */
@@ -182,8 +200,8 @@ export function normalizeDebts(list) {
     const id = text(r.id);
     if (!id || seen.has(id)) continue;
     seen.add(id);
-    const type = r.type === "loan" ? "loan" : "card";
-    const name = text(r.name) || (type === "loan" ? "Loan" : "Card");
+    const type = r.type === "loan" || r.type === "financing" ? r.type : "card";
+    const name = text(r.name) || (type === "loan" ? "Loan" : type === "financing" ? "Payment plan" : "Card");
     const kind = KINDS.includes(r.kind) ? r.kind : "unknown";
     const balance = int(r.balance_cents);
     if (balance === null) {
@@ -207,7 +225,11 @@ export function normalizeDebts(list) {
       apr_bps: aprOk ? Math.round(apr * 100) : null,
       apr_source: aprOk ? text(r.apr_source) : null,
       min_cents: min !== null && min >= 0 ? min : null,
-      due_on: parseDay(r.due_on) ? r.due_on : null
+      due_on: parseDay(r.due_on) ? r.due_on : null,
+      owed_to: type === "financing" ? text(r.owed_to) : null,
+      /* This cycle's paid / late status, as the server read it. Carried, not
+         computed here: the math never decides whether a bill was paid. */
+      payment: r.payment && typeof r.payment === "object" ? r.payment : null
     });
   }
   return { debts, excluded };
@@ -268,7 +290,16 @@ function utilizationCmp(a, b) {
  * Extra money is poured down this list each month: into the first entry until
  * that debt reaches its floor, then the next. Set once, at the start.
  */
-export function priorityList(debts, method) {
+export function priorityList(debts, order) {
+  const method = order && typeof order === "object" ? order.method : order;
+  const first = order && typeof order === "object" && order.financing_first === true
+    ? debts.filter((d) => d.type === "financing" && d.balance_cents > 0).sort(snowballCmp)
+      .map((d) => ({ id: d.id, floor_cents: 0, phase: "financing" }))
+    : [];
+  return [...first, ...methodList(debts, method)];
+}
+
+function methodList(debts, method) {
   const active = debts.filter((d) => d.balance_cents > 0);
   const avalanche = [...active].sort(avalancheCmp).map((d) => ({ id: d.id, floor_cents: 0, phase: "rate" }));
   if (method === "snowball") {
@@ -732,6 +763,105 @@ export function cashCheck(debts, { method = "avalanche", monthlyCents, cash } = 
   return { status, by_kind: rows, max_safe: max };
 }
 
+/* ── money coming in: how much extra can go to debt ────────────────────── */
+
+/**
+ * suggestExtra(debts, { method, income }) → { ok, reason, by_kind, monthly_cents,
+ *   extra_cents, plain_extra_cents, binding_kind, unlimited }
+ *
+ * Finance OS CFO build, unit C (spec item 6). Per kind, the owner's formula:
+ *
+ *   extra = money coming in a month − bills a month − minimum payments − the floor
+ *
+ * income (built on the server, src/finance/payment-strategy.mjs incomeForPlan):
+ *   { ok: true, floor_cents, by_kind: { personal: { monthly_cents, bills_cents }, … } }
+ *   monthly_cents is the SURE monthly figure from src/banking/income.mjs (only the
+ *   paydays every month has); bills_cents is that kind's average bill month.
+ *
+ * NULL WHEN ANY INPUT IS UNKNOWN. A kind with a debt and no money coming in
+ * found, a debt with no minimum on file, a missing bills or floor figure: the
+ * answer is null with the reason, never a number built on a hole.
+ *
+ * PERSONAL MONEY NEVER PAYS A BUSINESS DEBT HERE. The slider is one number for
+ * every debt, and the method decides where the extra goes, so the sum of the
+ * kinds' extras could send business money to a personal card. Instead each
+ * kind's money for debt (its minimums + its extra) is a limit on what month 1
+ * of the plan may send to THAT kind's debts, and the suggestion is the biggest
+ * monthly amount that fits every limit — maxSafeMonthly(), the same search the
+ * cash check uses. With one kind of debt that is exactly minimums + extra. Only
+ * month 1 is checked, the same as the cash check.
+ *
+ * Rounded DOWN to whole dollars (never below the minimums), unless it pays
+ * everything off, which is kept to the cent.
+ */
+export function suggestExtra(debts, { method = "avalanche", income } = {}) {
+  const none = (code, extra) => ({
+    ok: false, reason: Object.assign({ code }, extra || {}), by_kind: [], monthly_cents: null,
+    extra_cents: null, plain_extra_cents: null, binding_kind: null, unlimited: false,
+    use_cents: null, capped_by_cash: false
+  });
+  if (!income || income.ok !== true) return none("income_not_read");
+  const owingAll = debts.filter((d) => d.balance_cents > 0);
+  if (!owingAll.length) return none("no_debts");
+  const floor = int(income.floor_cents);
+  const byKind = income.by_kind || {};
+  const kinds = KINDS.filter((k) => owingAll.some((d) => d.kind === k));
+
+  const rows = kinds.map((k) => {
+    const mine = debts.filter((d) => d.kind === k);
+    const owing = mine.filter((d) => d.balance_cents > 0);
+    const inc = int(byKind[k] && byKind[k].monthly_cents);
+    const bills = int(byKind[k] && byKind[k].bills_cents);
+    const noMin = owing.filter((d) => d.min_cents === null);
+    const mins = minimumsCents(mine);
+    const row = {
+      kind: k, income_cents: inc, bills_cents: bills, minimums_cents: noMin.length ? null : mins,
+      floor_cents: floor, left_cents: null, extra_cents: null, short_cents: null, status: "unknown", reason: null
+    };
+    if (inc === null) row.reason = { code: "income_unknown", kind: k };
+    else if (bills === null) row.reason = { code: "bills_unknown", kind: k };
+    else if (noMin.length) row.reason = { code: "minimum_unknown", kind: k, ids: noMin.map((d) => d.id), names: noMin.map((d) => d.name) };
+    else if (floor === null) row.reason = { code: "floor_unknown", kind: k };
+    else {
+      const left = inc - bills - mins - floor;
+      row.left_cents = left;
+      row.extra_cents = Math.max(0, left);
+      row.short_cents = left < 0 ? -left : 0;
+      row.status = left < 0 ? "short" : "known";
+    }
+    return row;
+  });
+
+  const unknown = rows.find((r) => r.status === "unknown");
+  if (unknown) return { ...none(unknown.reason.code, unknown.reason), by_kind: rows };
+  const short = rows.find((r) => r.status === "short");
+  if (short) return { ...none("income_short", { kind: short.kind, short_cents: short.short_cents }), by_kind: rows };
+
+  const safeByKind = {};
+  for (const r of rows) safeByKind[r.kind] = r.minimums_cents + r.extra_cents;
+  const max = maxSafeMonthly(debts, { method, safeByKind });
+  if (max.monthly_cents === null) return { ...none("income_short", { kind: max.binding_kind }), by_kind: rows };
+  const mins = minimumsCents(debts);
+  const monthly = max.unlimited ? max.monthly_cents : Math.max(mins, Math.floor(max.monthly_cents / 100) * 100);
+  const plain = rows.reduce((s, r) => s + r.minimums_cents + r.extra_cents, 0);
+  return {
+    ok: true,
+    reason: null,
+    by_kind: rows,
+    monthly_cents: monthly,
+    extra_cents: monthly - mins,
+    plain_extra_cents: rows.reduce((s, r) => s + r.extra_cents, 0),
+    /* Which kind's money held the total down, when the kinds' own amounts add
+       up to more than one plan can send without mixing them. */
+    binding_kind: !max.unlimited && max.monthly_cents < plain ? max.binding_kind : null,
+    unlimited: max.unlimited,
+    /* What the "Use" button sets. buildPlan() lowers it to this month's cash
+       when the accounts cannot send the full amount today. */
+    use_cents: monthly,
+    capped_by_cash: false
+  };
+}
+
 /* ── the whole plan ────────────────────────────────────────────────────── */
 
 /**
@@ -743,6 +873,10 @@ export function cashCheck(debts, { method = "avalanche", monthlyCents, cash } = 
 export function buildPlan(inputs, settings = {}) {
   const asOf = inputs && parseDay(inputs.as_of) ? inputs.as_of : null;
   const method = METHODS.includes(settings.method) ? settings.method : "avalanche";
+  const financingFirst = settings.financing_first === true;
+  /* What the walk orders by: the method, with the payment plans in front when
+     the client chose "Pay financing first". Every function below takes it. */
+  const order = financingFirst ? { method, financing_first: true } : method;
   const { debts, excluded } = normalizeDebts(inputs && inputs.debts);
   const allExcluded = [...excluded, ...(Array.isArray(inputs && inputs.excluded) ? inputs.excluded : [])];
   const active = debts.filter((d) => d.balance_cents > 0);
@@ -750,22 +884,27 @@ export function buildPlan(inputs, settings = {}) {
   const base = {
     as_of: asOf,
     method,
+    financing_first: financingFirst,
+    has_financing: debts.some((d) => d.type === "financing" && d.balance_cents > 0),
     monthly_cents: monthly,
     debts,
     excluded: allExcluded,
     minimums_cents: minimumsCents(debts),
     payoff_all_cents: payoffAllCents(debts),
-    warnings: warningsFor(debts)
+    warnings: warningsFor(debts),
+    /* Money coming in → the suggested amount. Null when the read had no
+       income block at all (an older server), so the page shows nothing. */
+    suggestion: inputs && inputs.income ? suggestExtra(debts, { method: order, income: inputs.income }) : null
   };
   if (!asOf) return { ok: false, reason: { code: "as_of_invalid" }, ...base };
   if (!active.length) return { ok: false, reason: { code: "no_debts" }, ...base };
   if (monthly === null || monthly <= 0) return { ok: false, reason: { code: "no_amount" }, ...base };
 
-  const sim = simulate(debts, { method, monthlyCents: monthly, asOf });
+  const sim = simulate(debts, { method: order, monthlyCents: monthly, asOf });
   if (!sim.ok) return { ok: false, reason: sim.reason, ...base };
 
-  const order = priorityList(debts, method);
-  const earliest = earliestTest(debts, sim, order);
+  const list = priorityList(debts, order);
+  const earliest = earliestTest(debts, sim, list);
   const aprUnknown = active.filter((d) => d.apr_bps === null);
   const debtFree = sim.debt_free_month === null ? null : {
     month: sim.debt_free_month,
@@ -820,9 +959,9 @@ export function buildPlan(inputs, settings = {}) {
   });
 
   const goal = settings.goal && GOAL_KINDS.includes(settings.goal.kind)
-    ? { kind: settings.goal.kind, by: settings.goal.by, ...requiredMonthly(debts, { method, goal: settings.goal, asOf }) }
+    ? { kind: settings.goal.kind, by: settings.goal.by, ...requiredMonthly(debts, { method: order, goal: settings.goal, asOf }) }
     : null;
-  const cash = inputs.cash ? cashCheck(debts, { method, monthlyCents: monthly, cash: inputs.cash }) : null;
+  const cash = inputs.cash ? cashCheck(debts, { method: order, monthlyCents: monthly, cash: inputs.cash }) : null;
   if (goal && goal.ok && cash && cash.max_safe && cash.max_safe.monthly_cents !== null && !cash.max_safe.unlimited) {
     goal.fits_cash = goal.monthly_cents <= cash.max_safe.monthly_cents;
   } else if (goal && goal.ok && cash && cash.max_safe && cash.max_safe.unlimited) {
@@ -830,12 +969,19 @@ export function buildPlan(inputs, settings = {}) {
   } else if (goal) {
     goal.fits_cash = null;
   }
+  /* Money coming in says what a month can spare; the cash check says what the
+     accounts can send this month. The button uses the smaller and says so. */
+  let suggestion = base.suggestion;
+  if (suggestion && suggestion.ok && cash && cash.max_safe && !cash.max_safe.unlimited &&
+      int(cash.max_safe.monthly_cents) !== null && cash.max_safe.monthly_cents < suggestion.monthly_cents) {
+    suggestion = { ...suggestion, use_cents: cash.max_safe.monthly_cents, capped_by_cash: true };
+  }
 
   return {
     ok: true,
     reason: null,
     ...base,
-    order,
+    order: list,
     months: sim.rows,
     debt_free: debtFree,
     never_paid_off: debtFree === null,
@@ -858,7 +1004,8 @@ export function buildPlan(inputs, settings = {}) {
     per_debt: perDebt,
     goal,
     cash,
-    milestones: milestones(debts, sim, asOf, method)
+    suggestion,
+    milestones: milestones(debts, sim, asOf, order)
   };
 }
 

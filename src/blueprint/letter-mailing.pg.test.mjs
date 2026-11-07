@@ -25,9 +25,10 @@ test('PG migration546: exact scoped quotes, replacement, payment CAS, irreversib
       CREATE TEMP TABLE documents(id uuid PRIMARY KEY,org_id uuid,client_id uuid,kind text,subtype text,title text,metadata jsonb,generated_at timestamptz,current_version_id uuid,checksum text,expires_at timestamptz);
       CREATE TEMP TABLE document_versions(id uuid PRIMARY KEY,org_id uuid,document_id uuid,storage_key text,checksum text,mime_type text,byte_size bigint);
       CREATE TEMP TABLE transactions(org_id uuid,client_id uuid,provider text,status text,amount_paid numeric,is_demo boolean);
-      CREATE TEMP TABLE paid_service_requests (LIKE public.paid_service_requests INCLUDING ALL);`);
-    const sql=readFileSync(new URL('../../db/migrations/546_blueprint_letter_mailing.sql',import.meta.url),'utf8').replaceAll('public.','pg_temp.');
-    await db.query(sql);
+      CREATE TEMP TABLE paid_service_requests (LIKE public.paid_service_requests INCLUDING ALL);
+      CREATE TEMP TABLE dispute_letters (LIKE public.dispute_letters INCLUDING ALL);`);
+    for(const file of ['546_blueprint_letter_mailing.sql','591_blueprint_repair_letter_mailing.sql'])
+      await db.query(readFileSync(new URL(`../../db/migrations/${file}`,import.meta.url),'utf8').replaceAll('public.','pg_temp.'));
     const org=randomUUID(),client=randomUUID(),account=randomUUID(),foreign=randomUUID();
     const scope={orgId:org,clientId:client,accountId:account,now:new Date()};
     await db.query('INSERT INTO orgs VALUES($1)',[org]);await db.query('INSERT INTO clients VALUES($1,$2,$3),($4,$2,$5)',[client,org,'fixture@example.test',foreign,'foreign@example.test']);
@@ -63,6 +64,30 @@ test('PG migration546: exact scoped quotes, replacement, payment CAS, irreversib
     const claim=claims.find(Boolean);await repo.accepted(scope,order.id,claim,'letter_fixture');await repo.complete(scope,order.id);
     assert.equal((await repo.get(scope,order.id)).state,'mailed');
     await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET state='ready',claim_token=NULL,claimed_at=NULL WHERE id=$1",[eid]));
+    // Migration 591: accepted is not mailed and has no reply date (CX28, CX27); tracker facts are set
+    // once; PostGrid's "completed" date is only an expected delivery date (CX26), and the reply date counts from it.
+    const envelopeRow=async()=>(await db.query('SELECT accepted_at,mailed_at,expected_delivery_at,reply_due_at,dispute_letter_id FROM blueprint_letter_mailing_envelopes WHERE id=$1',[eid])).rows[0];
+    const tracked=await envelopeRow(),ref={id:eid,order_id:order.id,org_id:org,client_id:client};
+    assert.equal(tracked.dispute_letter_id,null,'a funding letter carries no repair letter');
+    assert.equal(tracked.mailed_at,null,'the mail house taking a letter is not mailing it');
+    assert.equal(tracked.reply_due_at,null,'no reply date when the mail house takes the letter');
+    assert.equal((await repo.track(ref,{providerStatus:'printing'},new Date())).mailedNow,false);
+    await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET mailed_at=now() WHERE id=$1",[eid]),'blueprint_letter_mailing_envelopes_mailed_after_handoff_ck');
+    const mailedOn=new Date();
+    assert.equal((await repo.track(ref,{providerStatus:'processed_for_delivery',imbStatus:'out_for_delivery',mailedAt:mailedOn},new Date())).mailedNow,true);
+    assert.equal(new Date((await envelopeRow()).mailed_at).getTime(),mailedOn.getTime(),'mailed on the date PostGrid reports the handoff');
+    assert.equal((await envelopeRow()).reply_due_at,null,'out for delivery is not a delivery date');
+    await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET reply_due_at=now()+interval '30 days' WHERE id=$1",[eid]),'blueprint_letter_mailing_envelopes_reply_after_delivery_ck');
+    const expected=new Date();
+    assert.equal((await repo.track(ref,{providerStatus:'completed',expectedDeliveryAt:expected},new Date())).mailedNow,false);
+    const due=await envelopeRow();
+    assert.equal(new Date(due.expected_delivery_at).getTime(),expected.getTime());
+    assert.ok(Math.abs(new Date(due.reply_due_at).getTime()-expected.getTime()-30*86400000)<=2*3600000,'reply due 30 days after the expected delivery date');
+    assert.equal((await repo.trackable(3,new Date())).length,0,'a letter with an expected delivery date leaves the tracker queue');
+    await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET mailed_at=now()+interval '1 day' WHERE id=$1",[eid]));
+    await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET expected_delivery_at=now()+interval '1 day' WHERE id=$1",[eid]));
+    await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET provider_status='lost' WHERE id=$1",[eid]),'blueprint_letter_mailing_envelopes_provider_status_ck');
+    await rejected(()=>db.query('UPDATE blueprint_letter_mailing_envelopes SET dispute_letter_id=$2 WHERE id=$1',[eid,randomUUID()]));
     const ledger=(await db.query('SELECT status,price_total_cents,amount_paid_cents,payment_ref,produced_kind,produced_ref,produced FROM paid_service_requests WHERE id=$1',[order.id])).rows[0];
     assert.equal(ledger.status,'fulfilled');assert.equal(ledger.produced_kind,'letter_mailing_batch');assert.equal(ledger.produced_ref,order.id);assert.equal(Number(ledger.price_total_cents),9700);assert.equal(Number(ledger.amount_paid_cents),9700);assert.equal(ledger.produced.mailed,true);
     assert.equal(await repo.get({...scope,clientId:foreign},order.id),null);

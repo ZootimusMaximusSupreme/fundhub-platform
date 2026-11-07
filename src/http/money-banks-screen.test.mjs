@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
+import { taggedBanks } from "./fixtures/money-banks-holdings.sample.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.resolve(HERE, "../../public/app");
@@ -61,8 +62,10 @@ test("the money nav, with Banks marked as the current page in words and fill", (
   assert.match(nav, /href="\/app\/financeos\.html#banks" aria-current="page">Banks</);
 });
 
-test("full: the four parts, from the real read, each rule with its source", () => {
-  const html = B.render(fixture());
+/* Rule sources are staff words: the staff view prints them (short client words,
+   owner rule 2026-11-07; accountability QA05). */
+test("full: the four parts, from the real read, each rule with its source (staff view)", () => {
+  const html = B.render(fixture(), { staff: true });
   const t = text(html);
   assert.match(t, /Banks Test Test · Banks to open near Phoenix, AZ/);
   // Banks near you — the bank book's steps
@@ -90,13 +93,13 @@ test("full: the four parts, from the real read, each rule with its source", () =
   assert.match(t, /Fundhub LLC has no NAICS code \(industry code\) on file\. Source: Fundhub funding order/);
   // Tracker — empty in the real read
   assert.match(t, /Your bank relationships .*No banks on your plan yet/);
-  assert.match(t, /Your advisor adds banks to your plan\./);
+  assert.match(text(B.render(fixture())), /Your advisor adds banks to your plan\./, "a client line");
   // Not set
   assert.match(t, /Not set yet .*Next funding sequence date .*Days between card applications at two banks/);
 });
 
-test("every rule line printed with a source carries the exact book row on hover", () => {
-  const html = B.render(fixture());
+test("every rule line printed with a source carries the exact book row on hover (staff view)", () => {
+  const html = B.render(fixture(), { staff: true });
   const srcs = html.match(/<span class="src caption" title="[^"]*">Source: [^<]+<\/span>/g) || [];
   assert.ok(srcs.length > 20, `only ${srcs.length} sources printed`);
   assert.ok(srcs.every((s) => !/title=""/.test(s)), "a source without its reference");
@@ -136,13 +139,38 @@ test("a bank already on the plan says so instead of offering it again", () => {
 });
 
 test("the tracker: status in words, history, deposits, seasoning with its source", () => {
-  const t = text(B.render(withRelationship(fixture())));
+  const t = text(B.render(withRelationship(fixture()), { staff: true }));
   assert.match(t, /Chase Business · Fundhub LLC Open · 10 of 30 days seasoned Sep 26, 2026 0 months \$10,000 1 deposit 30\+ days Source: Bank book · Chase/);
-  const planned = text(B.render(withRelationship(fixture(), {
+  const plannedRow = withRelationship(fixture(), {
     status: "planned", status_text: "Planned · date not set", opened_on: null, days_open: null, months_of_history: null,
     deposits: [], deposits_total_cents: null, seasoned_on: null
-  })));
-  assert.match(planned, /Planned · date not set Day not set — \$10,000 Source: Bank book · Chase/);
+  });
+  assert.match(text(B.render(plannedRow, { staff: true })), /Planned · date not set Day not set — \$10,000 Source: Bank book · Chase/);
+  // The client sees the same row without the staff source line.
+  assert.match(text(B.render(plannedRow)), /Planned · date not set Day not set — \$10,000 30\+ days/);
+  // Each cell names itself, so a phone can stack the row (accountability QA03).
+  const row = B.render(withRelationship(fixture())).match(/<tr data-rel="[^"]+">[\s\S]*?<\/tr>/)[0];
+  for (const label of ["Status", "Opened", "History", "Deposits / plan", "Seasoning"]) {
+    assert.match(row, new RegExp(`<td[^>]* data-label="${label.replace("/", "\\/")}"`), label);
+  }
+  assert.doesNotMatch(B.render(withRelationship(fixture())), /<caption/, "no caption squeezed inside the scroll box");
+});
+
+test("the client view: no rule sources, no owner-law dates, no staff notes; an empty card is not drawn", () => {
+  const html = B.render(withRelationship(fixture()));
+  const t = text(html);
+  assert.doesNotMatch(t, /Source:/);
+  assert.doesNotMatch(t, /owner law|Owner rule, 20/i);
+  assert.doesNotMatch(t, /No Fundhub rule names a number|No Fundhub rule sets these/);
+  // Staff still see them.
+  const staff = text(B.render(withRelationship(fixture()), { staff: true }));
+  assert.match(staff, /Source: Fundhub funding order \(owner law 2026-09-26\)/);
+  assert.match(staff, /No Fundhub rule sets these/);
+  // "Can you card stack?" with no answer at all is left out.
+  const d = fixture();
+  d.card_stacking.engine = {};
+  assert.doesNotMatch(B.render(d), /Can you card stack\?/);
+  assert.match(B.render(fixture()), /Can you card stack\?/, "with an answer it shows");
 });
 
 test("location unknown: banks near you says what is missing and links to the fix", () => {
@@ -215,4 +243,40 @@ test("the section's styles all live under .fh-banks, with no px font sizes", () 
   for (const sel of selectors) for (const part of sel.split(",")) assert.match(part.trim(), /^\.fh-banks(\s|$)/, part);
   assert.doesNotMatch(CSS, /font-size\s*:\s*\d/);
   assert.doesNotMatch(CSS, /font\s*:\s*\d/);
+});
+
+/* Finance OS wave 4, unit TL: the plan with the client's own accounts applied
+   (src/finance/tradeline-inventory.mjs), from the same sample read. */
+test("a bank the client already uses is tagged, and a card they hold says so instead of being offered", () => {
+  /* With the shared logo helper on the page, as financeos.html loads it. */
+  const withLogos = { window: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(APP, "bank-logo.js"), "utf8"), withLogos);
+  vm.runInNewContext(JS, withLogos);
+  const html = withLogos.window.FHMoneyBanks.render(taggedBanks());
+  const t = text(html);
+  /* Banks near you: Chase first, tagged, with what they hold and what is next. */
+  const first = /<article class="card bank" data-bank="([^"]+)">([\s\S]*?)<\/article>/.exec(html);
+  assert.equal(first[1], "Chase");
+  assert.match(first[2], /<span class="tag tag-rel">Existing relationship<\/span>/);
+  assert.match(text(first[2]), /You already have an account here\./);
+  assert.match(text(first[2]), /You already have this: Business Ink Cash Next: Ink Unlimited/);
+  assert.doesNotMatch(/<article class="card bank" data-bank="Bank of America">[\s\S]*?<\/article>/.exec(html)[0], /tag-rel/,
+    "a bank they do not use carries no tag");
+  /* Card order: the Chase business line now offers the next Ink, not the one they hold. */
+  const rows = [...html.matchAll(/<li class="card stack-row">([\s\S]*?)<\/li>/g)].map((m) => text(m[1]));
+  const chaseBiz = rows.find((r) => /Chase Business/.test(r));
+  assert.match(chaseBiz, /Ink Unlimited · also Ink Preferred You already have this: Business Ink Cash/);
+  assert.doesNotMatch(chaseBiz, /Next:/, "the card line already shows the next product");
+  assert.ok(!rows.some((r) => /^\s*\d+\s+American Express Business/.test(r)), "all three Amex business cards are held: out of the order");
+  /* ...and still shown, with its logo, under You already have. */
+  assert.match(t, /You already have American Express Existing relationship Business Gold · Blue Business Cash · Blue Business Plus/);
+  assert.match(html, /<div class="card have-card">[\s\S]*?<img class="fh-bank-logo" src="\/assets\/lenders\/american-express\.png"/);
+  /* The personal Amex line: a business card never counts as the personal one. */
+  const amexPersonal = rows.find((r) => /American Express Personal/.test(r));
+  assert.doesNotMatch(amexPersonal, /You already have this/);
+});
+
+test("with no holdings the screen reads exactly as before", () => {
+  assert.equal(B.render(fixture()).includes("tag-rel"), false);
+  assert.equal(B.render(fixture()).includes("You already have"), false);
 });

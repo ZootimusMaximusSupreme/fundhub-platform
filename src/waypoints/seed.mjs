@@ -44,7 +44,7 @@ import {
   revolvingAccounts,
   mergeByCreditor,
   withAccountPrints,
-  isBlueprintDisputeDefinitionKey
+  isBlueprintOnlyDefinitionKey
 } from "./definitions.mjs";
 import { upsertWaypoint, completeWaypoint, WaypointError } from "./store.mjs";
 
@@ -125,8 +125,9 @@ async function existingWaypoints(db, { orgId, clientId }) {
  *                                   read
  * @param {object}  [args.personal]  name/address, when the caller already has it
  * @param {boolean} [args.blueprintDisputeSteps=false]
- *        When true, include Capital Blueprint DIY dispute-round rows (migration
- *        400). Capital Blueprint purchase sets this; repair-only enroll does not.
+ *        When true, include the Capital Blueprint-only rows: the DIY dispute
+ *        rounds (migration 400) and the ChexSystems check (migration 574).
+ *        Capital Blueprint purchase sets this; repair-only enroll does not.
  * @returns {Promise<{
  *   ok: true, seeded: string[], skipped: object[], completed: string[],
  *   creditFile: 'crs_result'|'none', accounts: number, definitions: number
@@ -145,7 +146,7 @@ export async function seedClientWaypoints(db, {
 
   let definitions = await loadWaypointDefinitions(db);
   if (!blueprintDisputeSteps) {
-    definitions = definitions.filter((d) => !isBlueprintDisputeDefinitionKey(d.key));
+    definitions = definitions.filter((d) => !isBlueprintOnlyDefinitionKey(d.key));
   }
 
   /* An empty catalog is a real answer and not an error: somebody has turned

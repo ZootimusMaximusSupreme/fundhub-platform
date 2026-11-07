@@ -18,3 +18,6 @@ body.fh-astra.fh-astra-portal #blueprint-plan :is(input,select,textarea){font-si
 body.fh-astra-portal[data-portal-state=loading] #blueprint-plan:not([hidden]){display:block!important}
 @media(max-width:600px){#blueprint-plan:has(> .bj-summary) > .bp-spread h2{display:none}}
 #blueprint-plan:has(.bp-skeleton){min-height:600px}
+#blueprint-plan .bp-bankname{display:inline-flex;align-items:center;gap:10px}#blueprint-plan .bp-bankname .bj-logo{margin-right:0}#blueprint-plan details summary{display:flex;align-items:center;min-height:44px;cursor:pointer;font-weight:650}
+/* File pickers look like the plan's own buttons, with a gap before the submit button (QA22, 2026-11-07). */
+#blueprint-plan input[type=file]{padding:6px;line-height:1.4}#blueprint-plan input[type=file]::file-selector-button{font:inherit;font-weight:700;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);padding:8px 14px;min-height:40px;margin-right:12px;cursor:pointer}#blueprint-plan input[type=file]::file-selector-button:hover{background:var(--soft)}#blueprint-plan label.bp-field+button,#blueprint-plan label.bp-field+.bp-primary{margin-top:12px}

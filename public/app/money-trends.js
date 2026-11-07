@@ -29,14 +29,33 @@
  * preserveAspectRatio="none" and non-scaling strokes, so it fills any width
  * from 375px up without the text inside shrinking. Axis labels are HTML
  * captions beside it, so they stay a readable size on a phone.
+ *
+ * ONE ACCOUNT AND ANY DATES (Finance OS CFO build, unit A, 2026-11-07):
+ *   - An Account picker lists the file's open accounts from the read's own
+ *     `accounts` list. "All accounts" keeps the charts above. One account shows
+ *     that account's balance line; a card also shows its limit and a second
+ *     chart of how much of the limit is used (null days are breaks).
+ *   - From and To date fields sit beside the 30 / 90 / 12 buttons. The dates
+ *     are checked here with the server's own rules (real days, From not after
+ *     To, 24 months at most) before anything is asked for.
+ *   - The 30 / 90 / 12 choice is kept in fos_trends_range as before; chosen
+ *     dates in fos_trends_dates until a button is pressed again. The account
+ *     is not kept: a stale id from another file must never be asked for.
  */
 (function (root) {
   "use strict";
 
   var READ_PATH = "/api/money/trends";
+  var BANKS_PATH = "/api/money/banks";
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var RANGES = [["30d", "30 days"], ["90d", "90 days"], ["12m", "12 months"]];
   var W = 600, H = 160, PAD = 10;
+  var MAX_SPAN_MONTHS = 24;
+  var KIND_ORDER = ["personal", "business", "unknown"];
+  var KIND_WORDS = { personal: "Personal", business: "Business", unknown: "Not sure yet" };
+  var TYPE_WORDS = { checking: "Checking", savings: "Savings", card: "Card", loan: "Loan" };
+  /* Personal is always blue and round, business always orange and square. */
+  var KIND_SERIES = { personal: ["s1", "round"], business: ["s2", "square"], unknown: ["s0", "round"] };
   var uid = 0;
 
   /* ── small helpers ─────────────────────────────────────────────────────── */
@@ -82,6 +101,57 @@
     var m = /^(\d{4})-(\d{2})/.exec(String(ym || ""));
     if (!m) return "—";
     return MONTHS[Number(m[2]) - 1] + (withYear ? " " + m[1] : "");
+  }
+
+  /* The three axis words under a daily chart. A long window that crosses a
+     year says month and year ("Nov 2025"), so 24 months never reads as one
+     year; a short one says the day ("Oct 7"), as before. */
+  function dayAxis(days) {
+    var n = days.length;
+    if (!n) return [];
+    var pick = [days[0], days[Math.floor((n - 1) / 2)], days[n - 1]];
+    var long = n > 120 && days[0].slice(0, 4) !== days[n - 1].slice(0, 4);
+    return pick.map(function (x) { return long ? monthLabel(x, true) : dayLabel(x); });
+  }
+  function monthAxis(months) {
+    var n = months.length;
+    if (!n) return [];
+    var pick = [months[0], months[Math.floor((n - 1) / 2)], months[n - 1]];
+    var long = n > 4 && months[0].slice(0, 4) !== months[n - 1].slice(0, 4);
+    return pick.map(function (x) { return monthLabel(x, long); });
+  }
+
+  /* ── dates: the server's own rules, so a bad pick is caught before asking ── */
+
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  /* A real calendar day written YYYY-MM-DD, or "". 2026-02-30 is not a day. */
+  function realDay(v) {
+    var s = String(v == null ? "" : v).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return "";
+    var t = Date.parse(s + "T00:00:00Z");
+    if (!isFinite(t)) return "";
+    return new Date(t).toISOString().slice(0, 10) === s ? s : "";
+  }
+  /* Same day n months away, pulled back to a shorter month's last day. */
+  function addMonths(day, n) {
+    var p = day.split("-").map(Number);
+    var idx = p[0] * 12 + (p[1] - 1) + n;
+    var y = Math.floor(idx / 12), m = (idx % 12) + 1;
+    var last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return y + "-" + pad2(m) + "-" + pad2(Math.min(p[2], last));
+  }
+  /* "" when the pair is fine, else what to fix, in words. */
+  function checkDates(from, to) {
+    if (!from || !to) return "Pick both a From date and a To date.";
+    var f = realDay(from), t = realDay(to);
+    if (!f || !t) return "Those are not real dates. Pick them again.";
+    if (f > t) return "From has to be on or before To.";
+    if (f < addMonths(t, -MAX_SPAN_MONTHS)) return "Pick 24 months or less between From and To.";
+    return "";
+  }
+  function localToday() {
+    var n = new Date();
+    return n.getFullYear() + "-" + pad2(n.getMonth() + 1) + "-" + pad2(n.getDate());
   }
 
   /* ── the line chart ────────────────────────────────────────────────────── */
@@ -133,6 +203,12 @@
    *   series: [{ name, cls ('s1'|'s2'|'s3'|'s0'), shape ('round'|'square'),
    *              values: [number|null], estimated: [bool|null] }],
    *   fmt (value → words), axisFmt (value → short), floorZero, empty (words)
+   *   Plan waypoints (Cash chart only):
+   *   xCount   slots on the x axis, when the axis runs past the last label
+   *            (the plan's future days). The lines still end at the last value.
+   *   guides   slot numbers that get a thin dashed guide line
+   *   todayIdx the slot of today, drawn as a thin line when the axis runs past it
+   *   plotExtra HTML added inside the plot (the Plan strip); notes HTML under it
    */
   function lineChart(opts) {
     var series = list(opts.series);
@@ -141,12 +217,13 @@
     var head = '<figcaption class="eyebrow">' + esc(opts.title) + '</figcaption>';
     if (!has || !n) {
       return '<figure class="card tchart" data-chart="' + esc(opts.key) + '">' + head +
-        '<p class="caption tnone">' + esc(opts.empty || "No history yet.") + '</p></figure>';
+        '<p class="caption tnone">' + esc(opts.empty || "No history yet.") + '</p>' + (opts.notes || "") + '</figure>';
     }
     var dom = domain(series, opts);
     var fmt = opts.fmt || money;
     var axisFmt = opts.axisFmt || moneyShort;
-    function x(i) { return n === 1 ? W / 2 : (i * W) / (n - 1); }
+    var xn = Math.max(n, isNum(opts.xCount) ? opts.xCount : n);
+    function x(i) { return xn === 1 ? W / 2 : (i * W) / (xn - 1); }
     function y(v) { return PAD + ((dom.hi - v) * (H - 2 * PAD)) / (dom.hi - dom.lo); }
     var id = "tc" + (++uid);
     var svg = '<svg class="tsvg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" ' +
@@ -158,6 +235,15 @@
     if (dom.lo < 0 && dom.hi > 0) {
       svg += '<line class="tzero" x1="0" x2="' + W + '" y1="' + y(0).toFixed(1) + '" y2="' + y(0).toFixed(1) + '" vector-effect="non-scaling-stroke"></line>';
     }
+    if (xn > n && isNum(opts.todayIdx)) {
+      svg += '<line class="ttoday" x1="' + x(opts.todayIdx).toFixed(1) + '" x2="' + x(opts.todayIdx).toFixed(1) +
+        '" y1="0" y2="' + H + '" vector-effect="non-scaling-stroke"></line>';
+    }
+    list(opts.guides).forEach(function (g) {
+      if (!isNum(g)) return;
+      svg += '<line class="tguide" x1="' + x(g).toFixed(1) + '" x2="' + x(g).toFixed(1) +
+        '" y1="0" y2="' + H + '" vector-effect="non-scaling-stroke"></line>';
+    });
     var dots = n <= 31;
     series.forEach(function (s) {
       var vals = list(s.values), est = list(s.estimated);
@@ -196,7 +282,8 @@
       '<div class="ty caption" aria-hidden="true"><span>' + esc(axisFmt(dom.hi)) + '</span><span>' +
       esc(axisFmt((dom.hi + dom.lo) / 2)) + '</span><span>' + esc(axisFmt(dom.lo)) + '</span></div>' +
       svg +
-      '<div class="tx caption" aria-hidden="true">' + ax.map(function (l) { return '<span>' + esc(l) + '</span>'; }).join("") + '</div></div>';
+      '<div class="tx caption" aria-hidden="true">' + ax.map(function (l) { return '<span>' + esc(l) + '</span>'; }).join("") + '</div>' +
+      (opts.plotExtra || "") + '</div>' + (opts.notes || "");
 
     var anyEst = series.some(function (s) { return list(s.estimated).some(function (e, i) { return e === true && isNum(list(s.values)[i]); }); });
     var rows = opts.labels.map(function (l, i) {
@@ -224,27 +311,249 @@
     }).join("") + '</div>';
   }
 
-  function head(range) {
-    return '<div class="thead"><h2 id="h-trends">Trends</h2>' + rangeButtons(range) + '</div>';
+  /* What the controls show: the screen's own choices first, then the read's. */
+  function viewOf(d, view) {
+    d = d || {};
+    view = view || {};
+    var asOf = typeof d.as_of === "string" ? d.as_of.slice(0, 10) : "";
+    return {
+      accounts: list(view.accounts && view.accounts.length ? view.accounts : d.accounts),
+      account: view.account != null ? String(view.account) : (d.account && d.account.id ? String(d.account.id) : ""),
+      from: view.from || d.from || "",
+      to: view.to || d.to || "",
+      today: view.today || asOf,
+      msg: view.msg || "",
+      plan: Array.isArray(view.plan) ? view.plan : null
+    };
   }
 
-  function dailyCharts(d) {
+  function typeWord(a) {
+    if (TYPE_WORDS[a.type]) return TYPE_WORDS[a.type];
+    var s = String(a.subtype || "").trim();
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : "Account";
+  }
+
+  /* The Account picker: "All accounts", then the open accounts by kind. Not
+     drawn when the read named no accounts (nothing to pick). */
+  function accountPicker(v) {
+    var accts = v.accounts.filter(function (a) { return a && a.id; });
+    if (!accts.length) return "";
+    var groups = KIND_ORDER.map(function (k) {
+      var mine = accts.filter(function (a) { return (KIND_WORDS[a.kind] ? a.kind : "unknown") === k; });
+      if (!mine.length) return "";
+      return '<optgroup label="' + esc(KIND_WORDS[k]) + '">' + mine.map(function (a) {
+        return '<option value="' + esc(a.id) + '"' + (String(a.id) === v.account ? " selected" : "") + '>' +
+          esc((a.label || a.name || "Account") + " · " + typeWord(a)) + '</option>';
+      }).join("") + '</optgroup>';
+    }).join("");
+    return '<label class="tfield tacct"><span class="tlabel">Account</span>' +
+      '<select data-trends-account><option value=""' + (v.account ? "" : " selected") + '>All accounts</option>' +
+      groups + '</select></label>';
+  }
+
+  function dateField(word, name, value, max) {
+    return '<label class="tfield"><span class="tlabel">' + esc(word) + '</span>' +
+      '<input type="date" name="' + name + '" data-trends-' + name + ' value="' + esc(realDay(value)) + '"' +
+      (realDay(max) ? ' max="' + esc(max) + '"' : "") + ' required></label>';
+  }
+
+  /* From / To and the button that shows them. The browser's own date check is
+     off (novalidate) so the words below are the ones the person reads. */
+  function dateForm(v) {
+    return '<form class="tdates" data-trends-dates novalidate aria-label="Pick any dates">' +
+      dateField("From", "from", v.from, v.today) + dateField("To", "to", v.to, v.today) +
+      '<button type="submit" class="btn-secondary tshow" data-trends-show>Show these dates</button></form>';
+  }
+
+  function head(range, view) {
+    var v = view || viewOf(null, null);
+    return '<div class="thead"><h2 id="h-trends">Trends</h2>' + rangeButtons(range) + '</div>' +
+      '<div class="ttools">' + accountPicker(v) + dateForm(v) + '</div>' +
+      '<p class="caption tmsg" data-trends-msg role="status" aria-live="polite">' + esc(v.msg) + '</p>';
+  }
+
+  /* ── bank waypoints: the plan's open-and-fund dates on the Cash chart ──────
+     Chris (2026-11-07): "we put a little waypoint with the bank logo ... you
+     highlight over the bank logo. It says, 'Oh, deposit money here at this
+     time.'" The plan comes from GET /api/money/banks (deposit_plan). Nothing
+     here invents a date, an amount or a reason: a row with no date is listed
+     under the chart as "Date not set", never drawn; a bank with no logo shows
+     its name in a chip, never a drawn logo. Future dates stretch the axis up to
+     about six months; the money lines still end at today (no forecast). */
+
+  var PLAN_AHEAD_DAYS = 183;
+  var PLAN_STATUS = { planned: "Planned", opened: "Opened", deposited: "Deposited", seasoned: "Seasoned" };
+
+  function addDaysUtc(day, n) {
+    return new Date(Date.parse(day + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+  }
+  function daysBetween(a, b) { return Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000); }
+  function dayList(a, b) {
+    var out = [];
+    for (var d = a, g = 0; d <= b && g < 800; g++, d = addDaysUtc(d, 1)) out.push(d);
+    return out;
+  }
+  /* A logo address the page will load: https, our own path, or Plaid's PNG
+     (a data:image/png URI). The plan's logo is a string or E's { src, alt }
+     (src/finance/bank-strategy.mjs pickBankLogo); either works. Anything else
+     → the name chip. */
+  function safeLogo(u) {
+    var v = u && typeof u === "object" ? u.src : u;
+    var s = String(v == null ? "" : v).trim();
+    return /^(https:\/\/|\/(?!\/)|data:image\/png;base64,[A-Za-z0-9+\/]+={0,2}$)/i.test(s) ? s : "";
+  }
+  /* One deposit_plan row as the chart reads it, or null when it has no name. */
+  function planItem(p, i) {
+    if (!p || typeof p !== "object") return null;
+    var name = String(p.name == null ? "" : p.name).trim();
+    if (!name) return null;
+    return {
+      key: String(p.lender_id == null || p.lender_id === "" ? "plan-" + i : p.lender_id),
+      name: name,
+      logo: safeLogo(p.logo),
+      open_by: realDay(p.open_by),
+      deposit_cents: isNum(p.deposit_cents) ? Math.round(p.deposit_cents) : null,
+      reason: String(p.reason == null ? "" : p.reason).trim(),
+      status: PLAN_STATUS[p.status] ? p.status : "planned"
+    };
+  }
+  /* "Open <bank> and deposit <amount> by <date>." — the owner's sentence. */
+  function planSentence(it) {
+    return "Open " + it.name + (isNum(it.deposit_cents) ? " and deposit " + money(it.deposit_cents) : "") +
+      (it.open_by ? " by " + dayLabel(it.open_by, true) : "") + ".";
+  }
+  function planWords(it) {
+    var why = it.reason ? " " + it.reason + (/[.!?]$/.test(it.reason) ? "" : ".") : "";
+    return planSentence(it) + why + " Status: " + PLAN_STATUS[it.status] + ".";
+  }
+
+  /**
+   * planLayout(plan, days, today) — where each plan row goes.
+   *   drawn   [{ item, idx, x (percent), lane, edge }] rows with a date on the axis
+   *   notSet  rows with no date ("Date not set")
+   *   outside rows with a date off these dates (before them, or more than six
+   *           months ahead, or after a window that ends before today)
+   *   extra   the future days added to the axis; allDays = days + extra
+   */
+  function planLayout(plan, days, today) {
+    var out = { drawn: [], notSet: [], outside: [], extra: [], allDays: days.slice(), xCount: days.length, todayIdx: null };
+    var items = list(plan).map(planItem).filter(Boolean);
+    if (!items.length) return out;
+    if (!days.length) {
+      items.forEach(function (it) { (it.open_by ? out.outside : out.notSet).push(it); });
+      return out;
+    }
+    var from = days[0], to = days[days.length - 1];
+    var reachesToday = !!today && to >= today;
+    var cap = today ? addDaysUtc(today, PLAN_AHEAD_DAYS) : to;
+    var last = null;
+    var onAxis = [];
+    items.forEach(function (it) {
+      if (!it.open_by) { out.notSet.push(it); return; }
+      if (it.open_by >= from && it.open_by <= to) { onAxis.push(it); return; }
+      if (reachesToday && it.open_by > to && it.open_by <= cap) {
+        onAxis.push(it);
+        if (!last || it.open_by > last) last = it.open_by;
+        return;
+      }
+      out.outside.push(it);
+    });
+    if (last) {
+      /* A little room after the last waypoint, so it never sits on the edge. */
+      var pad = Math.max(7, Math.round(daysBetween(from, last) * 0.08));
+      out.extra = dayList(addDaysUtc(to, 1), addDaysUtc(last, pad));
+      out.allDays = days.concat(out.extra);
+    }
+    out.xCount = out.allDays.length;
+    var ti = today ? out.allDays.indexOf(today) : -1;
+    out.todayIdx = ti >= 0 ? ti : null;
+    var xn = out.xCount;
+    var lanes = [];
+    out.drawn = onAxis.map(function (it) {
+      var idx = out.allDays.indexOf(it.open_by);
+      return { item: it, idx: idx, x: xn > 1 ? (idx * 100) / (xn - 1) : 50 };
+    }).sort(function (a, b) { return a.x - b.x || (a.item.name < b.item.name ? -1 : 1); }).map(function (m) {
+      /* A first guess at rows so close dates do not sit on top of each other;
+         the page measures the real buttons and settles it (layoutPlans). */
+      var lane = 0;
+      while (lane < 3 && lanes[lane] !== undefined && m.x - lanes[lane] < 12) lane++;
+      lanes[lane] = m.x;
+      m.lane = lane;
+      m.edge = m.x < 8 ? "edge-l" : m.x > 92 ? "edge-r" : "";
+      return m;
+    });
+    return out;
+  }
+
+  function planMark(it) {
+    return it.logo
+      ? '<img class="twp-logo" src="' + esc(it.logo) + '" alt="" width="32" height="32" decoding="async" loading="lazy">'
+      : '<span class="twp-chip">' + esc(it.name) + '</span>';
+  }
+
+  /* The Plan strip under the Cash chart: one button per drawn waypoint, each
+     followed by its tip (shown on hover, keyboard focus, or a tap). */
+  function planStrip(layout) {
+    if (!layout.drawn.length) return "";
+    var lanes = 1;
+    layout.drawn.forEach(function (m) { lanes = Math.max(lanes, m.lane + 1); });
+    return '<span class="tplan-label caption" aria-hidden="true">Plan</span>' +
+      '<div class="tplan" data-lanes="' + lanes + '" role="group" aria-label="Your bank plan: when to open or fund each bank">' +
+      layout.drawn.map(function (m) {
+        var it = m.item, pos = m.x.toFixed(2);
+        return '<button type="button" class="twp st-' + it.status + (m.edge ? " " + m.edge : "") +
+          '" data-waypoint="' + esc(it.key) + '" data-name="' + esc(it.name) + '" data-lane="' + m.lane + '" data-x="' + pos + '" style="--x:' + pos + '%"' +
+          ' aria-label="' + esc(planWords(it)) + '">' + planMark(it) + '</button>' +
+          '<span class="twp-tip" aria-hidden="true" style="--x:' + pos + '%"><strong>' + esc(planSentence(it)) + '</strong>' +
+          (it.reason ? '<span class="twp-why">' + esc(it.reason) + '</span>' : "") +
+          '<span class="twp-status">Status: ' + esc(PLAN_STATUS[it.status]) + '</span></span>';
+      }).join("") + '</div>';
+  }
+
+  function planList(title, items) {
+    return '<p class="tplan-head">' + esc(title) + '</p><ul class="tplan-list">' + items.map(function (it) {
+      return '<li>' + esc(planSentence(it)) + (it.reason ? ' <span class="twp-why">' + esc(it.reason) + '</span>' : "") + '</li>';
+    }).join("") + '</ul>';
+  }
+
+  /* Words under the Cash chart: what the dates after today are, and the plan
+     rows the strip cannot draw. withDrawn lists the drawn ones too (no history yet). */
+  function planNotes(layout, withDrawn) {
+    var parts = [];
+    if (layout.extra.length && !withDrawn) {
+      parts.push('<p class="caption">The money lines stop at today.</p>');
+    }
+    if (withDrawn && layout.drawn.length) parts.push(planList("Your bank plan", layout.drawn.map(function (m) { return m.item; })));
+    if (layout.notSet.length) parts.push(planList("Date not set", layout.notSet));
+    if (layout.outside.length) parts.push(planList("Not on these dates", layout.outside));
+    return parts.length ? '<div class="tplan-notes">' + parts.join("") + '</div>' : "";
+  }
+
+  function dailyCharts(d, plan) {
     var daily = d.daily || {};
     var days = list(daily.days);
     var est = list(daily.estimated);
     var labels = days.map(function (x) { return dayLabel(x, true); });
-    var axis = days.length ? [dayLabel(days[0]), dayLabel(days[Math.floor((days.length - 1) / 2)]), dayLabel(days[days.length - 1])] : [];
+    var axis = dayAxis(days);
     var cash = daily.cash || {};
     var debt = daily.debt || {};
     var noHist = "No history yet. FinanceOS saves your balances once a day; the line starts after the first save.";
+    var cashSeries = [
+      { name: "Personal", cls: "s1", shape: "round", values: list(cash.personal && cash.personal.cents), estimated: est },
+      { name: "Business", cls: "s2", shape: "square", values: list(cash.business && cash.business.cents), estimated: est }
+    ];
+    var cashHas = days.length > 0 && cashSeries.some(function (s) { return s.values.some(isNum); });
+    var today = typeof d.as_of === "string" ? d.as_of.slice(0, 10) : "";
+    var layout = planLayout(plan, days, today);
     return lineChart({
       key: "cash", title: "Cash over time",
-      desc: "Personal cash and business cash by day, as two separate lines. They are never added together.",
-      labels: labels, axisLabels: axis, empty: noHist,
-      series: [
-        { name: "Personal", cls: "s1", shape: "round", values: list(cash.personal && cash.personal.cents), estimated: est },
-        { name: "Business", cls: "s2", shape: "square", values: list(cash.business && cash.business.cents), estimated: est }
-      ]
+      desc: "Personal cash and business cash by day, as two separate lines. They are never added together." +
+        (layout.drawn.length ? " Markers under the chart show when your plan says to open or fund each bank." : ""),
+      labels: labels, axisLabels: layout.extra.length ? dayAxis(layout.allDays) : axis, empty: noHist,
+      xCount: layout.xCount, todayIdx: layout.todayIdx,
+      guides: layout.drawn.map(function (m) { return m.idx; }),
+      plotExtra: planStrip(layout), notes: planNotes(layout, !cashHas),
+      series: cashSeries
     }) + lineChart({
       key: "debt", title: "Debt over time",
       desc: "Everything owed on cards and loans by day, with the personal and business parts.",
@@ -271,7 +580,7 @@
       desc: word + " money in and money out by month, from checking and savings. " +
         (kind === "personal" ? "Business is its own chart." : "Personal is its own chart."),
       labels: months.map(function (x) { return monthLabel(x, true); }),
-      axisLabels: months.length ? [monthLabel(months[0]), monthLabel(months[Math.floor((months.length - 1) / 2)]), monthLabel(months[months.length - 1])] : [],
+      axisLabels: monthAxis(months),
       rowHead: "Month", floorZero: true,
       empty: "No " + word.toLowerCase() + " bank activity in this range yet.",
       series: [
@@ -281,19 +590,67 @@
     });
   }
 
-  function renderTrends(d, range) {
-    range = range || (d && d.range) || "90d";
-    var top = '<section class="block trends" aria-labelledby="h-trends">' + head(range) +
-      '<p class="caption">Each line is one kind of money. Personal and business are never added together. ' +
-      'A dashed line is estimated from your bank activity. A break in a line is a day we have no number for.</p>';
-    return top + '<div class="grid tgrid3">' + dailyCharts(d) + '</div>' +
+  /* ── one account ───────────────────────────────────────────────────────── */
+
+  /* One account's charts. Cards: what is owed with the limit beside it, and how
+     much of the limit is used. Loans: what is owed. Bank accounts: the balance.
+     Every point is a field of d.account; a null is a break, never 0. */
+  function accountCharts(d, a) {
+    var days = list(d.daily && d.daily.days);
+    var labels = days.map(function (x) { return dayLabel(x, true); });
+    var axis = dayAxis(days);
+    var ks = KIND_SERIES[a.kind] || KIND_SERIES.unknown;
+    var card = a.type === "card";
+    var owes = card || a.type === "loan";
+    var est = list(a.estimated);
+    var noHist = "No history for this account yet.";
+    var series = [{ name: owes ? "Owed" : "Balance", cls: ks[0], shape: ks[1], values: list(a.balance_cents), estimated: est }];
+    if (card) series.push({ name: "Limit", cls: "s3", shape: "square", values: list(a.limit_cents), estimated: est });
+    var balance = lineChart({
+      key: "acct-balance",
+      title: card ? "Owed and limit" : owes ? "Owed on this loan" : "Balance over time",
+      desc: card ? "What is owed on this card each day, with the card's limit as a second line."
+        : owes ? "What is owed on this loan each day." : "This account's balance each day.",
+      labels: labels, axisLabels: axis, empty: noHist, floorZero: owes, series: series
+    });
+    if (!card) return '<div class="grid one">' + balance + '</div>';
+    var used = lineChart({
+      key: "acct-used", title: "Limit used",
+      desc: "How much of this card's limit is used each day: what is owed divided by the limit.",
+      labels: labels, axisLabels: axis, floorZero: true, fmt: pct, axisFmt: pct,
+      empty: a.has_history ? "We do not have this card's limit for these days, so limit used cannot be shown." : noHist,
+      series: [{ name: "Limit used", cls: "s0", shape: "round", values: list(a.used_pct), estimated: est }]
+    });
+    return '<div class="grid two">' + balance + used + '</div>';
+  }
+
+  function accountLine(a) {
+    var facts = [KIND_WORDS[a.kind] || KIND_WORDS.unknown, typeWord(a), a.institution].filter(Boolean).join(" · ");
+    return '<p class="tacct-line"><span class="tacct-name">' + esc(a.label || a.name || "Account") + '</span>' +
+      '<span class="caption">' + esc(facts) + '</span></p>';
+  }
+
+  /* renderTrends(d, range, view) — range is the pressed button (none for any
+     dates); view is the screen's current choices (see viewOf). */
+  function renderTrends(d, range, view) {
+    d = d || {};
+    range = d.custom === true ? null : (range || d.range || "90d");
+    var v = viewOf(d, view);
+    var top = '<section class="block trends" aria-labelledby="h-trends">' + head(range, v);
+    var a = d.account && d.account.id ? d.account : null;
+    if (a) {
+      return top + '<p class="caption">This is one account on its own. A dashed line is an estimate.</p>' +
+        accountLine(a) + accountCharts(d, a) + '</section>';
+    }
+    top += '<p class="caption">A dashed line is estimated from your bank activity.</p>';
+    return top + '<div class="grid tgrid3">' + dailyCharts(d, v.plan) + '</div>' +
       '<div class="grid two">' + flowChart(d, "personal", "Personal") + flowChart(d, "business", "Business") +
       '</div></section>';
   }
 
-  function renderLoading(range) {
+  function renderLoading(range, view) {
     var sk = '<div class="card skel"><span class="sk sk-s"></span><span class="sk sk-l"></span><span class="sk sk-m"></span></div>';
-    return '<section class="block trends" aria-labelledby="h-trends" aria-busy="true">' + head(range) +
+    return '<section class="block trends" aria-labelledby="h-trends" aria-busy="true">' + head(range, viewOf(null, view)) +
       '<div class="grid tgrid3">' + sk + sk + sk + '</div></section>';
   }
 
@@ -301,11 +658,12 @@
     offline: "We could not reach the server. Check your connection and try again.",
     nodb: "Our database is not answering right now. Try again in a few minutes.",
     forbidden: "This account is not allowed to see these trends.",
+    baddates: "Those choices did not work. Pick your dates again, no more than 24 months apart.",
     server: "Something went wrong on our side while loading your trends. Try again in a few minutes."
   };
 
-  function renderError(kind, range) {
-    return '<section class="block trends" aria-labelledby="h-trends">' + head(range) +
+  function renderError(kind, range, view) {
+    return '<section class="block trends" aria-labelledby="h-trends">' + head(range, viewOf(null, view)) +
       '<div class="card error" role="alert"><p>' + esc(ERROR_WORDS[kind] || ERROR_WORDS.server) + '</p>' +
       '<button class="btn-primary" type="button" data-trends-retry>Try again</button></div></section>';
   }
@@ -354,12 +712,52 @@
     if (s === 401) return "signin";
     if (s === 403) return "forbidden";
     if (s === 0) return "offline";
+    if (s === 400) return "baddates";
     if (s === 503 || (b && b.db === "down")) return "nodb";
     if (!b || b.ok !== true) return "server";
     return "ok";
   }
-  function pathFor(range, cid) {
-    return READ_PATH + "?range=" + encodeURIComponent(range) + (cid ? "&client_id=" + encodeURIComponent(cid) : "");
+  /* pathFor("12m", cid), or pathFor({ range, from, to, account }, cid). Dates
+     win over the range; the account rides along with either. */
+  function pathFor(want, cid) {
+    var w = typeof want === "string" ? { range: want } : (want || {});
+    var q = w.from && w.to
+      ? "from=" + encodeURIComponent(w.from) + "&to=" + encodeURIComponent(w.to)
+      : "range=" + encodeURIComponent(w.range || "90d");
+    if (w.account) q += "&account=" + encodeURIComponent(w.account);
+    return READ_PATH + "?" + q + (cid ? "&client_id=" + encodeURIComponent(cid) : "");
+  }
+
+  /* The bank plan read. Staff name the file the same way as the trends read. */
+  function banksPath(cid) { return BANKS_PATH + (cid ? "?client_id=" + encodeURIComponent(cid) : ""); }
+
+  /* The page measures the drawn waypoints: one that would hang off either end
+     is pinned to that end, and two that would touch move to the next row. */
+  function layoutPlans(scope) {
+    if (!scope || typeof scope.querySelectorAll !== "function") return;
+    var strips = scope.querySelectorAll(".tplan");
+    for (var s = 0; s < strips.length; s++) {
+      var strip = strips[s], box = strip.getBoundingClientRect();
+      if (!box || !box.width) continue;
+      var btns = Array.prototype.slice.call(strip.querySelectorAll(".twp"));
+      btns.forEach(function (b) { b.classList.remove("edge-l", "edge-r"); b.setAttribute("data-lane", "0"); });
+      btns.forEach(function (b) {
+        var r = b.getBoundingClientRect();
+        if (r.left < box.left) b.classList.add("edge-l");
+        else if (r.right > box.right) b.classList.add("edge-r");
+      });
+      btns.sort(function (a, b) { return Number(a.getAttribute("data-x")) - Number(b.getAttribute("data-x")); });
+      var placed = [], top = 0;
+      btns.forEach(function (b) {
+        var r = b.getBoundingClientRect(), lane = 0;
+        var hits = function (p) { return r.left < p[1] + 4 && r.right > p[0] - 4; };
+        while (lane < 3 && (placed[lane] || []).some(hits)) lane++;
+        (placed[lane] = placed[lane] || []).push([r.left, r.right]);
+        b.setAttribute("data-lane", String(lane));
+        top = Math.max(top, lane);
+      });
+      strip.setAttribute("data-lanes", String(top + 1));
+    }
   }
 
   /* mount(el, ctx) — the Trends area. ctx = { clientId, apiGet(path) }. */
@@ -367,28 +765,155 @@
     ctx = ctx || {};
     var get = typeof ctx.apiGet === "function" ? ctx.apiGet : call;
     var cid = ctx.clientId || param("client_id") || "";
-    var range = "90d";
-    try { range = root.sessionStorage.getItem("fos_trends_range") || "90d"; } catch (e) { /* no storage */ }
-    if (!/^(30d|90d|12m)$/.test(range)) range = "90d";
+    var today = localToday();
+    var st = { range: "90d", from: "", to: "", account: "", msg: "", accounts: [], lastOk: null };
+    /* The bank plan: null until /api/money/banks answers with one. A read that
+       fails, or never answers, leaves it null and the charts draw without it. */
+    var plan = null;
+    try { st.range = root.sessionStorage.getItem("fos_trends_range") || "90d"; } catch (e) { /* no storage */ }
+    if (!/^(30d|90d|12m)$/.test(st.range)) st.range = "90d";
+    try {
+      var kept = String(root.sessionStorage.getItem("fos_trends_dates") || "").split("|");
+      if (kept.length === 2 && !checkDates(kept[0], kept[1])) { st.from = kept[0]; st.to = kept[1]; }
+    } catch (e) { /* no storage */ }
 
-    function load() {
-      el.innerHTML = renderLoading(range);
-      return Promise.resolve(get(pathFor(range, cid))).then(function (res) {
+    function shownRange() { return st.from && st.to ? null : st.range; }
+    function view() {
+      return { accounts: st.accounts, account: st.account, from: st.from, to: st.to, today: today, msg: st.msg, plan: plan };
+    }
+    /* A redraw replaces the controls; give focus back to the one just used. */
+    function refocus(sel) {
+      if (!sel || !el.querySelector) return;
+      var f = el.querySelector(sel);
+      if (f && typeof f.focus === "function") { try { f.focus(); } catch (e) { /* not focusable */ } }
+    }
+    function load(focusSel) {
+      el.innerHTML = renderLoading(shownRange(), view());
+      refocus(focusSel);
+      return Promise.resolve(get(pathFor(st, cid))).then(function (res) {
+        /* The picked account is not one of this file's open accounts any more:
+           say so once and show all accounts. */
+        if (res && res.status === 404 && st.account) {
+          st.account = "";
+          st.msg = "That account is not on this file, so all accounts are shown.";
+          return load("[data-trends-account]");
+        }
         var kind = classify(res);
         if (kind === "signin") { if (typeof ctx.onSignIn === "function") ctx.onSignIn(); return; }
-        el.innerHTML = kind === "ok" ? renderTrends(res.body, range) : renderError(kind, range);
+        if (kind === "ok") st.accounts = list(res.body.accounts);
+        st.lastOk = kind === "ok" ? res.body : null;
+        el.innerHTML = kind === "ok" ? renderTrends(res.body, shownRange(), view()) : renderError(kind, shownRange(), view());
+        st.msg = "";
+        layoutPlans(el);
+        refocus(focusSel);
       });
     }
+    /* Which of our controls has focus, so a redraw can give it back. */
+    function activeKey() {
+      var a = root.document && root.document.activeElement;
+      if (!a || !el.contains || !el.contains(a) || typeof a.getAttribute !== "function") return null;
+      if (a.hasAttribute("data-range")) return '[data-range="' + a.getAttribute("data-range") + '"]';
+      if (a.hasAttribute("data-waypoint")) {
+        var all = el.querySelectorAll("[data-waypoint]");
+        for (var i = 0; i < all.length; i++) if (all[i] === a) return i;
+      }
+      return a.hasAttribute("data-trends-show") ? "[data-trends-show]" : null;
+    }
+    /* The plan arrived after the charts: draw it in. Not while someone is
+       typing a date or choosing an account — the next draw picks it up. */
+    function loadPlan() {
+      Promise.resolve().then(function () { return get(banksPath(cid)); }).then(function (res) {
+        var b = res && res.body;
+        if (!res || res.status !== 200 || !b || b.ok === false || !Array.isArray(b.deposit_plan)) return;
+        plan = b.deposit_plan;
+        var a = root.document && root.document.activeElement;
+        var typing = a && el.contains && el.contains(a) && /^(INPUT|SELECT)$/.test(a.tagName || "");
+        if (!st.lastOk || st.account || typing) return;
+        var key = activeKey();
+        el.innerHTML = renderTrends(st.lastOk, shownRange(), view());
+        layoutPlans(el);
+        if (typeof key === "number") { var w = el.querySelectorAll("[data-waypoint]")[key]; if (w) w.focus(); }
+        else refocus(key);
+      }, function () { /* no plan: the charts stay as they are */ });
+    }
+    function closeTips(except) {
+      var open = el.querySelectorAll ? el.querySelectorAll('.twp[data-open="true"]') : [];
+      for (var i = 0; i < open.length; i++) if (open[i] !== except) open[i].removeAttribute("data-open");
+    }
     el.addEventListener("click", function (e) {
-      var t = e.target && e.target.closest ? e.target.closest("[data-range],[data-trends-retry]") : null;
+      var t = e.target && e.target.closest ? e.target.closest("[data-range],[data-trends-retry],[data-waypoint]") : null;
+      if (!t || !t.hasAttribute("data-waypoint")) closeTips(null);
       if (!t) return;
+      if (t.hasAttribute("data-waypoint")) {
+        /* A tap (or Enter, or Space) opens this waypoint's words; again closes them. */
+        closeTips(t);
+        if (t.getAttribute("data-open") === "true") t.removeAttribute("data-open");
+        else t.setAttribute("data-open", "true");
+        return;
+      }
       if (t.hasAttribute("data-range")) {
-        range = t.getAttribute("data-range");
-        try { root.sessionStorage.setItem("fos_trends_range", range); } catch (e2) { /* no storage */ }
+        st.range = t.getAttribute("data-range");
+        st.from = "";
+        st.to = "";
+        try { root.sessionStorage.setItem("fos_trends_range", st.range); } catch (e2) { /* no storage */ }
+        try { root.sessionStorage.removeItem("fos_trends_dates"); } catch (e2) { /* no storage */ }
+        return load('[data-range="' + st.range + '"]');
       }
       load();
     });
+    el.addEventListener("change", function (e) {
+      var t = e.target;
+      if (!t || typeof t.matches !== "function" || !t.matches("[data-trends-account]")) return;
+      st.account = String(t.value || "");
+      load("[data-trends-account]");
+    });
+    el.addEventListener("submit", function (e) {
+      var f = e.target;
+      if (!f || typeof f.matches !== "function" || !f.matches("[data-trends-dates]")) return;
+      if (e.preventDefault) e.preventDefault();
+      var fromEl = f.querySelector("[data-trends-from]"), toEl = f.querySelector("[data-trends-to]");
+      var from = fromEl ? String(fromEl.value || "") : "", to = toEl ? String(toEl.value || "") : "";
+      var problem = checkDates(from, to);
+      if (problem) {
+        var msg = el.querySelector("[data-trends-msg]");
+        if (msg) msg.textContent = problem;
+        if (fromEl && typeof fromEl.focus === "function") fromEl.focus();
+        return;
+      }
+      st.from = from;
+      st.to = to;
+      try { root.sessionStorage.setItem("fos_trends_dates", from + "|" + to); } catch (e2) { /* no storage */ }
+      load("[data-trends-show]");
+    });
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" || e.key === "Esc") closeTips(null);
+    });
+    /* A logo that will not load becomes the bank's name in a chip. */
+    el.addEventListener("error", function (e) {
+      var img = e.target;
+      if (!img || img.tagName !== "IMG" || !img.classList || !img.classList.contains("twp-logo")) return;
+      var btn = img.closest ? img.closest("[data-waypoint]") : null;
+      var chip = root.document.createElement("span");
+      chip.className = "twp-chip";
+      chip.textContent = btn ? String(btn.getAttribute("data-name") || "") : "";
+      img.replaceWith(chip);
+      layoutPlans(el);
+    }, true);
+    if (root.document && typeof root.document.addEventListener === "function") {
+      root.document.addEventListener("click", function (e) {
+        if (el.contains && !el.contains(e.target)) closeTips(null);
+      });
+    }
+    var queued = false;
+    if (typeof root.addEventListener === "function") {
+      root.addEventListener("resize", function () {
+        if (queued) return;
+        queued = true;
+        (root.requestAnimationFrame || setTimeout)(function () { queued = false; layoutPlans(el); });
+      });
+    }
     load();
+    loadPlan();
     return { reload: load };
   }
 
@@ -415,6 +940,7 @@
   root.FHTrends = {
     lineChart: lineChart, segments: segments, renderTrends: renderTrends, renderSales: renderSales,
     renderLoading: renderLoading, renderError: renderError, money: money, pct: pct, classify: classify,
+    pathFor: pathFor, checkDates: checkDates, dayAxis: dayAxis, planLayout: planLayout, banksPath: banksPath,
     mount: mount, mountSales: mountSales
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -82,7 +82,7 @@ export const TRIPWIRES = Object.freeze({
   "job:c-00-crs-soft-pull-request": { impact: "customer", checks: ["softpull:request-failed-or-stuck", "keys:credit-pull-live-allowed"] },
   "job:slo-paid-form-nudge": { impact: "customer", checks: ["softpull:paid-form-not-filled-2h", "trip:roadmap"] },
   "job:slo-pack-delivery": { impact: "customer", checks: ["uw-paid-roadmap-no-pack", "uw-pack-files-incomplete", "uw-pack-email-not-queued", "trip:roadmap"] },
-  "job:message-dispatch-sweeper": { impact: "customer", checks: ["gap:sms-sending-stuck", "email:sending-stuck", "gap:msg-sent-no-receipt"] },
+  "job:message-dispatch-sweeper": { impact: "customer", checks: ["gap:sms-sending-stuck", "email:sending-stuck", "gap:msg-sent-no-receipt", "alerts:phone-alerts-went-out"] },
   "job:s-00-welcome": { impact: "customer", checks: ["handoff:lead-first-touches-missing", "gap:sms-journey-zero"] },
   "job:s-04-call-booked": { impact: "customer", checks: ["handoff:booking-no-confirm", "calls:booked-no-join-link"] },
   "job:cortana-booking-feed": { impact: "customer", checks: ["cortana:booked-call-undelivered"] },
@@ -111,7 +111,7 @@ export const TRIPWIRES = Object.freeze({
   "desk:role-dock.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:progress-read-real-client"] },
   "route:push/native-device": { impact: "customer", checks: ["native-push:device-owner", "native-push:configured"] },
   "route:push/preferences": { impact: "customer", checks: ["marketing-push:preference-shape", "provider:web-push-and-client-push"] },
-  "send:src/push/native-send.mjs": { impact: "customer", checks: ["native-push:recent-delivery-failure", "native-push:configured"] },
+  "send:src/push/native-send.mjs": { impact: "customer", checks: ["native-push:recent-delivery-failure", "native-push:configured", "alerts:phone-alerts-went-out"] },
   "route:read/client-progress": { impact: "customer", checks: ["portal:progress-read-real-client"] },
   "page:progress.html": { impact: "customer", checks: ["portal:progress-read-real-client"] },
   "route:read/entitlements": { impact: "customer", checks: ["payments:paid-no-entitlement", "portal:paid-entitlement"] },
@@ -208,10 +208,20 @@ export const TRIPWIRES = Object.freeze({
   "desk:setter-dashboard.html": { impact: "customer", checks: ["gap:sms-sending-stuck", "msg:brakes", "handoff:booking-no-confirm"] },
   "desk:messaging.html": { impact: "customer", checks: ["gap:msg-inbound-unmatched", "gap:sms-sending-stuck", "msg:brakes", "msg:staff-template-to-client"] },
   "desk:ops-admin.html": { impact: "customer", checks: ["msg:brakes", "msg:per-template-path", "msg:sent-body-blanks"] },
-  "route:money/alerts": { impact: "customer", checks: ["alerts:texts-went-out"] },
-  "desk:money-alerts.html": { impact: "customer", checks: ["alerts:texts-went-out"] },
-  "job:blueprint-finance-os-alerts": { impact: "customer", checks: ["alerts:texts-went-out"] },
+  // Phone alerts (Finance OS CFO build unit D, 2026-11-07): the same daily pass queues one push per card
+  // or Important bill per cycle, and the dispatcher sends it 9 to 5 Arizona. alerts:phone-alerts-went-out
+  // (src/pulse/coverage/gap-phone-alerts.mjs) goes red when an owed push was never queued or did not go out.
+  "route:money/alerts": { impact: "customer", checks: ["alerts:texts-went-out", "alerts:phone-alerts-went-out"] },
+  "desk:money-alerts.html": { impact: "customer", checks: ["alerts:texts-went-out", "alerts:phone-alerts-went-out"] },
+  "job:blueprint-finance-os-alerts": { impact: "customer", checks: ["alerts:texts-went-out", "alerts:phone-alerts-went-out"] },
   "job:finance-os-card-due-reminders": { impact: "customer", checks: ["alerts:texts-went-out"] },
+  // Unit AL, 2026-11-07: the Monday money text writes a file_protection_alerts row (kind weekly_money) for
+  // every text it queues, and alerts:texts-went-out reads every row of that table whatever its kind.
+  "job:finance-os-weekly-money": { impact: "customer", checks: ["alerts:texts-went-out"] },
+  // Whop plans (Finance OS unit W, 2026-11-07): the daily read saves each client's Whop plans; Payments shows
+  // them and the alerts pass buzzes before each charge. payments:whop-plans-current goes red when a saved plan
+  // is 36 hours old or shows a charge day already gone; a missed buzz turns alerts:phone-alerts-went-out red.
+  "job:finance-os-whop-plans-sweeper": { impact: "customer", checks: ["payments:whop-plans-current", "alerts:phone-alerts-went-out"] },
   // The paper letter to a bureau, for a paying repair client. The send itself has no read of its own: the
   // repair lane goes red when a file sits at ready-to-send or in transit past its clock (a letter that never left).
   "send:src/metro2/delivery/send.mjs": { impact: "customer", checks: ["pipeline:repair", "repair-case-stuck"] },

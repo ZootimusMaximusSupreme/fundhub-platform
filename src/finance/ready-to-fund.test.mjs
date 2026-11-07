@@ -93,6 +93,52 @@ describe("rounds and status", () => {
   });
 });
 
+describe("the advisor card: the CSM on the file and the booking link (premium pass, 2026-11-07)", () => {
+  /* The file row from readPrepCalls' query, and the staff read that names the CSM.
+     `staffRows` is what the staff statement answers (its own WHERE leaves out another
+     company's, a gone or a demo login, so those answer nothing). */
+  const fileWith = ({ csm, staffRows = [] }) => {
+    const staffReads = [];
+    return {
+      staffReads,
+      async query(sql, params = []) {
+        if (/LEFT JOIN tasks t/.test(sql)) return { rows: [{ assigned_csm_staff_id: csm, id: null }] };
+        if (/FROM staff/.test(sql)) {
+          assert.match(sql, /WHERE id = \$1 AND org_id = \$2/, "only the CSM on the file, in the client's own org");
+          assert.match(sql, /status = 'active' AND active = true AND is_demo = false/, "never a gone or demo login");
+          assert.doesNotMatch(sql, /email|phone/, "only the name is read");
+          staffReads.push(params);
+          return { rows: staffRows };
+        }
+        throw new Error(`unexpected statement: ${sql}`);
+      }
+    };
+  };
+
+  test("a named CSM is the advisor; the booking link is the owner-set page", async () => {
+    const db = fileWith({ csm: CSM, staffRows: [{ name: "  Jordan Lee " }] });
+    const r = await readyToFundStatus(db, { orgId: ORG, clientId: CLIENT });
+    assert.deepEqual(r.advisor, { name: "Jordan Lee", role: "csm" });
+    assert.equal(r.book_url, BOOK_CALL_URL);
+    assert.equal(r.status, "none", "the status itself is unchanged");
+    assert.deepEqual(db.staffReads, [[CSM, ORG]]);
+  });
+
+  test("no CSM, or a CSM the staff read leaves out (other org, inactive, demo), is no advisor — never a made-up name", async () => {
+    const none = fileWith({ csm: null, staffRows: [{ name: "Should Never Show" }] });
+    const r0 = await readyToFundStatus(none, { orgId: ORG, clientId: CLIENT });
+    assert.equal(r0.advisor, null);
+    assert.equal(none.staffReads.length, 0, "no CSM on the file: no staff read at all");
+    assert.equal(r0.book_url, BOOK_CALL_URL, "the booking link stays: anyone can book a call");
+    for (const staffRows of [[], [{ name: null }], [{ name: "   " }]]) {
+      const db = fileWith({ csm: CSM, staffRows });
+      const r = await readyToFundStatus(db, { orgId: ORG, clientId: CLIENT });
+      assert.equal(r.advisor, null);
+      assert.equal(r.book_url, BOOK_CALL_URL, "the booking link stays: anyone can book a call");
+    }
+  });
+});
+
 describe("the press runs the Capital Blueprint's own step", () => {
   test("it opens the Blueprint closing prep call — same title, source, role, CSM and key", async () => {
     const db = memDb({ assignedCsm: CSM });

@@ -127,7 +127,7 @@ test("Payments: no plans says nothing is owed, a plan hides that sentence, and a
     assert.match(await empty.page.locator(".card.empty").innerText(), /You do not owe Fundhub anything right now/);
     assert.equal(await empty.page.locator("article.plan").count(), 0);
     assert.equal(await empty.page.locator(".tiles").count(), 0, "no totals are painted for a client who owes nothing");
-    assert.match(await empty.page.locator("#payments-root").innerText(), /coming up/i, "the rest of the page is still there");
+    assert.match(await empty.page.locator("#payments-root").innerText(), /payments due/i, "the rest of the page is still there");
     await empty.page.close();
 
     const owing = await screens.open("/app/money-payments.html", { session: CLIENT, handlers: { "/api/money/payments": PAYMENTS } });

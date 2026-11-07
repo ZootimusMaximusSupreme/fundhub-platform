@@ -57,3 +57,29 @@ test('PostGrid sends the actual PDF as multipart with canonical addresses and pe
   assert.equal(form.get('from[firstName]'),'Fixture');assert.equal(form.get('to[companyName]'),'Fixture Bureau');assert.equal(form.get('to[addressLine1]'),'PO Box 1');
   assert.deepEqual(Buffer.from(await form.get('pdf').arrayBuffer()),pdf);assert.equal(form.get('mailingClass'),'usps_first_class');assert.equal(form.get('to[address_line1]'),null);
 });
+test('a repair letter mails as its saved HTML in the same PostGrid form; anything else is refused before transmission',async()=>{
+  const calls=[];const p=createMailingProviders({env,fetchImpl:async(url,init)=>{calls.push({url,init});return json({id:'letter_fixture2'});}});
+  const envelope={id:'envelope_repair',snapshot:{to:{company_name:'Experian',address_line1:'P.O. Box 4500',address_city:'Allen',address_state:'TX',address_zip:'75013'}}};
+  const html='<!doctype html><html><body><pre>Fixture dispute words.</pre></body></html>';
+  assert.equal((await p.sendEnvelope({order,envelope,html})).providerId,'letter_fixture2');
+  const form=calls[0].init.body;assert.equal(form.get('html'),html);assert.equal(form.get('pdf'),null);
+  assert.equal(form.get('addressPlacement'),'top_first_page');assert.equal(form.get('mailingClass'),'usps_first_class');
+  assert.equal(calls[0].init.headers['idempotency-key'],'blueprint-mail-envelope:envelope_repair');assert.equal(form.get('to[addressLine1]'),'P.O. Box 4500');
+  for(const bad of [{html:'Dear bureau, plain words'},{html:'<p>no document</p>'},{html:`<html>${'x'.repeat(600*1024)}</html>`},{},{html,pdf:Buffer.from('%PDF-1.7')}]){
+    const r=await p.sendEnvelope({order,envelope,...bad});assert.equal(r.ok,false);assert.equal(r.preTransmission,true);
+  }
+  assert.equal(calls.length,1,'no refused letter reached the mail house');
+});
+test('the tracker read is one GET for one known PostGrid letter and returns only the tracker words',async()=>{
+  const calls=[];const p=createMailingProviders({env,fetchImpl:async(url,init)=>{calls.push({url,init});
+    return json({id:'letter_abc123',status:'processed_for_delivery',imbStatus:'entered_mail_stream',imbDate:'2026-11-10',updatedAt:'2026-11-09T09:00:00Z',to:{firstName:'Private'},url:'https://signed.example/preview.pdf'});}});
+  const r=await p.readLetter('letter_abc123');
+  assert.deepEqual(r,{ok:true,letter:{status:'processed_for_delivery',imbStatus:'entered_mail_stream',imbDate:'2026-11-10',updatedAt:'2026-11-09T09:00:00Z'}});
+  assert.equal(calls[0].url,'https://api.postgrid.com/print-mail/v1/letters/letter_abc123');assert.equal(calls[0].init.method,'GET');
+  assert.equal(calls[0].init.headers['x-api-key'],'fixture_mail');assert.equal(calls[0].init.body,undefined);
+  for(const id of ['../cheques/1','letter_1?x=y','',null])assert.equal((await p.readLetter(id)).preTransmission,true);
+  assert.equal(calls.length,1);
+  const other=createMailingProviders({env,fetchImpl:async()=>json({id:'letter_other',status:'completed'})});assert.equal((await other.readLetter('letter_abc123')).ok,false,'another letter id is not this letter');
+  let held=0;const fenced=createMailingProviders({env:{POSTGRID_API_KEY:'fixture_mail'},fetchImpl:async()=>{held++;return json({});}});
+  assert.equal((await fenced.readLetter('letter_abc123')).preTransmission,true);assert.equal(held,0,'the messaging fence holds the read too');
+});

@@ -1,6 +1,7 @@
 // Explicit Blueprint mailing purchases only. No scheduler may create a charge.
 // Primary docs: commasdocs.com (Customers / Checkout Sessions / Transactions),
-// guides.postgrid.com/api/resources/print_mail/subresources/letters/methods/create/.
+// guides.postgrid.com/api/resources/print_mail/subresources/letters/methods/create/
+// (pdf or html content) and .../letters/methods/retrieve/ (status, imbStatus).
 import { transmit, ADAPTERS, MESSAGING } from '../../lib/outbound-fetch.mjs';
 import { fenceVerdict, ADAPTERS_DRY_RUN, MESSAGING_DRY_RUN } from '../../lib/dry-run.mjs';
 import { checkoutConfig, createCheckoutSession } from '../../payments/commas-api.mjs';
@@ -92,14 +93,18 @@ export function createMailingProviders({env=process.env,fetchImpl=fetch}={}) {
         ||(meta.link_ref!=null&&meta.link_ref!==order.id)||(meta.org_id!=null&&meta.org_id!==order.org_id)||(meta.client_id!=null&&meta.client_id!==order.client_id)||!t.id)return {status:'mismatch'};
       return {status:'paid',providerRef:String(t.id),amountCents:amount};
     },
-    async sendEnvelope({order,envelope,pdf}) {
+    /* One envelope: a funding letter's saved PDF, or a repair letter's saved
+       HTML file (PostGrid's `html` content, the same form fields). */
+    async sendEnvelope({order,envelope,pdf,html}) {
       if(!mail)return {ok:false,preTransmission:true};
       const from=contact(order.snapshot.from), to=destination(envelope.snapshot.to);
-      if(!from||!to?.addressLine1||!Buffer.isBuffer(pdf)||pdf.length>5*1024*1024||!pdf.subarray(0,5).equals(Buffer.from('%PDF-')))
-        return {ok:false,preTransmission:true};
+      const isPdf=html==null&&Buffer.isBuffer(pdf)&&pdf.length<=5*1024*1024&&pdf.subarray(0,5).equals(Buffer.from('%PDF-'));
+      const isHtml=pdf==null&&typeof html==='string'&&Buffer.byteLength(html)<=512*1024&&/^\s*<(?:!doctype\s+html|html)[\s>]/i.test(html);
+      if(!from||!to?.addressLine1||!(isPdf||isHtml))return {ok:false,preTransmission:true};
       const form=new FormData();
       for(const [prefix,value] of [['from',from],['to',to]])for(const [k,v] of Object.entries(value))if(v!=null)form.append(`${prefix}[${k}]`,String(v));
-      form.append('pdf',new Blob([pdf],{type:'application/pdf'}),'letter.pdf');
+      if(isPdf)form.append('pdf',new Blob([pdf],{type:'application/pdf'}),'letter.pdf');
+      else form.append('html',html);
       for(const [k,v] of Object.entries({envelopeType:'flat',addressPlacement:'top_first_page',color:'false',doubleSided:'true',mailingClass:'usps_first_class',description:'Document Mailing Service'}))form.append(k,v);
       form.append('metadata[fundhub_mailing_order]',order.id);form.append('metadata[fundhub_envelope]',envelope.id);
       const r=await transmit('https://api.postgrid.com/print-mail/v1/letters',{method:'POST',
@@ -108,6 +113,18 @@ export function createMailingProviders({env=process.env,fetchImpl=fetch}={}) {
       const d=r.body?.data||r.body;
       return r.ok&&typeof d?.id==='string'&&/^letter_[a-zA-Z0-9]+$/.test(d.id)
         ?{ok:true,providerId:d.id}:{ok:false,preTransmission:r.transmitted===false};
+    },
+    /* The tracker read: GET one letter PostGrid accepted. Reads only; it cannot
+       create, change or cancel mail. Only the fields the tracker uses come back. */
+    async readLetter(providerId) {
+      const id=String(providerId||'');
+      if(!mail||!/^letter_[a-zA-Z0-9]+$/.test(id))return {ok:false,preTransmission:true};
+      const r=await transmit(`https://api.postgrid.com/print-mail/v1/letters/${encodeURIComponent(id)}`,{method:'GET',
+        headers:{'x-api-key':env.POSTGRID_API_KEY}},{fence:MESSAGING,env,fetchImpl,what:'Blueprint letter mailing tracker read',timeoutMs:5000});
+      const l=r.body?.data&&typeof r.body.data==='object'?r.body.data:r.body;
+      if(!r.ok||!l||typeof l!=='object'||l.id!==id)return {ok:false,preTransmission:r.transmitted===false};
+      const text=v=>typeof v==='string'&&v.length<=64?v:null;
+      return {ok:true,letter:{status:text(l.status),imbStatus:text(l.imbStatus),imbDate:text(l.imbDate),updatedAt:text(l.updatedAt)}};
     }
   };
 }

@@ -4,10 +4,12 @@
 // COMPLIANCE REVIEW REQUIRED (CLAUDE.md §7): fee timing, refund behaviour and
 // payout behaviour, in customer-facing contract copy.
 //
-// THE COPY IS db/migrations/283_partner_license_template.sql. Its terms are
-// owner-set in docs/specs/W0-decisions.md (2026-08-31) and recorded as fact:
+// THE COPY IS db/migrations/283_partner_license_template.sql, with the joining
+// fee's sentence moved to $30,000 by 592_partner_license_30k.sql (owner-set
+// 2026-11-07). Its terms are owner-set in docs/specs/W0-decisions.md
+// (2026-08-31) and recorded as fact:
 // 50% of funding and repair front and back including half the 10% success fee
-// and it never moves · e-products excluded · $10,000 once with nothing ongoing ·
+// and it never moves · e-products excluded · $30,000 once with nothing ongoing ·
 // sub-affiliates out of the PARTNER'S half · 10 funding clients a calendar month
 // with the warning → final notice (30-day cure) → 50-to-20-on-new-business
 // ladder · fast payouts with no hold-back and no clawback · a 3-day refund
@@ -38,7 +40,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { readContractTemplatesFromDb } from "./db-template-source.mjs";
+import { readContractTemplatesFromDb, bodyFrom } from "./db-template-source.mjs";
 import { tagsIn } from "./render.mjs";
 import {
   PARTNER_LICENSE_TEMPLATE_KEY, PARTNER_LICENSE_SUBTYPE, PARTNER_ID_MERGE_KEY,
@@ -89,8 +91,21 @@ describe("the partner licence exists in db/", () => {
     assert.ok(SIGNATURE_LINE.length > 20, "the signature line did not parse");
   });
 
-  test("it is seeded by the migration this unit owns", () => {
-    assert.deepEqual(LICENCE.sources, ["migrations/283_partner_license_template.sql"]);
+  test("it is seeded by the migration this unit owns, and 592 alone sets the joining fee", () => {
+    assert.deepEqual(LICENCE.sources, [
+      "migrations/283_partner_license_template.sql",
+      "migrations/592_partner_license_30k.sql"
+    ]);
+  });
+
+  test("592 changes only the joining-fee sentence, the way the database runs it", () => {
+    // The body exactly as 283 seeded it, before any later statement.
+    const seeded = bodyFrom(fs.readFileSync(path.join(ROOT, "db/migrations/283_partner_license_template.sql"), "utf8")
+      .split("\n").filter((line) => !/^\s*--/.test(line)).join("\n")
+      .split(/(?=INSERT INTO contract_templates)/).find((b) => b.includes("'PARTNER-LICENSE'")));
+    assert.equal(seeded.split("You pay $10,000 to join.").length, 2, "283 names the $10,000 fee in one sentence");
+    assert.equal(BODY, seeded.replace("You pay $10,000 to join.", "You pay $30,000 to join."),
+      "anything but the fee sentence changed");
   });
 
   test("it is a signable contract with the subtype 030 names", () => {
@@ -145,7 +160,7 @@ const TERMS = [
   ["the split never changes", /This split does not change/i],
   ["e-products are not split", /Courses, training and other digital products are not split/i],
   ["e-products stay with FundHub in full", /stay with FundHub in full/i],
-  ["joining costs ten thousand dollars", /You pay \$10,000 to join/],
+  ["joining costs thirty thousand dollars", /You pay \$30,000 to join/],
   ["it is paid one time", /You pay it one time/],
   ["there is nothing ongoing", /carries no repeating charge of any kind/i],
   ["they are never billed again", /never billed again for it/i],
@@ -224,7 +239,7 @@ describe("the words and the code hold the same numbers", () => {
 
   test("the joining fee is the catalogue price, to the cent", () => {
     const price = formatCents(OFFERS.PARTNER_ENTRY.priceCents);
-    assert.equal(price, "$10,000", "PARTNER_ENTRY stopped costing ten thousand dollars");
+    assert.equal(price, "$30,000", "PARTNER_ENTRY stopped costing thirty thousand dollars (owner-set 2026-11-07)");
     assert.ok(BODY.includes(`You pay ${price} to join`),
       `the catalogue charges ${price} to join and the document says something else — ` +
       `the partner would sign for the wrong number`);
@@ -337,7 +352,7 @@ describe("the partner licence never claims anybody will make money", () => {
   test("the only dollar figure on the document is what the partner pays", () => {
     const amounts = [...BODY.matchAll(/\$\s?[\d,]+(?:\.\d+)?/g)].map((m) => m[0]);
     assert.deepEqual(
-      [...new Set(amounts)], ["$10,000"],
+      [...new Set(amounts)], ["$30,000"],
       "a dollar figure other than the joining fee appeared on the partner licence");
   });
 });
@@ -359,7 +374,7 @@ describe("the base program has nothing ongoing, and the words cannot be misread"
     const hit = ALL_COPY.match(RECURRING);
     assert.equal(
       hit, null,
-      `the partner licence contains ${JSON.stringify(hit && hit[0])}. The $10,000 is charged ` +
+      `the partner licence contains ${JSON.stringify(hit && hit[0])}. The $30,000 is charged ` +
       `once and there is no monthly fee (W0-decisions.md), so the copy avoids the vocabulary ` +
       `rather than negating it.`);
   });
@@ -403,7 +418,7 @@ const STAMP_SITES = Object.freeze({
      next time somebody edited them. */
   "src/training/entitlement.mjs":
     "READS ONLY. `SELECT id, status, agreement_signed_at FROM partners` — a signed " +
-    "partner licence is what opens the $10,000 training (docs/specs/W7-curriculum.md). " +
+    "partner licence is what opens the $30,000 training (docs/specs/W7-curriculum.md). " +
     "It contains no INSERT and no UPDATE of any kind.",
   "api/read/partner-training.mjs":
     "READS ONLY. Selects the same column to report it on the training screen. GET only; " +

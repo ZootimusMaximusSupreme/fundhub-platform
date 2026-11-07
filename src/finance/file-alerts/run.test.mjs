@@ -94,11 +94,22 @@ function world({ accounts = baseAccounts(), cycles, clarity = [], settings = {},
     return { created: true, id };
   };
 
+  /* Phone alerts (step 5): no phone on file unless a test gives one, so the
+     text tests below see exactly the pass they always saw. phone-alerts.test.mjs
+     drives step 5 itself. */
+  w.phone = { hasPhone: false, optedOut: false, bills: [], queued: [] };
   w.deps = () => ({
     send: w.send, createTask: w.createTask, store: w.store,
     isOptedOut: async () => w.optedOut,
     isBlueprint: async () => w.blueprint,
-    loadLatestPulls: async () => w.pulls
+    loadLatestPulls: async () => w.pulls,
+    // The alerts bundle (unit AL) has its own test: src/finance/file-alerts/run-bundle.test.mjs.
+    planBundleAlerts: async () => ({ plans: [], skipped: [] }),
+    phone: {
+      state: async () => ({ hasPhone: w.phone.hasPhone, optedOut: w.phone.optedOut }),
+      listBills: async () => w.phone.bills,
+      queue: async (_c, q) => { w.phone.queued.push(q); return { queued: true, messageId: `push-${w.phone.queued.length}` }; }
+    }
   });
   w.run = (iso, env = {}) => runFileAlerts(w.conn, { orgId: ORG, clientId: CLIENT, now: T(iso), env }, w.deps());
   return w;

@@ -71,6 +71,7 @@ import { plaidConfigFromEnv, decryptPlaidToken, SEAM_REASONS } from "./plaid.mjs
 import { fetchAccounts, fetchBalances } from "./providers/plaid-http.mjs";
 import { saveAccounts, AccountStoreError } from "./accounts-store.mjs";
 import { toStoreAccount } from "./plaid-link.mjs";
+import { saveLogoQuietly } from "./institution-logos.mjs";
 
 /** The cost switch. Exactly "1" turns real-time balances on; anything else is off. */
 export const REALTIME_ENV = "PLAID_REALTIME_BALANCES";
@@ -300,6 +301,13 @@ async function refreshItem(db, item, { orgId, clientId, env, asOf, cfg, realtime
     out.firstRead = true;
     await db.query(BASELINE_SQL, [orgId, clientId, item.id, item.created_at, createdRows.map((a) => a.id)]);
   }
+
+  /* The bank's own logo (owner rule 2026-11-07). Plaid's /accounts/get names the
+     bank on its Item. Asked at most once a month per bank; it never throws and
+     never fails the refresh. */
+  await saveLogoQuietly(db, {
+    institutionId: r.item?.institution_id ?? item.plaid_institution_id ?? null, env, fetchImpl, now: asOf
+  });
 
   out.ok = true;
   return out;

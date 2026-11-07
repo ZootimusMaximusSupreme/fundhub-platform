@@ -83,7 +83,8 @@ describe("gap finance-os-setup: finance-os-setup:price-set", () => {
       const r = await run({ [SETUP_FEE_ENV]: v });
       shape(r);
       assert.equal(r.status, "FAIL", JSON.stringify(v));
-      assert.match(r.detail, /shows "\$X"/);
+      // The Setup page now hides the price line when no price is set (QA23); it never prints "$X".
+      assert.match(r.detail, /shows no price \(the line is hidden\)/);
       assert.match(r.suggestedFix, /without --secret/);
     }
   });

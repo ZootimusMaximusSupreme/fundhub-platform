@@ -221,7 +221,10 @@ describe("nothing seeds a waypoint — until enrolment does", { skip: !HAVE_DB ?
       "blueprint_dispute_mail_receipt",
       "blueprint_dispute_bureau_response",
       "no_new_credit", "personal_loan",
-      "form_llc", "get_ein", "business_checking"
+      "form_llc", "get_ein",
+      // 574 (owner-set 2026-11-06): the ChexSystems check, before any bank account.
+      "check_chexsystems",
+      "business_checking"
     ]);
     // "we dont do DUNS" — Chris, 2026-09-05. Nor net-30 vendors, nor Paydex:
     // the platform holds no vendor list and no Paydex field, so a waypoint for
@@ -824,7 +827,8 @@ describe("the catalog: its words, and its locks", { skip: !HAVE_DB ? "no DATABAS
     // Nine: 362's six plus the three Capital Blueprint dispute steps that
     // migration 400 added on 2026-09-29 (358cb50d6). The key list in the
     // catalog test above already names all nine; this count had stayed at six.
-    assert.equal(rows.length, 9);
+    // Ten since 574 added the Blueprint ChexSystems check (2026-11-07).
+    assert.equal(rows.length, 10);
 
     const banned = [
       "qualify", "qualifies", "qualified", "approv", "guarantee", "will increase",

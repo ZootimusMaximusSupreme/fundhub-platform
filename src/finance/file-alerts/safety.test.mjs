@@ -95,3 +95,22 @@ describe("what the alerts say", () => {
     }
   });
 });
+
+describe("phone alerts (step 5) are queued here, never sent", () => {
+  test("run.mjs takes only the phone read and the queue from the push module; that module imports no transport", () => {
+    const run = code(join("src", "finance", "file-alerts", "run.mjs"));
+    const imports = [...run.matchAll(/import\s*\{([^}]*)\}\s*from\s*"\.\.\/\.\.\/push\/([^"]+)"/g)];
+    assert.deepEqual(imports.map((m) => m[2]), ["finance-alerts.mjs"]);
+    assert.deepEqual(imports[0][1].split(",").map((s) => s.trim().split(/\s+as\s+/)[0]).sort(), ["phoneState", "queuePhoneAlert"]);
+    const queue = code(join("src", "push", "finance-alerts.mjs"));
+    assert.doesNotMatch(queue, /from\s+["'][^"']*(apns|native-send|\/send\.mjs|messaging\/providers|messaging\/dispatch)/);
+  });
+
+  test("the pure planner and the bill writer stay out of the send path", () => {
+    for (const f of ["phone-alerts.mjs", "bills.mjs"]) {
+      const src = code(join("src", "finance", "file-alerts", f));
+      assert.doesNotMatch(src, /\bsend\(|sendTemplated|push\/finance-alerts/, f);
+    }
+    assert.doesNotMatch(code(join("src", "finance", "file-alerts", "phone-alerts.mjs")), /\b(INSERT|UPDATE|DELETE)\b/);
+  });
+});

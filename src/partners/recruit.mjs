@@ -1,5 +1,5 @@
 // @ts-check
-// The recruit bonus — who brought whom, and when the $2,000 becomes real.
+// The recruit bonus — who brought whom, and when the $6,000 becomes real.
 //
 // COMPLIANCE REVIEW REQUIRED (CLAUDE.md §7): fee timing and payout basis.
 //
@@ -11,14 +11,15 @@
 // db/migrations/281_partner_recruited_by.sql) and the trigger.
 //
 // THE RULE, LOCKED (W0-decisions.md, W1-money-model.md D7):
-//   A partner who recruits another partner earns $2,000. Once. On the $10,000
-//   entry fee. Nothing ongoing, nothing on the recruit's production.
+//   A partner who recruits another partner earns 20% of the entry fee: $6,000.
+//   Once. On the $30,000 entry fee (owner-set 2026-11-07; it was $2,000 on
+//   $10,000). Nothing ongoing, nothing on the recruit's production.
 //
 // THE SHARP EDGE, AND WHY IT IS DELIBERATE. The entry fee is usually financed,
 // and the lender remits a band-dependent slice of the sticker — as little as 30%.
-// The bonus is a FLAT $2,000 against the STICKER, not a percentage of what
-// arrived. So at the worst band FundHub receives $3,000 and pays out $2,000,
-// netting $1,000. That is positive at every band on the D5 table and negative at
+// The bonus is a FLAT $6,000 against the STICKER, not a percentage of what
+// arrived. So at the worst band FundHub receives $9,000 and pays out $6,000,
+// netting $3,000. That is positive at every band on the D5 table and negative at
 // none, and computeEntryEconomics() below is the arithmetic, proved band by band
 // in recruit.test.mjs. The remittance varies; the promise does not.
 //
@@ -44,7 +45,7 @@ import {
 export const RECRUIT_REFUSED = "[partner-recruit] bonus not accrued";
 
 /* WHAT COUNTS AS THE ENTRY FEE.
-   products.code for the one-time $10,000 partner entry. The live-trial unit owns
+   products.code for the one-time $30,000 partner entry. The live-trial unit owns
    src/trials/constants.mjs and declares the same code there; recruit.test.mjs
    fails if the two ever disagree, so this is a seam with a test holding it
    shut, not a silent fork. It is a LIST because the code is written by hand in
@@ -69,7 +70,7 @@ function asUuid(v) {
 }
 
 /**
- * Is this product identity the $10,000 partner entry fee?
+ * Is this product identity the $30,000 partner entry fee?
  * Compared lower-cased and trimmed, because products.code is hand-written in
  * migrations and payload buckets come off a vendor webhook.
  * @param {unknown} identity
@@ -141,7 +142,7 @@ export function checkRecruitPair({ partnerId = null, recruiterPartnerId = null }
 /**
  * Record that `recruiterPartnerId` brought `partnerId` in.
  *
- * WRITE ONCE. Once set, the recruiter is frozen: changing it later moves $2,000
+ * WRITE ONCE. Once set, the recruiter is frozen: changing it later moves $6,000
  * of real money from one person to another after the fact, and there is no
  * legitimate reason to do that from application code. Re-writing the SAME
  * recruiter is a successful no-op (`already_set`); writing a DIFFERENT one is
@@ -187,7 +188,7 @@ export async function setRecruiter(db, {
 
   /* The direct loop: B cannot recruit A when A already recruited B. Commercially
      impossible (A was a partner before B existed) and it is how somebody would
-     manufacture a second $2,000 out of one real sale. 281 does not forbid it,
+     manufacture a second $6,000 out of one real sale. 281 does not forbid it,
      so the writer does. */
   if (recruiter.recruited_by_partner_id
       && String(recruiter.recruited_by_partner_id) === String(partnerId)) {
@@ -371,7 +372,7 @@ export async function onEntryFeePaid(event, db) {
   const cash = cashLanded(p);
   if (!cash.landed) {
     /* The loud case: the entry fee arrived for a recruited partner and we cannot
-       see the money, so nobody is paid. Silence here is somebody's $2,000. */
+       see the money, so nobody is paid. Silence here is somebody's $6,000. */
     console.warn(
       `${RECRUIT_REFUSED}: ${cash.reason} (org=${orgId} partner=${partnerId}). ` +
       `The recruit bonus accrues on cash received, so nothing was written. ` +

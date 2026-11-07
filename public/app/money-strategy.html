@@ -18,6 +18,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="money-strategy.css">
+<link rel="stylesheet" href="bill-cancel.css">
 <!-- ══ STRATEGY — HOW TO PAY THE CARDS AND LOANS DOWN ══════════════════════
      FinanceOS wave 5, unit W4 (ops/workflows/finance-os-wave5-2026-10-06.md).
      Owner, 2026-10-06: "real-time feedback on payment strategies; calculations
@@ -71,6 +72,16 @@ main{padding:24px 24px 64px}
   main{padding:16px 16px 48px}
   .mbar,.mnav{padding:8px 16px}
 }
+
+/* Under 380px the Money section picker (client-ios.js) takes the whole row
+   and the "Money workspace" link sits under it. Side by side, the picker was
+   cut to "Payment strat" at 320 (QA13). The selectors outweigh client-ios.css
+   and fundhub-astra-client.css, which load after this block. */
+@media (max-width:379px){
+  body.fh-astra.fh-astra-client[data-client-page="money-strategy"] .mnav.client-money-navigation{row-gap:4px}
+  body.fh-astra.fh-astra-client[data-client-page="money-strategy"] .mnav.client-money-navigation .client-money-jump{flex:1 1 100%}
+  body.fh-astra.fh-astra-client[data-client-page="money-strategy"] .mnav.client-money-navigation .client-money-frame{width:auto;justify-content:flex-start;padding-left:0}
+}
 </style>
 <link rel="stylesheet" href="/app/client-ios.css">
 <link rel="stylesheet" href="/app/money-strategy-ios.css">
@@ -103,6 +114,7 @@ main{padding:24px 24px 64px}
     </div>
   </main>
 </div>
+<script defer src="bill-cancel.js"></script>
 <script defer src="money-strategy.js"></script>
 </body>
 </html>

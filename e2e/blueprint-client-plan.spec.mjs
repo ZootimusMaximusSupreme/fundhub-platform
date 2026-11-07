@@ -923,3 +923,86 @@ test('session principal captured bearer stays bound to its actual projection whe
   await expect(app.getByText('Saved to your client file.',{exact:true})).toBeVisible();await expect(app.locator('input[name=name]')).toHaveValue('Bearer-bound business');
   expect(httpRequests.filter(r=>r.action==='save_business')).toHaveLength(1);expect(countPlanReads(httpRequests)).toBe(2);oldAccountOnly(httpRequests);
 });
+
+/* "Your path" (src/waypoints/blueprint-path.mjs), drawn by the real aggregator:
+   the ChexSystems step before every bank step, each bank's logo, reason and
+   open-by day, the cash plan that keeps the cushion, and the ChexSystems upload.
+   Phone width, every new control at least 44 by 44, no sideways scroll. */
+test('your path puts ChexSystems before the bank steps, shows bank logos and the cash plan, and uploads the report at 390px',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const done='2026-11-01T00:00:00Z';
+  const waypoints=[
+    {id:'w-llc',key:'form_llc',title:'File your LLC',state:'done',completedAt:done,owner:'client',closedBy:'client'},
+    {id:'w-ein',key:'get_ein',title:'Get your EIN from the IRS',state:'done',completedAt:done,owner:'client',closedBy:'client'},
+    {id:'w-chex',key:'check_chexsystems',title:'Check your ChexSystems report',state:'not_started',owner:'client',closedBy:'client'},
+    {id:'w-bank',key:'business_checking',title:'Open a business checking account',state:'not_started',owner:'client',closedBy:'client'}];
+  const bankPlan={recommended_banks:[
+    {lender_id:'l-chase',name:'Chase',lender_table:'InBranchBizCC',logo:{src:'/assets/lenders/chase.png',alt:'Chase logo'},minimum_deposit_cents:null,seasoning_days:30,
+      why:[{text:'Business checking account is required',source:{label:'Bank book · Chase',ref:'lenders.stated_requirements · OFFLINE'}}],relationship_steps:[]},
+    {lender_id:'l-bofa',name:'Bank of America',lender_table:'InBranchBizCC',logo:{src:'/assets/lenders/bank-of-america.png',alt:'Bank of America logo'},minimum_deposit_cents:null,seasoning_days:30,
+      why:[],relationship_steps:[{step:'season',days:30,quote:'Checking account + 30-day seasoning required'}]}],
+    relationships:[{id:'r-chase',bank:'Chase',bank_key:'chase',account_kind:'business',lender_id:'l-chase',status:'planned',planned_open_on:'2026-12-01',deposit_plan_cents:500000,deposit_plan_source:{label:'Set by staff'},deposits_total_cents:null},
+      {id:'r-bofa',bank:'Bank of America',bank_key:'bank of america',account_kind:'business',lender_id:'l-bofa',status:'planned',planned_open_on:null,deposit_plan_cents:500000,deposits_total_cents:null}]};
+  const{app,uploadFields,httpRequests}=await open(page,{started:true,business:true,bankPlan,
+    nativeProgress:{waypoints,nextStep:{waypointId:'w-chex',owner:'client'}},seed:{availableCashCents:600000,cashBufferCents:200000}});
+  await expect(app.locator('.bj-next h2')).toHaveText('Check your ChexSystems report');
+  const keys=await app.locator('.bj-pathsteps [data-path-key]').evaluateAll(els=>els.map(e=>e.dataset.pathKey));
+  expect(keys).toEqual(['form_llc','get_ein','check_chexsystems','bank_open_chase','bank_open_bank_of_america']);
+  const chase=app.locator('[data-path-key="bank_open_chase"]');
+  await expect(chase.getByRole('img',{name:'Chase logo'})).toHaveAttribute('src','/assets/lenders/chase.png');
+  await expect(chase).toContainText('Open a Chase business checking account and deposit $5,000');
+  await expect(chase).toContainText('Dec 1, 2026');
+  await expect(chase.locator('.bj-impact-chip')).toHaveText('Bank requirement');
+  // Short client words (owner rule 2026-11-07): the label and the impact, no explanation lines under a step.
+  await expect(chase).not.toContainText('Bank book:');
+  await expect(chase).not.toContainText('UnderwriteIQ does not read bank data');
+  await expect(app.locator('.bj-pathsteps')).not.toContainText('Every number comes from UnderwriteIQ');
+  await expect(app.locator('.bj-pathsteps .bj-caption').first()).toHaveText(/^\d+ of \d+ steps complete\.$/);
+  await expect(app.locator('.bj-path')).not.toContainText('not approvals');
+  expect(await app.locator('.bj-path,.bj-pathsteps,.bj-next,.bj-cash,.bj-chex').evaluateAll(els=>els.map(e=>e.textContent).join(' '))).not.toMatch(/\bpoints?\b/i);
+  await expect(app.locator('[data-path-key="bank_open_bank_of_america"]')).toContainText('Not set');
+  const cash=app.locator('.bj-cash');
+  await expect(cash.locator('h3')).toHaveText('You have $6,000 in cash');
+  await expect(cash).toContainText('Chase needs $5,000. You have $4,000 after your $2,000 cushion.');
+  await expect(cash.getByRole('img',{name:'Bank of America logo'})).toBeVisible();
+  await expect(cash.locator('[data-bj-cashnext]')).toHaveText('Your next $1,000 goes to Chase.');
+  await expect(cash).toContainText('The more you put in and leave in, the stronger your bank relationship.');
+  await expect(cash).not.toContainText('larger your approvals');
+  await expect(cash).not.toContainText('This only changes the view');
+  const slider=cash.getByRole('slider',{name:'What-if amount to put into your bank accounts'});
+  await slider.fill('100000');
+  await expect(cash.locator('[data-bj-cashrows] li').first()).toContainText('Start with $1,000. Add $4,000 to reach the amount on your plan.');
+  await expect(cash.locator('[data-bj-cashnext]')).toHaveText('Your next $4,000 goes to Chase.');
+  // The exact amount: any dollar figure, kept in step with the slider (design review 2026-11-07).
+  const exact=cash.getByRole('spinbutton',{name:'Exact what-if amount in dollars'});
+  await expect(exact).toHaveValue('1000');
+  await exact.fill('1050');
+  await expect(cash.locator('[data-bj-cashrows] li').first()).toContainText('Start with $1,050. Add $3,950 to reach the amount on your plan.');
+  await expect(cash.locator('[data-bj-cashnext]')).toHaveText('Your next $3,950 goes to Chase.');
+  await expect(cash.locator('[data-bj-put-out]')).toHaveText('$1,050');
+  await slider.fill('1000000');
+  await expect(exact).toHaveValue('10000');
+  await expect(cash.locator('[data-bj-cashrows] li[data-status="covered"]')).toHaveCount(2);
+  await expect(cash.locator('[data-bj-cashnext]')).toHaveText('Every bank on your plan is covered.');
+  expect(httpRequests.filter(r=>r.method==='POST'&&r.path==='/api/blueprint/business-plans')).toHaveLength(0);
+  const biz=app.locator('.bj-biz');
+  await expect(biz.locator('h3')).toHaveText('One business at a time');
+  await expect(biz).toContainText('Needed: banks check online presence.');
+  await expect(biz).toContainText('Recommended: lenders like to see it.');
+  await expect(biz).not.toContainText('$');
+  await expect(app.locator('.bj-chex')).toContainText('Be careful: fix or dispute anything wrong before you open an account.');
+  await expect(app.locator('.bj-chex details')).toHaveCount(0);
+  await expect(biz.locator('details')).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const small=await app.locator('.bj-path,.bj-cash,.bj-chex,.bj-pathsteps').locator('button:visible,a:visible,summary:visible,input:visible').evaluateAll(els=>els.map(e=>{const r=e.getBoundingClientRect();return{t:e.textContent.trim().slice(0,40),w:r.width,h:r.height};}).filter(r=>r.w<44||r.h<44));
+  expect(small).toEqual([]);
+  await app.locator('.bj-next').getByRole('button',{name:'Check my ChexSystems report',exact:true}).click();
+  await expect(app.getByRole('heading',{name:'Check your ChexSystems report',exact:true})).toBeVisible();
+  await app.locator('form[data-bp-form="chexsystems-upload"] input[type=file]').setInputFiles({name:'chexsystems.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 offline fixture')});
+  await app.getByRole('button',{name:'Upload my report',exact:true}).click();
+  await expect(app.getByText('Report uploaded. The Fundhub team reviews it with you.',{exact:true})).toBeVisible();
+  expect(uploadFields.at(-1)).toMatchObject({kind:'client_upload',subtype:'chexsystems_report',filename:'chexsystems.pdf'});
+  await app.getByRole('button',{name:'I checked my report',exact:true}).click();
+  await expect.poll(()=>httpRequests.filter(r=>r.path==='/api/waypoint-tick'&&r.method==='POST').length).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});

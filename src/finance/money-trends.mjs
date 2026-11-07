@@ -39,6 +39,22 @@
 //
 // Pure builders (buildSnapshot, rebuildBalances, backfillRollups, buildTrends)
 // do no I/O and read no clock, so every rule is tested without Postgres.
+//
+// ANY DATES AND ONE ACCOUNT (Finance OS CFO build, unit A, 2026-11-07; board
+// ops/workflows/finance-os-cfo-build-2026-11-06.txt, spec items 2 and 3):
+//
+//   * readWindow(): the read takes range=30d|90d|12m as before, OR from=&to=
+//     (YYYY-MM-DD, both real days, from not after to, at most 24 months
+//     apart). Never both. A custom window has range null and custom true.
+//   * accountChoices(): the client's OPEN accounts for the picker, named by the
+//     overview's own rule (buildMoneyOverview: name, else official name; the
+//     mask is the last four at most; kind is the container's kind).
+//   * buildAccountSeries(): one account's daily balance from
+//     finance_account_daily, snapshots and backfill both, estimated kept. A
+//     card also gets limit used each day = owed ÷ limit, the cardsUsed() math,
+//     only on days the limit is known; otherwise null. A day with no row is
+//     null, never 0. An account that is not one of this client's open accounts
+//     is a 404 — the read never answers for another client's account.
 
 import { buildMoneyOverview } from "./money-overview.mjs";
 import { readEntityKind, ENTITY_KINDS } from "./banking-surface.mjs";
@@ -114,6 +130,173 @@ export function readRange(v) {
   const s = String(v ?? "").trim().toLowerCase();
   if (s === "") return DEFAULT_RANGE;
   return Object.prototype.hasOwnProperty.call(RANGES, s) ? s : null;
+}
+
+/* ------------------------------------------------------------------ *
+ * Any date range (spec item 3)
+ * ------------------------------------------------------------------ */
+
+/* The longest from-to window the read answers. */
+export const MAX_SPAN_MONTHS = 24;
+
+const blankParam = (v) => v === null || v === undefined || String(v).trim() === "";
+
+/* A real calendar day written YYYY-MM-DD, or null. 2026-02-30 is not a day. */
+export function readDay(v) {
+  if (blankParam(v)) return null;
+  const s = String(v).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const t = Date.parse(`${s}T00:00:00Z`);
+  if (!Number.isFinite(t)) return null;
+  return new Date(t).toISOString().slice(0, 10) === s ? s : null;
+}
+
+/* The same day n months away, pulled back to the month's last day when that
+   month is shorter (Mar 31 minus 1 month is Feb 28). UTC, like addDays. */
+export function addMonths(day, n) {
+  const [y, m, d] = day.split("-").map(Number);
+  const idx = y * 12 + (m - 1) + n;
+  const ny = Math.floor(idx / 12);
+  const nm = (idx % 12) + 1;
+  const last = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
+  return `${String(ny).padStart(4, "0")}-${String(nm).padStart(2, "0")}-${String(Math.min(d, last)).padStart(2, "0")}`;
+}
+
+/* Every month from the month of fromDay to the month of toDay, oldest first. */
+export function monthsBetween(fromDay, toDay) {
+  const [fy, fm] = fromDay.slice(0, 7).split("-").map(Number);
+  const [ty, tm] = toDay.slice(0, 7).split("-").map(Number);
+  const n = (ty * 12 + tm) - (fy * 12 + fm) + 1;
+  return n > 0 ? lastMonths(toDay, n) : [];
+}
+
+/**
+ * readWindow({ range, from, to }) — the query string's time window.
+ *
+ *   { ok: true, range: '90d', from: null, to: null }      a preset (blank = 90d)
+ *   { ok: true, range: null, from: 'YYYY-MM-DD', to: … }  any dates
+ *   { ok: false, error: '<plain words>' }                 a 400
+ *
+ * Refused: a range that is not 30d / 90d / 12m; range and dates together; one
+ * date without the other; a date that is not a real day; from after to; more
+ * than 24 months between them.
+ */
+export function readWindow({ range, from, to } = {}) {
+  if (blankParam(from) && blankParam(to)) {
+    const r = readRange(range);
+    return r ? { ok: true, range: r, from: null, to: null } : { ok: false, error: "range must be 30d, 90d or 12m" };
+  }
+  if (!blankParam(range)) return { ok: false, error: "send range, or from and to, not both" };
+  if (blankParam(from) || blankParam(to)) return { ok: false, error: "from and to go together: send both" };
+  const f = readDay(from);
+  const t = readDay(to);
+  if (!f || !t) return { ok: false, error: "from and to must be real dates written YYYY-MM-DD" };
+  if (f > t) return { ok: false, error: "from must be on or before to" };
+  if (f < addMonths(t, -MAX_SPAN_MONTHS)) return { ok: false, error: "pick 24 months or less between from and to" };
+  return { ok: true, range: null, from: f, to: t };
+}
+
+/**
+ * trendWindow({ asOf, range, from, to }) — the days and months a read covers.
+ * from and to together mean any dates; otherwise the preset ending today.
+ */
+export function trendWindow({ asOf, range = DEFAULT_RANGE, from = null, to = null } = {}) {
+  if (from && to) {
+    return { custom: true, range: null, from, to, days: dayRange(from, to), months: monthsBetween(from, to) };
+  }
+  const key = RANGES[range] ? range : DEFAULT_RANGE;
+  const r = RANGES[key];
+  const end = new Date(asOf).toISOString().slice(0, 10);
+  const start = addDays(end, -(r.days - 1));
+  return { custom: false, range: key, from: start, to: end, days: dayRange(start, end), months: lastMonths(end, r.months) };
+}
+
+/* ------------------------------------------------------------------ *
+ * One account (spec item 2)
+ * ------------------------------------------------------------------ */
+
+/* The picker's word for an account: card / checking / savings / loan, or
+   other (a money market, a CD, an investment account …). */
+export function pickerType(accountType, subtype) {
+  const t = text(accountType);
+  if (t === "credit") return "card";
+  if (t === "loan") return "loan";
+  if (t === "depository") {
+    const s = (text(subtype) || "").toLowerCase();
+    if (s === "checking") return "checking";
+    if (s === "savings") return "savings";
+  }
+  return "other";
+}
+
+const KIND_ORDER = { personal: 0, business: 1, unknown: 2 };
+const TYPE_ORDER = { checking: 0, savings: 1, card: 2, loan: 3, other: 4 };
+
+/**
+ * accountChoices({ accounts, entities, asOf }) — the accounts the picker shows.
+ * Open accounts only, named and sorted once. The naming is the overview's own
+ * (buildMoneyOverview), so the picker and the account list never disagree.
+ */
+export function accountChoices({ accounts = [], entities = [], asOf = new Date(0).toISOString() } = {}) {
+  const ov = buildMoneyOverview({ client: {}, asOf, accounts, entities });
+  return ov.accounts.map((a) => ({
+    id: a.id,
+    label: (a.name || "Account") + (a.mask ? ` ••${a.mask}` : ""),
+    name: a.name,
+    mask: a.mask,
+    kind: a.kind,
+    type: pickerType(a.type, a.subtype),
+    subtype: a.subtype,
+    institution: a.institution
+  })).sort((x, y) =>
+    (KIND_ORDER[x.kind] ?? 9) - (KIND_ORDER[y.kind] ?? 9) ||
+    (TYPE_ORDER[x.type] ?? 9) - (TYPE_ORDER[y.type] ?? 9) ||
+    x.label.localeCompare(y.label) ||
+    x.id.localeCompare(y.id));
+}
+
+/* The ownership check: the account is one of this client's open accounts, or null. */
+export function pickAccount(choices = [], accountId) {
+  const id = text(accountId)?.trim().toLowerCase() ?? null;
+  if (!id) return null;
+  return (Array.isArray(choices) ? choices : []).find((c) => c && String(c.id).toLowerCase() === id) ?? null;
+}
+
+/**
+ * buildAccountSeries({ account, days, rows }) — one account's lines.
+ *
+ * account  a pickAccount() choice
+ * days     the window's days, oldest first
+ * rows     finance_account_daily rows for that account in the window
+ *
+ * balance_cents  current balance each day (a card's or loan's is what is owed)
+ * limit_cents    cards only: the limit each day, null when the bank did not say
+ * used_pct       cards only: owed ÷ limit, the Cards used math; null without a limit
+ * estimated      true on a rebuilt (backfill) day; null on a day with no row
+ * A day with no row is null in every series. Never 0.
+ */
+export function buildAccountSeries({ account, days = [], rows = [] } = {}) {
+  if (!account) return null;
+  const byDay = new Map();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const d = isoDay(row?.day);
+    if (d) byDay.set(d, row);
+  }
+  const card = account.type === "card";
+  const at = (key) => days.map((d) => (byDay.has(d) ? cents(byDay.get(d)[key]) : null));
+  const balance = at("current_balance_cents");
+  const limit = card ? at("credit_limit_cents") : null;
+  const used = card
+    ? balance.map((b, i) => cardsUsed([{ balance_cents: b, limit_cents: limit[i] }]).pct)
+    : null;
+  return {
+    ...account,
+    balance_cents: balance,
+    limit_cents: limit,
+    used_pct: used,
+    estimated: days.map((d) => (byDay.has(d) ? byDay.get(d).estimated === true : null)),
+    has_history: balance.some((v) => v !== null) || (used || []).some((v) => v !== null)
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -254,6 +437,11 @@ export function backfillRollups(accounts = [], points = new Map()) {
  * @param {object} input.client      { id, first_name, last_name }
  * @param {string} input.asOf        ISO timestamp; "today" is its UTC day
  * @param {string} input.range       '30d' | '90d' | '12m'
+ * @param {string|null} input.from   any dates: 'YYYY-MM-DD' (with `to`; wins over range)
+ * @param {string|null} input.to     any dates: 'YYYY-MM-DD'
+ * @param {Array}  input.choices     accountChoices() — the picker's list
+ * @param {object|null} input.account  a pickAccount() choice, or null for all accounts
+ * @param {Array}  input.accountRows finance_account_daily rows for that account
  * @param {Array}  input.rollups     finance_client_daily rows in the window
  * @param {Array}  input.txMonths    [{ bank_account_id, month, in_cents, out_cents }]
  * @param {Array}  input.accounts    [{ id, account_type, closed_at, kind }] (kind settled)
@@ -262,14 +450,14 @@ export function backfillRollups(accounts = [], points = new Map()) {
  * @param {Array}  input.crsRows     crs_results rows
  */
 export function buildTrends({
-  client = {}, asOf, range = DEFAULT_RANGE, rollups = [], txMonths = [], accounts = [],
-  sales = null, connections = [], crsRows = []
+  client = {}, asOf, range = DEFAULT_RANGE, from: fromDay = null, to: toDay = null,
+  rollups = [], txMonths = [], accounts = [],
+  sales = null, connections = [], crsRows = [],
+  choices = [], account = null, accountRows = []
 } = {}) {
-  const r = RANGES[range] || RANGES[DEFAULT_RANGE];
   const asOfIso = new Date(asOf).toISOString();
-  const to = asOfIso.slice(0, 10);
-  const from = addDays(to, -(r.days - 1));
-  const days = dayRange(from, to);
+  const win = trendWindow({ asOf: asOfIso, range, from: fromDay, to: toDay });
+  const { from, to, days } = win;
 
   /* ---- daily: one slot per day, null where no row ---- */
   const byDay = new Map();
@@ -299,7 +487,7 @@ export function buildTrends({
     daily.debt.total.cents[i] !== null || daily.cards_used_pct[i] !== null);
 
   /* ---- monthly money in vs out, depository only, kinds apart ---- */
-  const months = lastMonths(to, r.months);
+  const months = win.months;
   const acct = new Map((Array.isArray(accounts) ? accounts : []).map((a) => [String(a.id), a]));
   const buckets = {};
   for (const k of ENTITY_KINDS) buckets[k] = { in_cents: months.map(() => null), out_cents: months.map(() => null) };
@@ -348,14 +536,17 @@ export function buildTrends({
     ok: true,
     client: { id: text(client?.id), name: [first, last].filter(Boolean).join(" ") || null },
     as_of: asOfIso,
-    range: RANGES[range] ? range : DEFAULT_RANGE,
+    range: win.range,
+    custom: win.custom,
     from,
     to,
     has_history: hasHistory,
     daily,
     monthly,
     sales: salesOut,
-    credit: { history: points.length > 1 ? points : [] }
+    credit: { history: points.length > 1 ? points : [] },
+    accounts: Array.isArray(choices) ? choices : [],
+    account: buildAccountSeries({ account, days, rows: accountRows })
   };
 }
 
@@ -618,29 +809,53 @@ const CRS_SQL = `
    WHERE client_id = $1 AND org_id = $2 AND is_demo IS NOT TRUE
    ORDER BY created_at`;
 
+/* One account's days. Scoped by org AND client AND account, so even before the
+   ownership check runs this can only ever return the asking client's rows. */
+const ACCOUNT_DAILY_SQL = `
+  SELECT day::text AS day, account_type, current_balance_cents, available_balance_cents,
+         credit_limit_cents, source, estimated
+    FROM finance_account_daily
+   WHERE org_id = $1 AND client_id = $2 AND bank_account_id = $3::uuid
+     AND day >= $4::date AND day <= $5::date
+   ORDER BY day`;
+
 /**
- * moneyTrends(db, { orgId, clientId, range, asOf }) → the contract, or null when
- * the client is not in that org. Every query carries org_id AND client_id.
+ * moneyTrends(db, { orgId, clientId, range, from, to, accountId, asOf }) → the
+ * contract, or null when the client is not in that org, or when accountId is
+ * not one of that client's open accounts (the endpoint answers 404 for both).
+ * Every query carries org_id AND client_id.
+ *
+ * from + to (already checked by readWindow) win over range. A custom window's
+ * money in vs out counts posted rows from `from` to `to` only, so its first
+ * and last months can be part months.
  */
-export async function moneyTrends(db, { orgId, clientId, range = DEFAULT_RANGE, asOf = new Date() } = {}) {
-  const r = RANGES[range] || RANGES[DEFAULT_RANGE];
+export async function moneyTrends(db, {
+  orgId, clientId, range = DEFAULT_RANGE, from: fromDay = null, to: toDay = null,
+  accountId = null, asOf = new Date()
+} = {}) {
   const asOfIso = new Date(asOf).toISOString();
-  const to = asOfIso.slice(0, 10);
-  const from = addDays(to, -(r.days - 1));
-  const firstMonthDay = `${lastMonths(to, r.months)[0]}-01`;
+  const win = trendWindow({ asOf: asOfIso, range, from: fromDay, to: toDay });
+  const { from, to } = win;
+  const txFrom = win.custom ? from : `${win.months[0]}-01`;
+  /* The sales line ends at the window's last month: today for a preset, `to` for any dates. */
+  const salesAsOf = win.custom ? new Date(`${to}T12:00:00.000Z`) : new Date(asOfIso);
 
   const clientRes = await db.query(
     `SELECT id, first_name, last_name FROM clients WHERE id = $1 AND org_id = $2`, [clientId, orgId]);
   const client = clientRes.rows[0];
   if (!client) return null;
 
-  const [rollups, txMonths, acc, crs, merchant] = await Promise.all([
+  const [rollups, txMonths, acc, crs, merchant, accountDaily] = await Promise.all([
     db.query(ROLLUP_READ_SQL, [clientId, orgId, from, to]),
-    db.query(TX_MONTHS_SQL, [clientId, orgId, firstMonthDay, to]),
+    db.query(TX_MONTHS_SQL, [clientId, orgId, txFrom, to]),
     readAccounts(db, { orgId, clientId }),
     db.query(CRS_SQL, [clientId, orgId]),
-    readSales(db, { orgId, clientId, months: r.months, asOf: new Date(asOfIso) })
+    readSales(db, { orgId, clientId, months: win.months.length, asOf: salesAsOf }),
+    accountId ? db.query(ACCOUNT_DAILY_SQL, [orgId, clientId, accountId, from, to]) : Promise.resolve({ rows: [] })
   ]);
+  const choices = accountChoices({ accounts: acc.accounts, entities: acc.entities, asOf: asOfIso });
+  const account = accountId ? pickAccount(choices, accountId) : null;
+  if (accountId && !account) return null;
   const entById = new Map(acc.entities.map((e) => [String(e.id), e]));
   const accounts = acc.accounts.map((a) => {
     const ent = a.entity_id ? entById.get(String(a.entity_id)) ?? null : null;
@@ -650,8 +865,10 @@ export async function moneyTrends(db, { orgId, clientId, range = DEFAULT_RANGE, 
     };
   });
   const out = buildTrends({
-    client, asOf: asOfIso, range, rollups: rollups.rows, txMonths: txMonths.rows,
-    accounts, sales: merchant.sales, connections: merchant.connections, crsRows: crs.rows
+    client, asOf: asOfIso, range, from: win.custom ? from : null, to: win.custom ? to : null,
+    rollups: rollups.rows, txMonths: txMonths.rows,
+    accounts, sales: merchant.sales, connections: merchant.connections, crsRows: crs.rows,
+    choices, account, accountRows: accountDaily.rows
   });
   out.sales_unavailable = merchant.failed;
   return out;

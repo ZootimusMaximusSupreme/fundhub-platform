@@ -140,6 +140,22 @@ describe("GET /api/money/overview — the door", () => {
     assert.equal(res.statusCode, 405);
   });
 
+  test("each bank's own logo is added for the session's org and client (owner rule 2026-11-07)", async () => {
+    const seen = [];
+    const attachOverviewLogos = async (_db, args) => {
+      seen.push(args);
+      return { ...args.payload, accounts: [{ id: "a1", logo: "/assets/lenders/chase.png", logo_source: "bank_book" }] };
+    };
+    const res = makeRes();
+    await handler({ method: "GET", query: { client_id: OTHER } }, res,
+      { db: db(), requirePrincipal: gateAs(clientPrincipal()), moneyOverview: spyBuild(), attachOverviewLogos, now: NOW, env: {} });
+    assert.equal(res.statusCode, 200);
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].orgId, ORG);
+    assert.equal(seen[0].clientId, MINE, "the URL's client id never reaches the logo read");
+    assert.equal(res.body.accounts[0].logo, "/assets/lenders/chase.png");
+  });
+
   test("routed, and watched by pulse", () => {
     assert.equal(ROUTES["money/overview"], handler);
     const reg = readFileSync(new URL("../pulse/registry.mjs", import.meta.url), "utf8");

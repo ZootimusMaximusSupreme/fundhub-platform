@@ -48,7 +48,7 @@ async function open(page, { completed = false, denied = false, failInquiries = f
       }
       if (body.action === 'launch_call') {
         expect(body.authorization).toBe(true);
-        inquiries.cases[0].call.status = 'queued';
+        inquiries.cases[0].call.status = 'sent';
         inquiries.cases[0].actions.canLaunchCall = false;
         return json(route,{ok:true});
       }
@@ -151,7 +151,7 @@ test('submission receipts stay pending and bureau calls require explicit authori
   expect(writes.filter(w => w.body.action === 'launch_call')).toHaveLength(0);
   await app.getByRole('checkbox',{name:/I authorize my AI agent/}).check();
   await app.getByRole('button',{name:'Call bureau with my AI agent'}).click();
-  await expect(app.getByText('Bureau call: queued',{exact:true})).toBeVisible();
+  await expect(app.getByText('Call placed',{exact:true})).toBeVisible();
   expect(writes.filter(w => w.body.action === 'launch_call')).toHaveLength(1);
 });
 

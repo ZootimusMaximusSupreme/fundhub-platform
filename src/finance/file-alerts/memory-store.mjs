@@ -13,7 +13,7 @@
 
 export function createMemoryStore({ settings = {}, csm = null } = {}) {
   const state = {
-    settings: { payment_timing: true, promo_end: true, cash_reserve: true, new_credit: true, ...settings },
+    settings: { payment_timing: true, promo_end: true, cash_reserve: true, new_credit: true, phone_alerts: true, ...settings },
     alerts: [],
     csm
   };

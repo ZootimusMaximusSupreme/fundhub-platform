@@ -45,6 +45,7 @@ import { destinationAddress } from "../auth/authorized-rep.mjs";
 import { sendNativeToClient } from "../push/native-send.mjs";
 import { sendToClient } from "../push/send.mjs";
 import { notificationForSentMessage, claimMarketingPush, recordMarketingPush } from "../push/message-policy.mjs";
+import { deliverPhoneAlert, sendAfter as phoneAlertSendAfter } from "../push/finance-alerts.mjs";
 import { precallDispatchReason } from "../workflows/precall-plan.mjs";
 import { bankEnvelope } from "../outreach/mail.mjs";
 
@@ -426,6 +427,25 @@ export async function dispatchOne(db, message, options = {}) {
     // an overnight text is still sendable in the morning instead of being
     // recorded as a permanent block.
     const clock = typeof now === "function" ? now : now ? () => new Date(now) : () => new Date();
+    // A queued phone alert (channel 'push') is not a text: no gate, no route, no
+    // address. Its own sender keeps the 9-to-5 window, the dry-run fence and a
+    // fresh opt-out read, and uses the same two phone pipes as the companion
+    // alert below (src/push/finance-alerts.mjs).
+    if (message.channel === "push") {
+      // Outside 9 a.m. to 5 p.m. Arizona it waits for the next 9 a.m. The hold is
+      // written HERE because this file is the one writer of messages.scheduled_at.
+      const due = phoneAlertSendAfter(clock());
+      if (due) {
+        await db.query(
+          `UPDATE messages
+              SET status = 'queued', scheduled_at = $2, attempts = GREATEST(attempts - 1, 0)
+            WHERE id = $1`,
+          [message.id, due]
+        );
+        return { id: message.id, outcome: OUTCOME.DEFERRED, detail: due };
+      }
+      return await deliverPhoneAlert(db, message, { env, now: clock, sendNative, sendWeb });
+    }
     const kind = { clientId: message.client_id, channel: message.channel,
       templateKey: message.template_key, providerRef: message.provider_ref, toAddress: message.to_address };
     /* Customer send hours (owner-set 2026-10-31, src/messaging/send-window.mjs):

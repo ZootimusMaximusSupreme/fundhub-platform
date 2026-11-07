@@ -91,3 +91,34 @@ dates separate, and does not become bank-verified or a funding approval.
 `item_id` (a `plaid_items` uuid) refreshes just that login. The answer lists, per login, what was
 created, what vanished, which balances moved, and `relink_needed`. A login that is not readable
 (not this client's, or not active) is a 404.
+
+## Bank logos (owner rule 2026-11-07)
+
+Chris: "MAKE SURE THE BANKS HAVE THE CORRESPONDING BANK LOGO WITH IT, THATS A RULE. AND THEN YEAH
+THATLL BE FROM PLAID." Code: `src/banking/institution-logos.mjs`, `getInstitutionById` in
+`src/banking/providers/plaid-http.mjs`, table `plaid_institutions` (migration 575), helper
+`public/app/bank-logo.js`.
+
+```mermaid
+flowchart TD
+    L[completeLink: a client finishes Plaid Link] --> Q{bank asked in the last 30 days?}
+    R[refresh: /accounts/get names the bank on its Item] --> Q
+    B[scripts/plaid-institution-logos-backfill.mjs --confirm, by hand] --> Q
+    Q -->|yes| S[skip: no Plaid call]
+    Q -->|no| P[Plaid /institutions/get_by_id, optional metadata: no access token, no money]
+    P -->|answered| W[plaid_institutions: one row per bank. logo, primary_color, url. Plaid has no logo = null]
+    P -->|error or held| N[nothing written; the link or refresh carries on]
+    W --> G[GET /api/money/accounts, /api/money/banks incl. deposit_plan, /api/money/overview and /api/money/credit add logo + logo_source to each bank]
+    G --> O{which logo}
+    O -->|1| PL[Plaid's logo: by the login's institution id, then by the bank's name]
+    O -->|2| BK[bank book lenders.logo_path: by lender id, then by name]
+    O -->|3| NL[null: the screen shows the name only]
+```
+
+Saving a logo never fails a link or a refresh. A bank name that matches two different logos
+matches neither. The bank book's placeholder tile is not a logo.
+
+Overview: each account by its login's institution id, then its bank name; a card or loan row takes
+its account's logo. Credit: the report names only the lender, so a lender gets a logo only when
+that name is a bank's own name. The bank plan (deposit_plan) keeps its bank-book file when the
+logo read finds nothing.

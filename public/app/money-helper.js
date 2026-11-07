@@ -19,6 +19,8 @@
  *     read every 3 seconds until it is answered.
  *   - Status is words and shape, never colour alone (UI-STANDARDS §12.6).
  *   - The helper is shadow: it never texts. The page says so.
+ *   - A lesson answer (src/finance/money-education.mjs) shows the doc it came from on its
+ *     own line. An official site it names gets a button whose address is fixed here.
  *
  * At 760px and under everything is one column; the page never scrolls
  * sideways (UI-STANDARDS §11). Styles: money-helper.css, all under .fh-helper.
@@ -37,6 +39,21 @@
   var MAX_CHARS = 20000;
   var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var SUGGESTIONS = ["What is due this week?", "Which card should I pay first?", "Got declined? Paste the letter here"];
+  /* Fundhub's lessons the helper teaches — a copy of LEARN_TOPICS in
+     src/finance/money-education.mjs, the server's own list (money-helper-learn.test.mjs
+     fails if they drift). Each button sends its question; the answer names its doc. */
+  var LEARN = [
+    { key: "chexsystems", title: "ChexSystems", ask: "What is ChexSystems?" },
+    { key: "opening_accounts", title: "Opening accounts", ask: "How do I open a bank account?" },
+    { key: "seasoning", title: "Seasoning", ask: "What is seasoning?" },
+    { key: "card_use", title: "Card use", ask: "How should I use my cards?" },
+    { key: "inquiries", title: "Inquiries", ask: "What are inquiries?" },
+    { key: "business_credit", title: "Business credit", ask: "How does business credit work?" },
+    { key: "gas_cards", title: "Gas cards", ask: "Should I get a gas card?" }
+  ];
+  /* An official site a lesson names gets a full-size button under the answer, never a small
+     inline link. The address is fixed here: nothing in a reply ever becomes a link. */
+  var OFFICIAL = [{ text: "chexsystems.com", label: "Open chexsystems.com", url: "https://www.chexsystems.com" }];
 
   var ACT_WORD = {
     create_reminder: "Reminder set",
@@ -150,6 +167,28 @@
     return "";
   }
 
+  /* The helper's words. A lesson's "From: <doc>." goes on its own small line, so the client
+     sees where the answer came from. Every other reply is drawn exactly as before. */
+  function replyHtml(reply) {
+    return String(reply == null ? "" : reply).split("\n").map(function (line) {
+      var whole = /^From: [^.!?\n]{1,80}\.?$/.test(line);
+      var tail = whole ? null : /^(.+?)\s+(From: [^.!?\n]{1,80}\.?)$/.exec(line);
+      if (whole) return '<span class="caption cite">' + esc(line) + '</span>';
+      if (tail) return esc(tail[1]) + "\n" + '<span class="caption cite">' + esc(tail[2]) + '</span>';
+      return esc(line);
+    }).join("\n");
+  }
+
+  /* A button for each official site the answer names (OFFICIAL). */
+  function officialLinks(reply) {
+    var s = String(reply == null ? "" : reply).toLowerCase();
+    var hits = OFFICIAL.filter(function (o) { return s.indexOf(o.text) !== -1; });
+    if (!hits.length) return "";
+    return '<div class="links">' + hits.map(function (o) {
+      return '<a class="btn" href="' + esc(o.url) + '" target="_blank" rel="noopener noreferrer">' + esc(o.label) + '</a>';
+    }).join("") + '</div>';
+  }
+
   /* One turn: the person's message, then the helper's answer (or Thinking…). */
   function renderTurn(t, now) {
     var who = t.actor === "staff" ? "Fundhub staff" : "You";
@@ -172,7 +211,7 @@
       var acts = list(t.actions).map(renderAction).join("");
       var why = t.brain === "rules" && t.reason_words ? ' · <span class="why">' + esc(t.reason_words) + '</span>' : "";
       theirs = '<li class="msg from-helper' + (t.status === "halted" ? " is-halted" : "") + '">' +
-        '<div class="bubble">' + esc(t.reply) + '</div>' +
+        '<div class="bubble">' + replyHtml(t.reply) + '</div>' + officialLinks(t.reply) +
         (acts ? '<ul class="acts" aria-label="What the helper did">' + acts + '</ul>' : "") +
         '<p class="caption meta"><span>Money helper</span> · <span class="brain brain-' + esc(t.brain || "none") + '">' + esc(brainWords(t)) + '</span>' + why +
         (t.answered_at ? ' · <time datetime="' + esc(t.answered_at) + '" title="' + esc(exact(t.answered_at)) + '">' + esc(relTime(t.answered_at, now)) + '</time>' : "") +
@@ -205,6 +244,16 @@
     return h.on !== false && !h.halted;
   }
 
+  /* The lessons the helper teaches: short topic buttons above the box to type in. Drawn only
+     where a message can be sent, so no button ever sits there doing nothing. */
+  function renderLearn(opts) {
+    var busy = !!(opts && opts.sending);
+    return '<div class="learn" role="group" aria-label="Learn the basics"><p class="caption learn-t">Learn the basics</p>' +
+      '<div class="learn-topics">' + LEARN.map(function (b) {
+        return '<button type="button" class="btn" data-act="learn" data-text="' + esc(b.ask) + '"' + (busy ? " disabled" : "") + '>' + esc(b.title) + '</button>';
+      }).join("") + '</div></div>';
+  }
+
   function renderComposer(opts) {
     var o = opts || {};
     var busy = !!o.sending;
@@ -228,7 +277,7 @@
       : renderEmptyThread();
     return renderHead() + renderStatus(d) + renderBanner(d) +
       '<section class="card thread" aria-label="Chat with your money helper" aria-live="polite">' + thread + '</section>' +
-      (canSend(d) ? renderComposer(o) : "");
+      (canSend(d) ? renderLearn(o) + renderComposer(o) : "");
   }
 
   function renderLoading() {
@@ -415,7 +464,7 @@
       var act = t.getAttribute("data-act");
       if (act === "retry") load(false);
       if (act === "refresh") { state.polls = 0; state.stuck = false; load(true); }
-      if (act === "suggest") send(t.getAttribute("data-text"));
+      if (act === "suggest" || act === "learn") send(t.getAttribute("data-text"));
     }
     function onSubmit(e) {
       if (!e.target || !e.target.getAttribute || e.target.getAttribute("data-act") !== "send-form") return;
@@ -483,6 +532,7 @@
   root.FHMoneyHelper = {
     money: money, relTime: relTime, render: render, renderTurn: renderTurn, renderAction: renderAction,
     renderLoading: renderLoading, renderError: renderError, classify: classify, mount: mount,
+    renderLearn: renderLearn, replyHtml: replyHtml, officialLinks: officialLinks, LEARN: LEARN, OFFICIAL: OFFICIAL,
     POLL_MS: POLL_MS, MAX_POLLS: MAX_POLLS
   };
 

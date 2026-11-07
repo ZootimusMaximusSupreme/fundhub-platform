@@ -1,0 +1,80 @@
+/* Local banks component (Finance OS wave 4, unit LOC) — public/app/local-banks.js.
+   The Astra look: white 10px panels with hairlines, 13px sentence-case gray
+   captions, black 8px buttons, every control at least 44 by 44, no sideways
+   scroll at 390 and 320. Tokens come from fundhub-brand.css; the fallbacks are
+   the same values, so the component reads the same wherever it is mounted.
+   Every rule lives under .fh-local-banks. */
+.fh-local-banks{
+  --lb-ink:var(--ink,#0D1113);--lb-ink2:var(--ink2,#252A2D);--lb-gray:var(--gray,#626968);
+  --lb-line:var(--line,#E3E5E0);--lb-soft:var(--soft,#F0F1ED);--lb-paper:var(--paper,#F8F8F6);
+  --lb-ok:var(--ok,#A8D8B0);--lb-warn:var(--warn,#F5CE8F);--lb-info:var(--info,#A9C6E8);
+  --lb-ok-ink:#245C30;--lb-warn-ink:#6B4A0E;--lb-info-ink:#24476F;
+  display:grid;gap:24px;min-width:0;color:var(--lb-ink);font-family:var(--sans,ui-rounded,"SF Pro Rounded",system-ui,sans-serif);
+  font-size:16px;line-height:1.5
+}
+.fh-local-banks *{box-sizing:border-box}
+.fh-local-banks [hidden]{display:none!important}
+.fh-local-banks .lb-panel{background:#fff;border:1px solid var(--lb-line);border-radius:10px;padding:24px;
+  box-shadow:var(--panel-shadow,0 1px 2px rgba(13,17,19,.024));min-width:0;display:grid;gap:12px;align-content:start}
+.fh-local-banks .lb-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:8px 16px}
+.fh-local-banks .lb-l{display:grid;gap:4px;min-width:0;flex:1 1 220px}
+.fh-local-banks .lb-h2{margin:0;font-size:22px;font-weight:750;letter-spacing:-.02em;line-height:1.3}
+.fh-local-banks .lb-cap{display:block;font-size:13px;color:var(--lb-gray);line-height:1.5;margin:0;overflow-wrap:anywhere}
+.fh-local-banks .lb-body{margin:0;font-size:16px;overflow-wrap:anywhere}
+.fh-local-banks .lb-none{color:var(--lb-gray)}
+.fh-local-banks .lb-foot{padding-top:4px}
+.fh-local-banks .lb-count{margin:0;font-size:13px;font-weight:650;color:var(--lb-ink2);font-variant-numeric:tabular-nums}
+.fh-local-banks .lb-num{font-variant-numeric:tabular-nums}
+.fh-local-banks .lb-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* Chips: the word carries the meaning; the colour only echoes it. */
+.fh-local-banks .lb-chip{display:inline-flex;align-items:center;font-size:13px;font-weight:650;padding:2px 10px;border-radius:999px;
+  background:var(--lb-soft);color:var(--lb-ink2);white-space:nowrap;max-width:100%}
+.fh-local-banks .lb-chip.lb-ok{background:color-mix(in srgb,var(--lb-ok) 50%,#fff);color:var(--lb-ok-ink)}
+.fh-local-banks .lb-chip.lb-warn{background:color-mix(in srgb,var(--lb-warn) 55%,#fff);color:var(--lb-warn-ink)}
+.fh-local-banks .lb-chip.lb-info{background:color-mix(in srgb,var(--lb-info) 50%,#fff);color:var(--lb-info-ink)}
+.fh-local-banks .lb-tags{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 0}
+
+/* Rows */
+.fh-local-banks ul,.fh-local-banks ol{list-style:none;margin:0;padding:0}
+.fh-local-banks .lb-rows{display:grid}
+.fh-local-banks .lb-row{display:grid;gap:8px 16px;padding:14px 0;border-top:1px solid var(--lb-line);min-width:0;align-items:center}
+.fh-local-banks .lb-row:first-child{border-top:0;padding-top:4px}
+.fh-local-banks .lb-plan-row{grid-template-columns:28px minmax(0,1fr) auto}
+.fh-local-banks .lb-near-row{grid-template-columns:minmax(0,1fr) auto}
+.fh-local-banks .lb-n{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;
+  background:var(--lb-soft);font-size:13px;font-weight:700;color:var(--lb-ink2);align-self:start;margin-top:2px}
+.fh-local-banks .lb-main{display:grid;gap:2px;min-width:0}
+.fh-local-banks .lb-name{display:flex;align-items:center;gap:10px;margin:0;min-width:0}
+.fh-local-banks .lb-name b{font-weight:650;overflow-wrap:anywhere;min-width:0}
+.fh-local-banks .lb-logo{width:28px;height:28px;flex:0 0 28px;margin:0;border-radius:8px;background:#fff;border:1px solid var(--lb-line);object-fit:contain}
+.fh-local-banks .lb-side{display:grid;grid-auto-flow:column;gap:16px;margin:0;align-items:center;justify-items:end;text-align:right}
+.fh-local-banks .lb-side div{display:grid;gap:2px;justify-items:end}
+.fh-local-banks .lb-side dd{margin:0;font-weight:650}
+.fh-local-banks .lb-unset{color:var(--lb-gray);font-weight:600}
+.fh-local-banks .lb-dist{margin:0;font-size:13px;font-weight:650;color:var(--lb-ink2);text-align:right;overflow-wrap:anywhere;max-width:16ch}
+
+/* Buttons and links: 44 by 44 at least; the one dark button is the main action. */
+.fh-local-banks .lb-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.fh-local-banks .lb-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:8px 16px;
+  border:1px solid var(--lb-line);border-radius:8px;background:#fff;color:var(--lb-ink);font:inherit;font-size:14px;font-weight:650;
+  text-decoration:none;cursor:pointer;max-width:100%;white-space:normal;text-align:center}
+.fh-local-banks .lb-btn:hover{background:var(--lb-soft)}
+.fh-local-banks .lb-btn.lb-dark{background:var(--lb-ink);color:var(--lb-paper);border-color:var(--lb-ink);min-height:48px;font-weight:600}
+.fh-local-banks .lb-btn.lb-dark:hover{background:var(--lb-ink2)}
+.fh-local-banks .lb-btn:focus-visible{outline:2px solid var(--lb-ink);outline-offset:3px}
+
+/* Loading */
+.fh-local-banks .lb-sk{display:block;height:14px;border-radius:6px;background:var(--lb-soft)}
+.fh-local-banks .lb-sk-l{width:70%}
+.fh-local-banks .lb-sk-m{width:45%}
+
+/* Phone: one column. The deposit and status drop under the name; the distance under the address. */
+@media (max-width:560px){
+  .fh-local-banks .lb-panel{padding:16px}
+  .fh-local-banks .lb-plan-row{grid-template-columns:28px minmax(0,1fr)}
+  .fh-local-banks .lb-plan-row .lb-side{grid-column:2;justify-content:start;justify-items:start;text-align:left;gap:12px}
+  .fh-local-banks .lb-plan-row .lb-side div{justify-items:start}
+  .fh-local-banks .lb-near-row{grid-template-columns:minmax(0,1fr)}
+  .fh-local-banks .lb-dist{text-align:left;max-width:none}
+}

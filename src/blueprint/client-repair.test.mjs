@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { currentClientRepairRound, generateClientRepairLetters } from "./client-repair.mjs";
+import { currentClientRepairRound, generateClientRepairLetters, readClientRepair, recordClientRepairSubmission } from "./client-repair.mjs";
 import handler from "../../api/blueprint/repair.mjs";
 
 const id = "11111111-1111-4111-8111-111111111111";
@@ -69,4 +69,37 @@ test("repair GET shares the official dispute and supporting-document links witho
   ]);
   assert.equal(queries.every(sql => /^SELECT\b/i.test(sql.trim())), true);
   assert.equal(res.body.actions.canGenerate, false, "navigation links do not bypass repair authorization");
+});
+
+// Unit MAIL: a letter the client paid Fundhub $97 to mail is Fundhub's to mail.
+const LETTER = "44444444-4444-4444-8444-444444444444", CASE = "55555555-5555-4555-8555-555555555555";
+const signedDeps = { readActiveServices: async () => [], hasDisputeAuthorization: async () => true, evaluateDocGate: async () => ({ complete: true, missing: [] }),
+  loadVerifiedIdentity: async () => ({ legalName: "Fixture Buyer", address: "1 Fixture St" }), readRepairStage: async () => "ready_to_send", readLetterApprovals: async () => new Map() };
+
+test("a paid $97 mailing closes the client's own submission on that letter, and only that letter", async () => {
+  for (const paid of [true, false]) {
+    const queries = [];
+    const db = { query: async sql => { queries.push(sql);
+      if (/FROM dispute_cases WHERE/.test(sql)) return { rows: [{ id: CASE, bureau: "EX", round: "R1", status: "open", response_due_at: null }] };
+      if (/FROM dispute_items i JOIN/.test(sql)) return { rows: [{ id, case_id: CASE, round: "R1", status: "open", bureau: "EX" }] };
+      if (/FROM dispute_letters l LEFT JOIN LATERAL/.test(sql)) return { rows: [{ id: LETTER, case_id: CASE, bureau: "EX", round: "R1", target: "bureau", status: "generated",
+        created_at: "2026-11-06", document_id: id, document_version_id: id, submitted_at: null, fundhub_mailing: paid }] };
+      return { rows: [] }; } };
+    const read = await readClientRepair(db, scope, signedDeps);
+    assert.equal(read.cases[0].letters[0].canRecordSubmission, !paid);
+    const letters = queries.find(sql => /FROM dispute_letters l LEFT JOIN LATERAL/.test(sql));
+    assert.match(letters, /blueprint_letter_mailing_envelopes e/); assert.match(letters, /o\.payment_state='paid'/);
+  }
+});
+
+test("the server refuses the client's own submission while a paid Fundhub mailing holds the letter", async () => {
+  for (const paid of [true, false]) {
+    const db = { query: async sql => {
+      if (/SELECT \* FROM dispute_letters WHERE id=\$1::uuid/.test(sql)) return { rows: [{ id: LETTER, case_id: CASE, round: "R1", status: "generated", send_claimed_at: null, mailed_at: null }] };
+      if (/FROM blueprint_letter_mailing_envelopes e/.test(sql)) return { rows: paid ? [{ "?column?": 1 }] : [] };
+      return { rows: [] }; } };
+    const input = { letterId: LETTER, receiptDocumentId: id, reference: "fixture-reference", channel: "mail" };
+    await assert.rejects(recordClientRepairSubmission(db, scope, input, signedDeps),
+      { code: paid ? "fundhub_mailing_this_letter" : "repair_receipt_unavailable" });
+  }
 });

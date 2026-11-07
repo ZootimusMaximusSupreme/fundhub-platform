@@ -954,7 +954,8 @@ test("scripts: read against the real pages in public/, the lists are what the ma
   assert.deepEqual(names("portal-login.html", "/portal-login.html"), [...sharedTypeAssets, "/fh.css", "/app/client-ios.css", "/portal-login-ios.css", ...sharedAstraStyles, "/funnel/fh-events.js", "/funnel/device-destinations.js", "/app/device-entry.js", "/app/client-ios.js"]);
   assert.deepEqual(names("devices.html", "/devices.html"), ["/app/fundhub-font.css", "/app/fundhub-brand.css", "/app/fundhub-astra.css", "/app/devices.css", "/app/fundhub-font.js", "/funnel/device-destinations.js", "/app/devices.js"]);
   assert.deepEqual(names("reset-password.html", "/reset-password.html"), [...sharedTypeAssets, "/fh.css", "/pw-toggle.js", ...sharedAstraStyles]);
-  assert.deepEqual(names("progress.html", "/progress.html"), [...sharedTypeAssets, "/app/client-ios.css", "/progress-ios.css", "/app/client-ios.js", ...sharedAstraStyles]);
+  // The Repair and Funding lines (premium pass, 2026-11-07) come from money-premium.css and .js.
+  assert.deepEqual(names("progress.html", "/progress.html"), [...sharedTypeAssets, "/app/client-ios.css", "/progress-ios.css", "/app/money-premium.css", "/app/client-ios.js", "/app/money-premium.js", ...sharedAstraStyles]);
   assert.deepEqual(names("app/payment-success.html", "/app/payment-success.html"), [...sharedTypeAssets, "/app/fundhub-brand.css", ...sharedAstraStyles]);
   // Every file the pages name is really in public/, so a rename shows up here
   // before it shows up on the live pages.

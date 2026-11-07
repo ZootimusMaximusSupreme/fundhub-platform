@@ -1,0 +1,450 @@
+{
+  "ok": true,
+  "view": "tradelines",
+  "client_id": "11111111-2222-4333-8444-555555555555",
+  "groups": [
+    {
+      "key": "personal",
+      "kind": "personal",
+      "name": "Personal",
+      "container_id": null,
+      "archived": false,
+      "closed": 1,
+      "items": [
+        {
+          "id": "report:c2:XXXXXXXXXXXX4417",
+          "name": "Chase Freedom Unlimited",
+          "bank": "Chase",
+          "bank_key": "chase",
+          "in_book": true,
+          "creditor": "JPMCB CARD SERVICES",
+          "type": "card",
+          "type_words": "Credit card",
+          "limit_cents": 800000,
+          "opened": "2019-04",
+          "status": "open",
+          "authorized_user": false,
+          "sources": [
+            "report",
+            "plaid"
+          ],
+          "source_words": [
+            "Report",
+            "Plaid"
+          ],
+          "bureaus": [
+            "EX",
+            "TU"
+          ],
+          "existing_relationship": true,
+          "logo": "/assets/lenders/chase.png",
+          "logo_source": "bank_book"
+        },
+        {
+          "id": "report:c2:1",
+          "name": "American Express",
+          "bank": "American Express",
+          "bank_key": "american_express",
+          "in_book": true,
+          "creditor": "AMEX",
+          "type": "card",
+          "type_words": "Credit card",
+          "limit_cents": 2000000,
+          "opened": "2015-01",
+          "status": "open",
+          "authorized_user": true,
+          "sources": [
+            "report"
+          ],
+          "source_words": [
+            "Report"
+          ],
+          "bureaus": [
+            "EX"
+          ],
+          "existing_relationship": true,
+          "logo": "/assets/lenders/american-express.png",
+          "logo_source": "bank_book"
+        },
+        {
+          "id": "report:c2:2",
+          "name": "Capital One",
+          "bank": null,
+          "bank_key": null,
+          "in_book": false,
+          "creditor": "CAPITAL ONE",
+          "type": "card",
+          "type_words": "Credit card",
+          "limit_cents": 500000,
+          "opened": "2021-06",
+          "status": "open",
+          "authorized_user": false,
+          "sources": [
+            "report"
+          ],
+          "source_words": [
+            "Report"
+          ],
+          "bureaus": [
+            "EX"
+          ],
+          "existing_relationship": false,
+          "logo": null,
+          "logo_source": null
+        },
+        {
+          "id": "report:c2:3",
+          "name": "Sample Auto Finance",
+          "bank": null,
+          "bank_key": null,
+          "in_book": false,
+          "creditor": "SAMPLE AUTO FINANCE",
+          "type": "loan",
+          "type_words": "Loan",
+          "limit_cents": null,
+          "opened": "2023-02",
+          "status": "open",
+          "authorized_user": false,
+          "sources": [
+            "report"
+          ],
+          "source_words": [
+            "Report"
+          ],
+          "bureaus": [
+            "EX"
+          ],
+          "existing_relationship": false,
+          "logo": null,
+          "logo_source": null
+        },
+        {
+          "id": "plaid:p4",
+          "name": "Total Checking",
+          "bank": "Chase",
+          "bank_key": "chase",
+          "in_book": true,
+          "creditor": "Chase",
+          "type": "checking",
+          "type_words": "Checking",
+          "limit_cents": null,
+          "opened": null,
+          "status": "open",
+          "authorized_user": false,
+          "sources": [
+            "plaid"
+          ],
+          "source_words": [
+            "Plaid"
+          ],
+          "bureaus": [],
+          "existing_relationship": true,
+          "logo": "/assets/lenders/chase.png",
+          "logo_source": "bank_book"
+        }
+      ]
+    },
+    {
+      "key": "entity:aaaaaaaa-0000-4000-8000-000000000002",
+      "kind": "business",
+      "name": "Sample Studio LLC",
+      "container_id": "aaaaaaaa-0000-4000-8000-000000000002",
+      "archived": false,
+      "closed": 0,
+      "items": [
+        {
+          "id": "bizreport:c2:b1:0",
+          "name": "American Express",
+          "bank": "American Express",
+          "bank_key": "american_express",
+          "in_book": true,
+          "creditor": "AMERICAN EXPRESS",
+          "type": "card",
+          "type_words": "Credit card",
+          "limit_cents": 1500000,
+          "opened": "2022-02",
+          "status": "open",
+          "authorized_user": false,
+          "sources": [
+            "report"
+          ],
+          "source_words": [
+            "Report"
+          ],
+          "bureaus": [
+            "EXB"
+          ],
+          "existing_relationship": true,
+          "logo": "/assets/lenders/american-express.png",
+          "logo_source": "bank_book"
+        },
+        {
+          "id": "plaid:p1",
+          "name": "Ink Business Cash",
+          "bank": "Chase",
+          "bank_key": "chase",
+          "in_book": true,
+          "creditor": "Chase",
+          "type": "card",
+          "type_words": "Credit card",
+          "limit_cents": 1000000,
+          "opened": null,
+          "status": "open",
+          "authorized_user": false,
+          "sources": [
+            "plaid"
+          ],
+          "source_words": [
+            "Plaid"
+          ],
+          "bureaus": [],
+          "existing_relationship": true,
+          "logo": "/assets/lenders/chase.png",
+          "logo_source": "bank_book"
+        },
+        {
+          "id": "plaid:p2",
+          "name": "Total Business Checking",
+          "bank": "Chase",
+          "bank_key": "chase",
+          "in_book": true,
+          "creditor": "Chase",
+          "type": "checking",
+          "type_words": "Checking",
+          "limit_cents": null,
+          "opened": null,
+          "status": "open",
+          "authorized_user": false,
+          "sources": [
+            "plaid"
+          ],
+          "source_words": [
+            "Plaid"
+          ],
+          "bureaus": [],
+          "existing_relationship": true,
+          "logo": "/assets/lenders/chase.png",
+          "logo_source": "bank_book"
+        },
+        {
+          "id": "entry:e1",
+          "name": "Ink Unlimited",
+          "bank": "Chase",
+          "bank_key": "chase",
+          "in_book": true,
+          "creditor": "Chase",
+          "type": "card",
+          "type_words": "Credit card",
+          "limit_cents": 1200000,
+          "opened": "2024-05",
+          "status": "open",
+          "authorized_user": false,
+          "sources": [
+            "you"
+          ],
+          "source_words": [
+            "Added by you"
+          ],
+          "bureaus": [],
+          "existing_relationship": true,
+          "logo": "/assets/lenders/chase.png",
+          "logo_source": "bank_book"
+        }
+      ]
+    },
+    {
+      "key": "business:sample rentals llc",
+      "kind": "business",
+      "name": "Sample Rentals LLC",
+      "container_id": null,
+      "archived": false,
+      "closed": 0,
+      "items": [
+        {
+          "id": "entry:e2",
+          "name": "Truist",
+          "bank": "Truist",
+          "bank_key": "truist",
+          "in_book": true,
+          "creditor": "Truist",
+          "type": "checking",
+          "type_words": "Checking",
+          "limit_cents": null,
+          "opened": "2025-08",
+          "status": "open",
+          "authorized_user": false,
+          "sources": [
+            "you"
+          ],
+          "source_words": [
+            "Added by you"
+          ],
+          "bureaus": [],
+          "existing_relationship": true,
+          "logo": "/assets/lenders/truist.png",
+          "logo_source": "bank_book"
+        }
+      ]
+    },
+    {
+      "key": "unsorted",
+      "kind": "unsorted",
+      "name": "Not sorted yet",
+      "container_id": null,
+      "archived": false,
+      "closed": 0,
+      "items": [
+        {
+          "id": "hand:h1",
+          "name": "Navy Federal cashRewards",
+          "bank": "Navy Federal Credit Union",
+          "bank_key": "navy_federal",
+          "in_book": true,
+          "creditor": "Navy Federal cashRewards",
+          "type": "card",
+          "type_words": "Credit card",
+          "limit_cents": 300000,
+          "opened": null,
+          "status": "open",
+          "authorized_user": false,
+          "sources": [
+            "you"
+          ],
+          "source_words": [
+            "Added by you"
+          ],
+          "bureaus": [],
+          "existing_relationship": true,
+          "logo": "/assets/lenders/navy-federal-credit-union.png",
+          "logo_source": "bank_book"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "key": "american_express",
+      "bank": "American Express",
+      "text": "Existing relationship",
+      "accounts": 1,
+      "types": [
+        "Credit card"
+      ],
+      "scopes": [
+        "business"
+      ],
+      "lender_ids": [
+        "cccccccc-0000-4000-8000-000000000002"
+      ],
+      "logo": "/assets/lenders/american-express.png",
+      "logo_source": "bank_book"
+    },
+    {
+      "key": "chase",
+      "bank": "Chase",
+      "text": "Existing relationship",
+      "accounts": 5,
+      "types": [
+        "Credit card",
+        "Checking"
+      ],
+      "scopes": [
+        "personal",
+        "business"
+      ],
+      "lender_ids": [
+        "cccccccc-0000-4000-8000-000000000001"
+      ],
+      "logo": "/assets/lenders/chase.png",
+      "logo_source": "bank_book"
+    },
+    {
+      "key": "navy_federal",
+      "bank": "Navy Federal Credit Union",
+      "text": "Existing relationship",
+      "accounts": 1,
+      "types": [
+        "Credit card"
+      ],
+      "scopes": [],
+      "lender_ids": [
+        "cccccccc-0000-4000-8000-000000000004"
+      ],
+      "logo": "/assets/lenders/navy-federal-credit-union.png",
+      "logo_source": "bank_book"
+    },
+    {
+      "key": "truist",
+      "bank": "Truist",
+      "text": "Existing relationship",
+      "accounts": 1,
+      "types": [
+        "Checking"
+      ],
+      "scopes": [
+        "business"
+      ],
+      "lender_ids": [
+        "cccccccc-0000-4000-8000-000000000005"
+      ],
+      "logo": "/assets/lenders/truist.png",
+      "logo_source": "bank_book"
+    }
+  ],
+  "counts": {
+    "open": 11,
+    "closed": 1,
+    "report": 6,
+    "plaid": 4,
+    "you": 3,
+    "fundhub": 0,
+    "business_report_lines_without_name": 0
+  },
+  "add": {
+    "types": [
+      {
+        "value": "credit_card",
+        "label": "Credit card",
+        "limit": true
+      },
+      {
+        "value": "line_of_credit",
+        "label": "Line of credit",
+        "limit": true
+      },
+      {
+        "value": "loan",
+        "label": "Loan",
+        "limit": false
+      },
+      {
+        "value": "checking",
+        "label": "Checking",
+        "limit": false
+      },
+      {
+        "value": "savings",
+        "label": "Savings",
+        "limit": false
+      }
+    ],
+    "belongs_to": [
+      {
+        "value": "personal",
+        "label": "Personal"
+      },
+      {
+        "value": "entity:aaaaaaaa-0000-4000-8000-000000000002",
+        "label": "Sample Studio LLC"
+      },
+      {
+        "value": "business:sample rentals llc",
+        "label": "Sample Rentals LLC"
+      }
+    ]
+  },
+  "source": {
+    "label": "Your accounts",
+    "ref": "src/finance/tradeline-inventory.mjs (credit reports, Plaid, added by you)"
+  }
+}

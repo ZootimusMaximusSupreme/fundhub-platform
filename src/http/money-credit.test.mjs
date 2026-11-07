@@ -161,4 +161,19 @@ describe("GET /api/money/credit — the door", () => {
     assert.equal(res.statusCode, 200);
     assert.deepEqual(Object.keys(build.calls[0]).sort(), ["asOf", "clientId", "orgId"]);
   });
+
+  test("each lender's own logo is added for the session's org (owner rule 2026-11-07)", async () => {
+    const seen = [];
+    const attachCreditLogos = async (_db, args) => {
+      seen.push(args);
+      return { ...args.payload, accounts: { list: [{ lender: "CHASE", logo: "/assets/lenders/chase.png", logo_source: "bank_book" }] } };
+    };
+    const res = makeRes();
+    await handler({ method: "GET", query: {} }, res,
+      { db: db(), requirePrincipal: gateAs(clientPrincipal()), creditOverview: spyBuild(), attachCreditLogos, now: NOW });
+    assert.equal(res.statusCode, 200);
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].orgId, ORG);
+    assert.equal(res.body.accounts.list[0].logo, "/assets/lenders/chase.png");
+  });
 });

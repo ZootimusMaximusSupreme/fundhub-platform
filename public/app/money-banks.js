@@ -71,14 +71,43 @@
     return (cents / 100).toFixed(2);
   }
 
-  /* The source of a rule, printed beside it. Hover shows the exact book row. */
+  /* Staff view only: rule sources and staff notes (short client words, owner rule
+     2026-11-07). Set by render() for one draw. */
+  var STAFF_VIEW = false;
+
+  /* The source of a rule, printed beside it for staff. Hover shows the exact book row. */
   function src(s) {
-    if (!s || !s.label) return "";
+    if (!STAFF_VIEW || !s || !s.label) return "";
     return ' <span class="src caption" title="' + esc(s.ref || "") + '">Source: ' + esc(s.label) + "</span>";
+  }
+
+  /* The bank's own logo beside its name (bank-logo.js). Nothing when the read
+     has none, or when the helper is not on the page. */
+  function bankLogo(logo, name) {
+    var L = root.FHBankLogo;
+    return L ? L.html(logo, name) : "";
   }
 
   function notSet(textWords) {
     return '<span class="not-set">' + esc(textWords || "Not set") + "</span>";
+  }
+
+  /* The client's own accounts, from the read (unit TL, src/finance/tradeline-inventory.mjs):
+     a bank they already use is tagged; a product they already hold says so,
+     with the bank book's next product when it lists one. */
+  function relTag(x) {
+    return x && x.existing_relationship
+      ? ' <span class="tag tag-rel">' + esc(x.existing_relationship.text || "Existing relationship") + "</span>"
+      : "";
+  }
+  /* A card line already shows the next product as its card, so only a bank
+     card adds the "Next:" line. */
+  function haveLines(x, withNext) {
+    var have = list(x && x.you_have);
+    var out = "";
+    if (have.length) out += '<p class="have"><span class="have-word">You already have this:</span> ' + esc(have.join(" · ")) + "</p>";
+    if (withNext && have.length && x.next_product) out += '<p class="caption">Next: ' + esc(x.next_product) + "</p>";
+    return out;
   }
 
   /* ── head + tiles ──────────────────────────────────────────────────────── */
@@ -154,8 +183,9 @@
       ? '<p class="on-plan"><span class="tag">On your plan</span> <span class="caption">' + esc(rel.status_text) + "</span></p>"
       : (staff ? renderPlanForm(d, b) : "");
     return '<article class="card bank" data-bank="' + esc(b.name) + '">' +
-      '<div class="bank-head"><div><p class="bank-name">' + esc(b.name) + "</p>" +
-      '<p class="caption">' + esc(list(b.products).join(" · ")) + "</p></div>" +
+      '<div class="bank-head"><div><p class="bank-name">' + bankLogo(b.logo, b.name) + esc(b.name) + relTag(b) + "</p>" +
+      '<p class="caption">' + esc(list(b.products).join(" · ")) + "</p>" +
+      (b.has_account ? '<p class="caption">You already have an account here.</p>' : "") + haveLines(b, true) + "</div>" +
       (b.tier != null ? '<span class="tag">Tier ' + esc(b.tier) + "</span>" : "") + "</div>" +
       '<dl class="facts"><div><dt class="caption">Deposit</dt><dd class="num">' +
       (isNum(b.minimum_deposit_cents) ? esc(money(b.minimum_deposit_cents)) : notSet()) + "</dd></div>" +
@@ -205,8 +235,8 @@
       : notSet("Not set for this bank");
     return '<li class="card stack-row">' +
       '<span class="stack-n num" aria-label="' + esc("Step " + it.order) + '">' + esc(it.order) + "</span>" +
-      '<div class="stack-main"><p class="bank-name">' + esc(it.issuer) + ' <span class="tag">' + esc(KIND_WORD[it.kind] || "") + "</span></p>" +
-      '<p class="caption">' + esc(it.card) + (others.length ? esc(" · also " + others.join(", ")) : "") + "</p>" +
+      '<div class="stack-main"><p class="bank-name">' + bankLogo(it.logo, it.issuer) + esc(it.issuer) + ' <span class="tag">' + esc(KIND_WORD[it.kind] || "") + "</span>" + relTag(it) + "</p>" +
+      '<p class="caption">' + esc(it.card) + (others.length ? esc(" · also " + others.join(", ")) : "") + "</p>" + haveLines(it, false) +
       (why ? '<ul class="why">' + why + "</ul>" : "") + gate + "</div>" +
       '<dl class="stack-side"><div><dt class="caption">Spacing</dt><dd>' + spacing + "</dd></div>" +
       '<div><dt class="caption">Inquiry</dt><dd>' + esc(it.inquiry_impact ? it.inquiry_impact.text : "—") +
@@ -219,6 +249,8 @@
     var rule = s.order_rule || {};
     var ruleSrc = list(rule.sources).map(src).join("");
     var engine = s.engine || {};
+    /* An empty card looks broken (accountability QA06): no answer, no card. */
+    var stackAnswer = engine.can_card_stack === true || engine.can_card_stack === false || !!engine.rule || isNum(engine.card_funding_cents);
     var inq = s.inquiries || {};
     var counts = (isNum(s.personal_banks) || isNum(s.business_banks))
       ? "Showing " + items.length + " of " + plural((s.personal_banks || 0) + (s.business_banks || 0), "bank", "banks") +
@@ -227,17 +259,28 @@
     var body = items.length
       ? '<ol class="stack">' + items.map(renderStackItem).join("") + "</ol>"
       : '<section class="card empty"><h3>No cards fit your file yet</h3><p>No card in our bank book serves your state. When your state is on file, the order shows here.</p></section>';
+    /* Lines the client already holds every product of: out of the order, still shown. */
+    var have = list(s.already_have);
+    if (have.length) {
+      body += '<div class="card have-card"><h3 class="eyebrow">You already have</h3><ul class="have-list">' +
+        have.map(function (h) {
+          return '<li><p class="bank-name">' + bankLogo(h.logo, h.issuer) + esc(h.issuer) + relTag(h) + "</p>" +
+            '<p class="caption">' + esc(list(h.products).join(" · ")) + "</p></li>";
+        }).join("") + "</ul></div>";
+    }
     return '<section class="block" aria-labelledby="bk-stack"><h2 id="bk-stack">Card stacking order</h2>' +
       '<p class="caption">' + esc(rule.text || "") + ruleSrc + "</p>" +
       '<div class="grid two notes">' +
-      '<div class="card note-card"><h3 class="eyebrow">Can you card stack?</h3><p>' +
-      (engine.can_card_stack === true ? "Yes. " : engine.can_card_stack === false ? "Not yet. " : "") + esc(engine.rule || "") + src(engine.source) + "</p>" +
-      (isNum(engine.card_funding_cents) ? '<p class="caption">UnderwriteIQ card funding: ' + esc(money(engine.card_funding_cents)) + "</p>" : "") + "</div>" +
+      (stackAnswer
+        ? '<div class="card note-card"><h3 class="eyebrow">Can you card stack?</h3><p>' +
+          (engine.can_card_stack === true ? "Yes. " : engine.can_card_stack === false ? "Not yet. " : "") + esc(engine.rule || "") + src(engine.source) + "</p>" +
+          (isNum(engine.card_funding_cents) ? '<p class="caption">UnderwriteIQ card funding: ' + esc(money(engine.card_funding_cents)) + "</p>" : "") + "</div>"
+        : "") +
       '<div class="card note-card"><h3 class="eyebrow">Inquiries</h3><p>' + esc(inq.text || "") + src(inq.source) + "</p>" +
       (inq.rule ? "<p>" + esc(inq.rule.text) + src(inq.rule.source) + "</p>" : "") + "</div>" +
       "</div>" +
       (s.spacing ? '<div class="card spacing"><h3 class="eyebrow">Spacing</h3><p>' + esc(s.spacing.text) + src(s.spacing.source) + "</p>" +
-        (s.spacing.days_text ? '<p class="caption">' + esc(s.spacing.days_text) + "</p>" : "") + "</div>" : "") +
+        (STAFF_VIEW && s.spacing.days_text ? '<p class="caption">' + esc(s.spacing.days_text) + "</p>" : "") + "</div>" : "") +
       body + (counts ? '<p class="caption">' + esc(counts) + "</p>" : "") + "</section>";
   }
 
@@ -301,10 +344,10 @@
     var season = r.seasoning
       ? '<span class="caption">' + esc(r.seasoning.days + "+ days") + src(r.seasoning.source) + "</span>"
       : '<span class="caption">Not in the bank book</span>';
-    return '<tr data-rel="' + esc(r.id) + '"><td><span class="bank-name">' + esc(r.bank) + "</span><br>" +
+    return '<tr data-rel="' + esc(r.id) + '"><td>' + bankLogo(r.logo, r.bank) + '<span class="bank-name">' + esc(r.bank) + "</span><br>" +
       '<span class="caption">' + esc((KIND_WORD[r.account_kind] || "") + (r.container_name ? " · " + r.container_name : "")) + "</span></td>" +
-      "<td>" + statusPill(r) + "</td><td>" + opened + '</td><td class="r num">' + history + "</td>" +
-      '<td class="r">' + plan + "</td><td>" + season + "</td></tr>" +
+      '<td data-label="Status">' + statusPill(r) + '</td><td data-label="Opened">' + opened + '</td><td class="r num" data-label="History">' + history + "</td>" +
+      '<td class="r" data-label="Deposits / plan">' + plan + '</td><td data-label="Seasoning">' + season + "</td></tr>" +
       (staff && r.status !== "skipped" ? '<tr class="ctl-row"><td colspan="6">' + rowControls(r) + "</td></tr>" : "");
   }
 
@@ -323,7 +366,7 @@
   function renderRelationships(d, staff) {
     var rels = list(d && d.relationships);
     var body = rels.length
-      ? '<div class="card"><div class="scroll-x"><table><caption class="caption">Each bank on your plan, what is done, and the money you put in.</caption>' +
+      ? '<div class="card"><div class="scroll-x"><table class="rel-table" aria-label="Each bank on your plan, what is done, and the money you put in">' +
         '<thead><tr><th>Bank</th><th>Status</th><th>Opened</th><th class="r">History</th><th class="r">Deposits / plan</th><th>Seasoning</th></tr></thead>' +
         "<tbody>" + rels.map(function (r) { return renderRelationship(r, staff); }).join("") + "</tbody></table></div></div>"
       : '<section class="card empty"><h3>No banks on your plan yet</h3>' +
@@ -338,14 +381,19 @@
     var items = list(d && d.not_set);
     if (!items.length) return "";
     return '<section class="card notset" aria-labelledby="bk-ns"><h2 class="eyebrow" id="bk-ns">Not set yet</h2>' +
-      '<p class="caption">No Fundhub rule sets these. Staff set them, and until then they stay blank.</p>' +
+      (STAFF_VIEW ? '<p class="caption">No Fundhub rule sets these. Staff set them, and until then they stay blank.</p>' : "") +
       '<ul class="ns-list">' + items.map(function (x) { return "<li>" + esc(x.text) + "</li>"; }).join("") + "</ul></section>";
   }
 
   function render(d, opts) {
     var staff = !!(opts && opts.staff);
-    return renderHead(d) + renderTiles(d) + renderBanks(d, staff) + renderStacking(d) +
-      renderRound(d, staff) + renderRelationships(d, staff) + renderNotSet(d);
+    STAFF_VIEW = staff;
+    try {
+      return renderHead(d) + renderTiles(d) + renderBanks(d, staff) + renderStacking(d) +
+        renderRound(d, staff) + renderRelationships(d, staff) + renderNotSet(d);
+    } finally {
+      STAFF_VIEW = false;
+    }
   }
 
   function renderLoading() {

@@ -14,8 +14,10 @@
 //    picked, and the platform's own delivery. Promising a result FundHub does
 //    not control is how a good offer becomes a refund machine. So a trial that
 //    ran properly and booked nothing gets: a written breakdown of why, seven
-//    more days of the machine, and the $297 credited in full toward the $10,000
-//    if they join within 30 days.
+//    more days of the machine, and the $297 credited in full toward the partner
+//    entry fee if they join within 30 days. The entry fee is read from
+//    src/config/offers.mjs PARTNER_ENTRY ($30,000, owner-set 2026-11-07), never
+//    typed here.
 //
 // EVERY CONDITION IS MEASURABLE FROM DATA FUNDHUB ALREADY HOLDS. Spend comes
 // from ad_metrics_daily, the campaign's own status from campaigns.status, and
@@ -35,6 +37,14 @@ import {
   LIVE_TRIAL_PRICE_CENTS,
   TRIAL_DAYS
 } from "./constants.mjs";
+import { OFFERS, formatCents } from "../config/offers.mjs";
+
+/** "the $30,000" — the partner entry fee the $297 is credited toward, from the
+    catalogue. An unusable price says "the entry fee" rather than a guess. */
+function entryFeeWords(entryPriceCents) {
+  const price = Number.isSafeInteger(entryPriceCents) && entryPriceCents > 0 ? formatCents(entryPriceCents) : null;
+  return price ? `the ${price}` : "the entry fee";
+}
 
 /** OUTCOME — what is owed. Four answers and no fifth. */
 export const OUTCOME = Object.freeze({
@@ -82,6 +92,8 @@ export function checkDayOneDelivery(delivered = {}) {
  *   trialComplete      true once the seventh live day is finished
  *   dayOneDelivered    the four booleans above
  *   priceCents         what they paid
+ *   entryPriceCents    the partner entry fee the $297 is credited toward;
+ *                      defaults to the catalogue's (offers.mjs PARTNER_ENTRY)
  *
  * NULL SPEND IS NOT ZERO SPEND. When no metrics have synced, the answer is
  * "cannot tell yet" and the remedy is not refused on a number nobody has.
@@ -95,7 +107,8 @@ export function evaluateRemedy(facts = {}) {
     trialComplete = false,
     dayOneDelivered = {},
     priceCents = LIVE_TRIAL_PRICE_CENTS,
-    minSpendCents = REMEDY_MIN_SPEND_CENTS
+    minSpendCents = REMEDY_MIN_SPEND_CENTS,
+    entryPriceCents = OFFERS.PARTNER_ENTRY.priceCents
   } = facts;
 
   /* The day-1 guarantee is checked FIRST and it does not care about calls. It
@@ -170,20 +183,20 @@ export function evaluateRemedy(facts = {}) {
     message:
       "You ran the full seven days, you spent your budget, your account stayed live, and no call booked. " +
       `You get a written breakdown of why at no charge, ${REMEDY_EXTRA_DAYS} more days of the machine at no charge, ` +
-      `and your $297 credited in full toward the $10,000 if you join within ${REMEDY_CREDIT_WINDOW_DAYS} days.`
+      `and your $297 credited in full toward ${entryFeeWords(entryPriceCents)} if you join within ${REMEDY_CREDIT_WINDOW_DAYS} days.`
   };
 }
 
 /** The exact policy wording that goes on the page. One string, one place — a
     guarantee that is paraphrased on a second surface is a guarantee with two
     meanings. */
-export function remedyPolicyText() {
+export function remedyPolicyText({ entryPriceCents = OFFERS.PARTNER_ENTRY.priceCents } = {}) {
   return [
     "If FundHub does not deliver your branded page, your ad set, your live dashboard and your campaign " +
     "by the end of day one, you get every dollar back, automatically, without asking.",
     `If you run the full ${TRIAL_DAYS} days with at least $500 in spend, your account stays active the whole time, ` +
     "and no call books, you get: a written breakdown of why, at no charge; " +
-    `${REMEDY_EXTRA_DAYS} more days of the machine, at no charge; and your $297 credited in full toward the $10,000 ` +
+    `${REMEDY_EXTRA_DAYS} more days of the machine, at no charge; and your $297 credited in full toward ${entryFeeWords(entryPriceCents)} ` +
     `if you join within ${REMEDY_CREDIT_WINDOW_DAYS} days.`
   ];
 }

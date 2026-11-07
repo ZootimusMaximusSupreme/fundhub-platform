@@ -104,34 +104,31 @@ test("Alerts: Show all lists the newest texts of ITS card only, the jump links l
     assert.deepEqual(await bodies("payment_timing"), ["Pay text number 0", "Pay text number 1", "Pay text number 2"], "Show fewer puts the same three back");
     assert.match(await more.innerText(), /^Show all 5 texts$/);
 
-    // The jump links. The page lists what needs you; each "See it" must land on the cash box its own
-    // sentence names, and "Add the day" on the day box of the card it names.
+    // The jump links. Needs you lists what only the client can fix; "Add the day" must land on the day
+    // box of the card it names. A short cushion is a smart alert now (unit AL2, 2026-11-07): Personal's
+    // "See it" lands on the personal cash box. The business box sums every business, and the board judges
+    // each business on its own, so nothing jumps there.
     const needs = page.locator(".need-list li");
     const items = await needs.evaluateAll((lis) => lis.map((li) => ({
       text: li.querySelector("span").innerText.trim(),
       label: li.querySelector("button")?.innerText.trim() || null,
       to: li.querySelector("button")?.getAttribute("data-to") || null,
     })));
-    const byText = (re) => items.find((i) => re.test(i.text));
-    const day = byText(/^Add the statement day for /);
-    const personal = byText(/^Personal cash is \$85\.57 short/);
-    const business = byText(/^Business cash is \$1,200\.00 short/);
-    assert.ok(day && personal && business, `the three needs are listed: ${JSON.stringify(items.map((i) => i.text))}`);
+    const day = items.find((i) => /^Add the statement day for /.test(i.text));
+    assert.ok(day, `the day is asked for: ${JSON.stringify(items.map((i) => i.text))}`);
+    assert.ok(!items.some((i) => /short/.test(i.text)), "a short cushion is not also a to-do");
     assert.equal(day.label, "Add the day");
-    assert.equal(personal.label, "See it");
-    assert.equal(business.label, "See it");
-    assert.equal(personal.to, "fa-cash-personal", "the personal sentence jumps to the personal cash box");
-    assert.equal(business.to, "fa-cash-business", "the business sentence jumps to the business cash box");
     assert.match(day.to, /^fa-cd-/);
+    const personal = page.locator('#fa-smart .smart-item.is-cash_low [data-act="jump"]');
+    assert.equal(await personal.getAttribute("data-to"), "fa-cash-personal", "the personal cash alert jumps to the personal cash box");
+    assert.equal(await page.locator('[data-act="jump"][data-to="fa-cash-business"]').count(), 0);
+    await personal.click();
+    await page.waitForFunction(() => document.activeElement?.id === "fa-cash-personal");
+    assert.match(await page.locator("#fa-cash-personal").innerText(), /Personal cash/i);
+    assert.match(await page.locator("#fa-cash-business").innerText(), /Business cash[\s\S]*Short/i, "the business box still says it is short");
     const press = async (li) => {
       await needs.filter({ hasText: li.text }).locator("button").click();
     };
-    await press(personal);
-    await page.waitForFunction(() => document.activeElement?.id === "fa-cash-personal");
-    assert.match(await page.locator("#fa-cash-personal").innerText(), /Personal cash/i);
-    await press(business);
-    await page.waitForFunction(() => document.activeElement?.id === "fa-cash-business");
-    assert.match(await page.locator("#fa-cash-business").innerText(), /Business cash/i);
     await press(day);
     await page.waitForFunction((id) => document.activeElement?.id === id, day.to);
     // The day box it lands on belongs to the card the sentence names.
@@ -146,6 +143,8 @@ test("Alerts: Show all lists the newest texts of ITS card only, the jump links l
     const log = { reads: 0, queries: [] };
     const handlers = {
       "/api/money/alerts": async (route, { url }) => {
+        // The alerts bundle's own read (unit AL) is the box under this section, not this section's read.
+        if (new URL(url).searchParams.get("part") === "bundle") return json(route, { ok: true });
         log.reads += 1;
         log.queries.push(new URL(url).search);
         return log.reads === 1 ? json(route, { ok: false, error: "server_error" }, 500) : json(route, alertsRead());

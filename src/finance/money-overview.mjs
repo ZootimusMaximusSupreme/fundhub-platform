@@ -358,9 +358,11 @@ export function buildMoneyOverview({
     const n = daysBetween(today, d);
     return n !== null && n >= 0 && n < UPCOMING_DAYS;
   };
+  /* A card row carries its account_id (unit I6, 2026-11-07) so its "Pay now" /
+     "I paid" controls (public/app/pay-now.js) know which card it is. */
   const upcoming = [
     ...cards.filter((c) => soon(c.due_on))
-      .map((c) => ({ type: "card_due", name: c.name, on: c.due_on, amount_cents: c.min_due_cents })),
+      .map((c) => ({ type: "card_due", account_id: c.account_id, name: c.name, on: c.due_on, amount_cents: c.min_due_cents })),
     ...loans.filter((l) => soon(l.due_on))
       .map((l) => ({ type: "loan_due", name: l.name, on: l.due_on, amount_cents: l.payment_cents })),
     ...billRows.filter((b) => soon(b.next_on))

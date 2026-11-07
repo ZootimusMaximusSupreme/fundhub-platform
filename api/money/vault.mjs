@@ -1,4 +1,5 @@
 // GET  /api/money/vault[?client_id=<uuid>]
+// GET  /api/money/vault?packet=<personal | business id>[&client_id=<uuid>]   the lender packet PDF
 // POST /api/money/vault   { action, client_id, ... }          (staff only)
 //
 // The application document vault (Capital Blueprint unit B3): the papers a lender
@@ -25,6 +26,17 @@
 //     Every successful POST answers { ok, result, vault } where `vault` is the fresh
 //     read (the same shape as GET), so a screen can redraw without a second call.
 //
+// THE LENDER PACKET (Finance OS unit I3, src/finance/lender-packet.mjs). Every GET
+// also answers `packets`: one for the personal file and one per business, each
+// with the papers that are ready, what is still missing, and how many files a
+// download would carry. `packets` is null (with packets_error) when the Fundhub
+// papers could not be read; the rest of the vault still answers.
+// GET with ?packet=<key> answers the packet itself: ONE PDF, built in memory from
+// the files the vault calls ready, never stored. Same gate as the read above (a
+// client gets only their own file). 400 for a key that is not a packet key, 404 for
+// a business that is not on this file, 409 when nothing is ready to put in.
+// `x-packet-left-out` lists, as JSON [{ id, reason }], any ready file that did not fit.
+//
 // A client in another org is 404, not 403. Nothing here texts anyone and nothing
 // moves money: the ask is the daily sweeper (src/workflows/document-vault-chase.mjs).
 import { db } from "../../src/db.mjs";
@@ -35,6 +47,10 @@ import { baseUrlFromRequest } from "../../src/documents/signed-url.mjs";
 import {
   readVault, decideDocument, addCustomItem, retireItem, waiveItem, unwaiveItem, VaultError
 } from "../../src/finance/document-vault.mjs";
+import {
+  packetsFromVault, findPacket, isPacketKey, loadFundhubPapers, fileReader, buildPacketPdf, packetFilename
+} from "../../src/finance/lender-packet.mjs";
+import { storeFromEnv } from "../../src/documents/store.mjs";
 import { readBody } from "../banking/sync-accounts.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 
@@ -78,6 +94,9 @@ export default async function handler(req, res, deps = {}) {
   const clock = deps.now || (() => new Date());
   const env = deps.env || process.env;
   const read = deps.readVault || readVault;
+  const fundhubPapers = deps.loadFundhubPapers || loadFundhubPapers;
+  const reader = deps.fileReader || fileReader;
+  const buildPdf = deps.buildPacketPdf || buildPacketPdf;
   const ops = {
     accept: deps.decideDocument || decideDocument,
     add_item: deps.addCustomItem || addCustomItem,
@@ -107,9 +126,42 @@ export default async function handler(req, res, deps = {}) {
 
   try {
     if (method === "GET") {
+      const packetKey = req.query && req.query.packet !== undefined ? String(req.query.packet).trim() : null;
+      if (packetKey !== null && !isPacketKey(packetKey)) {
+        return res.status(400).json({ ok: false, error: "invalid_packet", message: "packet must be personal, business or a business id" });
+      }
       const out = await view();
       if (!out) return res.status(404).json({ ok: false, error: "not_found" });
-      return res.status(200).json(out);
+      if (packetKey === null) {
+        // The packet list rides on every read. A failed read of the two Fundhub
+        // papers never takes the vault down with it, and never reads as "missing".
+        try {
+          out.packets = packetsFromVault(out, { fundhubPapers: await fundhubPapers(database, { orgId, clientId, now }) });
+        } catch (e) {
+          if (CLIENT_DATA_ERRORS.has(e && e.code)) throw e;
+          out.packets = null;
+          out.packets_error = "could_not_check";
+        }
+        return res.status(200).json(out);
+      }
+      const packets = packetsFromVault(out, { fundhubPapers: await fundhubPapers(database, { orgId, clientId, now }) });
+      const packet = findPacket(packets, packetKey);
+      if (!packet) return res.status(404).json({ ok: false, error: "no_such_packet", message: "that business is not on this file" });
+      if (!packet.counts.files) {
+        return res.status(409).json({ ok: false, error: "nothing_ready", message: "no paper is ready to put in the packet yet" });
+      }
+      const getFile = reader(database, { orgId, clientId, store: deps.store || storeFromEnv(env), now });
+      const pdf = await buildPdf({ packet, clientName: out.client && out.client.name, getFile, now });
+      if (!pdf.bytes) {
+        return res.status(409).json({ ok: false, error: "nothing_ready", message: "no ready file could be put in the packet", left_out: pdf.left_out.map((f) => ({ id: f.id, reason: f.reason })) });
+      }
+      res.setHeader("cache-control", "private, no-store");
+      res.setHeader("x-content-type-options", "nosniff");
+      res.setHeader("content-type", "application/pdf");
+      res.setHeader("content-disposition", `attachment; filename="${packetFilename(packet, now)}"`);
+      res.setHeader("x-packet-files", String(pdf.included.length));
+      res.setHeader("x-packet-left-out", JSON.stringify(pdf.left_out.map((f) => ({ id: f.id, reason: f.reason }))));
+      return res.status(200).end(Buffer.from(pdf.bytes));
     }
 
     const action = String(body.action || "").trim();

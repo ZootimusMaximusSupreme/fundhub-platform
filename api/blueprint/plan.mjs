@@ -5,6 +5,8 @@ import { readBusinessPlans } from '../../src/blueprint/business-plans.mjs';
 import { buildBlueprintClientPlan } from '../../src/blueprint/client-plan.mjs';
 import { preparationGuidance, websitePrompt } from '../../src/blueprint/preparation-guidance.mjs';
 import { rankLocalCreditUnions } from '../../src/blueprint/local-credit-unions.mjs';
+import { readBlueprintCycle } from '../../src/blueprint/fulfillment-cycle.mjs';
+import { getBlueprintFulfillmentAccess } from '../../src/blueprint/fulfillment-access.mjs';
 
 export default async function handler(req,res,deps={}) {
   if(req.method!=='GET') {
@@ -20,6 +22,7 @@ export default async function handler(req,res,deps={}) {
       preparationGuidance:deps.preparationGuidance||preparationGuidance,
       websitePrompt:deps.websitePrompt||websitePrompt,
       rankLocalCreditUnions:deps.rankLocalCreditUnions||rankLocalCreditUnions,
+      readCycle:(database,scope,options)=>readBlueprintCycle(database,scope,{...options,readAccess:getBlueprintFulfillmentAccess}),
       ...deps.planDependencies
     });
     if(!result)return res.status(404).json({ok:false,error:'client_not_found'});

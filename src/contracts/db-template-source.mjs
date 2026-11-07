@@ -14,12 +14,16 @@
 // 273_repair_fee_charged_once.sql can correct 169's wording without editing it
 // (editing an applied migration is a silent no-op, CLAUDE.md §12).
 //
-// WHAT IT UNDERSTANDS. Only the two shapes db/ actually uses to write contract
-// copy: an INSERT whose body is a run of E'…' literals concatenated with ||, and
-// an UPDATE of the same shape. It is not a SQL parser and must not grow into
-// one; a statement it cannot read returns null for that part and the previous
-// definition survives, which is visible rather than silently wrong because the
-// callers assert the body parsed.
+// WHAT IT UNDERSTANDS. Only the shapes db/ actually uses to write contract
+// copy: an INSERT whose body is a run of E'…' literals concatenated with ||, an
+// UPDATE of the same shape, and a body-text patch — an UPDATE whose body is
+// `replace(body, 'old', 'new')` with plain literals, guarded by
+// `strpos(body, '…') > 0` (592_partner_license_30k.sql). The patch is applied to
+// the body read so far, only when its guard still matches, the way Postgres runs
+// it. It is not a SQL parser and must not grow into one; a statement it cannot
+// read returns null for that part and the previous definition survives, which
+// is visible rather than silently wrong because the callers assert the body
+// parsed.
 //
 // KNOWN DUPLICATE, recorded rather than left to be discovered:
 // src/contracts/offer-fee-language.test.mjs carries its own private copy of this
@@ -85,6 +89,25 @@ export function fieldsFrom(block) {
   return normaliseManualFields(JSON.parse(m[1].replace(/''/g, "'")));
 }
 
+/** A body-text patch: `SET body = replace(body, 'old', 'new')`, nested
+ *  replace(replace(body, …), …) too, as [old, new] pairs. Only the SET clause is
+ *  read, so a literal in the WHERE guard is never taken for a replacement. null
+ *  when the statement is not that shape. */
+export function bodyReplacementsFrom(block) {
+  const set = block.match(/\bSET\s+body\s*=\s*((?:replace\(\s*)+body\s*,[\s\S]*?)(?=,\s*updated_at\b|\s+WHERE\b)/i);
+  if (!set) return null;
+  const pairs = [...set[1].matchAll(/'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'/g)]
+    .map(([, before, after]) => [before.replace(/''/g, "'"), after.replace(/''/g, "'")]);
+  return pairs.length ? pairs : null;
+}
+
+/** The guard `strpos(body, 'text') > 0`: the UPDATE only touches a body that
+ *  still holds that text. null when the statement has no such guard. */
+export function bodyGuardFrom(block) {
+  const m = block.match(/\bWHERE\b[\s\S]*?\bstrpos\(\s*body\s*,\s*'((?:[^']|'')*)'\s*\)\s*>\s*0/i);
+  return m ? m[1].replace(/''/g, "'") : null;
+}
+
 /** Which template a statement is about. */
 export function keyFrom(block) {
   const insert = block.match(/VALUES\s*\(\s*v_org\s*,\s*'([A-Z0-9][A-Z0-9-]*)'/);
@@ -117,6 +140,22 @@ export function readContractTemplatesFromDb(root = ROOT) {
         if (!key) continue;
         const prev = out.get(key) || { body: null, fields: null, block: "", sources: [] };
         const body = bodyFrom(block);
+        const patch = body === null ? bodyReplacementsFrom(block) : null;
+        if (patch) {
+          /* A body-text patch writes no other column, so the statement that
+             wrote the row stays its block. Like the UPDATE itself, it changes
+             nothing when the guard text is gone (a second run, or copy
+             somebody rewrote on the Contracts screen). */
+          const guard = bodyGuardFrom(block);
+          const applies = prev.body !== null && (guard === null || prev.body.includes(guard));
+          out.set(key, {
+            body: applies ? patch.reduce((text, [from, to]) => text.split(from).join(to), prev.body) : prev.body,
+            fields: prev.fields,
+            block: prev.block,
+            sources: [...prev.sources, `${dir}/${name}`]
+          });
+          continue;
+        }
         const fields = fieldsFrom(block);
         out.set(key, {
           body: body ?? prev.body,

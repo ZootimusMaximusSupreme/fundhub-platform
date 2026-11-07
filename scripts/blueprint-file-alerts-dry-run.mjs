@@ -65,6 +65,13 @@ function printers(out) {
       out.tasks.push(t);
       out.lines.push(`  WOULD OPEN CSM TASK  "${t.title}"  assignee_role ${t.assigneeRole}${t.assigneeStaffId ? `, staff ${t.assigneeStaffId}` : ", unassigned (client has no CSM yet)"}`);
       return { created: true, id: `dry-task-${out.tasks.length}` };
+    },
+    /* Step 5 (phone alerts) writes a queued push row for real. Here it only prints,
+       so the READ ONLY transaction never sees an INSERT. The phone and bill reads
+       stay the real ones. */
+    queuePhone: async (_c, q) => {
+      out.lines.push(`  WOULD QUEUE push ${q.plan.kind}  (key ${q.plan.key})`);
+      return { queued: true, messageId: `dry-push-${out.lines.length}` };
     }
   };
 }
@@ -79,12 +86,14 @@ async function days(conn, { label, startIso, count, store, deps = {}, dayHook = 
     const out = { sends: [], tasks: [], lines: [] };
     const p = printers(out);
     const r = await runFileAlerts(conn, { orgId: ORG, clientId: CLIENT, now: when, env: {} }, {
-      send: p.send, createTask: p.createTask, store, ...deps
+      send: p.send, createTask: p.createTask, store, ...deps,
+      phone: { ...(deps.phone || {}), queue: p.queuePhone }
     });
     const note = [];
     if (r.rearmed.length) note.push(`re-armed the ${r.rearmed.join(" and ")} cash alert`);
     if (r.held.length) note.push(`${r.held.length} held (opted out)`);
     if (r.errors.length) note.push(`ERRORS ${JSON.stringify(r.errors)}`);
+    if (r.phone && r.phone.queued.length) note.push(`${r.phone.queued.length} phone alert(s) would be queued for 9 a.m. Arizona`);
     if (r.sent.length === 0 && note.length === 0) { quiet += 1; continue; }
     console.log(`${dayOf(when)}  (day ${i})`);
     for (const s of r.sent) {

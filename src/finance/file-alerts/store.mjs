@@ -39,11 +39,12 @@ const SETTING_COLUMN = Object.freeze({
  * Settings — which kinds are on
  * ------------------------------------------------------------------ */
 
-/** readSettings → { payment_timing, promo_end, cash_reserve, new_credit, saved, updated_by_kind }.
- *  A client with no row has every kind ON — alerts are on by default. */
+/** readSettings → { payment_timing, promo_end, cash_reserve, new_credit, phone_alerts, saved, updated_by_kind }.
+ *  A client with no row has every kind ON — alerts are on by default. phone_alerts
+ *  is the switch for every finance phone alert (migration 573). */
 export async function readSettings(conn, { orgId, clientId }) {
   const r = await conn.query(
-    `SELECT payment_timing, promo_end, cash_reserve, new_credit, updated_by_kind, updated_at
+    `SELECT payment_timing, promo_end, cash_reserve, new_credit, phone_alerts, updated_by_kind, updated_at
        FROM file_protection_settings
       WHERE org_id = $1 AND client_id = $2`,
     [orgId, clientId]
@@ -55,6 +56,7 @@ export async function readSettings(conn, { orgId, clientId }) {
     promo_end: on("promo_end"),
     cash_reserve: on("cash_reserve"),
     new_credit: on("new_credit"),
+    phone_alerts: on("phone_alerts"),
     saved: !!row,
     updated_by_kind: row ? row.updated_by_kind : null,
     updated_at: row ? row.updated_at : null
@@ -74,6 +76,21 @@ export async function setAlertEnabled(conn, { orgId, clientId, kind, enabled, by
      VALUES ($1, $2, $3, $4)
      ON CONFLICT (client_id) DO UPDATE
         SET ${col} = EXCLUDED.${col}, updated_by_kind = EXCLUDED.updated_by_kind, updated_at = now()
+      WHERE file_protection_settings.org_id = EXCLUDED.org_id`,
+    [orgId, clientId, enabled, updatedBy]
+  );
+  return readSettings(conn, { orgId, clientId });
+}
+
+/** setPhoneAlerts — the one switch for every finance phone alert. Touches that one column. */
+export async function setPhoneAlerts(conn, { orgId, clientId, enabled, by }) {
+  if (typeof enabled !== "boolean") throw new FileAlertInputError("enabled", "enabled must be true or false");
+  const updatedBy = by === "staff" ? "staff" : "client";
+  await conn.query(
+    `INSERT INTO file_protection_settings (org_id, client_id, phone_alerts, updated_by_kind)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (client_id) DO UPDATE
+        SET phone_alerts = EXCLUDED.phone_alerts, updated_by_kind = EXCLUDED.updated_by_kind, updated_at = now()
       WHERE file_protection_settings.org_id = EXCLUDED.org_id`,
     [orgId, clientId, enabled, updatedBy]
   );

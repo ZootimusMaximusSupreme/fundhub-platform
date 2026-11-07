@@ -45,6 +45,8 @@ import { financeOsMoneyAgent } from './finance-os-money-agent.mjs';
 import { plaidTransactionsSweeper } from './plaid-transactions-sweeper.mjs';
 import { merchantPullSweeper } from './merchant-pull-sweeper.mjs';
 import { financeOsTrendSnapshots } from './finance-os-trend-snapshots.mjs';
+import { financeOsWeeklyMoney } from './finance-os-weekly-money.mjs';
+import { financeOsWhopPlansSweeper } from './finance-os-whop-plans-sweeper.mjs';
 import { financeOsMoneyTransfers } from './finance-os-money-transfers.mjs';
 import { blueprintNextFundingSequenceSweeper } from './blueprint-next-funding-sequence-sweeper.mjs';
 import { blueprintFinanceOsAlerts } from './blueprint-finance-os-alerts.mjs';
@@ -202,6 +204,17 @@ export const scheduled = [
      estimated past days for checking/savings rebuilt from bank_transactions.
      Reads and records only. Feeds GET /api/money/trends. */
   financeOsTrendSnapshots,
+  /* WEEKLY MONEY TEXT (Finance OS CFO build, unit AL, 2026-11-07). Monday 9 a.m.
+     Arizona: one text per Blueprint / Finance OS client about the week before —
+     money in, cards over 10%, seasoning day, steps left. Plain words, no amounts.
+     Queues only 9 a.m. to 4:50 p.m. Arizona; keyed once per client per week. */
+  financeOsWeeklyMoney,
+  /* WHOP PLANS (Finance OS unit W, 2026-11-07). Daily at 07:00 UTC, before the
+     07:30 alerts pass: read Fundhub's own Whop account (GET only) and save each
+     client's open Whop plans in whop_memberships (migration 584), tied by checkout
+     metadata or one exact email. Changes nothing at Whop, moves no money, sends
+     nothing. Feeds the Whop plans on Payments and their phone alerts. */
+  financeOsWhopPlansSweeper,
   /* MONEY MOVES (FinanceOS wave 5, W7, 2026-10-06). Every 15 minutes: expire
      stale proposals, send each move the CLIENT approved once its date comes
      (Plaid Transfer — sandbox unless PLAID_ENV=production AND

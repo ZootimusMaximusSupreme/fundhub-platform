@@ -1,0 +1,82 @@
+/* What you have — the tradeline inventory card (money-tradelines.js).
+   Finance OS wave 4, unit TL. Every rule is under .fh-tl, so the card sits
+   under Finance OS → Accounts with this one <link> and touches nothing around it.
+
+   The Astra look (UI-STANDARDS §0): a white 10px panel, 13px sentence-case gray
+   captions, an 8px black button for Try again, every control at least 44 by 44.
+   The add form is the Accounts section's own (money-accounts.js). Type sizes come from the Astra
+   tokens. No resting shadow is hand-written here (§12.2): the panel uses the
+   shared --panel-shadow token. A chip is a word on a quiet tint, never colour
+   alone (§12.6). One column and no sideways scroll on a phone, down to 320
+   wide (§11). [hidden] is respected everywhere. */
+
+.fh-tl{display:block;margin-top:24px;background:var(--surface,#FFFFFF);border:1px solid var(--line,#E3E5E0);border-radius:10px;box-shadow:var(--panel-shadow);padding:24px;min-width:0;color:var(--ink,#0D1113)}
+.fh-tl [hidden]{display:none !important}
+.fh-tl h2{font-size:var(--fs-title,1.375rem);font-weight:650;line-height:1.3;margin:0;color:var(--ink,#0D1113)}
+.fh-tl h3{font-size:var(--fs-body,1rem);font-weight:650;line-height:1.4;margin:0;color:var(--ink,#0D1113)}
+.fh-tl p{margin:0}
+.fh-tl .tl-cap{display:block;font-size:var(--fs-caption,.8125rem);line-height:1.5;color:var(--gray,#626968);overflow-wrap:anywhere}
+.fh-tl .tl-name{font-weight:650;overflow-wrap:anywhere;min-width:0}
+
+/* head: the title. The one add form is the Accounts section's (money-accounts.js). */
+.fh-tl .tl-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.fh-tl .tl-head-text{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 16rem}
+
+/* buttons — black 8px for the one action (Try again), white for the rest */
+.fh-tl .tl-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:8px 16px;border:1px solid var(--line,#E3E5E0);border-radius:8px;background:var(--surface,#FFFFFF);color:var(--ink,#0D1113);font:inherit;font-size:.875rem;font-weight:650;line-height:1.2;cursor:pointer;text-align:center}
+.fh-tl .tl-btn:hover{background:var(--soft,#F0F1ED);border-color:var(--gray2,#858C89)}
+.fh-tl .tl-btn:focus-visible{outline:2px solid var(--ink,#0D1113);outline-offset:2px}
+.fh-tl .tl-btn[disabled]{opacity:.6;cursor:progress}
+.fh-tl .tl-btn-dark{background:var(--ink,#0D1113);border-color:var(--ink,#0D1113);color:var(--paper,#F8F8F6);min-height:48px}
+.fh-tl .tl-btn-dark:hover{background:var(--ink2,#252A2D);border-color:var(--ink2,#252A2D)}
+
+/* chips: a word on a quiet tint */
+.fh-tl .tl-chip{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;background:var(--soft,#F0F1ED);color:var(--ink2,#252A2D);font-size:var(--fs-caption,.8125rem);font-weight:650;line-height:1.5;white-space:nowrap}
+.fh-tl .tl-chip.is-plaid{background:color-mix(in srgb,var(--info,#A9C6E8) 45%,#FFFFFF)}
+.fh-tl .tl-chip.is-you{background:color-mix(in srgb,var(--accent,#C9B8E8) 45%,#FFFFFF)}
+.fh-tl .tl-chip.is-fundhub{background:transparent;border:1px solid var(--line,#E3E5E0)}
+.fh-tl .tl-chip.is-rel{background:color-mix(in srgb,var(--ok,#A8D8B0) 50%,#FFFFFF)}
+.fh-tl .tl-chip.is-au,.fh-tl .tl-chip.is-kind{background:transparent;border:1px dashed var(--line,#E3E5E0)}
+
+/* banks you use */
+.fh-tl .tl-banks{margin-top:24px;padding:16px;border:1px solid var(--line,#E3E5E0);border-radius:10px;background:var(--paper,#F8F8F6)}
+.fh-tl .tl-bank-list{list-style:none;margin:8px 0 0;padding:0}
+.fh-tl .tl-bank{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;min-height:44px;padding:8px 0;border-top:1px solid var(--line,#E3E5E0)}
+.fh-tl .tl-bank:first-child{border-top:0}
+.fh-tl .tl-bank-name{display:inline-flex;align-items:center;min-width:0;flex:1 1 10rem}
+
+/* groups: Personal, each business, Not sorted yet */
+.fh-tl .tl-groups{display:grid;gap:24px;margin-top:24px}
+.fh-tl .tl-group-head{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid var(--line,#E3E5E0)}
+.fh-tl .tl-group-head h3{overflow-wrap:anywhere;min-width:0}
+.fh-tl .tl-group-head .tl-cap{margin-left:auto}
+.fh-tl .tl-list{list-style:none;margin:0;padding:0}
+.fh-tl .tl-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;align-items:center;padding:16px 0;border-top:1px solid var(--line,#E3E5E0)}
+.fh-tl .tl-row:first-child{border-top:0}
+.fh-tl .tl-main{display:flex;align-items:flex-start;gap:0;min-width:0}
+.fh-tl .tl-main .fh-bank-logo{margin-top:2px}
+.fh-tl .tl-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fh-tl .tl-text .tl-cap{font-variant-numeric:tabular-nums}
+.fh-tl .tl-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.fh-tl .tl-none,.fh-tl .tl-closed{padding-top:16px}
+.fh-tl .tl-empty{margin-top:24px;padding:16px;border:1px dashed var(--line,#E3E5E0);border-radius:10px;display:flex;flex-direction:column;gap:4px}
+
+.fh-tl.tl-error{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+
+/* loading skeletons, in the real layout */
+.fh-tl .tl-sk{display:block;border-radius:8px;background:linear-gradient(90deg,var(--soft,#F0F1ED),var(--line,#E3E5E0),var(--soft,#F0F1ED));background-size:200% 100%;animation:tl-sk 1.2s ease-in-out infinite}
+.fh-tl .tl-sk-l{height:20px;width:60%}
+.fh-tl .tl-sk-s{height:16px;width:30%}
+@keyframes tl-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){
+  .fh-tl .tl-sk{animation:none}
+}
+
+@media (max-width:760px){
+  .fh-tl{padding:16px;margin-top:16px}
+  .fh-tl .tl-row{grid-template-columns:minmax(0,1fr)}
+  .fh-tl .tl-chips{justify-content:flex-start}
+  /* Chips line up under the account's words, not under its logo (28px + 8px). */
+  .fh-tl .tl-row:has(.fh-bank-logo) .tl-chips{padding-left:36px}
+  .fh-tl .tl-banks{padding:16px 12px}
+}

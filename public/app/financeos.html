@@ -34,16 +34,25 @@ if (!window.__fhBlueprintFullDemoRoute) document.write('<link rel="preconnect" h
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="money-connections.css">
 <link rel="stylesheet" href="money-payments.css">
+<link rel="stylesheet" href="money-whop-plans.css">
+<link rel="stylesheet" href="/app/apply-gate.css">
 <link rel="stylesheet" href="money-next.css">
 <link rel="stylesheet" href="money-helper.css">
 <link rel="stylesheet" href="money-transfers.css">
 <link rel="stylesheet" href="money-plan.css">
 <link rel="stylesheet" href="money-banks.css">
 <link rel="stylesheet" href="money-strategy.css">
+<link rel="stylesheet" href="bill-cancel.css">
 <link rel="stylesheet" href="money-fundability.css">
+<link rel="stylesheet" href="funding-paths.css">
 <link rel="stylesheet" href="money-declines.css">
+<link rel="stylesheet" href="money-applications.css">
 <link rel="stylesheet" href="money-alerts.css">
+<link rel="stylesheet" href="money-alerts-bundle.css">
 <link rel="stylesheet" href="money-vault.css">
+<link rel="stylesheet" href="pay-now.css">
+<link rel="stylesheet" href="fuel-cards.css">
+<link rel="stylesheet" href="money-tradelines.css">
 <!-- ══ FINANCEOS — THE CLIENT'S ONE-PAGE CRM FOR MONEY ══════════════════════
      Owner call 2026-10-06: "it all should be on 1 page — a one-page CRM for
      finances, called FinanceOS." Direction: docs/finance/finance-os-direction-2026-10-06.md.
@@ -107,6 +116,7 @@ main{padding:24px 24px 64px}
 #fos-demo a{display:inline-flex;align-items:center;min-height:44px}
 #fos-demo-notice:empty{display:none}
 #fos-demo-notice:not(:empty){flex-basis:100%}
+@media(max-width:760px){#fos-demo{flex-direction:column;align-items:flex-start;gap:4px}}
 #fos-fundability .fd-opportunity>ul{display:grid;gap:16px;margin:16px 0;padding:0;list-style:none}
 #fos-fundability .fd-opportunity :is(h3,h4){margin-bottom:8px}
 #fos-fundability .fd-opportunity dl{display:grid;gap:8px;margin:0}
@@ -245,7 +255,7 @@ main{padding:24px 24px 64px}
 #fos-accounts .acct-move select{min-height:40px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);max-width:100%}
 #fos-accounts .acct-none{padding:16px 0}
 #fos-accounts details.form{margin-top:16px}
-#fos-accounts details.form>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-weight:600;color:var(--ink)}
+#fos-accounts details.form>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--ink)}
 #fos-accounts .fields{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-top:16px}
 #fos-accounts .f{display:flex;flex-direction:column;gap:8px;grid-column:span 4;min-width:0}
 #fos-accounts .f.wide{grid-column:span 8}
@@ -516,7 +526,12 @@ main{padding:24px 24px 64px}
 <link rel="stylesheet" href="/app/client-ios.css">
 <link rel="stylesheet" href="/app/financeos-ios.css">
 <link rel="stylesheet" href="/app/money-workspace.css">
+<link rel="stylesheet" href="/app/money-trends.css">
+<link rel="stylesheet" href="/app/money-credit-ios.css">
+<link rel="stylesheet" href="/app/bank-logo.css">
+<link rel="stylesheet" href="/app/money-premium.css">
 
+<link rel="stylesheet" href="/app/local-banks.css">
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-client.css">
 <link rel="stylesheet" href="/app/plaid-stepup.css">
@@ -581,24 +596,36 @@ main{padding:24px 24px 64px}
   </div>
 </div>
 <script>if(!window.__fhBlueprintFullDemoRoute)document.write('<script defer src="plaid-stepup.js"><\/script>');</script>
+<script defer src="/app/bank-logo.js"></script>
 <script defer src="money.js"></script>
 <script defer src="money-trends.js"></script>
+<script defer src="pay-now.js"></script>
+<script defer src="money-premium.js"></script>
 <script defer src="money-next.js"></script>
 <script defer src="money-helper.js"></script>
 <script defer src="money-transfers.js"></script>
 <script defer src="money-plan.js"></script>
 <script defer src="money-banks.js"></script>
+<script defer src="bill-cancel.js"></script>
 <script defer src="money-strategy.js"></script>
+<script defer src="/app/apply-gate.js"></script>
+<script defer src="funding-paths.js"></script>
 <script defer src="money-fundability.js"></script>
+<script defer src="money-applications.js"></script>
 <script defer src="money-declines.js"></script>
 <script defer src="money-alerts.js"></script>
+<script defer src="money-alerts-bundle.js"></script>
 <script defer src="money-vault.js"></script>
+<script defer src="fuel-cards.js"></script>
 <script defer src="money-accounts.js"></script>
+<script defer src="money-tradelines.js"></script>
 <script defer src="money-credit.js"></script>
 <script defer src="money-connections.js"></script>
+<script defer src="money-whop-plans.js"></script>
 <script defer src="money-payments.js"></script>
 <script defer src="money-setup.js"></script>
 <script defer src="/app/client-ios.js"></script>
+<script defer src="/app/local-banks.js"></script>
 <script defer src="financeos.js"></script>
 </body>
 </html>

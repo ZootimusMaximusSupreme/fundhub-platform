@@ -32,6 +32,27 @@ A later verified sign-in on the same installation retires matching prior staff a
 
 **Staff payout alert added in source 2026-11-02.** A `commission.paid` receipt may send the attributed closer or sales manager a fixed, amount-free iPhone alert after the ledger is marked paid. It uses the registered staff device and one-alert receipt. The alert says “marked paid” because the current ledger action records a payment made outside Fundhub; it does not verify bank settlement or move money. No device or missing client attribution means no push. Real-device delivery still needs proof.
 
+**Finance OS phone alerts added in source 2026-11-07 (Finance OS CFO build, unit D; delivery not proved).** These are the first client pushes that do not follow a text. The daily file-alerts pass (`src/finance/file-alerts/run.mjs`, step 5) queues one `messages` row per card or Important bill per cycle (`channel` `push`, `provider_ref` `finance-push:<key>`). The dispatcher hands that row to `src/push/finance-alerts.mjs`, which holds it until 9 a.m. to 5 p.m. Arizona, holds it behind the dry-run switch, re-reads the opt-outs, and calls the same two pipes as the companion alert. The lock screen shows one of three fixed sentences (`card_payment_due`, `card_statement_close`, `bill_charge_soon` in `src/push/payload.mjs`) with no amount, bank or card, and the tap opens `/app/financeos.html#alerts`. When a finance push exists for the same card and date, the generic companion after the card-due or pay-before-close text is dropped, so the phone buzzes once. The morning check `alerts:phone-alerts-went-out` (`src/pulse/coverage/gap-phone-alerts.mjs`) goes red when an owed push was never queued or did not go out. Contract: `docs/finance/file-protection-alerts.md` §1b. **Extended 2026-11-07 (D2):** every payment, not only cards — any loan (`loan_payment_due`), a line of credit (`credit_line_payment_due`) and the next installment of a payment plan owed to Fundhub (`plan_payment_due`, which opens `/app/financeos.html#payments`). Business credit cards were already covered as cards. The money helper's plan reminder text keeps its companion only when no plan push covers that installment. **Extended 2026-11-07 (AL2):** an alert or a repeat bill the client added by hand on the Alerts screen (`finance_custom_alerts`, migration 583) gets the same push 0 to 3 days before each of its dates, when its own phone switch is on (`custom_reminder_due` or `custom_bill_soon`; key `custom:<id>:<date>`). The sentence never holds the name the client typed. At send time the push is stopped when the item was removed, its switch was turned off, or its day was moved (`removed`, `alert_off`, `date_changed`). The morning check counts these too.
+
+```mermaid
+flowchart TD
+    P[Daily pass 07:30 UTC] --> O{Phone alerts on, no STOP, a phone set up?}
+    O -->|No| N[No row]
+    O -->|Yes| Q{Card, loan or plan due in 0-3 days, statement closing, Important bill, or an alert or bill the client added, in 0-3 days?}
+    Q -->|No| N
+    Q -->|Yes| R[messages row: channel push, queued, finance-push key]
+    R -->|second pass, same key| R
+    R --> D[Dispatcher claims it]
+    D --> W{9 a.m. to 5 p.m. Arizona?}
+    W -->|No: the dispatcher, the one writer of scheduled_at, holds it to 9 a.m.| R
+    W -->|Yes| S{Still wanted? fence off, not too late, not opted out}
+    S -->|No| B[blocked or failed, with the reason]
+    S -->|Yes| T[iPhone app and web push: fixed sentence]
+    T -->|a phone took it| SENT[sent]
+    T -->|no answer| U[sending: never retried]
+    T -->|no phone left| F[failed no_push_device: a later pass may re-arm it]
+```
+
 ## Native Fundhub iPhone app (built in source; delivery not proved)
 
 The native app has a separate APNs pipe. Its client Home card checks `/api/push/native-device`

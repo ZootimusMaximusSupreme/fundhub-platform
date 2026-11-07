@@ -23,6 +23,18 @@
 //   mark_settled      staff only — { plan_id }
 //
 // Nothing here moves money. "Record a payment" writes down one staff saw land.
+//
+// PHONE ALERTS (unit D2, owner-set 2026-11-07). GET also answers `phone`: whether
+// the client's phone alerts are on, and for each open plan the day its next
+// installment's phone alert goes (src/push/finance-alerts.mjs phoneSummary; the
+// daily file-alerts pass queues it 3 days ahead, the dispatcher sends it 9 to 5
+// Arizona). null when that read failed — the page then says it could not check.
+//
+// WHOP PLANS (unit W, owner ask 2026-11-07). GET also answers `whop`: the plans the
+// client pays Fundhub on Whop, saved by the daily Whop read (src/finance/whop-plans.mjs,
+// whop_memberships), each with its phone alert day from the same phone summary. Their
+// next charges join `upcoming` as type "whop". null when that read failed. No Whop call
+// is made here.
 import { db } from "../../src/db.mjs";
 import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
 import { ROLE_SETS, requireRole, isUuid, CLIENT_DATA_ERRORS } from "../../src/http/read-api.mjs";
@@ -34,11 +46,15 @@ import {
   logMoneyAction, readMoneyLog, readUnmatchedPayments, ClarityInputError
 } from "../../src/finance/clarity-payments.mjs";
 import { askForPerson } from "../../src/finance/money-agent.mjs";
+import { phoneSummary } from "../../src/push/finance-alerts.mjs";
+import { listWhopPlans, whopPlansBlock } from "../../src/finance/whop-plans.mjs";
 import { readBody } from "../banking/sync-accounts.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
+import { cardPayNow, recordCardPaid, withdrawCardPaid } from "../../src/finance/card-pay-now.mjs";
 
 const STAFF_ACTIONS = new Set(["add_plan", "record_payment", "mark_settled"]);
-const ALL_ACTIONS = new Set([...STAFF_ACTIONS, "ask_for_person"]);
+/* card_paid / card_paid_undo: "I paid" on a card's due row (unit I6), client or staff. */
+const ALL_ACTIONS = new Set([...STAFF_ACTIONS, "ask_for_person", "card_paid", "card_paid_undo"]);
 
 /** Who is asking, and for which file. Returns { orgId, clientId, kind, staffId }
  *  or writes the refusal and returns null. */
@@ -70,18 +86,50 @@ async function scope(req, res, { database, gate, body }) {
 }
 
 /** GET payload builder — exported for tests and the fixture server. */
+/** Each open plan's next installment: the day its phone alert goes, or why none, and what already went. Pure. */
+export function planPhoneView(plans = [], summary, today) {
+  if (!summary) return null;
+  const on = summary.enabled !== false && !summary.opted_out;
+  const days = Number.isInteger(summary.days_before) ? summary.days_before : 3;
+  const out = {};
+  for (const p of plans) {
+    if (p.status !== "open" || !p.next || !p.next.due_on) continue;
+    const inst = (p.installments || []).find((i) => i.seq === p.next.seq) || null;
+    const until = daysBetween(today, p.next.due_on);
+    const sent = (summary.sent || []).find((a) => inst && a.subject_id === String(inst.id) && a.about_on === p.next.due_on);
+    out[p.id] = {
+      due_on: p.next.due_on,
+      alert_on: !on || until === null || until < 0 ? null : until <= days ? today : addDays(p.next.due_on, -days),
+      reason: !on ? (summary.opted_out ? "opted_out" : "phone_alerts_off") : until !== null && until < 0 ? "late" : null,
+      sent: sent ? sent.state : null
+    };
+  }
+  return out;
+}
+
+function addDays(iso, n) {
+  const t = Date.parse(`${iso}T00:00:00Z`);
+  return Number.isFinite(t) ? new Date(t + n * 86_400_000).toISOString().slice(0, 10) : null;
+}
+
 export async function paymentsPayload(database, {
   orgId, clientId, asOf, env, staff = false,
-  overview = moneyOverview, list = listClarityPayments, readLog = readMoneyLog, readUnmatched = readUnmatchedPayments
+  overview = moneyOverview, list = listClarityPayments, readLog = readMoneyLog, readUnmatched = readUnmatchedPayments,
+  phone = phoneSummary, whop = listWhopPlans
 }) {
   const today = asOf.toISOString().slice(0, 10);
-  const [plans, ov, log, unmatched] = await Promise.all([
+  const [plans, ov, log, unmatched, summary, whopRows] = await Promise.all([
     list(database, { orgId, clientId, today }),
     overview(database, { orgId, clientId, env, asOf }),
     readLog(database, { orgId, clientId, limit: 25 }),
-    staff ? readUnmatched(database, { orgId, clientId, limit: 25 }) : Promise.resolve(null)
+    staff ? readUnmatched(database, { orgId, clientId, limit: 25 }) : Promise.resolve(null),
+    // A phone read that fails answers null, never a made-up "no phone".
+    Promise.resolve().then(() => phone(database, { orgId, clientId })).catch(() => null),
+    // A Whop read that fails answers null, never a made-up "no plans".
+    Promise.resolve().then(() => whop(database, { orgId, clientId })).catch(() => null)
   ]);
   if (!ov) return null;
+  const whopBlock = whopPlansBlock(whopRows, summary, today);
   const open = plans.filter((p) => p.status === "open");
   /* Each open plan's next payment that is not already late, inside the same
      30-day window the overview's own list uses. Late ones live on the plan. */
@@ -89,7 +137,7 @@ export async function paymentsPayload(database, {
     .map((p) => ({ p, i: (p.installments || []).find((x) => x.left_cents > 0 && x.state !== "late") }))
     .filter(({ i }) => i && i.due_on && daysBetween(today, i.due_on) < UPCOMING_DAYS)
     .map(({ p, i }) => ({ type: "clarity", name: p.name, on: i.due_on, amount_cents: i.left_cents, plan_id: p.id }));
-  const upcoming = [...comingClarity, ...(Array.isArray(ov.upcoming) ? ov.upcoming : [])]
+  const upcoming = [...comingClarity, ...(whopBlock ? whopBlock.upcoming : []), ...(Array.isArray(ov.upcoming) ? ov.upcoming : [])]
     .sort((a, b) => String(a.on || "9999").localeCompare(String(b.on || "9999")));
   return {
     ok: true,
@@ -103,6 +151,11 @@ export async function paymentsPayload(database, {
     },
     plans,
     upcoming,
+    phone: summary
+      ? { enabled: summary.enabled !== false, opted_out: !!summary.opted_out, has_phone: summary.has_phone ?? null,
+        days_before: summary.days_before ?? 3, plans: planPhoneView(plans, summary, today) }
+      : null,
+    whop: whopBlock,
     agent_log: log,
     // Staff only: Commas payments the matcher would not guess at.
     ...(staff ? { unmatched_payments: unmatched || [] } : {}),
@@ -123,8 +176,19 @@ export default async function handler(req, res, deps = {}) {
     log: deps.logMoneyAction || logMoneyAction,
     readLog: deps.readMoneyLog || readMoneyLog,
     readUnmatched: deps.readUnmatchedPayments || readUnmatchedPayments,
+    phone: deps.phoneSummary || phoneSummary,
+    whop: deps.listWhopPlans || listWhopPlans,
     ask: deps.askForPerson || askForPerson,
     overview: deps.moneyOverview || moneyOverview
+  };
+  /* "Pay now" / "I paid" (unit I6, 2026-11-07) — src/finance/card-pay-now.mjs.
+     GET ?part=pay_now answers only { ok, pay_now }: each open card, the card
+     company's own website from Plaid (or null), and its "I paid" status.
+     Plaid cannot pay a card (see that file), so nothing here moves money. */
+  const payNow = {
+    read: deps.cardPayNow || cardPayNow,
+    record: deps.recordCardPaid || recordCardPaid,
+    withdraw: deps.withdrawCardPaid || withdrawCardPaid
   };
 
   const method = req.method || "GET";
@@ -147,9 +211,15 @@ export default async function handler(req, res, deps = {}) {
 
   try {
     if (method === "GET") {
+      if (req.query && req.query.part === "pay_now") {
+        const pay = await payNow.read(database, { orgId, clientId, asOf: now });
+        if (!pay) return res.status(404).json({ ok: false, error: "not_found" });
+        return res.status(200).json({ ok: true, pay_now: pay });
+      }
       const payload = await paymentsPayload(database, {
         orgId, clientId, asOf: now, env, staff: who.kind === "staff",
-        overview: store.overview, list: store.list, readLog: store.readLog, readUnmatched: store.readUnmatched
+        overview: store.overview, list: store.list, readLog: store.readLog, readUnmatched: store.readUnmatched,
+        phone: store.phone, whop: store.whop
       });
       if (!payload) return res.status(404).json({ ok: false, error: "not_found" });
       return res.status(200).json(payload);
@@ -164,6 +234,20 @@ export default async function handler(req, res, deps = {}) {
     if (action === "ask_for_person") {
       const r = await store.ask(database, { orgId, clientId, todayIso: today, note: typeof body.note === "string" ? body.note : null });
       return res.status(200).json({ ok: true, action, created: !!r.created });
+    }
+
+    /* "I paid": { account_id, due_on, paid_on?, amount_cents? }. "Undo": { claim_id }.
+       Both answer with the fresh pay_now block so the row repaints from one shape. */
+    if (action === "card_paid" || action === "card_paid_undo") {
+      const r = action === "card_paid"
+        ? await payNow.record(database, { orgId, clientId, input: body, byKind: who.kind, staffId: who.staffId, today })
+        : await payNow.withdraw(database, { orgId, clientId, claimId: body.claim_id });
+      if (!r.ok) {
+        const status = r.error === "card_not_found" || r.error === "claim_not_found" ? 404 : 400;
+        return res.status(status).json({ ok: false, error: r.error, message: r.message });
+      }
+      const pay = await payNow.read(database, { orgId, clientId, asOf: now });
+      return res.status(200).json({ ok: true, action, claim: r.claim || null, pay_now: pay });
     }
 
     if (action === "add_plan") {

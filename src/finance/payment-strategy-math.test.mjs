@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import {
   addMonths, monthsUntil, parseDay, normalizeDebts, targetCents, monthlyInterest,
   priorityList, simulate, minimumOnly, requiredMonthly, maxSafeMonthly, month1Payments,
-  cashCheck, buildPlan, milestones, minimumsCents, payoffAllCents, TARGETS, METHODS, MAX_MONTHS
+  cashCheck, buildPlan, milestones, minimumsCents, payoffAllCents, suggestExtra, TARGETS, METHODS, MAX_MONTHS
 } from "../../public/app/money-strategy-math.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -371,5 +371,156 @@ describe("the real read of the test client (Plaid sandbox + Sample Chase Ink + S
     assert.match(TARGETS[0].source, /src\/underwrite\/vendor\/underwriter\.cjs/);
     assert.match(TARGETS[1].source, /optimization-findings\.js/);
     assert.equal(payoffAllCents(debtsOf(FIXTURE.inputs.debts)) > 0, true);
+  });
+});
+
+/* ── money coming in → the extra for debt (Finance OS CFO build, unit C) ── */
+
+describe("the extra for debt: money in − bills − minimums − the floor, per kind", () => {
+  const P = [
+    card("visa", { kind: "personal", bal: 300000, limit: 1000000, apr: 24.99, min: 9000 }),
+    card("mc", { kind: "personal", bal: 100000, limit: 500000, apr: 15.99, min: 2500 })
+  ];
+  const income = (over = {}) => ({
+    ok: true, floor_cents: 0,
+    by_kind: { personal: { monthly_cents: 420000, bills_cents: 268000 }, business: { monthly_cents: null, bills_cents: 0 }, ...over }
+  });
+
+  test("one kind: $4,200 in − $2,680 bills − $115 minimums − $0 = $1,405 extra; the slider gets $1,520", () => {
+    const s = suggestExtra(debtsOf(P), { method: "snowball", income: income() });
+    assert.equal(s.ok, true);
+    assert.deepEqual(s.by_kind.map((r) => [r.kind, r.income_cents, r.bills_cents, r.minimums_cents, r.floor_cents, r.extra_cents, r.status]),
+      [["personal", 420000, 268000, 11500, 0, 140500, "known"]]);
+    assert.equal(s.monthly_cents, 152000, "the minimums plus the extra");
+    assert.equal(s.extra_cents, 140500);
+    assert.equal(s.binding_kind, null);
+    assert.equal(s.use_cents, 152000);
+  });
+
+  test("the floor comes off too, and the amount is rounded DOWN to whole dollars", () => {
+    const s = suggestExtra(debtsOf(P), { method: "snowball", income: { ...income(), floor_cents: 5037 } });
+    assert.equal(s.by_kind[0].extra_cents, 135463);
+    assert.equal(s.monthly_cents, 146900, "$1,469.63 is rounded down, never up");
+  });
+
+  test("an unknown input makes it null, with the reason — never a number on a hole", () => {
+    const noIncome = suggestExtra(debtsOf(P), { income: income({ personal: { monthly_cents: null, bills_cents: 268000 } }) });
+    assert.deepEqual([noIncome.ok, noIncome.monthly_cents, noIncome.extra_cents, noIncome.reason.code, noIncome.reason.kind],
+      [false, null, null, "income_unknown", "personal"]);
+    const noMin = suggestExtra(debtsOf([...P, card("ink", { kind: "personal", bal: 50000, limit: 100000 })]), { income: income() });
+    assert.equal(noMin.reason.code, "minimum_unknown");
+    assert.deepEqual(noMin.reason.names, ["ink"]);
+    assert.equal(noMin.by_kind[0].minimums_cents, null, "a missing minimum is not $0 here");
+    const noBills = suggestExtra(debtsOf(P), { income: income({ personal: { monthly_cents: 420000, bills_cents: null } }) });
+    assert.equal(noBills.reason.code, "bills_unknown");
+    const noFloor = suggestExtra(debtsOf(P), { income: { ...income(), floor_cents: null } });
+    assert.equal(noFloor.reason.code, "floor_unknown");
+    assert.equal(suggestExtra(debtsOf(P), { income: { ok: false } }).reason.code, "income_not_read");
+    assert.equal(suggestExtra(debtsOf(P), {}).monthly_cents, null);
+  });
+
+  test("money in that does not cover bills and minimums says how short, and suggests nothing", () => {
+    const s = suggestExtra(debtsOf(P), { income: income({ personal: { monthly_cents: 200000, bills_cents: 268000 } }) });
+    assert.equal(s.ok, false);
+    assert.equal(s.reason.code, "income_short");
+    assert.equal(s.reason.short_cents, 79500);
+    assert.equal(s.by_kind[0].status, "short");
+    assert.equal(s.monthly_cents, null);
+  });
+
+  test("business money never pays a personal debt: the kind that runs out first holds the total down", () => {
+    /* Highest rate first sends the extra to the personal Visa first. Personal
+       money for debt is $40 + ($3,000 − $2,680 − $40) = $320. Business money for
+       debt is far more, but none of it may reach the Visa, so the biggest plan
+       whose month 1 fits both is $175 of minimums + $280 extra = $455. */
+    const debts = debtsOf([
+      card("visa", { kind: "personal", bal: 132040, limit: 800000, apr: 24.99, min: 4000 }),
+      card("amex", { kind: "business", bal: 540000, limit: 2500000, apr: 18.24, min: 13500 })
+    ]);
+    const inc = { ok: true, floor_cents: 0, by_kind: {
+      personal: { monthly_cents: 300000, bills_cents: 268000 },
+      business: { monthly_cents: 1000000, bills_cents: 30000 }
+    } };
+    const s = suggestExtra(debts, { method: "avalanche", income: inc });
+    assert.equal(s.ok, true);
+    assert.deepEqual(s.by_kind.map((r) => [r.kind, r.extra_cents]), [["personal", 28000], ["business", 956500]]);
+    assert.equal(s.monthly_cents, 45500);
+    assert.equal(s.binding_kind, "personal");
+    assert.equal(s.plain_extra_cents, 984500, "the two kinds' extras are shown apart, never spent together");
+    const pay = month1Payments(debts, "avalanche", s.monthly_cents).by_kind;
+    assert.ok(pay.personal <= 4000 + 28000 && pay.business <= 13500 + 956500);
+  });
+
+  test("buildPlan carries it; this month's cash lowers what the button uses, and says so", () => {
+    const inputs = { as_of: "2026-10-07", debts: P, income: income(),
+      cash: { by_kind: { personal: { ok: true, safe_cents: 100000 } } } };
+    const plan = buildPlan(inputs, { method: "snowball", monthly_cents: 20000 });
+    assert.equal(plan.suggestion.monthly_cents, 152000);
+    assert.equal(plan.cash.max_safe.monthly_cents, 100000);
+    assert.equal(plan.suggestion.use_cents, 100000);
+    assert.equal(plan.suggestion.capped_by_cash, true);
+    const roomy = buildPlan({ ...inputs, cash: { by_kind: { personal: { ok: true, safe_cents: 900000 } } } }, { method: "snowball", monthly_cents: 20000 });
+    assert.deepEqual([roomy.suggestion.use_cents, roomy.suggestion.capped_by_cash], [152000, false]);
+    /* Shown even when the typed amount is below the minimums. */
+    const low = buildPlan(inputs, { method: "snowball", monthly_cents: 100 });
+    assert.equal(low.ok, false);
+    assert.equal(low.suggestion.monthly_cents, 152000);
+    /* An older read with no income block shows nothing. */
+    assert.equal(buildPlan({ as_of: "2026-10-07", debts: P }, { method: "snowball", monthly_cents: 20000 }).suggestion, null);
+  });
+});
+
+/* ── financing: payment plans and "Pay financing first" (wave 3, unit K) ── */
+
+describe("financing debts and 'Pay financing first'", () => {
+  const plan = (id, o = {}) => ({ id, name: o.name || id, type: "financing", kind: "unknown", owed_to: "Fundhub LLC",
+    balance_cents: o.bal, apr_pct: 0, apr_source: "schedule", min_cents: o.min ?? 0,
+    payment: o.payment ?? { status: "due", due_on: "2026-11-15", source: "recorded" } });
+  const DEBTS = [
+    card("visa", { kind: "personal", bal: 300000, limit: 1000000, apr: 24.99, min: 9000 }),
+    card("mc", { kind: "personal", bal: 100000, limit: 500000, apr: 15.99, min: 2500 }),
+    plan("clarity:p1", { name: "Fundhub payment plan", bal: 250000, min: 50000 })
+  ];
+
+  test("a payment plan is its own type, with no card-use target, and keeps its paid / late status", () => {
+    const [, , d] = debtsOf(DEBTS);
+    assert.deepEqual([d.type, d.limit_state, d.apr_bps, d.owed_to], ["financing", "unknown", 0, "Fundhub LLC"]);
+    assert.deepEqual(d.payment, { status: "due", due_on: "2026-11-15", source: "recorded" });
+    assert.ok(!buildPlan({ as_of: "2026-10-07", debts: DEBTS }, { method: "avalanche", monthly_cents: 100000 })
+      .warnings.some((w) => w.code === "limit_unknown" && w.ids.includes("clarity:p1")), "a plan has no limit to be missing");
+  });
+
+  test("off: the method's own order (highest rate first); on: the plan first, then that order", () => {
+    const off = buildPlan({ as_of: "2026-10-07", debts: DEBTS }, { method: "avalanche", monthly_cents: 100000 });
+    assert.deepEqual([...new Set(off.order.map((o) => o.id))], ["visa", "mc", "clarity:p1"]);
+    assert.equal(off.financing_first, false);
+    assert.equal(off.has_financing, true);
+    const on = buildPlan({ as_of: "2026-10-07", debts: DEBTS }, { method: "avalanche", monthly_cents: 100000, financing_first: true });
+    assert.deepEqual([...new Set(on.order.map((o) => o.id))], ["clarity:p1", "visa", "mc"]);
+    assert.equal(on.financing_first, true);
+    /* Month 1: $615 of minimums, then the $385 extra goes to the plan, not the Visa. */
+    const m1 = Object.fromEntries(on.months[0].per.map((p) => [p.id, p.paid_cents]));
+    assert.equal(m1["clarity:p1"], 50000 + 38500);
+    assert.equal(m1.visa, 9000);
+    const offM1 = Object.fromEntries(off.months[0].per.map((p) => [p.id, p.paid_cents]));
+    assert.equal(offM1["clarity:p1"], 50000, "off, the plan gets only its own payment");
+    assert.ok(on.per_debt.find((p) => p.id === "clarity:p1").payoff_month < off.per_debt.find((p) => p.id === "clarity:p1").payoff_month);
+  });
+
+  test("several plans go smallest first; with no plan the choice changes nothing", () => {
+    const two = [...DEBTS, plan("clarity:p2", { name: "Second plan", bal: 90000, min: 15000 })];
+    const on = buildPlan({ as_of: "2026-10-07", debts: two }, { method: "snowball", monthly_cents: 200000, financing_first: true });
+    assert.deepEqual([...new Set(on.order.map((o) => o.id))].slice(0, 2), ["clarity:p2", "clarity:p1"]);
+    const cards = DEBTS.slice(0, 2);
+    const a = buildPlan({ as_of: "2026-10-07", debts: cards }, { method: "avalanche", monthly_cents: 50000, financing_first: true });
+    const b = buildPlan({ as_of: "2026-10-07", debts: cards }, { method: "avalanche", monthly_cents: 50000 });
+    assert.equal(a.has_financing, false);
+    assert.deepEqual(a.debt_free, b.debt_free);
+  });
+
+  test("a plan charges no interest in the math, so it never moves the interest figure", () => {
+    const only = buildPlan({ as_of: "2026-10-07", debts: [plan("clarity:p1", { bal: 250000, min: 50000 })] }, { method: "avalanche", monthly_cents: 50000 });
+    assert.equal(only.interest_cents, 0);
+    assert.equal(only.debt_free.month, 5);
   });
 });

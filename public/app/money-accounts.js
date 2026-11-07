@@ -9,6 +9,10 @@
  *     paints "—", never $0.00.
  *   - Only the last 4 of an account or an EIN is ever asked for.
  *
+ * Business gas cards (wave 4, unit GAS) sit under each business: fuel-cards.js
+ * draws the read's fuel_cards, and its "Track it" form posts through onSubmit
+ * like every other form here.
+ *
  * Every render function returns an HTML string and touches no DOM, so
  * src/http/money-accounts-screen.test.mjs can run them in Node. init() is the
  * only part that needs a browser.
@@ -24,6 +28,16 @@
     ["nonprofit", "Nonprofit"], ["other", "Other"]
   ];
   var HAND_TYPES = [["checking", "Checking"], ["savings", "Savings"], ["credit_card", "Credit card"], ["loan", "Loan"]];
+  /* "Just record it" (unit TL, POST add_tradeline): the types the server takes
+     (src/finance/tradeline-inventory.mjs ENTRY_TYPES), used until the What you
+     have card hands over the read's own list. A limit rides only on a card or a line. */
+  var RECORD_TYPES = [
+    { value: "credit_card", label: "Credit card", limit: true }, { value: "line_of_credit", label: "Line of credit", limit: true },
+    { value: "loan", label: "Loan", limit: false }, { value: "checking", label: "Checking", limit: false },
+    { value: "savings", label: "Savings", limit: false }
+  ];
+  /* One add form, two ways to save (unit TL patch 6). */
+  var MODE_HELP = { track: "It joins your balances.", record: "It shows in What you have. No balance." };
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   /* ── small helpers ─────────────────────────────────────────────────────── */
@@ -69,6 +83,13 @@
   }
 
   function isOpen(a) { return a && !a.closed_at; }
+
+  /* The bank's own logo beside the account (bank-logo.js). Nothing when the
+     read has none, or when the helper is not on the page. */
+  function bankLogo(a) {
+    var L = root.FHBankLogo;
+    return L && a ? L.html(a.logo, a.institution || a.name) : "";
+  }
   function holdings(c) {
     return list(c && c.accounts).concat(list(c && c.cards), list(c && c.loans));
   }
@@ -122,7 +143,7 @@
       extra.push(isNum(a.due_day) ? "Due the " + ordinal(a.due_day) : "Due day —");
       extra.push((loan ? "Payment " : "Minimum ") + money(a.min_due_cents));
     }
-    return '<li class="acct" data-account="' + esc(a.id) + '"><div>' +
+    return '<li class="acct" data-account="' + esc(a.id) + '"><div>' + bankLogo(a) +
       '<span class="acct-name">' + esc(a.name || "Account") + '</span> ' +
       (a.mask ? '<span class="mask">••' + esc(a.mask) + '</span>' : "") +
       '<p class="caption">' + esc(facts.join(" · ")) + '</p>' +
@@ -161,7 +182,8 @@
         (o.required ? " required" : "") +
         (o.help ? ' aria-describedby="' + esc(id) + '-help"' : "") + '>';
     }
-    return '<div class="' + cls + '"' + (o.onlyCard ? ' data-only-card="1"' : "") + (o.onlyDue ? ' data-only-due="1"' : "") + '>' +
+    return '<div class="' + cls + '"' + (o.onlyCard ? ' data-only-card="1"' : "") + (o.onlyDue ? ' data-only-due="1"' : "") +
+      (o.mode ? ' data-mode="' + esc(o.mode) + '"' : "") + (o.onlyLimit ? ' data-only-limit="1"' : "") + (o.hidden ? " hidden" : "") + '>' +
       '<label for="' + esc(id) + '">' + esc(text) + '</label>' + input +
       (o.help ? '<p class="caption" id="' + esc(id) + '-help">' + esc(o.help) + '</p>' : "") + '</div>';
   }
@@ -217,7 +239,14 @@
         '<button class="btn-primary" type="submit">Save business info</button></div></div></form></details>';
     }
     return '<section class="card container" data-container="' + esc(c.id) + '" data-kind="' + esc(c.kind) + '">' +
-      head + info + accountList(d, rows, "No accounts in here yet. Add one by hand, connect a bank, or move one in.") + '</section>';
+      head + info + accountList(d, rows, "No accounts in here yet. Add one by hand, connect a bank, or move one in.") +
+      fuelBlock(d, c) + '</section>';
+  }
+
+  /* Business gas cards (wave 4, unit GAS): fuel-cards.js draws d.fuel_cards
+     under each business; nothing when that file is not on the page. */
+  function fuelBlock(d, c) {
+    return root.FHFuelCards && d && c.kind === "business" && !c.archived_at ? root.FHFuelCards.renderForBusiness(d.fuel_cards, c) : "";
   }
 
   function renderUnsorted(d) {
@@ -260,14 +289,53 @@
       '<p class="caption">Your personal bank accounts, cards and loans.</p>' + cards + '</section>';
   }
 
+  /* "Just record it": the What you have card's own choices when it has loaded
+     (money-tradelines.js hands over its read's `add`), else the server's type
+     list and Personal plus each business here. */
+  function recordChoices(d) {
+    var given = root.FHTradelines && root.FHTradelines.addOptions;
+    var types = given && list(given.types).length ? list(given.types) : RECORD_TYPES;
+    var owners = given && list(given.belongs_to).length ? list(given.belongs_to) : [{ value: "personal", label: "Personal" }].concat(
+      openContainers(d).filter(function (c) { return c.kind === "business"; })
+        .map(function (c) { return { value: "entity:" + c.id, label: String(c.name || "Business") }; }));
+    return { types: types, owners: owners };
+  }
+
+  /* One add form, two ways to save: Track the balance (add_account: it joins
+     the balances) or Just record it (add_tradeline: it is listed in What you
+     have). Track is the one already picked. */
+  function modeChoice() {
+    var opt = function (value, words, on) {
+      return '<label class="btn"><input type="radio" name="mode" value="' + value + '"' + (on ? " checked" : "") +
+        ' aria-describedby="na-mode-help"> ' + esc(words) + '</label>';
+    };
+    /* Outside the field grid on purpose: a field box's input rules would stretch the radios. */
+    return '<div class="add-mode" data-mode="choice" role="radiogroup" aria-labelledby="na-mode-h">' +
+      '<span class="caption" id="na-mode-h">How to add it</span>' +
+      '<div class="head-act">' + opt("track", "Track the balance", true) + opt("record", "Just record it", false) + '</div>' +
+      '<p class="caption" id="na-mode-help">' + esc(MODE_HELP.track) + '</p></div>';
+  }
+
+  function recordFields(d) {
+    var rc = recordChoices(d);
+    return field("creditor", "Bank or lender", { prefix: "na", wide: true, mode: "record", hidden: true, maxlength: 120, placeholder: "Chase" }) +
+      field("product", "Card name", { prefix: "na", mode: "record", hidden: true, maxlength: 120, placeholder: "Ink Business Cash" }) +
+      field("record_type", "Type", { prefix: "na", mode: "record", hidden: true, blank: false, value: rc.types[0].value,
+        options: rc.types.map(function (t) { return [t.value, t.label]; }) }) +
+      field("record_limit", "Limit", { prefix: "na", mode: "record", hidden: true, onlyLimit: true, inputmode: "decimal", placeholder: "10,000" }) +
+      field("opened", "Opened", { prefix: "na", mode: "record", hidden: true, type: "month" }) +
+      field("belongs_to", "Belongs to", { prefix: "na", mode: "record", hidden: true, wide: true, blank: false, value: "personal",
+        options: rc.owners.map(function (o) { return [o.value, o.label]; }) });
+  }
+
   function renderAddAccount(d, open) {
     var where = openContainers(d).map(function (c) {
       return [c.id, containerLabel(c)];
     });
     return '<section class="block" id="add"><h2>Add an account</h2>' +
       '<p class="caption">Type it in, or connect your bank and Fundhub fills it in. Fundhub only reads. It never moves money.</p>' +
-      '<div class="grid one"><details class="form card" id="add-account"' + (open ? " open" : "") + '><summary>Add account by hand</summary>' +
-      '<form data-form="add_account"><div class="fields">' +
+      '<div class="grid one"><details class="form card" id="add-account"' + (open ? " open" : "") + '><summary>Add an account</summary>' +
+      '<form data-form="add_account" novalidate>' + modeChoice() + '<div class="fields">' +
       field("name", "Account name", { prefix: "na", wide: true, required: true, placeholder: "Chase Ink" }) +
       field("type", "Type", { prefix: "na", options: HAND_TYPES, required: true, value: "credit_card", blank: false }) +
       field("container_id", "Belongs to", { prefix: "na", options: where, blank: "Not sorted yet", wide: true }) +
@@ -276,6 +344,7 @@
       field("limit", "Credit limit", { prefix: "na", inputmode: "decimal", placeholder: "10,000", onlyCard: true }) +
       field("due_day", "Due day of the month", { prefix: "na", inputmode: "numeric", maxlength: 2, placeholder: "15", onlyDue: true }) +
       field("minimum", "Minimum payment (for a loan, the monthly payment)", { prefix: "na", inputmode: "decimal", placeholder: "35", onlyDue: true }) +
+      recordFields(d) +
       '<div class="form-act"><span class="act-msg caption" aria-live="polite"></span>' +
       '<button class="btn-primary" type="submit">Save account</button></div></div></form></details>' +
       '<div class="card"><span class="eyebrow">Connect a bank</span>' +
@@ -284,13 +353,15 @@
       '<p class="act-msg caption" aria-live="polite"></p></div></div></div></section>';
   }
 
+  /* The price line only when the read carries a price (QA23): a price that is
+     not set is left out, never shown as "$X". */
   function renderBilling(d) {
     var b = (d && d.billing) || {};
+    if (!isNum(b.price_per_container_cents)) return "";
     var n = isNum(b.containers) ? b.containers : 0;
-    var price = isNum(b.price_per_container_cents) ? money(b.price_per_container_cents) : "$X";
-    var monthly = isNum(b.monthly_cents) ? money(b.monthly_cents) : "$X";
     return '<p class="caption billing">' + esc(plural(n, "container", "containers")) + ' with accounts · ' +
-      esc(price) + ' per container a month · ' + esc(monthly) + ' a month. Empty containers are free.</p>';
+      esc(money(b.price_per_container_cents)) + ' per container a month' +
+      (isNum(b.monthly_cents) ? ' · ' + esc(money(b.monthly_cents)) + ' a month' : "") + '. Empty containers are free.</p>';
   }
 
   function renderHead(d) {
@@ -355,7 +426,9 @@
     account_not_found: "That account was not found. Reload the page and try again.",
     container_archived: "That container is archived. Pick another one.",
     not_a_business_container: "Business info only goes on a business.",
-    invalid_action: "That did not work. Reload the page and try again."
+    invalid_action: "That did not work. Reload the page and try again.",
+    fuel_card_not_found: "That gas card is not on the list anymore. Reload the page.",
+    already_tracked: "This gas card is already tracked for this business."
   };
   function writeWords(res) {
     var kind = classify(res);
@@ -422,6 +495,8 @@
     for (var i = 0; i < els.length; i++) {
       var e = els[i];
       if (!e.name) continue;
+      /* A choice counts only for the one that is picked. */
+      if ((e.type === "radio" || e.type === "checkbox") && !e.checked) continue;
       out[e.name] = typeof e.value === "string" ? e.value.trim() : e.value;
     }
     return out;
@@ -478,24 +553,44 @@
 
     function paint(html) { el.innerHTML = html; syncCardFields(); }
 
-    /* The limit only shows for a credit card. Due day and minimum show for a
-       credit card or a loan. */
+    /* The add form shows the fields of the way picked. Track the balance: the
+       limit only for a credit card; due day and minimum for a credit card or a
+       loan. Just record it: the limit only for a type that has one. A figure a
+       type cannot have is cleared, so it is never sent. */
     function syncCardFields() {
       var form = q('form[data-form="add_account"]');
       if (!form) return;
+      var picked = form.querySelector('input[name="mode"]:checked');
+      var mode = picked && picked.value === "record" ? "record" : "track";
+      var help = form.querySelector("#na-mode-help");
+      if (help) help.textContent = MODE_HELP[mode];
       var type = form.elements.type ? form.elements.type.value : "";
       var isCard = type === "credit_card";
       var hasDue = isCard || type === "loan";
-      var toggle = function (sel, show) {
-        var bits = form.querySelectorAll(sel);
-        for (var i = 0; i < bits.length; i++) {
-          bits[i].hidden = !show;
-          var inp = bits[i].querySelector("input");
-          if (inp && !show) inp.value = "";
-        }
-      };
-      toggle("[data-only-card]", isCard);
-      toggle("[data-only-due]", hasDue);
+      var rtype = form.elements.record_type ? form.elements.record_type.value : "";
+      var hasLimit = recordChoices(st.data).types.some(function (t) { return t.value === rtype && t.limit; });
+      var boxes = form.querySelectorAll(".fields > .f");
+      for (var i = 0; i < boxes.length; i++) {
+        var box = boxes[i];
+        var m = box.getAttribute("data-mode");
+        if (m === "choice") continue;
+        var inMode = m === "record" ? mode === "record" : mode === "track";
+        var fits = true;
+        if (m === "record") { if (box.hasAttribute("data-only-limit")) fits = hasLimit; }
+        else if (box.hasAttribute("data-only-card")) fits = isCard;
+        else if (box.hasAttribute("data-only-due")) fits = hasDue;
+        box.hidden = !(inMode && fits);
+        var inp = box.querySelector("input");
+        if (inp && !fits) inp.value = "";
+      }
+    }
+
+    /* Another card on the page (What you have, money-tradelines.js) reloads when
+       an account is added or moved here. */
+    function changed(action) {
+      var doc = root.document;
+      if (!doc || typeof doc.dispatchEvent !== "function" || typeof root.CustomEvent !== "function") return;
+      doc.dispatchEvent(new root.CustomEvent("fh:accounts-changed", { detail: { action: action } }));
     }
 
     function load() {
@@ -523,8 +618,42 @@
         paint(render(res.body));
         var head = q("#head-msg");
         if (head) head.textContent = done;
+        changed(body.action);
         return true;
       });
+    }
+
+    /* Just record it: POST add_tradeline. It answers with the What you have view,
+       not this section's, so this section stays as it is: the form closes and
+       What you have reloads. A refused save uses that card's own words. */
+    function writeRecord(body, msgEl, btn) {
+      if (st.clientId) body.client_id = st.clientId;
+      var label0 = btn ? btn.textContent : "";
+      if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+      if (msgEl) msgEl.textContent = "";
+      return Promise.resolve(post(API, body)).then(function (res) {
+        if (btn) { btn.disabled = false; btn.textContent = label0; }
+        if (classify(res) === "signin") { root.location.href = signInUrl(); return; }
+        if (classify(res) !== "ok") {
+          var T = root.FHTradelines;
+          if (msgEl) msgEl.textContent = T && typeof T.writeWords === "function" ? T.writeWords(res) : writeWords(res);
+          return false;
+        }
+        paint(render(st.data));
+        var head = q("#head-msg");
+        if (head) head.textContent = "Saved. It shows in What you have.";
+        changed(body.action);
+        return true;
+      });
+    }
+
+    /* A required field left empty: say so beside Save, and go to the field. */
+    function ask(form, name, words) {
+      var msg = form.querySelector(".act-msg");
+      if (msg) msg.textContent = words;
+      var f = form.elements[name];
+      if (f && typeof f.focus === "function") f.focus();
+      return Promise.resolve(false);
     }
 
     function onSubmit(form) {
@@ -543,9 +672,23 @@
         return write({ action: "create_personal", name: v.name }, msg, btn, "Personal container added.");
       }
       if (kind === "add_account") {
+        if (v.mode === "record") {
+          if (!v.creditor) return ask(form, "creditor", "Type the bank or lender, like Chase.");
+          var rb = { action: "add_tradeline", creditor: v.creditor, type: v.record_type || RECORD_TYPES[0].value, belongs_to: v.belongs_to || "personal" };
+          if (v.product) rb.product = v.product;
+          if (v.record_limit) rb.limit = v.record_limit;
+          if (v.opened) rb.opened = v.opened;
+          return writeRecord(rb, msg, btn);
+        }
+        if (!v.name) return ask(form, "name", "Type the account name, like Chase Ink.");
         var body = { action: "add_account", name: v.name, type: v.type };
         ["last4", "balance", "limit", "due_day", "minimum", "container_id"].forEach(function (k) { if (v[k]) body[k] = v[k]; });
         return write(body, msg, btn, "Account saved.");
+      }
+      if (kind === "track_fuel_card") {
+        var fb = { action: "track_fuel_card", fuel_card_id: form.getAttribute("data-fuel"), container_id: form.getAttribute("data-container") };
+        ["due_day", "limit", "last4"].forEach(function (k) { if (v[k]) fb[k] = v[k]; });
+        return write(fb, msg, btn, "Gas card added. It is tracked like your other cards.");
       }
     }
 
@@ -635,7 +778,7 @@
     el.addEventListener("change", function (e) {
       var t = e.target;
       if (t && t.matches && t.matches('select[data-act="move"]')) onMove(t);
-      if (t && t.name === "type" && t.form && t.form.getAttribute("data-form") === "add_account") syncCardFields();
+      if (t && /^(type|record_type|mode)$/.test(t.name || "") && t.form && t.form.getAttribute("data-form") === "add_account") syncCardFields();
     });
     el.addEventListener("submit", function (e) {
       var f = e.target;
@@ -643,9 +786,38 @@
       e.preventDefault();
       onSubmit(f);
     });
+    /* A note about an empty field goes away once the person types. */
+    el.addEventListener("input", function (e) {
+      var f = e.target && e.target.form;
+      if (!f || !f.getAttribute || f.getAttribute("data-form") !== "add_account") return;
+      var m = f.querySelector(".act-msg");
+      if (m && m.textContent) m.textContent = "";
+    });
+
+    /* What you have (money-tradelines.js) hands over its read's own choices for
+       Just record it when it loads; the open form takes them, keeping what is picked. */
+    function refill(sel, pairs) {
+      if (!sel || !pairs.length) return;
+      var keep = sel.value;
+      sel.innerHTML = pairs.map(function (p) { return '<option value="' + esc(p[0]) + '">' + esc(p[1]) + '</option>'; }).join("");
+      if (pairs.some(function (p) { return String(p[0]) === keep; })) sel.value = keep;
+    }
+    function onTradelinesReady() {
+      var form = q('form[data-form="add_account"]');
+      if (!form) return;
+      var rc = recordChoices(st.data);
+      refill(form.elements.record_type, rc.types.map(function (t) { return [t.value, t.label]; }));
+      refill(form.elements.belongs_to, rc.owners.map(function (o) { return [o.value, o.label]; }));
+      syncCardFields();
+    }
+    var doc = root.document;
+    if (doc && typeof doc.addEventListener === "function") doc.addEventListener("fh:tradelines-ready", onTradelinesReady);
 
     load();
-    return { reload: load };
+    return {
+      reload: load,
+      unmount: function () { if (doc && typeof doc.removeEventListener === "function") doc.removeEventListener("fh:tradelines-ready", onTradelinesReady); }
+    };
   }
 
   /* ── the standalone page (/app/money-accounts.html) — a thin shell ──────── */

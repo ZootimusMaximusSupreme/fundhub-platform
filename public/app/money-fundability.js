@@ -12,8 +12,13 @@
  *   - A pass, a miss and an unknown are said in WORDS, with a shape beside them
  *     — never by colour alone (UI-STANDARDS §12.6).
  *   - The two lines differ by dash and by dot shape, and the legend says which
- *     is which in words. The "if removed" line always says it is not promised.
+ *     is which in words. No "not promised" rider on screen (owner rule, short
+ *     client words, 2026-11-07); the read keeps its own sentences.
  *   - Businesses are listed one by one. Nothing adds them up.
+ *
+ * "Your funding paths" (wave 4, unit FUND) — fund it yourself, fund other
+ * people, Fundhub funds you — is drawn by funding-paths.js from the same read's
+ * `paths`; its presses go through FHFundingPaths.act and repaint this section.
  *
  * The chart is plain inline SVG for the lines only. Every word on it (axis
  * labels, the point details) is HTML, so the type stays on the four brand sizes
@@ -177,7 +182,7 @@
     var later = lastOf(planPoints(d, "plan"));
     var why;
     if (isNum(n.funding_estimate_cents)) {
-      why = "UnderwriteIQ's first look, not a bank's yes. It comes from your best card and your best loan.";
+      why = "From your best card and your best loan.";
     } else if (n.tier === "not_fundable") {
       why = "Shows up once your file is fundable. Your personal file comes first.";
     } else {
@@ -287,10 +292,16 @@
     return bits.join(" — ");
   }
 
+  /* Short client words (owner rule 2026-11-07): the engine's own sentences keep
+     their facts, but the screen drops the "not promised" riders. The read is unchanged. */
+  function noRider(s) {
+    return String(s == null ? "" : s).replace(/\s*(That is not promised[^.]*\.|It is not a promise\.)\s*$/i, "").trim();
+  }
+
   function seriesRow(label, keyCls, p, isToday) {
     var assume = isToday
       ? '<p class="caption">Your file as it is today. No guesses.</p>'
-      : '<ul class="fd-assume">' + list(p.assumptions).map(function (a) { return '<li>' + esc(a) + '</li>'; }).join("") + '</ul>';
+      : '<ul class="fd-assume">' + list(p.assumptions).map(function (a) { return '<li>' + esc(noRider(a)) + '</li>'; }).join("") + '</ul>';
     return '<div class="fd-series">' +
       '<p class="fd-series-head"><span class="fd-key ' + keyCls + '" aria-hidden="true"></span>' + esc(label) + '</p>' +
       '<p><span class="num">' + esc(scoreText(p)) + '</span> · ' + esc(tierWord(p.tier)) +
@@ -340,14 +351,22 @@
       return '<button type="button" class="fd-col" data-col="' + i + '" style="left:' + xPct(m, c) + '%"' +
         ' aria-pressed="' + (i === sel ? "true" : "false") + '" aria-label="' + esc(colAria(m, c, i)) + '"></button>';
     }).join("");
+    /* A phone shows fewer dates (QA18: at 320px "Today" and "+3 mo" ran
+       together). A middle date closer than a third of the chart to the date
+       before it, or to the end, gets no phone label. Its dot and tap stay. */
+    var lastX = 0;
     var xLabels = m.cols.map(function (c, i) {
-      var cls = i === 0 ? " is-first" : (i === m.cols.length - 1 ? " is-last" : "");
-      return '<span class="fd-xlabel caption' + cls + '" style="left:' + xPct(m, c) + '%">' +
+      var x = xPct(m, c);
+      var end = i === m.cols.length - 1;
+      var phone = i === 0 || end || (x - lastX >= 33 && 100 - x >= 33);
+      if (phone) lastX = x;
+      var cls = i === 0 ? " is-first" : (end ? " is-last" : "");
+      return '<span class="fd-xlabel caption' + cls + '" style="left:' + x + '%">' +
         '<span class="fd-xl-long">' + esc(colLabel(c, i)) + '</span>' +
-        '<span class="fd-xl-short">' + esc(shortLabel(c, i)) + '</span></span>';
+        (phone ? '<span class="fd-xl-short">' + esc(shortLabel(c, i)) + '</span>' : "") + '</span>';
     }).join("");
     var legend = '<p class="fd-legend caption"><span><span class="fd-key fd-key-plan" aria-hidden="true"></span>Your plan — solid line, filled dots</span>' +
-      (m.hasIfr ? '<span><span class="fd-key fd-key-ifr" aria-hidden="true"></span>If removed — dashed line, open dots. Not promised.</span>' : "") +
+      (m.hasIfr ? '<span><span class="fd-key fd-key-ifr" aria-hidden="true"></span>If removed — dashed line, open dots.</span>' : "") +
       '</p>';
     return head + legend +
       '<div class="fd-plot-wrap"><div class="fd-plot">' + yLabels + svg +
@@ -373,7 +392,7 @@
   }
 
   function renderCannot(d) {
-    var rows = list(d.cannot_project).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("");
+    var rows = list(d.cannot_project).map(function (t) { return '<li>' + esc(noRider(t)) + '</li>'; }).join("");
     if (!rows) return "";
     return '<section class="card" aria-labelledby="fd-cannot"><h2 class="eyebrow" id="fd-cannot">What this cannot look ahead on</h2>' +
       '<ul class="fd-cannot">' + rows + '</ul></section>';
@@ -438,45 +457,127 @@
 
   function isEmpty(d) { return !d || d.has_pull !== true; }
 
+  /* Short client words (owner rule 2026-11-07, QA17): the numbers the engine
+     has, one line for each part with no estimate yet, and no disclaimers. The
+     word "estimate" says it. A total shows only when the engine gives one for
+     more than the personal file. */
   function renderOpportunity(opportunity) {
     if (!opportunity || opportunity.basis !== "current_crs_engine") return "";
-    function amount(value) { return isNum(value) ? money(value) : "Unknown"; }
+    function known(value) { return !!value && isNum(value.currentCents); }
+    /* The plan amount and the change show only when the plan moves the estimate. */
     function figures(value) {
-      value = value || {};
-      return '<dl><dt>Current modeled capacity</dt><dd class="big">' + esc(amount(value.currentCents)) + '</dd>' +
-        '<dt>Modeled scenario</dt><dd>' + esc(amount(value.projectedCents)) + '</dd>' +
-        '<dt>Estimated change</dt><dd>' + esc(amount(value.liftCents)) + '</dd></dl>';
+      var moves = isNum(value.projectedCents) && value.projectedCents !== value.currentCents;
+      return '<dl><dt>Estimate today</dt><dd class="big">' + esc(money(value.currentCents)) + '</dd>' +
+        (moves ? '<dt>With your plan</dt><dd>' + esc(money(value.projectedCents)) + '</dd>' +
+          (isNum(value.liftCents) ? '<dt>Change</dt><dd>' + esc(money(value.liftCents)) + '</dd>' : '') : '') + '</dl>';
     }
-    var reasons = {
-      formed_business_not_on_file: "Formed business not on file",
-      formation_evidence_required: "Formation evidence needs review",
-      ein_evidence_required: "EIN confirmation needs review",
-      matched_business_credit_report_required: "Matching business credit report needed",
-      business_age_required: "Business age is unknown",
-      business_report_association_ambiguous: "Business report association needs review",
-      current_engine_does_not_expose_safe_capacity: "Current report needs review before an estimate is shown"
+    var needs = {
+      genuine_credit_report_required: "needs a credit report",
+      current_engine_does_not_expose_safe_capacity: "needs a report review",
+      formed_business_not_on_file: "not on file yet",
+      formation_evidence_required: "needs its state filing proof",
+      ein_evidence_required: "needs its EIN proof",
+      business_age_required: "needs its start date",
+      matched_business_credit_report_required: "needs its business report",
+      business_report_association_ambiguous: "needs a report review"
     };
+    function need(value) { return needs[list(value && value.blockers)[0]] || "no estimate yet"; }
     var personal = opportunity.personal || {};
     var combined = opportunity.combined || {};
-    var html = '<section class="fd-block fd-opportunity" data-funding-opportunity><h2>Funding opportunity from your current report</h2>' +
-      '<p class="caption">One personal file, with each business shown separately. Modeled capacity is not a bank approval or issued funding.</p>' +
-      '<div class="fd-grid fd-halves"><section class="card fd-tile" data-opportunity-personal><h3>Personal</h3>' + figures(personal) + '</section>' +
-      '<section class="card fd-tile" data-opportunity-combined><h3>Combined modeled capacity</h3>' + figures(combined) +
-      (combined.currentCents === null ? '<p class="caption">A total is unknown until each business has reviewed facts and a matching report, and shared personal-guarantee overlap has been resolved. The personal estimate is counted once.</p>' : '') + '</section></div>';
     var businesses = list(opportunity.businesses);
-    if (businesses.length) html += '<h3>Each business</h3><div class="fd-grid fd-thirds">' + businesses.map(function (business) {
-      return '<section class="card fd-tile" data-opportunity-business><h4>' + esc(business.name || "Business preparation plan") + '</h4>' +
-        figures(business) + '<ul class="caption">' + list(business.blockers).map(function (reason) {
-          return '<li>' + esc(reasons[reason] || "Current business file needs review") + '</li>';
-        }).join('') + '</ul></section>';
-    }).join('') + '</div>';
-    var steps = list(opportunity.steps);
+    var waiting = businesses.filter(function (b) { return !known(b); });
+    var personalNeed = need(personal);
+    var html = '<section class="fd-block fd-opportunity" data-funding-opportunity><h2>Funding opportunity from your current report</h2>' +
+      '<div class="fd-grid fd-halves"><section class="card fd-tile" data-opportunity-personal><h3>Personal</h3>' +
+      (known(personal) ? figures(personal) : '<p>' + esc(personalNeed.charAt(0).toUpperCase() + personalNeed.slice(1)) + '</p>') + '</section>' +
+      (businesses.length && known(combined) ? '<section class="card fd-tile" data-opportunity-combined><h3>Combined estimate</h3>' + figures(combined) + '</section>' : '') +
+      '</div>';
+    if (businesses.length) html += '<h3>Each business</h3>' +
+      (waiting.length < businesses.length ? '<div class="fd-grid fd-thirds">' + businesses.filter(known).map(function (business) {
+        return '<section class="card fd-tile" data-opportunity-business><h4>' + esc(business.name || "Business preparation plan") + '</h4>' + figures(business) + '</section>';
+      }).join('') + '</div>' : '') +
+      (waiting.length ? '<ul class="card fd-tile">' + waiting.map(function (business) {
+        /* The reason never splits: a narrow phone moves it whole to the next line. */
+        return '<li data-opportunity-business><strong>' + esc(business.name || "Business preparation plan") + '</strong> — ' + esc(need(business).replace(/ /g, "\u00a0")) + '</li>';
+      }).join('') + '</ul>' : '');
+    var steps = list(opportunity.steps).filter(function (step) { return isNum(step.liftCents) && step.liftCents !== 0; });
     var labels = { utilization: "Card balances", credit_repair: "Credit repair", inquiry_cleanup: "Inquiry cleanup", formation: "LLC formation", ein: "EIN confirmation", bank_preparation: "Banking preparation", business_credit: "Business credit" };
     if (steps.length) html += '<h3>What each step changes</h3><ul>' + steps.map(function (step) {
-      return '<li class="card"><h4>' + esc(labels[step.key] || "Plan step") + '</h4><p><strong>Estimated funding change: ' +
-        esc(isNum(step.liftCents) ? money(step.liftCents) : "Not modeled") + '</strong></p><p class="caption">' + esc(step.reason || "A reviewed report is needed.") + '</p></li>';
+      return '<li class="card"><h4>' + esc(labels[step.key] || "Plan step") + '</h4><p><strong>Estimated funding change: ' + esc(money(step.liftCents)) + '</strong></p></li>';
     }).join('') + '</ul>';
-    return html + '<p class="caption">' + list(opportunity.limitations).map(esc).join(' ') + '</p></section>';
+    return html + '</section>';
+  }
+
+  /* ── your Fundhub score — GET /api/money/fundability?view=lookahead ──────
+     Owner-set 2026-11-07. The number, its band and the top three reasons, now
+     and "in N months if you follow your plan" (9 by default; 3/6/9/12 quick
+     picks, any month 1-24). Every point is UnderwriteIQ re-run on the client's
+     projected file (src/finance/fundhub-lookahead.mjs). The formula stays on
+     the server; this card only paints what the read sends. */
+
+  var FH_QUICK = [3, 6, 9, 12];
+  var FH_MAX = 24;
+  var FH_DEFAULT = 9;
+
+  /* "Can you apply yet?" (unit L4, public/app/apply-gate.js) mounts here when the page
+     loaded it; it reads GET /api/money/banks?view=apply_gate on its own. */
+  function renderGateSlot() { return '<div class="fd-gate-slot" data-fd-apply-gate></div>'; }
+
+  function renderScoreSlot() { return '<div class="fd-fh-slot" data-fh-score-slot aria-live="polite"></div>'; }
+
+  function fhPoint(look, months, scenario) {
+    var out = null;
+    list(look && look.points).forEach(function (p) { if (p && p.months === months && p.scenario === scenario) out = p; });
+    return out;
+  }
+
+  function fhPicks(sel) {
+    var quick = FH_QUICK.map(function (m) {
+      return '<button type="button" class="fd-fh-pick" data-fh-month="' + m + '" aria-pressed="' + (m === sel ? "true" : "false") + '">' + m + ' mo</button>';
+    }).join("");
+    var opts = "";
+    for (var m = 1; m <= FH_MAX; m++) opts += '<option value="' + m + '"' + (m === sel ? " selected" : "") + '>' + plural(m, "month", "months") + '</option>';
+    return '<div class="fd-fh-picks" role="group" aria-label="Look ahead">' + quick +
+      '<label class="fd-fh-any"><span>Any month</span><select data-fh-any aria-label="Any month from 1 to 24">' + opts + '</select></label></div>';
+  }
+
+  function fhNumber(fh) {
+    return '<span class="big">' + esc(fh && isNum(fh.score) ? fh.score : "—") + '</span>' +
+      '<span class="caption">out of 100</span>';
+  }
+
+  function renderScoreCard(look, sel, failed) {
+    if (!look || look.view !== "lookahead" || look.has_pull !== true) return "";
+    sel = isNum(sel) ? sel : (isNum(look.months) ? look.months : FH_DEFAULT);
+    var now = (look.now && look.now.fundhub_score) || {};
+    var later = fhPoint(look, sel, "plan");
+    var removed = fhPoint(look, sel, "if_removed");
+    var lfh = (later && later.fundhub_score) || {};
+    var est = later && isNum(later.funding_estimate_cents) ? money(later.funding_estimate_cents) : tierWord(later && later.tier);
+    var reasons = list(now.reasons).map(function (r) { return '<li>' + esc(r.text) + '</li>'; }).join("");
+    var rfh = removed && removed.removal_applied ? (removed.fundhub_score || {}) : null;
+    return '<section class="card fd-fh" aria-labelledby="fd-fh-title">' +
+      '<h2 class="eyebrow" id="fd-fh-title">Your Fundhub score</h2>' +
+      '<div class="fd-fh-grid">' +
+        '<div class="fd-fh-cell"><p class="fd-fh-head">Today</p><p class="fd-fh-num">' + fhNumber(now) + '</p>' +
+          '<p class="fd-tier">' + esc(now.band_label || "No score yet") + '</p></div>' +
+        '<div class="fd-fh-cell"><p class="fd-fh-head">In ' + esc(plural(sel, "month", "months")) + ' if you follow your plan</p>' +
+          '<p class="fd-fh-num">' + fhNumber(lfh) + '</p>' +
+          '<p class="fd-tier">' + esc(lfh.band_label || "No score yet") + '</p>' +
+          '<p class="caption">UnderwriteIQ estimate: ' + esc(est) + '</p></div>' +
+      '</div>' +
+      (rfh ? '<p class="caption">If your disputed items come off: ' + esc(isNum(rfh.score) ? rfh.score : "—") + ' · ' + esc(rfh.band_label || "") + '</p>' : "") +
+      fhPicks(sel) +
+      (failed ? '<p class="caption" role="status">We could not load that month. Try again.</p>' : "") +
+      (reasons ? '<p class="fd-fh-sub">What moves it most</p><ol class="fd-fh-reasons">' + reasons + '</ol>' : "") +
+      '<p class="caption">Built on UnderwriteIQ. Each month re-runs UnderwriteIQ on your file with your own plan steps.</p>' +
+      '</section>';
+  }
+
+  /* "Your funding paths" (wave 4, unit FUND): funding-paths.js draws d.paths;
+     nothing when that file is not on the page. */
+  function pathsCard(d, links, quiet) {
+    return root.FHFundingPaths && d ? root.FHFundingPaths.renderCard(d.paths, { clientId: (links && links.clientId) || "", quiet: quiet === true }) : "";
   }
 
   function renderFull(d, links) {
@@ -485,9 +586,9 @@
     var currentEngine = d.engine && d.engine.name === "underwrite_iq_crs";
     if (current && (current.status === "modeled" || list(current.blockers).indexOf("current_engine_does_not_expose_safe_capacity") >= 0)) currentEngine = true;
     if (currentEngine && d.opportunity) {
-      return renderSample(d) + renderHead(d) + renderOpportunity(d.opportunity) + renderMoves(d) + renderCannot(d);
+      return renderSample(d) + renderHead(d) + renderScoreSlot() + pathsCard(d, links) + renderGateSlot() + renderOpportunity(d.opportunity) + renderMoves(d);
     }
-    return renderSample(d) + renderHead(d) +
+    return renderSample(d) + renderHead(d) + renderScoreSlot() + pathsCard(d, links) + renderGateSlot() +
       renderOpportunity(d.opportunity) +
       '<div class="fd-grid fd-thirds">' + renderNowTile(d) + renderFundingTile(d) + renderLaterTile(d) + '</div>' +
       renderMoves(d) +
@@ -502,7 +603,8 @@
       '<section class="card fd-empty"><h2>No credit file yet — run your soft pull</h2>' +
       '<p>Your fundability shows up here after a soft pull. A soft pull does not hurt your credit. ' +
       'Fundhub only reads your file. It never moves money.</p>' +
-      '<a class="fd-btn-primary" href="' + esc(links.setup || SETUP_PATH) + '">Run your soft pull</a></section>';
+      '<a class="fd-btn-primary" href="' + esc(links.setup || SETUP_PATH) + '">Run your soft pull</a></section>' +
+      pathsCard(d, links, true);
   }
 
   function renderLoading() {
@@ -603,9 +705,56 @@
     var cid = ctx.clientId || "";
     var get = typeof ctx.apiGet === "function" ? function (p) { return normal(ctx.apiGet(p)); } : call;
     var data = null;
-    var links = { setup: withClient(SETUP_PATH, cid), accounts: withClient(ACCOUNTS_PATH, cid) };
+    var look = null;
+    var lookSeq = 0;
+    var links = { setup: withClient(SETUP_PATH, cid), accounts: withClient(ACCOUNTS_PATH, cid), clientId: cid };
 
     function paint(html) { el.innerHTML = '<div class="fh-fundability">' + html + '</div>'; }
+
+    /* The apply gate paints into its own slot with this section's read, so the
+       sample demo and staff ?client_id= work the same. Without apply-gate.js the
+       slot stays empty. */
+    function mountGate() {
+      var slot = el.querySelector ? el.querySelector("[data-fd-apply-gate]") : null;
+      var gate = root.FHApplyGate;
+      if (!slot || !gate || typeof gate.mount !== "function") return;
+      try { gate.mount(slot, { clientId: cid, apiGet: get, apiPost: typeof ctx.apiPost === "function" ? ctx.apiPost : undefined }); } catch (e) { /* the section still shows */ }
+    }
+
+    /* The Fundhub score card lives in its own slot, so picking a month never
+       repaints the rest of the section. Its first paint comes from the section's
+       own read (`fundhub_lookahead`), so a page load is still one read. Only a
+       month the read does not hold asks again (?view=lookahead&months=N). A
+       failed ask keeps the card with a short note. */
+    function paintScore(html) {
+      var slot = el.querySelector ? el.querySelector("[data-fh-score-slot]") : null;
+      if (!slot) return;
+      var a = root.document && root.document.activeElement;
+      var keep = a && slot.contains(a) ? (a.getAttribute("data-fh-month") ? '[data-fh-month="' + a.getAttribute("data-fh-month") + '"]'
+        : (a.hasAttribute("data-fh-any") ? "[data-fh-any]" : null)) : null;
+      slot.innerHTML = html;
+      if (keep) { var b = slot.querySelector(keep); if (b) b.focus(); }
+    }
+    function loadScore(months) {
+      if (look && fhPoint(look, months, "plan")) { look.months = months; paintScore(renderScoreCard(look, months)); return; }
+      var seq = ++lookSeq;
+      var path = READ_PATH + "?view=lookahead&months=" + months + (cid ? "&client_id=" + encodeURIComponent(cid) : "");
+      get(path).then(function (res) {
+        if (seq !== lookSeq) return;
+        var b = res && res.body;
+        if (res && res.status === 200 && b && b.view === "lookahead") {
+          look = b;
+          paintScore(renderScoreCard(look, months));
+          return;
+        }
+        paintScore(look ? renderScoreCard(look, look.months, true) : "");
+      });
+    }
+    function pickMonth(n) {
+      n = Number(n);
+      if (!(n >= 1 && n <= FH_MAX) || Math.floor(n) !== n) return;
+      loadScore(n);
+    }
 
     function select(i) {
       if (!data || !el.querySelector) return;
@@ -627,6 +776,11 @@
         if (kind !== "ok") { data = null; paint(renderError(kind)); return; }
         data = res.body;
         paint(render(data, links));
+        mountGate();
+        lookSeq++;
+        var carried = data && data.fundhub_lookahead;
+        look = !isEmpty(data) && carried && carried.view === "lookahead" ? carried : null;
+        if (look) paintScore(renderScoreCard(look, isNum(look.months) ? look.months : FH_DEFAULT));
       });
     }
 
@@ -637,8 +791,27 @@
     function onClick(e) {
       var t = e.target && e.target.closest ? e.target.closest("[data-act]") : null;
       if (t && (!el.contains || el.contains(t)) && t.getAttribute("data-act") === "retry") { load(); return; }
+      var m = e.target && e.target.closest ? e.target.closest("[data-fh-month]") : null;
+      if (m && (!el.contains || el.contains(m))) { pickMonth(m.getAttribute("data-fh-month")); return; }
+      var act = t && (!el.contains || el.contains(t)) ? t.getAttribute("data-act") : null;
+      if (act && root.FHFundingPaths && root.FHFundingPaths.handles(act)) {
+        root.FHFundingPaths.act(t, act, {
+          data: data, clientId: cid,
+          send: typeof ctx.apiPost === "function" ? function (p, b) { return normal(ctx.apiPost(p, b)); } : null,
+          repaint: function () {
+            paint(render(data, links));
+            mountGate();
+            if (look) paintScore(renderScoreCard(look, isNum(look.months) ? look.months : FH_DEFAULT));
+          }
+        });
+        return;
+      }
       var c = colOf(e);
       if (c !== null) select(c);
+    }
+    function onChange(e) {
+      var t = e.target;
+      if (t && t.hasAttribute && t.hasAttribute("data-fh-any")) pickMonth(t.value);
     }
     function onPoint(e) {
       var c = colOf(e);
@@ -646,6 +819,7 @@
     }
 
     el.addEventListener("click", onClick);
+    el.addEventListener("change", onChange);
     el.addEventListener("mouseover", onPoint);
     el.addEventListener("focusin", onPoint);
     load();
@@ -653,6 +827,7 @@
       reload: load,
       unmount: function () {
         el.removeEventListener("click", onClick);
+        el.removeEventListener("change", onChange);
         el.removeEventListener("mouseover", onPoint);
         el.removeEventListener("focusin", onPoint);
         el.innerHTML = "";
@@ -688,6 +863,7 @@
     money: money, day: day, scoreText: scoreText, tierWord: tierWord, statusOf: statusOf,
     chartModel: chartModel, renderChart: renderChart, renderDetail: renderDetail,
     isEmpty: isEmpty, render: render, renderFull: renderFull, renderEmpty: renderEmpty, renderOpportunity: renderOpportunity,
+    renderScoreCard: renderScoreCard,
     renderError: renderError, renderLoading: renderLoading, classify: classify,
     withClient: withClient, mount: mount
   };

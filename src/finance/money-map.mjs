@@ -32,6 +32,7 @@
 //   toCalculatorCards               src/tradelines/index.mjs
 //   readDate                        src/liabilities/index.mjs
 //   fromCents                       src/commissions/money.mjs
+//   incomeInflows                   src/banking/income.mjs (money coming in)
 //
 // What this file adds is the JOIN, the ATTRIBUTION, and the ABSENCES.
 //
@@ -79,6 +80,7 @@ import { calcFunding } from "../calculators/deal-funding.mjs";
 import { project } from "../banking/cashflow.mjs";
 import { toCashflowBills } from "../banking/cashflow-seam.mjs";
 import { readDate } from "../liabilities/index.mjs";
+import { incomeInflows } from "../banking/income.mjs";
 
 /* Which engine said what. The screen prints these strings verbatim next to the
    numbers they produced. Module paths are IN the label deliberately: when two
@@ -92,7 +94,8 @@ export const ENGINES = Object.freeze({
   reminders: "Stored reminders — cashflow_reminders (src/banking/reminders.mjs)",
   liabilities: "Card liabilities — card_liabilities table (migration 083)",
   recurring: "Recurring-bill detector — recurring_bills (src/banking/recurring.mjs)",
-  banking_surface: "Banking surface — src/finance/banking-surface.mjs"
+  banking_surface: "Banking surface — src/finance/banking-surface.mjs",
+  income: "Repeat-income finder — src/banking/income.mjs"
 });
 
 const engine = (id) => ({ engine: id, engine_label: ENGINES[id] });
@@ -813,6 +816,9 @@ function fundingSection(tradelines, requestedAmount, threshold, grid) {
  *                                        returns it. An ABSENT key means unset, and
  *                                        project() reports it as a gap rather than
  *                                        substituting a number nobody chose.
+ * @param {object|null} [input.income]   src/banking/income.mjs loadIncome() output.
+ *                                        Omit (or null) and money coming in is not
+ *                                        modelled — the plain worst case, as before.
  *
  * @returns {object} the payload public/app/money-map.html renders.
  */
@@ -826,7 +832,8 @@ export function moneyMap({
   reminders = [],
   utilizationThreshold,
   requestedAmount = null,
-  thresholds = {}
+  thresholds = {},
+  income = null
 } = {}) {
   if (typeof asOf !== "string" || dayNumber(asOf) === null) {
     throw new TypeError(`moneyMap: asOf must be a 'YYYY-MM-DD' date, got ${JSON.stringify(asOf)}`);
@@ -920,6 +927,19 @@ export function moneyMap({
     statementClose: readDate(l.statement_date)
   }));
 
+  /* MONEY COMING IN, WHEN IT IS KNOWN. Counted repeat deposits on the accounts
+     this projection opens from, placed on their paydays inside the window.
+     Only one the org's confidence floor calls sure is `confirmed`; project()
+     counts an unconfirmed inflow in neither track, so a maybe-paycheck never
+     makes the careful line hopeful. Merchant payouts have no payday and stay
+     off the calendar. */
+  const inflows = incomeInflows(income, {
+    from: asOf,
+    to: windowTo,
+    confidenceFloor: thresholds && typeof thresholds === "object" ? thresholds.confidenceFloor : undefined,
+    accountIds: usedAccounts.map((a) => a.id)
+  });
+
   let projection = null;
   let projectionError = null;
   if (usedAccounts.length === 0) {
@@ -944,7 +964,7 @@ export function moneyMap({
           label: a.label,
           balanceCents: a.balanceCents
         })),
-        expectedInflows: [],
+        expectedInflows: inflows,
         recurringBills: seam.recurringBills,
         cardLiabilities,
         now: asOf,
@@ -988,20 +1008,31 @@ export function moneyMap({
   const utilization = utilizationSection(tl, grid, utilizationThreshold, funding);
   const alerts = alertsSection(rm, projection, cards, utilization, asOf);
 
-  /* NO INCOME IS MODELLED, AND SAYING SO IS NOT OPTIONAL.
-     `bank_transactions` (085) holds inflows, but nothing in this repository
-     detects a recurring INFLOW — recurring.mjs is a bill detector and 086's CHECK
-     forbids a positive amount. So `expectedInflows` is empty above, the
-     projection's "money in" is 0 by construction, and every "what is left"
-     figure on this screen is therefore a WORST CASE. A screen that quietly
-     showed 0 income as though it were a measurement would be lying. */
-  const notes = [
-    {
-      code: "no_income_modelled",
-      note:
-        "Money coming IN is not modelled. Nothing in this system detects recurring income yet, so 'money in' is zero by construction and every 'what is left' figure is a worst case, not a forecast."
-    }
-  ];
+  /* WHAT MONEY COMING IN IS MODELLED, SAID OUT LOUD EITHER WAY.
+     src/banking/income.mjs finds repeat deposits. When it was read and placed
+     at least one payday in this window, the note says how many and which of
+     them move the balance. When it was not — no income read was passed, the
+     read failed, or nothing repeating was found — `expectedInflows` is empty,
+     the projection's "money in" is 0 by construction, and every "what is left"
+     figure is a WORST CASE. A screen that quietly showed 0 income as though it
+     were a measurement would be lying, so the plain note stays for that case. */
+  const confirmedInflows = inflows.filter((r) => r.confirmed).length;
+  const notes = inflows.length
+    ? [{
+        code: "income_modelled",
+        note:
+          `Money coming IN counts ${inflows.length} repeat deposit(s) found in the bank history, on their paydays in this window. ` +
+          `${confirmedInflows} of them are steady enough to move the balance; ` +
+          `${inflows.length - confirmedInflows === 0 ? "none are" : `${inflows.length - confirmedInflows} are`} shown but not counted. ` +
+          "Money that has not arrived on a steady schedule is still left out, so 'what is left' leans low, never high."
+      }]
+    : [{
+        code: "no_income_modelled",
+        note:
+          income && income.ok === true
+            ? "Money coming IN is not modelled. No repeat deposit was found in the bank history, so 'money in' is zero by construction and every 'what is left' figure is a worst case, not a forecast."
+            : "Money coming IN is not modelled. Nothing in this system detects recurring income yet, so 'money in' is zero by construction and every 'what is left' figure is a worst case, not a forecast."
+      }];
   if (seamError) {
     notes.push({
       code: "bill_expansion_refused",
@@ -1065,6 +1096,26 @@ export function moneyMap({
     utilization,
     alerts,
     funding,
+    /* What the income finder found, kinds kept apart and never added. Null
+       when no income read was passed. */
+    income: income && income.ok === true
+      ? {
+          ...engine("income"),
+          by_kind: income.by_kind,
+          items: (income.items || []).map((it) => ({
+            id: it.id, source: it.source, name: it.name, kind: it.kind, cadence: it.cadence ?? null,
+            typical: amount(Number.isSafeInteger(it.typical_cents) ? it.typical_cents : null),
+            monthly: amount(Number.isSafeInteger(it.monthly_cents) ? it.monthly_cents : null),
+            next_expected_on: it.next_expected_on ?? null,
+            on_the_calendar: inflows.some((r) => r.inflowId === it.id)
+          })),
+          not_counted: (income.not_counted || []).map((it) => ({ id: it.id, name: it.name, kind: it.kind, reason: it.reason })),
+          placed: inflows.length,
+          confirmed: confirmedInflows
+        }
+      : income && income.ok === false
+        ? { ...engine("income"), unavailable: true, reason: income.reason ?? null }
+        : null,
     notes
   };
 }

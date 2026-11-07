@@ -167,3 +167,27 @@ describe("the template and the planner say the same sentence", () => {
     check(planNewPull(diff, { pullId: "pull-1" }), "a credit pull");
   });
 });
+
+// Migration 573 — phone alerts (Finance OS CFO build, unit D). Read as text, like 471.
+describe("migration 573: the Important mark and the phone alert switch", () => {
+  const SQL_573 = readFileSync(join(MIGRATIONS, "573_finance_phone_alerts.sql"), "utf8");
+  const code = SQL_573.replace(/--.*$/gm, "");
+
+  test("it is the only 573, and it only adds", () => {
+    assert.deepEqual(readdirSync(MIGRATIONS).filter((f) => f.startsWith("573_")), ["573_finance_phone_alerts.sql"]);
+    assert.doesNotMatch(code, /\bDROP\b|\bDELETE\b|\bTRUNCATE\b|\bUPDATE\b/i);
+    assert.equal((code.match(/ADD COLUMN IF NOT EXISTS/g) || []).length, 4, "four new columns, each re-runnable");
+    assert.doesNotMatch(code, /ADD COLUMN (?!IF NOT EXISTS)/, "re-running it is a no-op");
+  });
+
+  test("a bill nobody marked never buzzes a phone; a client with no row has phone alerts on", () => {
+    assert.match(code, /ADD COLUMN IF NOT EXISTS important\s+boolean NOT NULL DEFAULT false/);
+    assert.match(code, /ADD COLUMN IF NOT EXISTS phone_alerts boolean NOT NULL DEFAULT true/);
+    assert.match(code, /important_set_by IN \('client', 'staff'\)/);
+  });
+
+  test("its indexes are partial and named for what reads them", () => {
+    assert.match(code, /CREATE INDEX IF NOT EXISTS recurring_bills_important_idx\s+ON recurring_bills \(org_id, client_id\)\s+WHERE important/);
+    assert.match(code, /CREATE INDEX IF NOT EXISTS messages_finance_push_idx[\s\S]*WHERE channel = 'push' AND template_key LIKE 'PUSH-FINANCE-%'/);
+  });
+});

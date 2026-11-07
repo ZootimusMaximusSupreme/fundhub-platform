@@ -1,4 +1,4 @@
-// File protection alerts (/app/money-alerts.html) — every control that changes
+// Alerts (/app/money-alerts.html) — every control that changes
 // what a client is texted about must send the exact write the server expects.
 //
 // The four switches, the promo form, removing a promo, one card's statement
@@ -27,7 +27,7 @@ async function open(page, mutate = (d) => d) {
       return json(route, data);
     },
   });
-  await expect(page.locator(".fh-alerts h1")).toHaveText("File protection alerts", { timeout: 10_000 });
+  await expect(page.locator(".fh-alerts h1")).toHaveText("Alerts", { timeout: 10_000 });
   await expect(page.locator('[data-act="toggle"]').first()).toBeVisible();
   return { writes };
 }

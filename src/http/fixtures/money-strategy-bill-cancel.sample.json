@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "viewer": "client",
+  "counts": { "requested": 1, "working": 1, "cancelled": 2 },
+  "bills": [
+    {
+      "id": "b1000000-0000-4000-8000-000000000001",
+      "name": "Sample Streaming",
+      "merchant_key": "SAMPLE STREAMING",
+      "cadence": "monthly",
+      "amount_cents": 1599,
+      "next_on": "2026-11-12",
+      "last_on": "2026-10-12",
+      "account_name": "Sample Checking",
+      "account_mask": "4821",
+      "cancel": { "state": "none", "asked_on": null, "cancelled_on": null, "charged_again_on": null, "can_ask": true },
+      "link": { "url": "https://example.com/account/cancel", "set_on": "2026-11-01" }
+    },
+    {
+      "id": "b1000000-0000-4000-8000-000000000002",
+      "name": "Sample Gym",
+      "merchant_key": "SAMPLE GYM",
+      "cadence": "monthly",
+      "amount_cents": 4500,
+      "next_on": "2026-11-15",
+      "last_on": "2026-10-15",
+      "account_name": "Sample Checking",
+      "account_mask": "4821",
+      "cancel": { "state": "requested", "asked_on": "2026-11-06", "cancelled_on": null, "charged_again_on": null, "can_ask": false },
+      "link": null
+    },
+    {
+      "id": "b1000000-0000-4000-8000-000000000003",
+      "name": "Sample Design Suite",
+      "merchant_key": "SAMPLE DESIGN SUITE",
+      "cadence": "monthly",
+      "amount_cents": 5999,
+      "next_on": "2026-11-14",
+      "last_on": "2026-10-14",
+      "account_name": "Sample Business Checking",
+      "account_mask": "7710",
+      "cancel": { "state": "working", "asked_on": "2026-11-04", "cancelled_on": null, "charged_again_on": null, "can_ask": false },
+      "link": null
+    },
+    {
+      "id": "b1000000-0000-4000-8000-000000000004",
+      "name": "Sample Cloud Storage",
+      "merchant_key": "SAMPLE CLOUD STORAGE",
+      "cadence": "annual",
+      "amount_cents": 11988,
+      "next_on": null,
+      "last_on": "2026-01-20",
+      "account_name": "Sample Checking",
+      "account_mask": "4821",
+      "cancel": { "state": "cancelled", "asked_on": "2026-10-20", "cancelled_on": "2026-10-22", "charged_again_on": null, "can_ask": false },
+      "link": null
+    },
+    {
+      "id": "b1000000-0000-4000-8000-000000000005",
+      "name": "Sample Music",
+      "merchant_key": "SAMPLE MUSIC",
+      "cadence": "monthly",
+      "amount_cents": 1099,
+      "next_on": "2026-12-03",
+      "last_on": "2026-11-03",
+      "account_name": "Sample Checking",
+      "account_mask": "4821",
+      "cancel": { "state": "cancelled", "asked_on": "2026-10-01", "cancelled_on": "2026-10-03", "charged_again_on": "2026-11-03", "can_ask": true },
+      "link": null
+    },
+    {
+      "id": "b1000000-0000-4000-8000-000000000006",
+      "name": "Sample Phone Plan With A Very Long Merchant Name For Wrapping Checks",
+      "merchant_key": "SAMPLE PHONE PLAN WITH A VERY LONG MERCHANT NAME FOR WRAPPING CHECKS",
+      "cadence": "monthly",
+      "amount_cents": null,
+      "next_on": "2026-11-20",
+      "last_on": "2026-10-20",
+      "account_name": "Sample Card",
+      "account_mask": "1180",
+      "cancel": { "state": "none", "asked_on": null, "cancelled_on": null, "charged_again_on": null, "can_ask": true },
+      "link": null
+    }
+  ]
+}

@@ -1,4 +1,6 @@
-/* File protection alerts — FinanceOS.sections.alerts (money-alerts.js).
+/* Alerts — FinanceOS.sections.alerts (money-alerts.js). Organized by unit AL2
+   (2026-11-07): a switcher for Personal and each business, then Payments due,
+   Bills and Smart alerts, then Settings. Every control is at least 44 by 44.
    Every rule is under .fh-alerts, and the file carries every rule the section
    needs (card, grid, type roles, buttons, the switch, forms, skeleton), so it can
    sit inside the combined FinanceOS page — or any page with .app on a wrapper —
@@ -20,7 +22,6 @@
 /* The resting container (UI-STANDARDS §12.1) — the shadow is the token. */
 .fh-alerts .card{background:var(--surface,#fff);border:1px solid var(--line);border-radius:10px;padding:16px 24px;box-shadow:var(--panel-shadow);min-width:0}
 .fh-alerts .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
-.fh-alerts .tiles>*{grid-column:span 4}
 /* Each protection card is as tall as what it holds. Stretched to its row, the
    short New credit card next to Cash cushion was mostly an empty box. */
 .fh-alerts .prots{align-items:start}
@@ -50,18 +51,18 @@
    or text. 40px floor, 44px for the filled one (§5). */
 .fh-alerts .btn-primary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 24px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:600;text-decoration:none;cursor:pointer}
 .fh-alerts .btn-primary:hover{background:var(--ink2)}
-.fh-alerts .btn-line{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 16px;border-radius:8px;border:1px solid var(--ink);background:transparent;color:var(--ink);font-weight:600;text-decoration:none;white-space:nowrap;cursor:pointer}
-.fh-alerts .btn-text{display:inline-flex;align-items:center;min-height:40px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.fh-alerts .btn-line{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:8px 16px;border-radius:8px;border:1px solid var(--ink);background:transparent;color:var(--ink);font-weight:600;text-decoration:none;white-space:nowrap;cursor:pointer}
+.fh-alerts .btn-text{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 /* Destructive — said in words ("Yes, remove it"), set apart under a rule, and a
    literal dark red outline so it reads as a warning on every tenant. */
-.fh-alerts .btn-danger{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 16px;border-radius:8px;border:1px solid #991B1B;background:transparent;color:#991B1B;font-weight:600;cursor:pointer}
+.fh-alerts .btn-danger{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:8px 16px;border-radius:8px;border:1px solid #991B1B;background:transparent;color:#991B1B;font-weight:600;cursor:pointer}
 .fh-alerts [aria-disabled="true"]{opacity:.6;cursor:progress}
 .fh-alerts button:focus-visible,.fh-alerts a:focus-visible,.fh-alerts select:focus-visible,.fh-alerts input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .fh-alerts .msg:focus,.fh-alerts .cash-box:focus{outline:2px solid var(--ink);outline-offset:4px}
 
-/* ── the three tiles ── */
-.fh-alerts .tile{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-.fh-alerts .tile .eyebrow{margin-bottom:0}
+/* ── the head: the title, and the two adds ── */
+.fh-alerts .head-main{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fh-alerts .head-act{display:flex;flex-wrap:wrap;gap:8px}
 .fh-alerts .need-list{display:flex;flex-direction:column;gap:8px;width:100%}
 .fh-alerts .need-list li{padding-top:8px;border-top:1px solid var(--line)}
 .fh-alerts .need-list li:first-child{border-top:0;padding-top:0}
@@ -171,6 +172,46 @@
 .fh-alerts .sk-l{height:32px;width:60%}
 @keyframes fh-alerts-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
 
+/* ── phone alerts (unit D): the settings card above the four texts ──
+   Same card, switch, badges and sent list as the protections; the few rules
+   below only lay out what is new. Status is a word in a pill (§12.6). */
+.fh-alerts .phone{margin-bottom:24px}
+.fh-alerts .phone .next-line .btn-line{align-self:flex-start;margin-top:8px}
+.fh-alerts .phone .next-line p{max-width:72ch}
+.fh-alerts .ph-kinds{display:flex;flex-wrap:wrap;gap:8px 24px}
+.fh-alerts .ph-kinds li{display:flex;align-items:center;gap:8px;color:var(--ink)}
+.fh-alerts .ph-alert{color:var(--ink)}
+
+/* ── the board (unit AL2): what needs you, the switcher, three sections ──
+   A section is a resting panel (.card); inside it, rows and items are flat and
+   split by hairlines (§12.5). Status is a word in a pill, never colour alone. */
+.fh-alerts .needs{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+.fh-alerts .needs h2,.fh-alerts .board-sec h2,.fh-alerts .cform h2{font-weight:600;color:var(--ink)}
+.fh-alerts .board{display:flex;flex-direction:column;gap:16px;margin-bottom:32px}
+.fh-alerts .scopes{display:flex;flex-wrap:wrap;gap:8px}
+/* The scope in view is a solid ink fill AND aria-pressed (position and a word too: its name). */
+.fh-alerts .scope{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;max-width:100%;padding:8px 16px;border-radius:8px;border:1px solid var(--line);background:var(--surface,#fff);color:var(--ink);font-weight:600;cursor:pointer;overflow-wrap:anywhere;text-align:left}
+.fh-alerts .scope[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.fh-alerts .board-sec{display:flex;flex-direction:column;gap:8px}
+.fh-alerts .sec-head{display:flex;align-items:center;gap:8px}
+.fh-alerts .count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;padding:0 8px;border-radius:999px;background:var(--soft);color:var(--ink);font-variant-numeric:tabular-nums}
+.fh-alerts .row-name{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.fh-alerts .row-name img{flex:0 0 auto}
+.fh-alerts .row-side .badge{align-self:flex-end}
+.fh-alerts .smart-list{display:flex;flex-direction:column}
+.fh-alerts .smart-item{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 16px;align-items:start;padding:16px 0;border-top:1px solid var(--line)}
+.fh-alerts .smart-list .smart-item:first-child{border-top:0;padding-top:0}
+.fh-alerts .smart-main{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fh-alerts .smart-main .btn-text{padding:0 8px;vertical-align:middle}
+.fh-alerts .settings-h{font-weight:600;color:var(--ink);margin:8px 0 16px}
+/* The alert/bill form: one panel, the same fields as the promo editor. */
+.fh-alerts .cform{display:flex;flex-direction:column;gap:16px;margin-bottom:24px}
+.fh-alerts .cform input[type="text"]{width:100%}
+.fh-alerts .money-box{display:inline-flex;align-items:center;gap:8px;max-width:100%}
+.fh-alerts .money-box input{width:16ch;max-width:100%;font-variant-numeric:tabular-nums}
+.fh-alerts .sk-pill{display:inline-block;height:44px;width:120px;border-radius:8px}
+.fh-alerts .scopes.skel{display:flex;gap:8px}
+
 /* Said aloud, never shown: the outcome of a save, read by a screen reader. */
 .fh-alerts .fa-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
@@ -180,9 +221,6 @@
 }
 @media (max-width:1200px){
   .fh-alerts .prots>*{grid-column:span 12}
-}
-@media (max-width:900px){
-  .fh-alerts .tiles>*{grid-column:span 12}
 }
 @media (max-width:760px){
   .fh-alerts .card{padding:16px}
@@ -195,4 +233,11 @@
   .fh-alerts .step-t{flex:1 1 auto}
   .fh-alerts .nd-act .btn-primary,.fh-alerts .empty .btn-primary,.fh-alerts .error .btn-primary{width:100%}
   .fh-alerts .nd-card select{width:100%}
+  .fh-alerts .row-side{flex-direction:row;flex-wrap:wrap;align-items:center}
+  .fh-alerts .row-side .badge{align-self:center}
+  .fh-alerts .smart-item{grid-template-columns:minmax(0,1fr)}
+  .fh-alerts .smart-item .badge{justify-self:start}
+  .fh-alerts .head-act{width:100%}
+  .fh-alerts .head-act>*{flex:1 1 0}
+  .fh-alerts .scope{flex:1 1 auto}
 }

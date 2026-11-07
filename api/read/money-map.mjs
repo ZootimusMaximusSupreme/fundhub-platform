@@ -6,7 +6,8 @@
 // on, and what could be drawn.
 //
 // SIX TABLES, ONE ROUND TRIP. tradelines, card_liabilities, bank_accounts,
-// recurring_bills, cashflow_reminders — read here, assembled by
+// recurring_bills, cashflow_reminders — read here, plus money coming in from
+// src/banking/income.mjs loadIncome() — assembled by
 // src/finance/money-map.mjs, which is pure and holds every rule. This file
 // fetches and gates; it decides nothing about the numbers.
 //
@@ -64,6 +65,7 @@ import { requireAuth } from "../../src/http/middleware/requireAuth.mjs";
 import { ROLE_SETS, requireRole, isUuid, CLIENT_DATA_ERRORS } from "../../src/http/read-api.mjs";
 import { moneyMap } from "../../src/finance/money-map.mjs";
 import { loadThresholds } from "../../src/banking/settings.mjs";
+import { loadIncome } from "../../src/banking/income.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 
 /* The window. 30 days is the horizon a monthly billing cycle needs to be fully
@@ -138,6 +140,7 @@ export default async function handler(req, res, deps = {}) {
   const database = deps.db || db;
   const auth = deps.requireAuth || requireAuth;
   const clock = deps.now || (() => new Date());
+  const incomeOf = deps.loadIncome || loadIncome;
 
   if (req.method && req.method !== "GET") {
     res.setHeader("allow", "GET");
@@ -196,8 +199,13 @@ export default async function handler(req, res, deps = {}) {
        row would bake "somebody decided zero" into the database on first read.
        project() then reports each unset threshold as a gap, which the screen
        prints under "Read this first". */
-    const [thresholds, tradelines, liabilities, bankAccounts, recurringBills, reminders] = await Promise.all([
+    /* MONEY COMING IN, through the module that owns it (src/banking/income.mjs).
+       Scoped by the session's org and the proven client. loadIncome never
+       throws on a failed bank read: it answers { ok: false }, and moneyMap
+       then says income was not read instead of failing the whole map. */
+    const [thresholds, income, tradelines, liabilities, bankAccounts, recurringBills, reminders] = await Promise.all([
       loadThresholds(database, { orgId }),
+      incomeOf(database, { orgId, clientId, asOf }),
       database.query(
         `SELECT ${TRADELINE_COLUMNS} FROM tradelines
           WHERE client_id = $1 AND org_id = $2
@@ -248,7 +256,8 @@ export default async function handler(req, res, deps = {}) {
       recurringBills: recurringBills.rows,
       reminders: reminders.rows,
       requestedAmount: a.amount,
-      thresholds
+      thresholds,
+      income
     });
 
     const row = client.rows[0];

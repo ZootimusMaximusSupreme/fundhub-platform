@@ -1,0 +1,72 @@
+/* Trends toolbar and bank waypoints (Finance OS CFO build, unit A, 2026-11-07).
+   One file for the FinanceOS Overview (#fos-overview) and the standalone Money
+   page (#money-root); both pages load it before the Astra sheets. */
+/* ── TRENDS: account picker and any dates — START (Finance OS CFO build,
+   unit A, 2026-11-07; board ops/workflows/finance-os-cfo-build-2026-11-06.txt).
+   Drawn by money-trends.js. The chart geometry (.tchart, .tplot, the series
+   colours) stays where it was in financeos.html; this block lays out only the
+   controls above the charts and the one-account line. One tinted toolbar with
+   a hairline, no shadow (UI-STANDARDS 12.5). Shared tokens only, no new colours:
+   the toolbar takes the --soft tint, controls the --line hairline and the
+   native white field. Native date and select controls keep the Astra floors:
+   16px text, 48px tall. Every button here is at least 44px (UI-STANDARDS 5). ── */
+:is(#fos-overview,#money-root) .trends .trange-btn{min-height:44px}
+:is(#fos-overview,#money-root) .trends .ttools{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:16px 24px;align-items:end;margin:8px 0 16px;padding:16px;background:var(--soft);border:1px solid var(--line);border-radius:10px;box-shadow:none}
+:is(#fos-overview,#money-root) .trends .ttools>.tdates:only-child{grid-column:1/-1}
+:is(#fos-overview,#money-root) .trends .tdates{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px 12px;align-items:end;margin:0;min-width:0}
+:is(#fos-overview,#money-root) .trends .tfield{display:flex;flex-direction:column;gap:6px;min-width:0;margin:0}
+:is(#fos-overview,#money-root) .trends .tlabel{font:600 13px/1.3 var(--sans);color:var(--ink)}
+:is(#fos-overview,#money-root) .trends .tfield :is(select,input){display:block;width:100%;max-width:100%;min-width:0;height:48px;min-height:48px;padding:0 12px;border:1px solid var(--line);border-radius:8px;color:var(--ink);font:400 16px/1.2 var(--sans);font-variant-numeric:tabular-nums}
+:is(#fos-overview,#money-root) .trends .tfield :is(select,input):focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+:is(#fos-overview,#money-root) .trends .tdates .tshow.btn-secondary{min-height:48px;padding:8px 20px;white-space:nowrap}
+:is(#fos-overview,#money-root) .trends .tmsg{margin:-4px 0 16px;padding:4px 0 4px 12px;border-left:3px solid var(--alert);color:var(--ink);font-size:13px}
+:is(#fos-overview,#money-root) .trends .tmsg:empty{display:none}
+:is(#fos-overview,#money-root) .trends .tacct-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0 0 16px;min-width:0}
+:is(#fos-overview,#money-root) .trends .tacct-name{font:600 18px/1.3 var(--sans);color:var(--ink);letter-spacing:-.01em;overflow-wrap:anywhere}
+/* Bank waypoints on the Cash chart (2026-11-07). A "Plan" row under the
+   x axis; each waypoint is a 44px button at its day (--x, set per waypoint
+   like the fundability chart's points). A dashed ring means planned; a solid
+   ring means opened, deposited or seasoned — the word is in the tip too, so
+   it is never shape or colour alone. Rows (data-lane) keep close dates apart;
+   the page measures them. The strip clips sideways so nothing scrolls. */
+:is(#fos-overview,#money-root) .trends .tguide{stroke:var(--gray2);stroke-width:1;stroke-dasharray:3 4}
+:is(#fos-overview,#money-root) .trends .ttoday{stroke:var(--gray2);stroke-width:1}
+:is(#fos-overview,#money-root) .trends .tplot>.tplan-label{grid-column:1;grid-row:3;align-self:start;padding-top:22px;text-align:right;color:var(--gray)}
+:is(#fos-overview,#money-root) .trends .tplot>.tplan{grid-column:2;grid-row:3;position:relative;height:56px;margin-top:8px;border-top:1px dashed var(--line);overflow-x:clip;overflow-y:visible}
+:is(#fos-overview,#money-root) .trends .tplan[data-lanes="2"]{height:104px}
+:is(#fos-overview,#money-root) .trends .tplan[data-lanes="3"]{height:152px}
+:is(#fos-overview,#money-root) .trends .tplan[data-lanes="4"]{height:200px}
+:is(#fos-overview,#money-root) .trends .twp{position:absolute;top:6px;left:var(--x);transform:translateX(-50%);display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:0;padding:0 2px;border:0;border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;z-index:2}
+:is(#fos-overview,#money-root) .trends .twp[data-lane="1"]{top:54px}
+:is(#fos-overview,#money-root) .trends .twp[data-lane="2"]{top:102px}
+:is(#fos-overview,#money-root) .trends .twp[data-lane="3"]{top:150px}
+:is(#fos-overview,#money-root) .trends .twp.edge-l{transform:none}
+:is(#fos-overview,#money-root) .trends .twp.edge-r{transform:translateX(-100%)}
+:is(#fos-overview,#money-root) .trends .twp:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+:is(#fos-overview,#money-root) .trends .twp-logo{display:block;width:32px;height:32px;object-fit:contain;border:2px solid var(--ink);border-radius:999px;background:var(--paper)}
+:is(#fos-overview,#money-root) .trends .twp-chip{display:block;max-width:112px;padding:4px 10px;border:2px solid var(--ink);border-radius:999px;background:var(--soft);color:var(--ink);font:600 13px/1.3 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:is(#fos-overview,#money-root) .trends .twp.st-planned :is(.twp-logo,.twp-chip){border-style:dashed;border-color:var(--gray2)}
+:is(#fos-overview,#money-root) .trends .twp:is(:hover,[data-open="true"]) :is(.twp-logo,.twp-chip){border-color:var(--ink)}
+:is(#fos-overview,#money-root) .trends .twp-tip{display:none;position:absolute;bottom:calc(100% + 8px);left:clamp(0px,calc(var(--x) - min(280px,100%) / 2),calc(100% - min(280px,100%)));width:min(280px,100%);padding:12px 14px;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:var(--panel-shadow);color:var(--ink);font-size:13px;line-height:1.45;text-align:left;z-index:5;pointer-events:none}
+:is(#fos-overview,#money-root) .trends .twp:is(:hover,:focus-visible,[data-open="true"])+.twp-tip{display:block}
+:is(#fos-overview,#money-root) .trends .twp-tip strong{display:block;margin:0 0 4px;font-size:14px;font-weight:650}
+:is(#fos-overview,#money-root) .trends .twp-why{color:var(--gray)}
+:is(#fos-overview,#money-root) .trends .twp-tip .twp-why{display:block}
+:is(#fos-overview,#money-root) .trends .twp-status{display:block;margin-top:6px;font-weight:600}
+:is(#fos-overview,#money-root) .trends .tplan-notes{display:grid;gap:4px;margin-top:12px}
+:is(#fos-overview,#money-root) .trends .tplan-notes>.caption{margin:0}
+:is(#fos-overview,#money-root) .trends .tplan-head{margin:8px 0 0;font:600 13px/1.3 var(--sans);color:var(--ink)}
+:is(#fos-overview,#money-root) .trends .tplan-list{margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--ink)}
+@media(max-width:1100px){
+ :is(#fos-overview,#money-root) .trends .ttools{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:760px){
+ :is(#fos-overview,#money-root) .trends .ttools{padding:12px;gap:12px}
+ :is(#fos-overview,#money-root) .trends .tdates{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ :is(#fos-overview,#money-root) .trends .tdates .tshow.btn-secondary{grid-column:1/-1;width:100%}
+}
+/* Two date boxes side by side cut the year at 320 (accountability QA01): one per row. */
+@media(max-width:380px){
+ :is(#fos-overview,#money-root) .trends .tdates{grid-template-columns:minmax(0,1fr)}
+}
+/* ── TRENDS: account picker and any dates — END ── */

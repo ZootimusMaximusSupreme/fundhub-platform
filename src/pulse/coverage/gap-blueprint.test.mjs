@@ -308,6 +308,28 @@ test("mail monitoring binds exact ledger and frozen envelopes while retaining hi
   assert.doesNotMatch(LETTER_MAILING_SQL, /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE)\b/i);
 });
 
+test("mail monitoring (unit MAIL) accepts a repair letter's saved HTML and goes red on a paid letter the customer would feel", () => {
+  for (const predicate of [
+    // A repair envelope is its own saved HTML letter; a funding envelope is still its PDF.
+    "d.subtype = 'metro2_dispute_letter_pack' AND v.mime_type = 'text/html'", "d.metadata->>'letterId' = e.dispute_letter_id::text",
+    "v.mime_type = 'application/pdf'\n                    AND e.dispute_letter_id IS NULL",
+    // The mail house stopped it, or it came back.
+    "e.provider_status = 'cancelled' OR e.returned_at IS NOT NULL",
+    // A letter accepted two days ago that the tracker never read: the tracker is broken.
+    "e.state = 'accepted' AND e.provider_status IS NULL", "interval '2 days'",
+    // CX27: the reply clock waits for the expected delivery date; 21 days without one is red.
+    "e.expected_delivery_at IS NULL AND e.returned_at IS NULL", "interval '21 days'", "interval '45 days'",
+    // CX28: the repair file matches its envelope: still sending until PostGrid reports the handoff,
+    // then sent with a mailed date; otherwise the next round would never start.
+    "l.id = e.dispute_letter_id", "l.postgrid_letter_id = e.provider_id",
+    "e.mailed_at IS NULL AND l.status = 'sending' AND l.mailed_at IS NULL",
+    "e.mailed_at IS NOT NULL AND l.status IN ('sent', 'delivered') AND l.mailed_at IS NOT NULL",
+    // CX28: not handed to the post office within 7 days of the mail house taking it.
+    "e.state = 'accepted' AND e.mailed_at IS NULL AND e.provider_status IS DISTINCT FROM 'cancelled'", "interval '7 days'"]) assert.ok(LETTER_MAILING_SQL.includes(predicate), predicate);
+  assert.doesNotMatch(LETTER_MAILING_SQL, /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE)\b/i);
+  assert.doesNotMatch(LETTER_MAILING_SQL, /e\.reply_due_at|e\.delivered_at/, "CX26/CX27: no acceptance-time reply date and no delivered column");
+});
+
 test("response monitoring requires current same-scope accepted reader proof instead of an upload label", () => {
   for (const predicate of ["w.state = 'done'", "w.verify_kind = 'bureau_response_upload'", "d.org_id = w.org_id AND d.client_id = w.client_id", "d.kind = 'bureau_response'",
     "d.expires_at > $2::timestamptz", "v->'schema' = '1'::jsonb", "v->>'validator' = 'bureau-response-reader'", "v->>'document_id' = d.id::text",

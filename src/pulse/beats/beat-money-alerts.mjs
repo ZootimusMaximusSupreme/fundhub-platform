@@ -1,7 +1,8 @@
-// money-alerts: every hour, did the texts we promised Finance OS and Capital Blueprint clients go out?
+// money-alerts: every hour, did the texts and phone alerts we promised Finance OS and Capital Blueprint
+// clients go out?
 //
-// Same SQL, same verdict as the morning lane gap-alerts.mjs (the truth lives in lib/alerts-truth.mjs).
-// Up to four reads. No text, no email, no web call.
+// Same SQL, same verdict as the morning lanes gap-alerts.mjs (lib/alerts-truth.mjs) and
+// gap-phone-alerts.mjs (lib/phone-alerts-truth.mjs). Up to nine reads. No text, no push, no web call.
 //
 //   alerts:texts-went-out
 //     1. every file-protection alert that says a text was queued (src/workflows/blueprint-finance-os-alerts.mjs)
@@ -11,10 +12,18 @@
 //        planLoanDue live in lib/card-due-plan.mjs, and src/banking/card-due-reminders.mjs re-exports them
 //        to the job, so the job and this beat cannot disagree about who is owed a reminder.
 //
+//   alerts:phone-alerts-went-out (Finance OS CFO build unit D, 2026-11-07)
+//     every card due date and Important bill the daily pass owed a phone alert has a queued push row, and
+//     every recent finance push row was sent, is waiting for its hour, or was stopped by the client.
+//     "Owed" is the pass's own planner (lib/phone-alert-plan.mjs, re-exported by
+//     src/finance/file-alerts/phone-alerts.mjs).
+//
 // What it guards, and why each surface is on `covers` (the exact deep checks tripwires.mjs names):
 //   route:money/alerts, desk:money-alerts.html,
-//   job:blueprint-finance-os-alerts, job:finance-os-card-due-reminders     alerts:texts-went-out
-// Each of the four names only that one check, and it runs here, so all four are on `covers`.
+//   job:blueprint-finance-os-alerts                    alerts:texts-went-out, alerts:phone-alerts-went-out
+//   job:finance-os-card-due-reminders                  alerts:texts-went-out
+//   job:finance-os-weekly-money (unit AL)              alerts:texts-went-out
+// Every check those five name runs here, so all five are on `covers`.
 //
 // Read only: every read goes through ctx.read (the read box). No send, no write, no web call.
 
@@ -22,8 +31,12 @@ import { laneSelfTest, runLaneBeat } from "./lib/money-hourly.mjs";
 import {
   ALERT_TEXTS_SQL, CARD_CYCLES_SQL, CARD_TEMPLATE_SQL, CARD_TEXTS_SQL, CHECK_IDS as ALERT_CHECK_IDS, runAlertChecks
 } from "./lib/alerts-truth.mjs";
+import {
+  PHONE_CLIENTS_SQL, PHONE_CARDS_SQL, PHONE_BILLS_SQL, OWED_PUSHES_SQL, RECENT_PUSHES_SQL,
+  CHECK_IDS as PHONE_CHECK_IDS, runPhoneAlertChecks
+} from "./lib/phone-alerts-truth.mjs";
 
-export const HOURLY_CHECK_IDS = Object.freeze([...ALERT_CHECK_IDS]);
+export const HOURLY_CHECK_IDS = Object.freeze([...ALERT_CHECK_IDS, ...PHONE_CHECK_IDS]);
 
 const ONE = (row) => Object.freeze([Object.freeze(row)]);
 
@@ -45,6 +58,13 @@ const OWED_CARD = Object.freeze({
   sms_opted_out: false
 });
 const OWED_REF = "workflow:SMS-FINANCE-OS-CARD-DUE:card-due:a0000000-0000-4000-8000-000000000001:2026-10-11";
+/* The same card owes a phone alert at the 07:30 UTC pass of 2026-10-09; its push row waits for 16:00 UTC. */
+const OWED_PUSH_REF = "finance-push:card-due:a0000000-0000-4000-8000-000000000001:2026-10-11";
+const PUSH_ROW = Object.freeze({
+  provider_ref: OWED_PUSH_REF, template_key: "PUSH-FINANCE-CARD-DUE", status: "sent", last_error: null, blocked_reason: null,
+  scheduled_at: "2026-10-09T16:00:00.000Z", created_at: "2026-10-09T07:30:00.000Z", updated_at: "2026-10-09T16:00:04.000Z",
+  last_attempt_at: "2026-10-09T16:00:02.000Z"
+});
 
 const PASS_ROWS = Object.freeze([
   Object.freeze([ALERT_TEXTS_SQL, ONE({
@@ -57,27 +77,44 @@ const PASS_ROWS = Object.freeze([
   Object.freeze([CARD_TEXTS_SQL, ONE({
     provider_ref: OWED_REF, status: "delivered", blocked_reason: null, due_at: "2026-10-09T16:00:00.000Z",
     last_attempt_at: "2026-10-09T16:00:05.000Z", message_created_at: "2026-10-09T16:00:00.000Z", message_id: "m0000000-0000-4000-8000-000000000002"
-  })])
+  })]),
+  Object.freeze([PHONE_CLIENTS_SQL, ONE({ client_id: OWED_CARD.client_id })]),
+  Object.freeze([PHONE_CARDS_SQL, ONE({ ...OWED_CARD, last_statement_date: "2026-09-20" })]),
+  Object.freeze([PHONE_BILLS_SQL, Object.freeze([])]),
+  Object.freeze([OWED_PUSHES_SQL, ONE(PUSH_ROW)]),
+  Object.freeze([RECENT_PUSHES_SQL, ONE(PUSH_ROW)])
 ]);
 
 export const LANE = Object.freeze({
   checks: Object.freeze(HOURLY_CHECK_IDS.map((checkId) => Object.freeze({ id: checkId, step: checkId.replaceAll(":", "-") }))),
-  run: async (io) => runAlertChecks({ db: { query: (sql, params) => io.read(sql, params) }, orgId: io.orgId, now: io.now }),
+  run: async (io) => {
+    const db = { query: (sql, params) => io.read(sql, params) };
+    return [
+      ...(await runAlertChecks({ db, orgId: io.orgId, now: io.now })),
+      ...(await runPhoneAlertChecks({ db, orgId: io.orgId, now: io.now }))
+    ];
+  },
   selfTest: Object.freeze({
     passRows: PASS_ROWS,
     // The job owed a payment reminder for a card due in two days and no text exists: red at alerts-texts-went-out.
-    failRows: Object.freeze([Object.freeze([CARD_TEXTS_SQL, Object.freeze([])])])
+    // The pass owed that card a phone alert and no push row exists: red at alerts-phone-alerts-went-out.
+    failRows: Object.freeze([
+      Object.freeze([CARD_TEXTS_SQL, Object.freeze([])]),
+      Object.freeze([OWED_PUSHES_SQL, Object.freeze([])])
+    ])
   })
 });
 
 export const id = "money-alerts";
-export const title = "Promised client alert and payment texts went out";
+export const title = "Promised client alert texts and phone alerts went out";
 export const kind = "probe";
 export const covers = [
   "route:money/alerts",
   "desk:money-alerts.html",
   "job:blueprint-finance-os-alerts",
-  "job:finance-os-card-due-reminders"
+  "job:finance-os-card-due-reminders",
+  // Unit AL, 2026-11-07: the Monday money text writes the same file_protection_alerts rows this beat reads.
+  "job:finance-os-weekly-money"
 ];
 export const box = false;
 export const reads = [];
@@ -102,8 +139,11 @@ export const fixGuide = [
   "- Run node scripts/pulse/run-beat.mjs money-alerts and read the red step: it names the alert kind, or the card and its due date.",
   "- Read the file_protection_alerts row and the messages row it points at, or the account_statement_cycles row and the",
   "  messages row whose provider_ref is workflow:SMS-FINANCE-OS-CARD-DUE:card-due:<account>:<due date>.",
+  "- A phone alert (alerts-phone-alerts-went-out): read the messages row with channel push and provider_ref",
+  "  finance-push:<key>. No row means the 07:30 UTC pass did not queue it (src/finance/file-alerts/run.mjs step 5).",
+  "  A row stuck queued means the dispatcher did not claim it. A row left sending had an unknown outcome: never resend it.",
   "- A person fixes it. Do not send from the pulse, do not change the outbound switch, do not re-run the job from here.",
-  "Files: src/pulse/beats/lib/alerts-truth.mjs, src/pulse/beats/lib/card-due-plan.mjs, src/workflows/finance-os-card-due-reminders.mjs, src/workflows/blueprint-finance-os-alerts.mjs, src/messaging/dispatch.mjs"
+  "Files: src/pulse/beats/lib/alerts-truth.mjs, src/pulse/beats/lib/card-due-plan.mjs, src/pulse/beats/lib/phone-alerts-truth.mjs, src/push/finance-alerts.mjs, src/workflows/finance-os-card-due-reminders.mjs, src/workflows/blueprint-finance-os-alerts.mjs, src/messaging/dispatch.mjs"
 ].join("\n");
 
 export const selfTest = {

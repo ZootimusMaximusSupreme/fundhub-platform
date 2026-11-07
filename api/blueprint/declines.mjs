@@ -28,6 +28,23 @@
 //   outcome      { decline_id, outcome, approved_amount?, reapply_on?, notes? }  staff
 //
 // Writes need a paid Capital Blueprint (403 not_blueprint_buyer otherwise).
+//
+// THE APPLICATIONS TRACKER rides on the same read (Finance OS wave 3, unit O;
+// src/finance/applications-tracker.mjs). No new route.
+//   GET  → view.tracker { ok, rows, counts, can_add }  every application on the
+//          file, Fundhub's round applications and the ones the client added, each
+//          with its status, approved amount, bank logo and whether it is on the
+//          client's accounts. If only the tracker fails to load, view.tracker is
+//          { ok: false } and the rest of the page still works.
+//   track_add          { bank, product?, kind, owner_kind?, applied_on, requested_amount?,
+//                        status?, approved_amount?, last4?, decided_on? }  client or staff
+//   track_update       { id, status, approved_amount?, last4?, decided_on? }  client or staff,
+//                        the client's own rows only
+//   track_add_account  { source: 'fundhub' | 'self', id }                  client or staff
+// These do not need the Capital Blueprint: Finance OS is sold on its own. An
+// approved card or line of credit joins the client's accounts. A Fundhub round
+// application is never changed here; staff change it through POST /api/applications.
+//
 // Nothing here calls a bank, sends a text, or moves money.
 import { db } from "../../src/db.mjs";
 import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
@@ -39,9 +56,16 @@ import {
   readDeclines, recordDecline, linkLetter, setStepStatus, scheduleRecon, recordOutcome,
   clientAnalysis, DeclineInputError, CLIENT_PASTES_PER_DAY
 } from "../../src/blueprint/decline-defense.mjs";
+import {
+  readApplicationsTracker, readTrackInput, addTrackedApplication, updateTrackedApplication,
+  addAccountForApplication, TrackInputError
+} from "../../src/finance/applications-tracker.mjs";
 
 const STAFF_ACTIONS = new Set(["paste", "record", "link_letter", "step", "schedule", "outcome"]);
 const CLIENT_ACTIONS = new Set(["paste", "link_letter"]);
+/* The applications tracker. Client and staff alike, no Blueprint needed. */
+const TRACK_ACTIONS = new Set(["track_add", "track_update", "track_add_account"]);
+const TRACK_STATUS = { not_found: 404, not_an_approved_card: 409 };
 
 const REFUSALS = {
   not_blueprint_buyer: [403, "Decline help is part of the Capital Blueprint. This client has not bought it."],
@@ -96,6 +120,23 @@ export default async function handler(req, res, deps = {}) {
     schedule: deps.scheduleRecon || scheduleRecon,
     outcome: deps.recordOutcome || recordOutcome
   };
+  const tracker = {
+    read: deps.readApplicationsTracker || readApplicationsTracker,
+    add: deps.addTrackedApplication || addTrackedApplication,
+    update: deps.updateTrackedApplication || updateTrackedApplication,
+    addAccount: deps.addAccountForApplication || addAccountForApplication
+  };
+  /* The tracker is one card on the page. If it cannot load, the card says so and
+     the rest of the page (the decline help) still works. A database that is down
+     already failed the main read before this runs. */
+  const loadTracker = async (orgId, clientId) => {
+    try {
+      return { ok: true, ...(await tracker.read(database, { orgId, clientId })) };
+    } catch (e) {
+      console.warn(`[declines] applications tracker did not load: ${e && e.message ? e.message : e}`);
+      return { ok: false, error: "tracker_unavailable" };
+    }
+  };
 
   const method = req.method || "GET";
   if (method !== "GET" && method !== "POST") {
@@ -119,10 +160,31 @@ export default async function handler(req, res, deps = {}) {
         orgId, clientId, viewer: who.kind === "staff" ? { kind: "staff", canSeeBook: who.canSeeBook } : { kind: "client" }
       });
       if (!out) return res.status(404).json({ ok: false, error: "not_found" });
-      return res.status(200).json(who.kind === "staff" ? { ok: true, view: out.view, staff: out.staff } : { ok: true, view: out.view });
+      const view = { ...out.view, tracker: await loadTracker(orgId, clientId) };
+      return res.status(200).json(who.kind === "staff" ? { ok: true, view, staff: out.staff } : { ok: true, view });
     }
 
     const action = String(body.action || "");
+    if (TRACK_ACTIONS.has(action)) {
+      const now = clock();
+      let saved;
+      if (action === "track_add") {
+        const input = readTrackInput(body, { now });
+        const by = { kind: who.kind, id: who.kind === "staff" && who.staff ? who.staff.id : null };
+        saved = await tracker.add(database, { orgId, clientId, by, input, now });
+      } else if (action === "track_update") {
+        saved = await tracker.update(database, { orgId, clientId, id: body.id, body, now });
+      } else {
+        saved = await tracker.addAccount(database, { orgId, clientId, source: String(body.source || ""), id: body.id, now });
+      }
+      if (!saved || saved.ok !== true) {
+        const error = (saved && saved.error) || "not_saved";
+        return res.status(TRACK_STATUS[error] || 400).json({ ok: false, error });
+      }
+      return res.status(action === "track_add" ? 201 : 200).json({
+        ok: true, action, id: saved.id, account: saved.account || null, tracker: await loadTracker(orgId, clientId)
+      });
+    }
     const allowed = who.kind === "staff" ? STAFF_ACTIONS : CLIENT_ACTIONS;
     if (!STAFF_ACTIONS.has(action)) return res.status(400).json({ ok: false, error: "unknown_action" });
     if (!allowed.has(action)) {
@@ -193,6 +255,7 @@ export default async function handler(req, res, deps = {}) {
     return res.status(action === "paste" || action === "record" ? (out.created ? 201 : 200) : 200).json({ ok: true, action, ...out });
   } catch (e) {
     if (e instanceof DeclineInputError) return res.status(e.status || 400).json({ ok: false, error: e.code, message: e.message });
+    if (e instanceof TrackInputError) return res.status(e.status || 400).json({ ok: false, error: e.code, message: e.message });
     if (CLIENT_DATA_ERRORS.has(e && e.code)) return res.status(400).json({ ok: false, error: "invalid_parameter" });
     if (dbDown(res, e)) return;
     throw e;

@@ -12,6 +12,7 @@ import {
   OUTCOME, DAY_ONE_DELIVERABLES, REFUND_INITIATION_UNVERIFIED
 } from "./remedy.mjs";
 import { LIVE_TRIAL_PRICE_CENTS, REMEDY_MIN_SPEND_CENTS, REMEDY_EXTRA_DAYS } from "./constants.mjs";
+import { OFFERS, formatCents } from "../config/offers.mjs";
 
 const DELIVERED = {
   branded_page_published: true,
@@ -136,7 +137,23 @@ describe("remedyPolicyText", () => {
     assert.match(zero, /account stays active/);
     assert.match(zero, /written breakdown/);
     assert.match(zero, /more days of the machine/);
-    assert.match(zero, /credited in full toward the \$10,000/);
+    assert.match(zero, /credited in full toward the \$30,000/);
+  });
+
+  test("the entry fee is the catalogue's PARTNER_ENTRY price, never typed (owner-set 2026-11-07)", () => {
+    const fee = formatCents(OFFERS.PARTNER_ENTRY.priceCents);
+    assert.equal(fee, "$30,000");
+    assert.ok(remedyPolicyText()[1].includes(`credited in full toward the ${fee} `));
+    assert.ok(evaluateRemedy(RAN_PROPERLY).message.includes(`credited in full toward the ${fee} if you join`));
+  });
+
+  test("a different entry price changes both lines; an unusable one names no figure", () => {
+    const [, zero] = remedyPolicyText({ entryPriceCents: 2500000 });
+    assert.match(zero, /credited in full toward the \$25,000 if you join/);
+    assert.doesNotMatch(zero, /\$30,000/);
+    const out = evaluateRemedy({ ...RAN_PROPERLY, entryPriceCents: 2500000 });
+    assert.match(out.message, /credited in full toward the \$25,000 if you join/);
+    assert.match(remedyPolicyText({ entryPriceCents: null })[1], /credited in full toward the entry fee if you join/);
   });
 
   test("no earnings claim, no promised result", () => {
