@@ -16,7 +16,7 @@ import { boundedLimit, CLIENT_DATA_ERRORS, requireRole, ROLE_SETS } from "../../
 import { requireSessionOrg } from "../../src/http/session-org.mjs";
 import { safeError } from "../../src/http/health.mjs";
 import { orgDemoModeEnabled } from "../../src/demo/exclude-demo.mjs";
-import { surveyFicoBand } from "../../src/survey/cf-question-map.mjs";
+import { looksLikeFicoBand, surveyFicoBand } from "../../src/survey/cf-question-map.mjs";
 // One definition of "a bank yes that is not worth anything yet" — see the
 // EXISTS below and the block comment on the export itself.
 import { unpricedApprovalConditions } from "../../src/funding/success-fee.mjs";
@@ -92,6 +92,8 @@ const CARDS_SQL = `
     (c.custom_fields->>'total_funding_estimate') AS total_funding_estimate,
     c.custom_fields->>'cf_svy_self_reported_fico' AS survey_fico_raw,
     c.custom_fields->>'cf_svy_self_reported_fico_label' AS survey_fico_label,
+    c.custom_fields->>'cf_svy_funding_target_amount_label' AS survey_target_label,
+    c.custom_fields->>'cf_svy_planned_use_label' AS survey_planned_label,
     pr.name AS partner_name,
     pr.contact_email AS partner_email,
     EXISTS (
@@ -202,6 +204,30 @@ const CARDS_SQL = `
 /* stageAmount — the column's funding estimate. Sum of the known card amounts;
    null when the column has cards and none of them carries an amount (unknown is
    not $0); 0 for an empty column (nothing there is a real zero). */
+/** Person name for a card — never a survey credit band stored in first_name. */
+export function pipelineCardPersonName(row) {
+  const parts = [row.first_name, row.last_name]
+    .map((p) => (p == null ? "" : String(p).trim()))
+    .filter((p) => p && !looksLikeFicoBand(p));
+  const fromClient = parts.join(" ").trim();
+  if (fromClient) return fromClient;
+  const partner = row.partner_name == null ? "" : String(row.partner_name).trim();
+  if (partner) return partner;
+  return "(unnamed)";
+}
+
+/** Short survey line for pipeline cards — saved CF labels only. */
+export function pipelineSurveySnippet(row) {
+  const fico = surveyFicoBand({
+    cf_svy_self_reported_fico: row.survey_fico_raw,
+    cf_svy_self_reported_fico_label: row.survey_fico_label
+  });
+  const parts = [row.survey_target_label, row.survey_planned_label, fico]
+    .map((p) => (p == null ? "" : String(p).trim()))
+    .filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
 export function stageAmount(cards) {
   const known = (cards || []).filter((c) => c.amount != null);
   if (!known.length) return (cards || []).length ? null : 0;
@@ -245,7 +271,7 @@ export default async function handler(req, res) {
       bucket.push({
         id: r.id,
         client_id: r.client_id,
-        name: (r.is_demo ? "DEMO · " : "") + ([r.first_name, r.last_name].filter(Boolean).join(" ") || r.partner_name || "(unnamed)"),
+        name: (r.is_demo ? "DEMO · " : "") + pipelineCardPersonName(r),
         email: r.email || r.partner_email || null,
         phone: r.phone || null,
         sms_needs_reply: !!r.sms_needs_reply,
@@ -265,7 +291,8 @@ export default async function handler(req, res) {
         survey_fico: surveyFicoBand({
           cf_svy_self_reported_fico: r.survey_fico_raw,
           cf_svy_self_reported_fico_label: r.survey_fico_label
-        })
+        }),
+        survey_snippet: pipelineSurveySnippet(r)
       });
     }
 
