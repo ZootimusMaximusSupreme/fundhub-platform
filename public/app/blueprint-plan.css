@@ -4,6 +4,7 @@
 @media(max-width:800px){#blueprint-plan .bp-grid{grid-template-columns:1fr}#blueprint-plan .bp-businesses{grid-template-columns:1fr}#blueprint-plan{padding:20px;margin:20px 0}#blueprint-plan h2{font-size:25px}#blueprint-plan .bp-panel{padding:18px}#blueprint-plan .bp-row>.bp-primary{width:100%}#blueprint-plan .bp-tabs{gap:2px}#blueprint-plan .bp-tabs button{font-size:14px;padding:10px}#blueprint-plan .bp-spread{flex-wrap:wrap}}
 
 body.fh-astra-portal[data-blueprint-plan] .cp-next-action{display:none!important}
+body.fh-astra-portal:is([data-blueprint-access="loading"],[data-blueprint-access="unavailable"]) :is(#money-link,a[href*="/app/financeos.html"]){display:none!important}
 body.fh-astra-portal[data-blueprint-plan] #blueprint-plan:not([hidden]){display:block!important}
 /* The paid Blueprint overview replaces duplicate pre-call and sales summaries.
    The existing Documents route retains the full account tools. */

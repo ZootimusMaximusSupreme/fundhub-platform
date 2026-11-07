@@ -15,6 +15,10 @@ import { MAILING_PRICE_CENTS, MAX_MAILING_LETTERS } from '../../src/blueprint/le
 import { runTierEngineFromCrsResult } from '../../src/finance/crs-tier.mjs';
 import { buildFundingOpportunity } from '../../src/blueprint/funding-opportunity.mjs';
 
+// The current engine uses local calendar months for account ages. Pin this
+// standalone generator so the fictional fixture is identical on macOS and CI.
+process.env.TZ = 'UTC';
+
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const at = '2026-11-06T12:00:00.000Z';
 const ids = Object.fromEntries(['org','client','account','engagement','case','lender','document','application','business','business2','business3','letter','report'].map((key,i)=>[key,`a0000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`]));

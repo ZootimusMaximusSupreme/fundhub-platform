@@ -136,7 +136,7 @@ test('eligible local previews mutate once and stale/replayed preview actions can
 
 test('generated fictional seed and embedded pure helpers reproduce from current canonical source',()=>{
   assert.equal(seed.plan.lessons.length,17);assert.equal(seed.funding.engagement.priceCents,3000000);
-  execFileSync(process.execPath,['scripts/demo/build-blueprint-dashboard-data.mjs','--check'],{cwd:root,stdio:'pipe'});
+  for(const TZ of ['UTC','America/Phoenix'])execFileSync(process.execPath,['scripts/demo/build-blueprint-dashboard-data.mjs','--check'],{cwd:root,stdio:'pipe',env:{...process.env,TZ}});
   assert.equal(normal(seed.plan.payoffCalculation).allocatedCents,70000);
 });
 

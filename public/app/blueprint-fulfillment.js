@@ -15,6 +15,7 @@
   let services = null;
   let repair = null;
   let preparation = null;
+  let preparationLoading = false;
   let moneyOverview = null;
   let errors = {};
   let view = 'today';
@@ -90,6 +91,7 @@
         return;
       }
       funding = next;
+      preparationLoading = true;
       host.hidden = false;
       document.body.dataset.blueprintFulfillment = view === 'preparation' ? 'preparation' : 'active';
       const chat = document.getElementById('fh-chat-panel');
@@ -111,7 +113,8 @@
       if (results[2].status === 'fulfilled') repair = results[2].value;
       else { repair = null; errors.repair = results[2].reason.message; }
       if (results[3].status === 'fulfilled') preparation = results[3].value;
-      else preparation = null;
+      else { preparation = null; errors.preparation = results[3].reason.message; }
+      preparationLoading = false;
       moneyOverview = results[4].status === 'fulfilled' ? results[4].value : null;
       render();
     } catch (error) {
@@ -158,7 +161,11 @@
     if (funding?.state === 'optimize' && repair?.actions?.canGenerate) { destination = 'repair'; label = 'Open my repair work'; }
     const detail = ['optimize','held'].includes(funding?.state) && step?.detail ? step.detail : funding?.nextAction;
     const title = ['optimize','held'].includes(funding?.state) && step?.title ? step.title : stateNames[funding?.state];
-    if (!preparation) return loadingView('Loading your Blueprint and current report…');
+    if (!preparation) {
+      if(preparationLoading)return loadingView('Loading your Blueprint and current report…');
+      const completed=funding?.state==='completed';
+      return `<section class="bf-panel bf-next"><h3>${esc(stateNames[funding?.state]||'Your funding workspace')}</h3><p>${completed?'Your application and bureau history remain available here.':'Your preparation plan could not load. Your saved funding work has not been replaced.'}</p>${button(completed?'Review my applications':'Review my funding work','view','data-view="funding"',true)}</section>${errors.preparation?`<p class="bf-caption">Your preparation plan is unavailable. ${button('Retry preparation plan','refresh')}</p>`:''}`;
+    }
     let control = funding?.state==='completed' ? button('Review my applications','view','data-view="funding"',true) : button(label,'view',`data-view="${destination}"`,true);
     if(step && ['optimize','held'].includes(funding?.state)) {
       control = step.key==='blueprint_dispute_mail_letters' ? button('Open my letters','open-letters','',true)

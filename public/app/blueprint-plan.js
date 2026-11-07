@@ -46,7 +46,7 @@
     for(const url of downloadUrls)URL.revokeObjectURL(url);downloadUrls.clear();
     host.replaceChildren();host.hidden=true;
     // Keep legacy private actions suppressed until the new sign-in reloads.
-    document.body.dataset.blueprintPlan='error';delete document.body.dataset.blueprintReportReady;
+    document.body.dataset.blueprintPlan='error';document.body.dataset.blueprintAccess='unavailable';delete document.body.dataset.blueprintReportReady;
     document.dispatchEvent(new Event('fh:blueprint-plan-access'));
     clearInterval(authWatch);showFreshSignIn();
   }
@@ -69,7 +69,7 @@
   function setData(next){data=next;document.dispatchEvent(new CustomEvent('fh:blueprint-plan-updated',{detail:next}));}
   function message(text){if(!authCurrent())return;notice=text;const el=host.querySelector('[data-bp-status]');if(el)el.textContent=text;}
   function shell(content){if(!authCurrent())return;host.innerHTML=`<div class="bp-spread"><div><div class="bp-label">Your 12-month Capital Blueprint</div><h2>${data?.client?.name?'Your next steps, '+esc(String(data.client.name).split(' ')[0])+'.':'Your next steps.'}</h2></div>${badge('Saved to your client file')}</div>${plans().startedAt?`<nav class="bp-tabs" aria-label="Blueprint plan">${[['today','Today'],['businesses','Businesses'],['lessons','Step-by-step help'],['letters','Letters and responses'],['timeline','Timeline'],['support','Get help']].map(([v,t])=>btn(t,'view',false,`data-view="${v}" ${view===v?'aria-current="page"':''}`)).join('')}</nav>`:''}${content}<div class="bp-status" data-bp-status role="status">${esc(notice)}</div><p class="bp-caption bp-end">Your plan uses saved updates, documents and report reviews. Open FinanceOS for your money, credit and planning tools.</p>`;}
-  function setPlanAccess(state,reportReady=false){if(!authCurrent())return false;if(state)document.body.dataset.blueprintPlan=state;else delete document.body.dataset.blueprintPlan;if(state==='active')document.body.dataset.blueprintReportReady=String(reportReady);else delete document.body.dataset.blueprintReportReady;document.dispatchEvent(new Event('fh:blueprint-plan-access'));return authCurrent();}
+  function setPlanAccess(state,reportReady=false){if(!authCurrent())return false;document.body.dataset.blueprintAccess=state==='active'?'available':state==='loading'?'loading':'unavailable';if(state)document.body.dataset.blueprintPlan=state;else delete document.body.dataset.blueprintPlan;if(state==='active')document.body.dataset.blueprintReportReady=String(reportReady);else delete document.body.dataset.blueprintReportReady;document.dispatchEvent(new Event('fh:blueprint-plan-access'));return authCurrent();}
   async function request(path,init={}){
     requireCurrent();
     const planRead=path==='/api/blueprint/plan';
@@ -214,7 +214,7 @@
     }[action];
     if(helpText){navigate('support');const input=host.querySelector('textarea[name=message]');if(input)input.value=helpText;}
   });
-  document.addEventListener('fh:blueprint-report-status',()=>{if(!authCurrent()||document.body.dataset.blueprintPlan!=='active'||!data)return;lessonKey='credit_review';businessId=null;navigate('lesson');});
+  document.addEventListener('fh:blueprint-report-status',()=>{if(!authCurrent()||document.body.dataset.blueprintPlan!=='active'||!data)return;document.getElementById('fh-chat-close')?.click();lessonKey='credit_review';businessId=null;navigate('lesson');});
   if(demo){let demoScenario=demo.scenario;window.addEventListener('fh:blueprint-demo-change',()=>{if(demo.scenario!==demoScenario){demoScenario=demo.scenario;view='today';businessId=null;lessonKey=null;lettersData=null;lettersState='idle';mailQuote=null;mailOrder=null;pendingEvidence.clear();selectedLetters.clear();notice='';}if(originalPrincipal&&authCurrent())load();});}
   // The normal portal sign-in saves a bearer. A mutable HttpOnly cookie is
   // not an immutable workspace identity, so never initialize from it alone.

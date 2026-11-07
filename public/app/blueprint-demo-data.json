@@ -3611,13 +3611,13 @@
               "creditor": "Sample Card A",
               "limit": 8000,
               "openedDate": "2019-01-01",
-              "months": 94
+              "months": 93
             },
             "installment": {
               "creditor": "Sample Auto Loan",
               "amount": 20000,
               "openedDate": "2022-02-01",
-              "months": 57
+              "months": 56
             }
           },
           "utilization": {
@@ -4585,13 +4585,13 @@
               "creditor": "Sample Card A",
               "limit": 8000,
               "openedDate": "2019-01-01",
-              "months": 95
+              "months": 94
             },
             "installment": {
               "creditor": "Sample Auto Loan",
               "amount": 20000,
               "openedDate": "2022-02-01",
-              "months": 58
+              "months": 57
             }
           },
           "utilization": {
