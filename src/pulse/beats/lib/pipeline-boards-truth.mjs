@@ -193,6 +193,8 @@ export const BOARD_CARDS_SQL = `
     (c.custom_fields->>'total_funding_estimate') AS total_funding_estimate,
     c.custom_fields->>'cf_svy_self_reported_fico' AS survey_fico_raw,
     c.custom_fields->>'cf_svy_self_reported_fico_label' AS survey_fico_label,
+    c.custom_fields->>'cf_svy_funding_target_amount_label' AS survey_target_label,
+    c.custom_fields->>'cf_svy_planned_use_label' AS survey_planned_label,
     pr.name AS partner_name,
     pr.contact_email AS partner_email,
     EXISTS (
