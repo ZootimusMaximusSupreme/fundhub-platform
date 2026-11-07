@@ -12,10 +12,67 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORTAL = path.resolve(HERE, "../../public/app/client-portal.html");
 const html = fs.readFileSync(PORTAL, "utf8");
+
+// Run the shipped decision functions on saved facts; no browser/API or new
+// production test hook is needed for these next-owner regressions.
+function blueprintDecision(data) {
+  const source = fs.readFileSync(path.join(HERE, "../../public/app/blueprint-plan.js"), "utf8");
+  function implementation(name) {
+    const start = source.indexOf("function " + name + "(");
+    const end = source.indexOf("\n  function ", start + 10);
+    assert.ok(start >= 0 && end > start, "Missing shipped Blueprint decision " + name);
+    return source.slice(start, end);
+  }
+  const context = { data, businesses: () => data.businessPlans.businesses,
+    btn: (label, action, primary, attributes) => ({ label, action, primary, attributes }),
+    window: { FHBlueprintJourney: { route: value => value } }, esc: String };
+  vm.createContext(context);
+  vm.runInContext(implementation("nextWaypoint") + "\n" + implementation("nextAction") +
+    "\nglobalThis.answer={next:nextWaypoint(),action:nextAction(nextWaypoint())};", context);
+  return context.answer;
+}
+
+test("Blueprint next action follows a pending team review instead of restarting three saved businesses", () => {
+  const review = { id: "review", key: "review_documents", title: "Fundhub reviews your saved documents",
+    detail: "Your documents are waiting for the team.", owner: "fundhub", state: "in_progress", completedAt: null };
+  const data = { businessPlans: { startedAt: "2026-11-01", businesses: [{ id: "a" }, { id: "b" }, { id: "c" }] },
+    progress: { nextStep: { waypointId: review.id, owner: "fundhub" }, waypoints: [review] } };
+  let result = blueprintDecision(data);
+  assert.equal(result.next.id, review.id);
+  assert.equal(result.action.title, review.title);
+  assert.equal(result.action.control.label, "Check my review timeline");
+  assert.match(result.action.control.attributes, /data-view="timeline"/);
+  assert.notEqual(result.action.control.action, "new-business");
+  data.progress.nextStep = null;
+  data.progress.waypoints = [{ ...review, state: "done", completedAt: "2026-11-02" }];
+  result = blueprintDecision(data);
+  assert.equal(result.next, null);
+  assert.equal(result.action.title, "Review your saved plan");
+  assert.match(result.action.control.attributes, /data-view="businesses"/);
+  assert.notEqual(result.action.control.action, "new-business");
+});
+
+test("Blueprint funding breakdown includes an existing company without a linked preparation plan exactly once", () => {
+  const context = { window: {}, document: { addEventListener() {} }, location: { origin: "https://app.example.invalid" }, URL, Intl };
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(HERE, "../../public/app/blueprint-journey.js"), "utf8"), context);
+  const data = { businessPlans: { startedAt: "2026-11-01", businesses: [{ id: "planned", name: "Planned Company" }],
+    existingBusinesses: [{ id: "actual", name: "Existing Owned Company" }] },
+    creditContext: { opportunity: { personal: { currentCents: null }, combined: { currentCents: null },
+      businesses: [{ planId: "planned", businessId: null, name: "Planned Company", currentCents: null, blockers: [] },
+        { planId: null, businessId: "actual", name: "Existing Owned Company", currentCents: null, blockers: ["ein_evidence_required"] }] } },
+    progress: { waypoints: [], scores: { personal: [], business: [] } } };
+  const rendered = context.window.FHBlueprintJourney.render({ data });
+  assert.equal((rendered.match(/Planned Company/g) || []).length, 1);
+  assert.equal((rendered.match(/Existing Owned Company/g) || []).length, 1);
+  assert.match(rendered, /EIN proof needed/);
+  assert.match(rendered, /Company estimates need matching business reports and overlap review/);
+});
 
 describe("client portal — the 2026-09-03 walk findings", () => {
   test("F33 — the stage is read, not hardcoded", () => {

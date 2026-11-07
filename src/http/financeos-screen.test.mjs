@@ -48,11 +48,26 @@ test("the page groups every tab by task, each opening its own panel", () => {
 });
 
 test("the page loads every section script, then financeos.js last, and both section stylesheets", () => {
-  const srcs = [...HTML.matchAll(/<script defer src="([^"]+)"><\/script>/g)].map((m) => m[1]);
+  const plaidLoader = [...HTML.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)]
+    .find(m => m[1].includes('plaid-stepup.js'));
+  assert.ok(plaidLoader, "the normal client path must retain the Plaid loader");
+  const emitted = fullDemo => {
+    const writes = [];
+    vm.runInNewContext(plaidLoader[1], {
+      window: { __fhBlueprintFullDemoRoute: fullDemo },
+      document: { write: html => writes.push(html) }
+    });
+    return writes.join('');
+  };
+  const scripts = html => [...html.matchAll(/<script defer src="([^"]+)"><\/script>/g)].map(m => m[1]);
+  const srcs = scripts(HTML.replace(plaidLoader[0], emitted(false)));
   // money-trends.js (wave 4, H6) is not a tab: it draws the Trends line graphs
   // inside Overview and the sales line under Connections. It loads right after
   // money.js, before financeos.js mounts anything.
   assert.deepEqual(srcs, ["/app/fundhub-font.js", "plaid-stepup.js", SCRIPTS[0], "money-trends.js", ...SCRIPTS.slice(1), "/app/client-ios.js", "financeos.js"]);
+  assert.deepEqual(scripts(HTML.replace(plaidLoader[0], emitted(true))),
+    srcs.filter(src => src !== 'plaid-stepup.js'),
+    "only the explicit full sample route excludes Plaid; all real section scripts remain in order");
   assert.match(HTML, /<link rel="stylesheet" href="money-connections\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-payments\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-next\.css">/);
