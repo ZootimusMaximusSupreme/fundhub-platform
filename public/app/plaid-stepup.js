@@ -195,7 +195,7 @@
             dialog.querySelector("textarea").value = result.recovery_codes.join("\n");
             recovery.hidden = true;
             title.textContent = "Save your recovery codes";
-            description.textContent = "Your bank connection is verified.";
+            description.textContent = "Your passkey is verified.";
             button.textContent = "I saved these codes";
             return;
           }
