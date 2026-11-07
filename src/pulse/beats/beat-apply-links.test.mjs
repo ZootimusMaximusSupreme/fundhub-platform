@@ -801,7 +801,7 @@ test("apply-links: two-org Postgres fixture isolates lender reads and first-pass
     assert.equal(links.rows[0].url_hash, hashOf(ownUrl));
 
     const saved = await db.query(orgs +
-      ", pulse_bank_links(org_id, url_hash) AS (VALUES ($1::uuid, $2::text), ($3::uuid, $4::text)) " +
+      ", pulse_bank_links(org_id, url_hash, retired_at) AS (VALUES ($1::uuid, $2::text, NULL::timestamptz), ($3::uuid, $4::text, NULL::timestamptz)) " +
       beat.SQL_STATE_COUNT,
       [foreign, hashOf(foreignUrl), foreign, hashOf(ownUrl)]);
     assert.equal(Number(saved.rows[0]?.n), 0, "foreign history must not cause false default-org load failure");
