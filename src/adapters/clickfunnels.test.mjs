@@ -356,6 +356,28 @@ test("mapToCanonical: appointment created => booking.created only (no entry.capt
   assert.deepEqual(names, ["booking.created"]);
 });
 
+test("mapToCanonical: appointment with cf_svy on contact also emits survey.submitted", () => {
+  const names = mapToCanonical({
+    email: "a@b.com",
+    type: "appointments/scheduled_event.created",
+    answers: {
+      cf_svy_funding_target_amount: "$50k - $100k",
+      cf_svy_self_reported_fico: "620-699"
+    }
+  }).map((c) => c.name);
+  assert.deepEqual(names, ["booking.created", "survey.submitted"]);
+});
+
+test("mapToCanonical: calendar form booking ignores non-cf_svy form junk for survey", () => {
+  const names = mapToCanonical({
+    email: "book@example.com",
+    type: "form_submission.created",
+    startTime: "2026-08-13T01:00:00Z",
+    answers: { start_on: "2026-08-13T01:00:00Z", cf_svy_planned_use: "Payroll or rent" }
+  }).map((c) => c.name);
+  assert.deepEqual(names, ["booking.created", "survey.submitted"]);
+});
+
 test("mapToCanonical: appointment rescheduled => booking.rescheduled only", () => {
   const names = mapToCanonical({
     email: "a@b.com",
@@ -382,6 +404,33 @@ test("mapToCanonical: form_submission with startTime => booking.created only", (
   assert.deepEqual(names, ["booking.created"]);
 });
 
+test("normalizeClickFunnelsEvent: calendar form booking reads cf_svy from nested contact attrs", () => {
+  const evt = normalizeClickFunnelsEvent({
+    event_type: "form_submission.created",
+    data: {
+      data: {
+        contact: {
+          email: "nested@example.com",
+          custom_attributes: {
+            cf_svy_funding_target_amount_label: "$100k - $200k",
+            cf_svy_self_reported_fico_label: "700-759"
+          }
+        },
+        appointments_schedule_request: {
+          start_on: "2026-08-13T01:00:00Z"
+        }
+      }
+    }
+  });
+  assert.equal(evt.email, "nested@example.com");
+  assert.equal(evt.startTime, "2026-08-13T01:00:00Z");
+  assert.equal(evt.answers?.cf_svy_funding_target_amount_label, "$100k - $200k");
+  assert.deepEqual(
+    mapToCanonical(evt).map((c) => c.name),
+    ["booking.created", "survey.submitted"]
+  );
+});
+
 test("mapToCanonical: form_submission without startTime stays entry.captured", () => {
   const names = mapToCanonical({
     email: "lead@example.com",
@@ -389,6 +438,23 @@ test("mapToCanonical: form_submission without startTime stays entry.captured", (
     answers: null
   }).map((c) => c.name);
   assert.deepEqual(names, ["entry.captured"]);
+});
+
+test("normalizeClickFunnelsEvent: appointment drops a credit band used as the contact name", () => {
+  const evt = normalizeClickFunnelsEvent({
+    event: "appointments/scheduled_event.created",
+    data: {
+      primary_contact: {
+        email_address: "band@example.com",
+        first_name: "580-649",
+        phone_number: "555-111-2222",
+        custom_attributes: { cf_svy_self_reported_fico: "580-649" }
+      }
+    }
+  });
+  assert.equal(evt.name, "");
+  assert.equal(evt.email, "band@example.com");
+  assert.equal(evt.answers?.cf_svy_self_reported_fico, "580-649");
 });
 
 test("normalizeClickFunnelsEvent: appointment reads data.primary_contact + slot fields", () => {
@@ -765,6 +831,46 @@ test("handleClickFunnelsWebhook: a1/a2 referral params flow into entry.captured 
   const entryPayload = store.find((r) => r.name === "entry.captured")?.payload;
   assert.equal(entryPayload?.a1, "tier1-aff");
   assert.equal(entryPayload?.a2, "tier2-aff");
+});
+
+test("handleClickFunnelsWebhook: appointment with survey attrs emits booking.created and survey.submitted", async () => {
+  _resetOrgCache(); clearHandlers();
+  const store = [];
+  on("survey.submitted", () => {});
+  const db = {
+    query(sql, params) {
+      if (/FROM orgs/.test(sql)) return { rows: [{ id: "org-1" }] };
+      if (/INSERT INTO events/.test(sql)) {
+        store.push({ name: params[1], payload: params[5] });
+        return { rows: [{ id: `evt-${store.length}` }] };
+      }
+      if (/FROM events/.test(sql) && /survey\.submitted/.test(sql)) return { rows: [] };
+      if (/FROM bookings/.test(sql)) return { rows: [] };
+      return { rows: [] };
+    }
+  };
+  const raw = JSON.stringify({
+    id: "cf_appt_survey",
+    event: "appointments/scheduled_event.created",
+    data: {
+      start_on: "2026-08-12T18:00:00Z",
+      primary_contact: {
+        email_address: "survey-book@example.com",
+        first_name: "Sam",
+        last_name: "Booker",
+        custom_attributes: {
+          cf_svy_funding_target_amount: "$50k - $100k",
+          cf_svy_self_reported_fico_label: "620-699"
+        }
+      }
+    }
+  });
+  const res = await handleClickFunnelsWebhook({ db, rawBody: raw, signatureHeader: sign(raw), secret: SECRET });
+  assert.equal(res.ok, true);
+  assert.deepEqual(res.emitted.map((e) => e.name), ["booking.created", "survey.submitted"]);
+  const surveyPayload = store.find((r) => r.name === "survey.submitted")?.payload;
+  assert.equal(surveyPayload?.answers?.cf_svy_funding_target_amount, "$50k - $100k");
+  assert.equal(surveyPayload?.answers?.cf_svy_self_reported_fico_label, "620-699");
 });
 
 test("handleClickFunnelsWebhook: appointment created => booking.created, no entry.captured", async () => {

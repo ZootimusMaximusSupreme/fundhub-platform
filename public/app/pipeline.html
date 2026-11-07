@@ -1903,6 +1903,7 @@ restore();
   }
 
   function formatScores(c) {
+    if (c && c.survey_snippet) return String(c.survey_snippet);
     var band = c && c.survey_fico;
     return band ? String(band) : "—";
   }

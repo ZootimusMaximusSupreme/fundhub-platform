@@ -20,7 +20,7 @@ import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { handleSloPaidWebhook } from "../slo/purchase.mjs";
 import { upsertContact } from "../analytics/clickfunnels.mjs";
 import { pickMetaClickIds, storeClientMetaClickIds } from "../ads/meta-match.mjs";
-import { surveyIsComplete } from "../survey/cf-question-map.mjs";
+import { looksLikeFicoBand, surveyIsComplete } from "../survey/cf-question-map.mjs";
 import { db as platformDb, pool as platformPool } from "../db.mjs";
 
 // --- 1. Signature verification (fail-closed) --------------------------------
@@ -314,7 +314,7 @@ export function normalizeClickFunnelsEvent(body) {
   // Name: prefer full_name, fall back to first+last concat.
   const firstName = contact.first_name || contact.firstName || d.first_name || b.first_name || "";
   const lastName = contact.last_name || contact.lastName || d.last_name || b.last_name || "";
-  const name = String(
+  let name = String(
     contact.full_name ||
     contact.fullName ||
     contact.name ||
@@ -323,6 +323,13 @@ export function normalizeClickFunnelsEvent(body) {
     b.full_name ||
     (firstName || lastName ? `${firstName} ${lastName}`.trim() : "")
   ).trim();
+  // CF sometimes stores a survey score band in the name slot when first/last are blank.
+  if (name && looksLikeFicoBand(name)) {
+    name = [firstName, lastName]
+      .map((p) => String(p || "").trim())
+      .filter((p) => p && !looksLikeFicoBand(p))
+      .join(" ");
+  }
 
   // Phone: several CF field names in use.
   const phone = String(
@@ -889,21 +896,43 @@ async function adoptEarlierBooking(db, { orgId, evt, cancel }) {
    first answer on. Only a post that carries the last answer (surveyIsComplete,
    src/survey/cf-question-map.mjs) means the survey is done; the same answer moves
    the sales card to Survey Complete (src/handlers/client-lifecycle.mjs). */
+function appendSurveyCanonicalEvents(out, evt, { cfSurveyKeysOnly = false } = {}) {
+  let answers = pickSurveyAnswers(evt.answers);
+  if (
+    !answers &&
+    !cfSurveyKeysOnly &&
+    evt.answers != null &&
+    typeof evt.answers === "object" &&
+    !Array.isArray(evt.answers) &&
+    Object.keys(evt.answers).length
+  ) {
+    answers = evt.answers;
+  }
+  if (!answers) return;
+  out.push({ name: "survey.submitted" });
+  if (surveyIsComplete(answers)) out.push({ name: "survey.completed" });
+}
+
 export function mapToCanonical(evt) {
   if (!evt || !evt.email) return [];
 
   const type = String(evt.type || "").toLowerCase();
-  if (type === APPOINTMENT_CREATED) return [{ name: "booking.created" }];
+  if (type === APPOINTMENT_CREATED) {
+    const out = [{ name: "booking.created" }];
+    appendSurveyCanonicalEvents(out, evt, { cfSurveyKeysOnly: true });
+    return out;
+  }
   if (type === APPOINTMENT_RESCHEDULED) return [{ name: "booking.rescheduled" }];
   if (type === APPOINTMENT_CANCELED) return [{ name: "booking.cancelled" }];
-  if (isFormSubmissionType(type) && evt.startTime) return [{ name: "booking.created" }];
+  if (isFormSubmissionType(type) && evt.startTime) {
+    const out = [{ name: "booking.created" }];
+    appendSurveyCanonicalEvents(out, evt, { cfSurveyKeysOnly: true });
+    return out;
+  }
 
   const out = [];
   out.push({ name: "entry.captured" });
-  if (evt.answers !== null && evt.answers !== undefined) {
-    out.push({ name: "survey.submitted" });
-    if (surveyIsComplete(evt.answers)) out.push({ name: "survey.completed" });
-  }
+  appendSurveyCanonicalEvents(out, evt);
   return out;
 }
 

@@ -98,6 +98,8 @@ flowchart TD
     EMAIL -->|Yes| WHICH{What kind of post?}
 
     WHICH -->|appointment, or a form post with a start time| BOOK[booking.created]
+    BOOK --> BKSV{cf_svy_ answers on the contact?}
+    BKSV -->|Yes, since 2026-11-07| SURV
     WHICH -->|appointment moved| MOVE[booking.rescheduled]
     WHICH -->|appointment cancelled| CXL[booking.cancelled]
     WHICH -->|anything else| ENTRY[entry.captured]

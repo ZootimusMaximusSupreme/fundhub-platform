@@ -229,8 +229,10 @@ export function answersByPayloadKey(answersById = {}) {
 const CURRENT_SCORE = CF_SURVEY_QUESTIONS.find((q) => q.id === "current_score");
 const FICO_BANDS = new Set(CURRENT_SCORE?.options || []);
 
-function looksLikeFicoBand(s) {
-  return FICO_BANDS.has(s) || /^\d{3}-\d{3}$/.test(s) || /^\d{3}\+$/.test(s) || /^not sure$/i.test(s);
+export function looksLikeFicoBand(s) {
+  const t = s == null ? "" : String(s).trim();
+  if (!t) return false;
+  return FICO_BANDS.has(t) || /^\d{3}-\d{3}$/.test(t) || /^\d{3}\+$/.test(t) || /^not sure$/i.test(t);
 }
 
 function isCfOptionId(v) {
