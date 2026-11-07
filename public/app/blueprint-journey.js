@@ -66,7 +66,7 @@
   function credit(data) {
     const scores=rows(data?.progress?.scores?.personal),businessScores=rows(data?.progress?.scores?.business);
     return `<section class="bj-credit"><h3>Credit & reports</h3><dl>${['experian','equifax','transunion'].map(b=>{const s=scores.find(x=>String(x.bureau).toLowerCase()===b);return `<div><dt>${labels[b]}</dt><dd>${typeof s?.score==='number'?esc(s.score):'Not pulled yet'}</dd><small>${date(s?.pulledAt)}</small></div>`;}).join('')}</dl>
-      <p class="bj-caption">${businessScores.length?`${businessScores.length} business credit file${businessScores.length===1?'':'s'} tracked.`:'Business credit is tracked separately for each company. Add the matching business report when available.'}</p>
+      <p class="bj-caption">${businessScores.length?`${businessScores.length} business profile${businessScores.length===1?'':'s'} tracked. Report availability is shown separately for each company.`:'Business credit is tracked separately for each company. Add the matching business report when available.'}</p>
       <div class="bj-actions">${reports(data)}${button('Soft-pull access & report status','credit')}</div></section>`;
   }
   function roadmap(data) {

@@ -69,6 +69,8 @@
 .bj-next :is(button,a):focus-visible { outline:2px solid var(--ink);outline-offset:3px; }
 .bj-next :is(button,a) { min-height:48px;background:var(--ink);color:var(--paper);border-color:var(--ink); }
 .bj-next [data-bj-action="support"] { background:var(--paper);color:var(--ink);border-color:var(--line); }
+:is(#blueprint-plan,#blueprint-fulfillment) .bj-next .bj-actions > :first-child { background:var(--ink);color:var(--paper);border-color:var(--ink); }
+:is(#blueprint-plan,#blueprint-fulfillment) .bj-next .bj-actions > :not(:first-child) { background:var(--paper);color:var(--ink);border-color:var(--line); }
 .bj-summary[hidden],
 .bj-readiness[hidden],
 .bj-credit[hidden],
