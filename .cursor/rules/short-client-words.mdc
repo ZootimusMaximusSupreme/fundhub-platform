@@ -1,0 +1,1 @@
+../../.ai/rules/short-client-words.md

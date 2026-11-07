@@ -134,6 +134,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 
 ## 8. Pages and UI
 
+- `short-client-words` (both homes): Client screens, dashboards and demos use short labels and one-line captions. No explanation lines under steps, no disclaimers or compliance riders ("not a promise", "not an approval"), no "how it works" paragraphs; one word like "estimate" is fine. Say "No inquiries", not "No recent inquiries" (owner-set 2026-11-07).
 - `chris-never-clickfunnels` (both homes): Chris never logs into ClickFunnels admin; agents push funnel HTML through the Custom HTML Pages API and prove it live.
 - `clickfunnels-developers-docs` (both homes): Read developers.myclickfunnels.com first; never guess endpoints.
 
