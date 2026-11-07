@@ -88,3 +88,41 @@ test("a switched session discards the pending private property response", async 
   release(); await expect(page.locator("#ccp-property-report")).toBeHidden();
   await expect(page.locator("#ccp-property-result")).toBeEmpty();
 });
+test("switching clients during a held order resets permission and old completion cannot release the new order", async ({ page }) => {
+  const clientB = "bbbbbbbb-2222-4222-8222-222222222222";
+  let releaseA, releaseB;
+  const heldA = new Promise(resolve => { releaseA = resolve; });
+  const heldB = new Promise(resolve => { releaseB = resolve; });
+  const posts = [];
+  const fullB = { ...full, report: { ...full.report, summary: { ...full.report.summary, ownedPropertyCount: 2 } } };
+  await open(page, async route => {
+    if (route.request().method() === "GET") return json(route, empty);
+    const request = route.request().postDataJSON(); posts.push(request);
+    if (request.client_id === CLIENT_ID) { await heldA; return json(route, full); }
+    await heldB; return json(route, fullB);
+  });
+  const permission = page.locator("#ccp-property-consent");
+  const order = page.locator("#ccp-property-order");
+  await expect(permission).toBeEnabled(); await permission.check(); await order.click();
+  await expect(permission).toBeDisabled(); await expect.poll(() => posts.length).toBe(1);
+  await page.evaluate(id => {
+    const url = new URL(location.href); url.searchParams.set("client_id", id); history.replaceState(null, "", url);
+    document.dispatchEvent(new CustomEvent("ccp:client", { detail: { id, first_name: "Synthetic", last_name: "Client B", custom_fields: {} } }));
+  }, clientB);
+  await expect(page.locator("#ccp-property-state")).toContainText("No property report");
+  await expect(permission).toBeEnabled(); await expect(permission).not.toBeChecked();
+  await expect(order).toBeDisabled(); expect(posts).toHaveLength(1);
+  await permission.check(); await expect(order).toBeEnabled(); await order.click();
+  await expect(permission).toBeDisabled(); await expect(order).toBeDisabled(); await expect.poll(() => posts.length).toBe(2);
+  const oldCompletion = page.waitForResponse(response => response.request().method() === "POST"
+    && response.url().endsWith("/api/finance/property-report") && response.request().postDataJSON().client_id === CLIENT_ID);
+  releaseA(); await oldCompletion;
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await expect(page.locator("#ccp-property-state")).toContainText("Requesting this client's property report");
+  await expect(permission).toBeDisabled(); await expect(order).toBeDisabled();
+  await expect(page.locator("#ccp-property-result")).toBeEmpty(); expect(posts).toHaveLength(2);
+  releaseB(); await expect(page.locator("#ccp-property-result")).toContainText("Borrower-owned properties: 2");
+  await expect(permission).not.toBeChecked();
+  expect(posts.map(request => request.client_id)).toEqual([CLIENT_ID, clientB]);
+  expect(posts.every(request => request.consent_accepted === true && request.consent_version === PROPERTY_CONSENT_VERSION)).toBe(true);
+});
