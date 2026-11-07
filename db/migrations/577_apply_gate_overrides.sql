@@ -73,5 +73,6 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fundhub_app') THEN
     GRANT SELECT, INSERT ON public.apply_gate_overrides TO fundhub_app;
+    REVOKE UPDATE, DELETE, TRUNCATE ON public.apply_gate_overrides FROM fundhub_app;
   END IF;
 END $$;

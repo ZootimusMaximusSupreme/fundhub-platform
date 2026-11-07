@@ -71,6 +71,7 @@ test('PG migration546: exact scoped quotes, replacement, payment CAS, irreversib
     assert.equal(tracked.dispute_letter_id,null,'a funding letter carries no repair letter');
     assert.equal(tracked.mailed_at,null,'the mail house taking a letter is not mailing it');
     assert.equal(tracked.reply_due_at,null,'no reply date when the mail house takes the letter');
+    await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET provider_status='lost' WHERE id=$1",[eid]),'blueprint_letter_mailing_envelopes_provider_status_ck');
     assert.equal((await repo.track(ref,{providerStatus:'printing'},new Date())).mailedNow,false);
     await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET mailed_at=now() WHERE id=$1",[eid]),'blueprint_letter_mailing_envelopes_mailed_after_handoff_ck');
     const mailedOn=new Date();
@@ -86,7 +87,8 @@ test('PG migration546: exact scoped quotes, replacement, payment CAS, irreversib
     assert.equal((await repo.trackable(3,new Date())).length,0,'a letter with an expected delivery date leaves the tracker queue');
     await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET mailed_at=now()+interval '1 day' WHERE id=$1",[eid]));
     await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET expected_delivery_at=now()+interval '1 day' WHERE id=$1",[eid]));
-    await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET provider_status='lost' WHERE id=$1",[eid]),'blueprint_letter_mailing_envelopes_provider_status_ck');
+    // Mailed now, so an unknown status trips the handoff rule first (Postgres checks constraints in name order).
+    await rejected(()=>db.query("UPDATE blueprint_letter_mailing_envelopes SET provider_status='lost' WHERE id=$1",[eid]));
     await rejected(()=>db.query('UPDATE blueprint_letter_mailing_envelopes SET dispute_letter_id=$2 WHERE id=$1',[eid,randomUUID()]));
     const ledger=(await db.query('SELECT status,price_total_cents,amount_paid_cents,payment_ref,produced_kind,produced_ref,produced FROM paid_service_requests WHERE id=$1',[order.id])).rows[0];
     assert.equal(ledger.status,'fulfilled');assert.equal(ledger.produced_kind,'letter_mailing_batch');assert.equal(ledger.produced_ref,order.id);assert.equal(Number(ledger.price_total_cents),9700);assert.equal(Number(ledger.amount_paid_cents),9700);assert.equal(ledger.produced.mailed,true);

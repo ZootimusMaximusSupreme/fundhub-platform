@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS public.plaid_institutions (
   -- "bankofamerica"), so a bank-book row and a Plaid bank can be matched by name
   -- when there is no id to match on. Computed by bankKey() in
   -- src/banking/institution-logos.mjs and stored, so both sides use one rule.
-  name_key text CHECK (name_key IS NULL OR name_key ~ '^[a-z0-9]{1,300}$'),
+  name_key text CHECK (name_key IS NULL OR (name_key ~ '^[a-z0-9]+$' AND length(name_key) <= 300)),
 
   -- Plaid's base64 PNG, exactly as sent. NULL = Plaid has no logo for this bank.
   logo_base64 text CHECK (logo_base64 IS NULL OR (

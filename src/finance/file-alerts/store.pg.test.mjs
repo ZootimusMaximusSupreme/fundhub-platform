@@ -180,7 +180,7 @@ describe("file-protection alerts (migration 471)", { skip: !HAVE_DB ? "no DATABA
   test("settings: alerts are on by default; a switch writes one column and survives a read", async () => {
     const clientId = await client();
     assert.deepEqual(await readSettings(c, { orgId, clientId }),
-      { payment_timing: true, promo_end: true, cash_reserve: true, new_credit: true, saved: false, updated_by_kind: null, updated_at: null });
+      { payment_timing: true, promo_end: true, cash_reserve: true, new_credit: true, phone_alerts: true, saved: false, updated_by_kind: null, updated_at: null });
     const after = await setAlertEnabled(c, { orgId, clientId, kind: "promo_end", enabled: false, by: "staff" });
     assert.deepEqual([after.promo_end, after.payment_timing, after.cash_reserve, after.new_credit, after.saved, after.updated_by_kind],
       [false, true, true, true, true, "staff"]);
