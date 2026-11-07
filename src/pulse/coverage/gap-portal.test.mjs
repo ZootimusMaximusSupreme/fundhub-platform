@@ -80,8 +80,13 @@ function assertShape(rows) {
 const SITE_PAGES = {
   "/portal-login.html": {
     title: "Fundhub — Client portal sign-in",
-    assets: ['<link rel="stylesheet" href="/fh.css">'],
+    assets: ['<link rel="stylesheet" href="/fh.css">', '<script defer src="/funnel/device-destinations.js"></script>', '<script defer src="/app/device-entry.js"></script>'],
     extra: '<form id="f"><input id="email" type="email"></form>'
+  },
+  "/devices.html": {
+    title: "Add another device — Fundhub",
+    assets: ['<link rel="stylesheet" href="/app/devices.css">', '<script defer src="/funnel/device-destinations.js"></script>', '<script defer src="/app/devices.js"></script>'],
+    extra: '<input value="https://fundhub.ai/devices.html"><a id="open-browser" href="/app/client-portal.html">Open Fundhub</a><img src="/assets/fundhub-devices-qr.svg" alt="QR code">'
   },
   "/reset-password.html": {
     title: "Fundhub — Reset password",
@@ -122,7 +127,8 @@ const SITE_PAGES = {
 const SITE_FILES = [
   "/fh.css", "/pw-toggle.js", "/app/fundhub-brand.css", "/app/shell.js", "/app/data.js",
   "/app/client-portal-sw.js", "/app/money-vault.css", "/app/money.js", "/app/financeos.js",
-  "/app/role-dock.css", "/app/role-dock.js"
+  "/app/role-dock.css", "/app/role-dock.js", "/funnel/device-destinations.js", "/app/device-entry.js",
+  "/app/devices.css", "/app/devices.js", "/assets/fundhub-devices-qr.svg"
 ];
 
 function pageText(pagePath, { drop = [], title } = {}) {
@@ -141,7 +147,9 @@ function siteRoutes() {
   const routes = {};
   for (const pagePath of Object.keys(SITE_PAGES)) routes[pagePath] = { status: 200, text: pageText(pagePath) };
   for (const file of SITE_FILES) {
-    routes[file] = { status: 200, text: file.endsWith(".css") ? "body{margin:0}" : "window.ok=1;", type: file.endsWith(".css") ? "text/css" : "application/javascript" };
+    routes[file] = file.endsWith(".svg")
+      ? { status: 200, text: '<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h1v1z"/></svg>', type: "image/svg+xml" }
+      : { status: 200, text: file.endsWith(".css") ? "body{margin:0}" : "window.ok=1;", type: file.endsWith(".css") ? "text/css" : "application/javascript" };
   }
   return routes;
 }
@@ -695,7 +703,7 @@ test("scripts: all customer pages whole and every file they name answering is a 
   const { row, calls } = await scripts(siteRoutes());
   assert.equal(row.id, "portal:page-scripts-load");
   assert.equal(row.status, "PASS");
-  assert.match(row.detail, /^7 customer pages answered whole and all 11 script and style files/);
+  assert.match(row.detail, /^8 customer pages answered whole and all 16 script, style and required image files/);
   assert.equal(row.suggestedFix, null);
   const asked = new Set(calls.map((c) => new URL(c.url).pathname));
   assert.deepEqual([...asked].sort(), [...Object.keys(SITE_PAGES), ...SITE_FILES].sort());
@@ -707,6 +715,44 @@ test("scripts: all customer pages whole and every file they name answering is a 
   }
   // Each file is asked for once even when three pages name it.
   assert.equal(calls.length, asked.size);
+});
+
+test("scripts: device setup must keep its public link, existing browser route and QR image", async () => {
+  const changes = [
+    ["public device link", (html) => html.replace('value="https://fundhub.ai/devices.html"', 'value="https://fundhub.ai/devices.html?t=private-session"')],
+    ["browser portal link", (html) => html.replace('href="/app/client-portal.html"', 'href="/app/client-portal.html?token=private-session"')],
+    ["QR image", (html) => html.replace('src="/assets/fundhub-devices-qr.svg"', 'src="/assets/missing.svg"')]
+  ];
+  for (const [part, mutate] of changes) {
+    const { row } = await scripts(routesWith((routes) => {
+      routes["/devices.html"].text = mutate(pageText("/devices.html"));
+    }));
+    assert.equal(row.status, "FAIL", part);
+    assert.ok(row.detail.includes(`/devices.html has lost its ${part}`), row.detail);
+  }
+});
+
+test("scripts: the device page and each new file can fail the shared morning check", async () => {
+  for (const pathname of ["/devices.html", "/app/devices.js", "/app/devices.css", "/funnel/device-destinations.js", "/app/device-entry.js", "/assets/fundhub-devices-qr.svg"]) {
+    const { row } = await scripts(routesWith((routes) => { routes[pathname] = { status: 404, text: "missing" }; }));
+    assert.equal(row.status, "FAIL", pathname);
+    assert.ok(row.detail.includes(`${pathname} answered 404`), row.detail);
+  }
+});
+
+test("scripts: the required QR image must contain SVG rather than an empty, HTML or cut file", async () => {
+  for (const [body, type, expected] of [
+    [" ", "image/svg+xml", "is empty"],
+    ["<html>Missing image</html>", "text/html", "came back as a web page, not a QR image"],
+    ['<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h1v1z"/>', "image/svg+xml", "is not a whole SVG image"],
+    ["not an SVG", "image/svg+xml", "is not a whole SVG image"]
+  ]) {
+    const { row } = await scripts(routesWith((routes) => {
+      routes["/assets/fundhub-devices-qr.svg"] = { status: 200, text: body, type };
+    }));
+    assert.equal(row.status, "FAIL", expected);
+    assert.ok(row.detail.includes(`/assets/fundhub-devices-qr.svg ${expected}`), row.detail);
+  }
 });
 
 test("scripts: a script that answers 404 is a FAIL that names it", async () => {
@@ -784,8 +830,8 @@ test("scripts: a long list of problems is cut to four and counts the rest", asyn
     for (const file of SITE_FILES) r[file] = { status: 404, text: "x" };
   }));
   assert.equal(row.status, "FAIL");
-  assert.match(row.detail, /^11 problems on the customer pages: /);
-  assert.match(row.detail, /; and 7 more$/);
+  assert.match(row.detail, /^16 problems on the customer pages: /);
+  assert.match(row.detail, /; and 12 more$/);
   assert.ok(row.detail.length <= 500, "the detail must fit the 500 characters the pulse keeps");
 });
 
@@ -806,7 +852,7 @@ test("scripts: running out of time with nothing red is a skip, with a red it is 
   };
   const quiet = await checkPageScripts({ fetchImpl: slow(siteRoutes()), baseUrl: BASE });
   assert.equal(quiet.status, "skip");
-  assert.match(quiet.detail, /ran out of time \(14 s\) with 10 of 18 files not read; nothing red in the rest/);
+  assert.match(quiet.detail, /ran out of time \(14 s\) with 15 of 24 files not read; nothing red in the rest/);
   clock = 1_000_000;
   const red = await checkPageScripts({
     fetchImpl: slow(routesWith((r) => { r["/progress.html"] = { status: 500, text: "x" }; })),
@@ -844,7 +890,7 @@ test("scripts: the page list is the live registry's, and every file is in public
     assert.ok(fs.existsSync(path.join(PUBLIC, page.path)), `${page.path} is not in public/`);
   }
   assert.deepEqual(CUSTOMER_PAGES.map((p) => p.path), [
-    "/portal-login.html", "/reset-password.html", "/app/client-portal.html",
+    "/portal-login.html", "/devices.html", "/reset-password.html", "/app/client-portal.html",
     "/app/role-dock.html", "/progress.html", "/app/payment-success.html", "/app/financeos.html"
   ]);
 });
@@ -896,13 +942,14 @@ test("scripts: read against the real pages in public/, the lists are what the ma
   const money = names("app/financeos.html", "/app/financeos.html");
   assert.ok(money.filter((n) => n.endsWith(".js")).length >= 18, "financeos.html names its 18 scripts");
   assert.ok(money.includes("/app/financeos.js") && money.includes("/app/money-credit.js"));
-  assert.deepEqual(names("portal-login.html", "/portal-login.html"), [...sharedTypeAssets, "/fh.css", "/app/client-ios.css", "/portal-login-ios.css", ...sharedAstraStyles, "/funnel/fh-events.js", "/app/client-ios.js"]);
+  assert.deepEqual(names("portal-login.html", "/portal-login.html"), [...sharedTypeAssets, "/fh.css", "/app/client-ios.css", "/portal-login-ios.css", ...sharedAstraStyles, "/funnel/fh-events.js", "/funnel/device-destinations.js", "/app/device-entry.js", "/app/client-ios.js"]);
+  assert.deepEqual(names("devices.html", "/devices.html"), ["/app/fundhub-font.css", "/app/fundhub-brand.css", "/app/fundhub-astra.css", "/app/devices.css", "/app/fundhub-font.js", "/funnel/device-destinations.js", "/app/devices.js"]);
   assert.deepEqual(names("reset-password.html", "/reset-password.html"), [...sharedTypeAssets, "/fh.css", "/pw-toggle.js", ...sharedAstraStyles]);
   assert.deepEqual(names("progress.html", "/progress.html"), [...sharedTypeAssets, "/app/client-ios.css", "/progress-ios.css", "/app/client-ios.js", ...sharedAstraStyles]);
   assert.deepEqual(names("app/payment-success.html", "/app/payment-success.html"), [...sharedTypeAssets, "/app/fundhub-brand.css", ...sharedAstraStyles]);
   // Every file the pages name is really in public/, so a rename shows up here
   // before it shows up on the live pages.
-  for (const name of [...portal, ...money, ...names("portal-login.html", "/portal-login.html"), ...names("reset-password.html", "/reset-password.html"), ...names("progress.html", "/progress.html"), ...names("app/payment-success.html", "/app/payment-success.html")]) {
+  for (const name of [...portal, ...money, ...names("portal-login.html", "/portal-login.html"), ...names("reset-password.html", "/reset-password.html"), ...names("progress.html", "/progress.html"), ...names("app/payment-success.html", "/app/payment-success.html"), ...names("devices.html", "/devices.html"), "/assets/fundhub-devices-qr.svg"]) {
     assert.ok(fs.existsSync(path.join(PUBLIC, name)), `${name} is named by a page but is not in public/`);
   }
   // And each real page passes the page rules the check applies.

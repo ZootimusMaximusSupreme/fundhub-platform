@@ -16,14 +16,16 @@
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-client.css">
 <script defer src="/funnel/fh-events.js"></script>
+<script defer src="/funnel/device-destinations.js"></script>
+<script defer src="/app/device-entry.js"></script>
 </head><body class="fh-astra fh-astra-client fh-astra-entry" data-client-page="portal-login" data-client-public data-client-ios>
 <main class="login-box">
   <a class="portal-brand" href="/" aria-label="Fundhub home"><span aria-hidden="true">f.</span> Fundhub</a>
   <div class="card">
     <p class="portal-eyebrow">Client portal</p>
-    <h1>Get the Fundhub Portal app.</h1>
-    <p class="sub">Confirm your call in the app, then see your file, documents and next steps.</p>
-    <a class="portal-app-download" id="download" href="https://apps.apple.com/us/app/fundhub-portal/id6823985032" target="_blank" rel="noopener">Download Fundhub Portal</a>
+    <h1>Open your Fundhub portal.</h1>
+    <p class="sub">Confirm your call, then see your file, documents and next steps.</p>
+    <div id="download" hidden></div>
 
     <div class="err" id="err" role="alert"></div>
     <div id="ok-box" role="status" aria-live="polite"></div>

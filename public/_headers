@@ -77,6 +77,19 @@
 /portal-login.html
   Cache-Control: public, max-age=0, must-revalidate
 
+/devices.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Unversioned device choices must refresh with the current supported options.
+/funnel/device-destinations.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/funnel/fundhub-prompter-download.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/funnel/funding-paths.js
+  Cache-Control: public, max-age=0, must-revalidate
+
 /progress.html
   Cache-Control: public, max-age=0, must-revalidate
 

@@ -4,7 +4,7 @@
 //
 // Same SQL, same page reads, same verdicts as the morning lane gap-portal.mjs (the truth lives in
 // lib/portal-truth.mjs). Five checks, side by side:
-//   portal:page-scripts-load            the six customer pages and every script and style file they
+//   portal:page-scripts-load            customer pages, their required QR image, and script/style files they
 //                                       name, read live with GET (a page over 64 KB is read to the end
 //                                       in byte ranges; one that cannot be read whole is not judged)
 //   portal:paid-entitlement             every paid mapped product has its entitlement row
@@ -21,6 +21,7 @@
 //   route:read/portal-summary   portal:summary
 //   route:read/entitlements     portal:paid-entitlement here; payments:paid-no-entitlement is the
 //                               payments-paid-no-entitlement step of the pay-links beat
+//   page:devices.html           portal:page-scripts-load (public link, browser route, QR and files)
 //   page:portal-login.html      portal:paid-client-never-signed-in here; gap:auth-magic-link-dead is the
 //                               gap-auth-magic-link-dead step of the auth-links beat
 // page:progress.html and route:read/client-progress name portal:progress-read-real-client, the real
@@ -58,10 +59,13 @@ const SITE = "https://fundhub.ai";
 /* A whole customer page for the self test: a title, the few things each page must keep, one script,
    one style file and the closing tag, padded past the 500-byte floor. Made-up text only. */
 function selfTestPage(path) {
-  const keeps = '<form><input type="email"><input type="password"></form><div data-tile="next"></div><div id="sections"></div>';
+  const keeps = path === "/devices.html" ? '' : '<form><input type="email"><input type="password"></form><div data-tile="next"></div><div id="sections"></div>';
+  const devices = path === "/devices.html"
+    ? '<input value="https://fundhub.ai/devices.html"><a id="open-browser" href="/app/client-portal.html">Open Fundhub</a><img src="/assets/fundhub-devices-qr.svg" alt="QR code">'
+    : '';
   return `<!doctype html><html><head><title>Fundhub ${path}</title>` +
     `<link rel="stylesheet" href="/app/self-test.css"><script src="/app/self-test.js"></script></head>` +
-    `<body>${keeps}<p>${"Your portal. ".repeat(60)}</p></body></html>`;
+    `<body>${keeps}${devices}<p>${"Your portal. ".repeat(60)}</p></body></html>`;
 }
 
 /** The self test's web: every customer page answers whole, and both of its files answer with content. */
@@ -71,6 +75,7 @@ export function selfTestHttp(method, url) {
   if (CUSTOMER_PAGES.some((page) => page.path === pathname)) {
     return { status: 200, body: selfTestPage(pathname), headers: { "content-type": "text/html; charset=utf-8" } };
   }
+  if (pathname === "/assets/fundhub-devices-qr.svg") return { status: 200, body: '<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h1v1z"/></svg>', headers: { "content-type": "image/svg+xml" } };
   if (pathname === "/app/self-test.js") return { status: 200, body: "window.portal = 1;", headers: { "content-type": "application/javascript" } };
   if (pathname === "/app/self-test.css") return { status: 200, body: "body { margin: 0; }", headers: { "content-type": "text/css" } };
   return undefined;
@@ -105,7 +110,8 @@ export const covers = [
   "route:read/dock",
   "route:read/portal-summary",
   "route:read/entitlements",
-  "page:portal-login.html"
+  "page:portal-login.html",
+  "page:devices.html"
 ];
 export const box = false;
 export const reads = [{ host: "SITE", methods: ["GET"] }];

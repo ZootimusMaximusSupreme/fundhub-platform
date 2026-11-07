@@ -1,5 +1,40 @@
 # Fundhub iOS app — actual push path (2026-10-17)
 
+## Use Fundhub on another device (2026-11-06)
+
+The verified client account menu in `public/app/client-ios.js` and verified
+staff account menu in `public/app/shell.js` offer **Add another device**. The
+same portal runs inside the existing native workspace views. The link opens
+`/devices.html` without copying the current query, client identity or token.
+No native login, entitlement, Keychain or navigation guard changes are made.
+
+```mermaid
+flowchart TD
+  A[Verified signed-in portal account menu] --> B[Add another device]
+  B --> C[Public devices.html]
+  C --> D[Computer: scan QR or copy fixed public link]
+  C --> E[Phone: share or copy fixed public link]
+  D --> F[Other device opens fundhub.ai/devices.html]
+  E --> F
+  F --> G[Open existing browser portal and sign in normally]
+  F --> H{Clearly supported iPhone and verified listing?}
+  H -->|Yes| I[Choose iPhone app, then open official App Store]
+  H -->|No or unknown| G
+  C --> J[Back to Fundhub preserves current-device portal route]
+```
+
+The share payload and QR contain only `https://fundhub.ai/devices.html`.
+Android, Windows, iPad-like and contradictory/unknown browser signals get no
+Apple download control. A Mac uses the browser portal until a separate public
+native download is verified. Clipboard/share failures leave the public link
+selectable; failed app settings leave the browser route working. No transfer
+of a signed-in session is implemented or claimed.
+
+This is traced source and controlled browser proof. Actual installed-app,
+physical AirDrop and production deployment receipts remain separate. The
+owner's requested new steps are recorded on the existing device-download
+workflow board; the hand-authored intended journey was not silently changed.
+
 ## Saved sign-in (2026-11-04)
 
 The native app stores its session in this iPhone's Keychain without a Face ID or
