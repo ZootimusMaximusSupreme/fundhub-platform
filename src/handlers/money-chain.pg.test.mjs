@@ -1,5 +1,5 @@
 // Postgres integration for money-chain writers.
-// SKIPS unless DATABASE_URL is set.
+// Runs only on local scratch Postgres.
 //
 // Proves: each writer fires once per event, replay does not duplicate, and the
 // read APIs (commissions / entitlements / funding-rounds) return the written rows.
@@ -15,12 +15,13 @@ import { register as registerMoneyChain, onPaymentReceivedMoney, onDepositPaidMo
 import { onPaymentReceivedForLink } from "./payment-links.mjs";
 import { createSession } from "../auth/session.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
+import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
-const HAS_DB = !!process.env.DATABASE_URL;
+const SAFE_DB = isLocalScratchDatabaseUrl(process.env.DATABASE_URL);
 const MARK = "moneychain_pg";
 const EMAIL = `${MARK}@example.com`;
 
-describe("money-chain writers", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => {
+describe("money-chain writers", { skip: SAFE_DB ? false : "requires local scratch Postgres" }, () => {
   let org, closerId, advisorId, handler, ownerToken;
   let fundingProductId, diagProductId, diyProductId;
   let frontRuleId, backRuleId;

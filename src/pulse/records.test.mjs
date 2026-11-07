@@ -414,6 +414,7 @@ describe("bank links", () => {
     const r = await rec.loadBankLinks(d, ORG);
     assert.equal(r.ok, true);
     assert.match(d.calls[0].sql, /^SELECT/);
+    assert.match(d.calls[0].sql, /retired_at IS NULL/, "historical links must not count as the current catalog");
     assert.match(d.calls[0].sql, /ORDER BY last_checked_at NULLS FIRST/);
     assert.deepEqual(d.calls[0].params, [ORG]);
     assert.deepEqual(r.rows[0], {
@@ -460,6 +461,7 @@ describe("bank links", () => {
     assert.match(sql, /last_class\s+=\s+COALESCE\(EXCLUDED\.last_class, b\.last_class\)/);
     assert.match(sql, /WHEN EXCLUDED\.last_class = 'OK' THEN 0\s+ELSE b\.fail_streak \+ 1/);
     assert.match(sql, /CASE WHEN cardinality\(EXCLUDED\.lender_ids\) > 0 THEN EXCLUDED\.lender_ids ELSE b\.lender_ids END/);
+    assert.match(sql, /retired_at\s+=\s+NULL/, "an Apply URL that returns to the active catalog must be checked again");
     assert.doesNotMatch(sql, /first_seen_at\s*=/, "first_seen_at must survive an update");
   });
 
