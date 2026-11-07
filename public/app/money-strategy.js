@@ -17,6 +17,25 @@
  *   - A missing APR, minimum or limit is said in words, with what it changes.
  *   - Status is a word and a shape, never colour alone (UI-STANDARDS §12.6).
  *
+ * MONEY COMING IN (Finance OS CFO build, unit C). The read carries
+ * inputs.income — the repeat paychecks, deposits and merchant payouts
+ * src/banking/income.mjs found — and the shared math turns it into a suggested
+ * amount (plan.suggestion). The "Money coming in" card shows what was found,
+ * how often, the estimated monthly income, the extra for debt per kind, and a
+ * button that puts the suggestion on the slider. The client still picks.
+ *
+ * FINANCING AND BILL CLEANUP (Finance OS wave 3, units K and F). Payment plans
+ * (Clarity Pay and other plans owed to Fundhub) sit in the debts table with a
+ * "Payment plan" tag; "Pay financing first" puts them at the front of the
+ * order. Each payment shows Paid / Late / Due when the server knows it (Plaid's
+ * last payment date for cards and loans, recorded payments for plans), and
+ * nothing when it does not. "Things to check" lists a price that went up and
+ * the same charge twice on a repeat bill (src/banking/bill-cleanup.mjs).
+ *
+ * CANCEL IT FOR ME (wave 4, unit CANCEL). "Repeat bills" under Things to check
+ * is drawn by bill-cancel.js from data.bill_cancel; its presses go through
+ * FHBillCancel.act and repaint this section.
+ *
  * Every render function returns an HTML string and touches no DOM, so
  * src/http/money-strategy-screen.test.mjs can run them in Node.
  */
@@ -29,15 +48,28 @@
   var KIND_LABEL = { personal: "Personal", business: "Business", unknown: "Not sorted yet" };
   var KIND_WORD = { personal: "personal", business: "business", unknown: "not-sorted-yet" };
   var METHOD_ORDER = ["avalanche", "utilization", "snowball"];
+  /* The method buttons are their labels; no line explains them (owner rule,
+     short client words, 2026-11-07). */
   var METHOD_FALLBACK = {
-    avalanche: { label: "Highest rate first", detail: "Extra money goes to the debt with the highest APR. Saves the most interest." },
-    utilization: { label: "Card use first", detail: "Each card goes down to 10% of its limit, highest card use first. Then highest APR first." },
-    snowball: { label: "Smallest balance first", detail: "Extra money goes to the smallest balance. Closes debts sooner." }
+    avalanche: { label: "Highest rate first" },
+    utilization: { label: "Card use first" },
+    snowball: { label: "Smallest balance first" }
   };
   var GOAL_LABEL = { debt_free: "Debt-free by", util30: "Card use under 30% by", util10: "Card use under 10% by" };
   var TARGET_WORD = { 30: "UnderwriteIQ's fundable line", 10: "UnderwriteIQ's target" };
   var PAGE = 24;
   var DASHES = ["8 5", "2 4", "12 4 2 4", "1 3"];
+  var SOURCE_WORD = { paycheck: "Paycheck", deposit: "Deposit", merchant_payout: "Processor payouts" };
+  var CADENCE_WORD = { weekly: "Every week", biweekly: "Every two weeks", semimonthly: "Twice a month", monthly: "Every month" };
+  var NOT_COUNTED_WORD = {
+    one_off_not_repeating: "Came in once.",
+    no_steady_schedule: "No steady schedule yet.",
+    seen_twice_needs_a_third: "Seen twice. It counts after the third time.",
+    not_steady_enough: "The amount or the timing moves around too much.",
+    stopped_coming_in: "Two paydays passed with nothing.",
+    connection_not_active: "This processor connection is turned off.",
+    needs_three_full_months_of_payouts: "It counts once each of the last 3 full months has a payout."
+  };
 
   /* ── small helpers ─────────────────────────────────────────────────────── */
 
@@ -88,6 +120,11 @@
     return m ? MONTHS[Number(m[2]) - 1] + " ’" + m[1].slice(2) : "";
   }
   function pct(v) { return isNum(v) ? (Math.round(v * 10) / 10) + "%" : "—"; }
+  /* "2026-10-21" → "Oct 21", for chips where the year is plain. */
+  function shortDay(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+    return m ? MONTHS[Number(m[2]) - 1] + " " + Number(m[3]) : "";
+  }
   /* An APR as stored, to the hundredth: 24.99%, never rounded to 25%. */
   function apr(v) { return isNum(v) ? (Math.round(v * 100) / 100) + "%" : "—"; }
 
@@ -108,16 +145,15 @@
   }
   function methodWords(data, key) {
     var m = data && data.methods && data.methods[key];
-    return { label: (m && m.label) || METHOD_FALLBACK[key].label, detail: (m && m.detail) || METHOD_FALLBACK[key].detail };
+    return { label: (m && m.label) || METHOD_FALLBACK[key].label };
   }
 
   /* ── head, loading, error, empty ───────────────────────────────────────── */
 
+  /* The title, and whose plan it is. No line explaining the page. */
   function renderHead(data) {
-    var who = data && data.client && data.client.name ? data.client.name + " · " : "";
-    return '<div class="head"><div><h1>Payment strategy</h1><p class="caption">' +
-      esc(who + "Pick how much goes to debt each month and how. See when you are done, what it saves, and when your card use hits UnderwriteIQ's targets.") +
-      '</p></div></div>';
+    var who = data && data.client && data.client.name ? String(data.client.name) : "";
+    return '<div class="head"><div><h1>Payment strategy</h1>' + (who ? '<p class="caption">' + esc(who) + '</p>' : "") + '</div></div>';
   }
 
   function renderLoading() {
@@ -154,8 +190,7 @@
         (excluded.length === 1 ? "has" : "have") + ' no balance on file yet, so ' + (excluded.length === 1 ? "it is" : "they are") + ' left out.</p>'
       : "";
     return renderHead(data) +
-      '<section class="card empty"><h2>No cards or loans with a balance yet</h2>' +
-      '<p>When a card or loan with money owed is on file, this page shows how to pay it down, month by month.</p>' + note +
+      '<section class="card empty"><h2>No cards or loans with a balance yet</h2>' + note +
       '<a class="btn-primary" href="/app/financeos.html#accounts">Add an account</a></section>';
   }
 
@@ -173,6 +208,8 @@
     var max = plan.cash && plan.cash.max_safe;
     if (max && max.unlimited) bits.push("This month's cash can cover paying everything off.");
     else if (max && isNum(max.monthly_cents)) bits.push("This month's cash can cover up to " + money(max.monthly_cents) + ".");
+    var sug = plan.suggestion;
+    if (sug && sug.ok && isNum(sug.use_cents)) bits.push("Suggested from your money coming in: " + money(sug.use_cents) + " a month.");
     return bits.join(" ");
   }
 
@@ -186,14 +223,14 @@
       var why = {
         goal_too_soon: "Pick a date at least one month from today.",
         goal_date_invalid: "That date could not be read. Pick it again.",
-        no_limits: "No card has a credit limit on file, so card use cannot be measured.",
+        no_limits: "No card has a credit limit on file.",
         goal_unreachable: "That goal cannot be reached by that date."
       };
       return '<p class="goal-out">' + esc(why[r.reason && r.reason.code] || "That goal cannot be worked out.") + '</p>';
     }
     if (r.already_met) {
       return '<p class="goal-out">' + esc(r.kind === "util30"
-        ? "Card use is already under 30% — UnderwriteIQ's fundable line. Paying your minimums keeps it there."
+        ? "Card use is already under 30% — UnderwriteIQ's fundable line."
         : r.kind === "util10" ? "Card use is already under 10% — UnderwriteIQ's target." : "Nothing is owed.") + '</p>';
     }
     var how = methodWords(data, plan.method).label.toLowerCase();
@@ -212,15 +249,16 @@
     var sg = saved.goal || null;
     var g = settings.goal && settings.goal.kind && settings.goal.by ? settings.goal : null;
     return saved.method === settings.method && saved.monthly_cents === settings.monthly_cents &&
-      (sg ? !!g && sg.kind === g.kind && sg.by === g.by : !g);
+      (sg ? !!g && sg.kind === g.kind && sg.by === g.by : !g) &&
+      (saved.financing_first === true) === (settings.financing_first === true);
   }
 
   function renderSaveNote(data, settings) {
     var s = data && data.saved;
-    if (!s) return "Not saved yet. Saving puts each step on your FinanceOS timeline.";
+    if (!s) return "Not saved yet.";
     var line = "Saved plan: " + money(s.monthly_cents) + " a month, " + methodWords(data, s.method).label.toLowerCase() +
       ", saved " + day(String(s.saved_at || "").slice(0, 10)) + ".";
-    return sameAsSaved(s, settings) ? line : line + " You changed it — save to keep the new one.";
+    return sameAsSaved(s, settings) ? line : line + " Changes not saved yet.";
   }
 
   function renderControls(data, plan, settings) {
@@ -245,7 +283,10 @@
       '<p class="caption" data-slot="amount-note">' + esc(renderAmountNote(plan)) + '</p></div>' +
       '<div class="field f-method"><span class="label-like caption" id="s-method-l">How extra money is used</span>' +
       '<div class="seg" role="group" aria-labelledby="s-method-l">' + seg + '</div>' +
-      '<p class="caption" data-slot="method-note">' + esc(methodWords(data, settings.method).detail) + '</p></div>' +
+      (plan.has_financing
+        ? '<button type="button" class="fin-switch" id="s-fin-first" role="switch" data-act="fin-first" aria-checked="' + (settings.financing_first ? "true" : "false") + '">' +
+          '<span class="fin-track" aria-hidden="true"></span><span>Pay financing first</span></button>'
+        : "") + '</div>' +
       '<div class="field f-goal"><label for="s-goal">Goal</label>' +
       '<div class="goal-row"><select id="s-goal">' + goalOpts + '</select>' +
       '<input id="s-goal-by" type="date" aria-label="Goal date"' + (g.kind ? "" : " hidden") + ' value="' + esc(g.by || "") + '"></div>' +
@@ -262,7 +303,7 @@
     var body;
     if (plan.debt_free) {
       var cap = plan.debt_free.earliest
-        ? "At the earliest. A rate (APR) is missing, so it could take longer."
+        ? "At the earliest. A rate (APR) is missing."
         : plan.baseline && plan.baseline.debt_free_on
           ? "Paying only minimums: " + day(plan.baseline.debt_free_on) + "."
           : plan.baseline && list(plan.baseline.never_ids).length
@@ -270,7 +311,7 @@
             : "In " + plural(plan.debt_free.month, "month", "months") + ".";
       body = '<span class="big">' + esc(day(plan.debt_free.on)) + '</span><p class="caption">' + esc(cap) + '</p>';
     } else {
-      body = '<span class="big">Not in 50 years</span><p class="caption">At this amount the interest grows faster than the payments. Raise the amount.</p>';
+      body = '<span class="big">Not in 50 years</span><p class="caption">Raise the amount.</p>';
     }
     return '<section class="card tile" aria-labelledby="t-free"><h2 class="eyebrow" id="t-free">Debt-free by</h2>' + body + '</section>';
   }
@@ -299,7 +340,7 @@
   function tileCardUse(plan) {
     var body;
     if (!isNum(plan.util_start_pct)) {
-      body = '<span class="big">—</span><p class="caption">No card has a credit limit on file, so card use cannot be measured.</p>';
+      body = '<span class="big">—</span><p class="caption">No card has a credit limit on file.</p>';
     } else {
       var lines = list(plan.crossings).map(function (c) {
         if (c.already) return "Under " + c.pct + "% now (" + TARGET_WORD[c.pct] + ").";
@@ -340,6 +381,128 @@
       '<span class="big status-' + esc(c ? c.status : "unknown") + '">' + esc(word) + '</span><p class="caption">' + esc(cap) + '</p>' + act + '</section>';
   }
 
+  /* ── money coming in ───────────────────────────────────────────────────── */
+
+  function howOften(it) {
+    if (it.source === "merchant_payout") {
+      return isNum(it.payouts_per_month) && it.payouts_per_month > 0
+        ? "About " + plural(it.payouts_per_month, "payout", "payouts") + " a month" : "Varies";
+    }
+    return CADENCE_WORD[it.cadence] || "No steady schedule";
+  }
+
+  function intoWords(it) {
+    if (it.source === "merchant_payout") return it.container_name || KIND_LABEL[it.kind] || "";
+    return (it.account_name || "Account") + (it.account_mask ? " ····" + it.account_mask : "");
+  }
+
+  /* One kind's line: the owner's formula written out, or why it cannot be. */
+  function kindLine(inc, row, k) {
+    var word = KIND_WORD[k];
+    if (!row) return "No " + word + " debts in this plan.";
+    var r = row.reason || {};
+    if (row.status === "known" || row.status === "short") {
+      var sum = money(row.income_cents) + " in − " + money(row.bills_cents) + " bills − " + money(row.minimums_cents) + " minimums − " +
+        (inc.floor_source === "spec-zero" ? "$0.00 (no cushion set)" : money(row.floor_cents) + " cushion");
+      return row.status === "short"
+        ? sum + " = " + money(row.short_cents) + " short each month."
+        : sum + " = " + money(row.extra_cents) + " extra for " + word + " debts.";
+    }
+    if (r.code === "income_unknown") return "No repeat " + word + " money coming in found yet.";
+    if (r.code === "minimum_unknown") return "No minimum payment on file for " + names(r.names) + ". Add it in Accounts.";
+    if (r.code === "bills_unknown") return "A " + word + " bill could not be read.";
+    return "Not enough on file to work out the extra.";
+  }
+
+  function suggestionWords(data, plan, sug) {
+    var r = sug.reason || {};
+    if (sug.ok) {
+      /* The breakdown is of what the button uses, so it adds up to the big number. */
+      var bits = [money(plan.minimums_cents) + " of minimums + " + money(sug.use_cents - plan.minimums_cents) + " extra."];
+      if (sug.binding_kind) bits.push(KIND_LABEL[sug.binding_kind] + " money runs out first.");
+      if (sug.capped_by_cash) {
+        bits.push("Money coming in allows " + money(sug.monthly_cents) + ". This month's cash covers " + money(sug.use_cents) + ".");
+      }
+      return bits.join(" ");
+    }
+    if (r.code === "income_short") return KIND_LABEL[r.kind] + " money coming in does not cover " + KIND_WORD[r.kind] + " bills and minimums.";
+    if (r.code === "income_unknown") return "No repeat " + KIND_WORD[r.kind] + " money coming in found yet.";
+    if (r.code === "minimum_unknown") return "No minimum payment on file for " + names(r.names) + ".";
+    return "There is no amount to suggest yet.";
+  }
+
+  function renderIncomeRows(items) {
+    return items.map(function (it) {
+      /* One value box per cell, so a phone's label-and-value row has two parts. */
+      var month = isNum(it.monthly_cents)
+        ? '<span><span class="num">' + esc(money(it.monthly_cents)) + '</span>' + (it.source === "merchant_payout" ? ' <span class="caption">slowest month</span>' : "") + '</span>'
+        : '<span class="caption">—</span>';
+      /* data-label lets a phone stack each row as label and value
+         (money-strategy.css, max-width 760px) instead of squeezing seven columns. */
+      return '<tr><td class="income-who"><span class="debt-name">' + esc(it.name || SOURCE_WORD[it.source] || "") + '</span> <span class="tag">' + esc(SOURCE_WORD[it.source] || "") + '</span></td>' +
+        '<td data-label="Kind">' + esc(KIND_LABEL[it.kind] || "") + '</td>' +
+        '<td data-label="How often">' + esc(howOften(it)) + '</td>' +
+        '<td class="r" data-label="Each time">' + (isNum(it.typical_cents) ? '<span class="num">' + esc(money(it.typical_cents)) + '</span>' : '<span class="caption">Varies</span>') + '</td>' +
+        '<td class="r" data-label="Estimated monthly income">' + month + '</td>' +
+        '<td data-label="Next">' + esc(it.next_on ? day(it.next_on) : "—") + '</td>' +
+        '<td data-label="Into">' + esc(intoWords(it)) + '</td></tr>';
+    }).join("");
+  }
+
+  /* The "Money coming in" card. Nothing at all when the read has no income
+     block (an older server), so the page never claims a read it did not get. */
+  function renderIncomeCard(data, plan) {
+    var inc = data && data.inputs && data.inputs.income;
+    if (!inc) return "";
+    var open = '<section class="card income-card" aria-labelledby="s-income"><h2 class="eyebrow" id="s-income">Money coming in</h2>';
+    if (!inc.ok) {
+      return open + '<p class="income-out">We could not read your money coming in right now.</p>' +
+        '<button class="btn-line" type="button" data-act="retry">Try again</button></section>';
+    }
+    var items = list(inc.items);
+    var skip = list(inc.not_counted);
+    if (!items.length && !skip.length) {
+      return open + '<p class="income-out">No repeat money coming in found yet.</p>' +
+        '<p class="caption">It shows here after 3 steady deposits from one payer.</p>' +
+        '<a class="btn-line" href="/app/financeos.html#accounts">Connect an account</a></section>';
+    }
+    var sug = plan && plan.suggestion;
+    var rows = {};
+    list(sug && sug.by_kind).forEach(function (r) { rows[r.kind] = r; });
+    var kinds = ["personal", "business", "unknown"].filter(function (k) {
+      return rows[k] || isNum(inc.by_kind && inc.by_kind[k] && inc.by_kind[k].monthly_cents);
+    });
+    var kindHtml = kinds.map(function (k) {
+      var m = inc.by_kind && inc.by_kind[k] ? inc.by_kind[k] : {};
+      var found = isNum(m.counted) ? m.counted : 0;
+      return '<div class="income-kind"><span class="caption">' + esc(KIND_LABEL[k] + " · Estimated monthly income") + '</span>' +
+        '<span class="big">' + esc(isNum(m.monthly_cents) ? money(m.monthly_cents) : "—") + '</span>' +
+        '<p class="caption">' + esc((found ? "From " + plural(found, "repeat source", "repeat sources") + ". " : "") + kindLine(inc, rows[k], k)) + '</p></div>';
+    }).join("");
+    var table = items.length
+      ? '<div class="scroll-x"><table class="income-table"><thead><tr><th>Who pays you</th><th>Kind</th><th>How often</th><th class="r">Each time</th><th class="r">Estimated monthly income</th><th>Next</th><th>Into</th></tr></thead>' +
+        '<tbody>' + renderIncomeRows(items) + '</tbody></table></div>'
+      : '<p class="caption">Nothing repeats steadily enough to count yet.</p>';
+    var notes = skip.map(function (it) {
+      return '<li><span class="tag">Not counted</span> ' + esc((it.name || SOURCE_WORD[it.source] || "") + " — " + (NOT_COUNTED_WORD[it.reason] || "Not counted.")) + '</li>';
+    });
+    if (inc.merchant_unavailable) notes.push('<li><span class="tag">Not read</span> ' + esc("Processor payouts could not be read right now.") + '</li>');
+    var suggest = "";
+    if (sug) {
+      var use = sug.ok && isNum(sug.use_cents) ? sug.use_cents : null;
+      suggest = '<div class="income-suggest"><div><span class="caption">Suggested toward debt each month</span>' +
+        '<span class="big">' + esc(use === null ? "—" : money(use)) + '</span>' +
+        '<p class="caption">' + esc(suggestionWords(data, plan, sug)) + '</p></div>' +
+        (use === null ? "" : plan.monthly_cents === use
+          ? '<p class="caption">Your amount is set to this.</p>'
+          : '<button class="btn-line" type="button" data-act="use-amount" data-cents="' + esc(use) + '">Use ' + esc(money(use)) + '</button>') +
+        '</div>';
+    }
+    return open + '<div class="income-kinds' + (kinds.length > 2 ? " three" : "") + '">' + kindHtml + '</div>' + table +
+      (notes.length ? '<ul class="warnings">' + notes.join("") + '</ul>' : "") + suggest +
+      '<p class="caption">Estimated from past deposits.</p></section>';
+  }
+
   /* The card-use chart: all cards (thick line) and up to four cards (dashed
      patterns, named in the legend) against UnderwriteIQ's 30% and 10% lines.
      `width` is the box's real width so the 11px labels stay 11px. */
@@ -377,10 +540,13 @@
       esc("Card use by month: " + pct(plan.util_start_pct) + " now" + list(plan.crossings).filter(function (c) { return c.on && !c.already; })
         .map(function (c) { return ", under " + c.pct + "% by " + day(c.on); }).join("")) + '">';
     svg += '<line class="axis" x1="' + L + '" y1="' + y(0) + '" x2="' + (W - R) + '" y2="' + y(0) + '"></line>';
+    /* The target words go on last, over the card lines, with a paper halo
+       (money-strategy.css), so no line runs through them. */
+    var targetWords = "";
     [30, 10].forEach(function (t) {
       if (t > maxU) return;
-      svg += '<line class="target" x1="' + L + '" y1="' + y(t).toFixed(1) + '" x2="' + (W - R) + '" y2="' + y(t).toFixed(1) + '"></line>' +
-        '<text class="target-label" x="' + (L + 4) + '" y="' + (y(t) - 4).toFixed(1) + '">' + esc(t + "% · " + (t === 30 ? "fundable line" : "target")) + '</text>';
+      svg += '<line class="target" x1="' + L + '" y1="' + y(t).toFixed(1) + '" x2="' + (W - R) + '" y2="' + y(t).toFixed(1) + '"></line>';
+      targetWords += '<text class="target-label" x="' + (L + 4) + '" y="' + (y(t) - 4).toFixed(1) + '">' + esc(t + "% · " + (t === 30 ? "fundable line" : "target")) + '</text>';
     });
     top.forEach(function (d, k) {
       svg += '<polyline class="card-line" stroke-dasharray="' + DASHES[k] + '" points="' + line(function (p) { return p.cards[d.id]; }) + '">' +
@@ -397,6 +563,7 @@
       svg += '<circle class="cross" cx="' + x(hit.n).toFixed(1) + '" cy="' + y(hit.util).toFixed(1) + '" r="4"><title>' +
         esc("Under " + c.pct + "% by " + day(c.on)) + '</title></circle>';
     });
+    svg += targetWords;
     var ticks = Math.max(2, Math.min(6, Math.floor(W / 90)));
     var used = {};
     for (var t2 = 0; t2 < ticks; t2++) {
@@ -419,10 +586,9 @@
 
   function renderChartCard(plan, width) {
     var svg = chartSvg(plan, width);
-    var body = svg || '<p class="caption">No card has a credit limit on file, so there is no card use to draw.</p>';
+    var body = svg || '<p class="caption">No card has a credit limit on file.</p>';
     return '<section class="card chart-card" aria-labelledby="s-chart"><h2 class="eyebrow" id="s-chart">Card use, month by month</h2>' +
-      '<div data-slot="chart">' + body + '</div>' +
-      '<p class="caption">30% is the line UnderwriteIQ needs to count a file fundable. 10% is its target for every card.</p></section>';
+      '<div data-slot="chart">' + body + '</div></section>';
   }
 
   function renderDebtsCard(data, plan) {
@@ -434,25 +600,89 @@
       .sort(function (a, b) { return (pos[a.id] === undefined ? 999 : pos[a.id]) - (pos[b.id] === undefined ? 999 : pos[b.id]); })
       .map(function (d, i) {
         var p = per[d.id] || {};
-        var paid = isNum(p.payoff_month) ? day(p.payoff_on) + (p.earliest ? " · at the earliest" : "") : "Not in 50 years";
-        return '<tr><td class="r num">' + (i + 1) + '</td><td><span class="debt-name">' + esc(d.name) + '</span> <span class="tag">' + esc(KIND_LABEL[d.kind] || "") + '</span></td>' +
-          '<td class="r num">' + esc(money(d.balance_cents)) + '</td>' +
-          '<td class="r">' + (isNum(d.apr_pct) ? '<span class="num">' + esc(apr(d.apr_pct)) + '</span>' : '<span class="caption">Not on file</span>') + '</td>' +
-          '<td class="r">' + (isNum(d.min_cents) ? '<span class="num">' + esc(money(d.min_cents)) + '</span>' : '<span class="caption">Not on file</span>') + '</td>' +
-          '<td>' + esc(paid) + '</td>' +
-          '<td class="r num">' + esc(isNum(p.interest_cents) ? money(p.interest_cents) : "—") + '</td></tr>';
+        /* Two unbreakable pieces, so a narrow column wraps between the day and
+           "at the earliest", never inside the day. */
+        var paid = isNum(p.payoff_month)
+          ? '<span class="nw">' + esc(day(p.payoff_on)) + '</span>' + (p.earliest ? ' <span class="nw">· at the earliest</span>' : "")
+          : esc("Not in 50 years");
+        /* A table on a wide screen. On a phone (money-strategy.css, max-width
+           760px) each row stacks: the number, the name and its tags, then each
+           amount under the name with its data-label, so nothing is cut off. */
+        return '<tr><td class="r num debt-pos">' + (i + 1) + '</td><td class="debt-who"><span class="debt-name">' + esc(d.name) + '</span> <span class="debt-tags"><span class="tag">' + esc(KIND_LABEL[d.kind] || "") + '</span>' +
+          (d.type === "financing" ? ' <span class="tag">Payment plan</span>' : "") + paymentChip(d.payment) + '</span></td>' +
+          '<td class="r num" data-label="Owe now">' + esc(money(d.balance_cents)) + '</td>' +
+          '<td class="r" data-label="Rate (APR)">' + (isNum(d.apr_pct) ? '<span class="num">' + esc(apr(d.apr_pct)) + '</span>' : '<span class="caption">Not on file</span>') + '</td>' +
+          '<td class="r" data-label="Minimum">' + (isNum(d.min_cents) ? '<span class="num">' + esc(money(d.min_cents)) + '</span>' : '<span class="caption">Not on file</span>') + '</td>' +
+          '<td data-label="Paid off by">' + paid + '</td>' +
+          '<td class="r num" data-label="Interest">' + esc(isNum(p.interest_cents) ? money(p.interest_cents) : "—") + '</td></tr>';
       }).join("");
     return '<section class="card debts-card" aria-labelledby="s-debts"><h2 class="eyebrow" id="s-debts">Each card and loan, in the order this plan pays them</h2>' +
-      '<div class="scroll-x"><table><thead><tr><th class="r">#</th><th>Debt</th><th class="r">Owe now</th><th class="r">Rate (APR)</th><th class="r">Minimum</th><th>Paid off by</th><th class="r">Interest</th></tr></thead>' +
-      '<tbody>' + rows + '</tbody></table></div>' + renderWarnings(plan) + '</section>';
+      '<div class="scroll-x"><table class="debts-table"><thead><tr><th class="r">#</th><th>Debt</th><th class="r">Owe now</th><th class="r">Rate (APR)</th><th class="r">Minimum</th><th>Paid off by</th><th class="r">Interest</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>' + renderWarnings(plan) +
+      (data && data.inputs && data.inputs.financing && data.inputs.financing.ok === false
+        ? '<p class="caption">Payment plans could not be read right now.</p>' : "") + '</section>';
+  }
+
+  /* ── things to check (bill cleanup) ────────────────────────────────────── */
+
+  function flagLine(f) {
+    var where = (f.account_name || "Account") + (f.account_mask ? " ····" + f.account_mask : "");
+    if (f.kind === "price_jump") {
+      return { chip: '<span class="tag">Price went up</span>',
+        line: f.name + " went from " + money(f.from_cents) + " to " + money(f.to_cents) + " on " + day(f.on) + ". " + where + ".",
+        help: "Not expected? Ask the company, or cancel it." };
+    }
+    var ons = list(f.charges).map(function (c) { return shortDay(c.on); });
+    var when = ons.length === 2 && ons[0] === ons[1] ? "on " + day(f.on) : "on " + names(ons);
+    return { chip: '<span class="warn-word">Charged twice</span>',
+      line: f.name + " charged " + money(f.amount_cents) + " two times " + when + ". " + where + ".",
+      help: "Ask the company or your bank for a refund." };
+  }
+
+  function renderCleanupCard(data) {
+    var c = data && data.bill_cleanup;
+    if (!c) return "";
+    var open = '<section class="card cleanup-card" aria-labelledby="s-cleanup"><h2 class="eyebrow" id="s-cleanup">Things to check</h2>';
+    if (!c.ok) {
+      return open + '<p class="income-out">We could not check your bills right now.</p>' +
+        '<button class="btn-line" type="button" data-act="retry">Try again</button></section>';
+    }
+    var flags = list(c.flags);
+    if (!flags.length) {
+      if (!c.checked_bills) {
+        return open + '<p class="income-out">No repeat bills found yet.</p>' +
+          '<a class="btn-line" href="/app/financeos.html#accounts">Connect an account</a></section>';
+      }
+      return open + '<p class="income-out">Nothing to check. ' + esc(plural(c.checked_bills, "repeat bill looks", "repeat bills look")) + ' steady.</p>' +
+        '<p class="caption">Checked the last ' + esc(c.window_days || 90) + ' days.</p></section>';
+    }
+    var rows = flags.map(function (f) {
+      var w = flagLine(f);
+      var charges = list(f.charges).map(function (x) { return '<li>' + esc(day(x.on) + " · " + money(x.amount_cents)) + '</li>'; }).join("");
+      return '<div class="flag">' + w.chip + '<div class="flag-text"><p>' + esc(w.line) + '</p>' +
+        '<details class="flag-more"><summary>Review</summary><ul class="facts-list">' + charges + '</ul>' +
+        '<p class="caption">' + esc(w.help) + '</p></details></div></div>';
+    }).join("");
+    return open + '<div class="flags">' + rows + '</div></section>';
+  }
+
+  /* This cycle's payment, in words and a shape (UI-STANDARDS §12.6). Nothing
+     when the server did not know — never a guessed "paid". */
+  function paymentChip(pay) {
+    if (!pay || !pay.status) return "";
+    if (pay.status === "paid") return ' <span class="tag pay-chip">Paid' + (pay.last_paid_on ? " " + esc(shortDay(pay.last_paid_on)) : "") + '</span>';
+    if (pay.status === "late") return ' <span class="warn-word pay-chip">Late' + (pay.days_late > 0 ? " " + esc(plural(pay.days_late, "day", "days")) : "") + '</span>';
+    if (pay.status === "due") return ' <span class="tag pay-chip">Due' + (pay.due_on ? " " + esc(shortDay(pay.due_on)) : "") + '</span>';
+    if (pay.status === "nothing_due") return ' <span class="tag pay-chip">Nothing due</span>';
+    return "";
   }
 
   function renderWarnings(plan) {
     var items = list(plan.warnings).map(function (w) {
       var who = names(w.names);
-      if (w.code === "apr_unknown") return "No rate (APR) on file for " + who + ". The math charges no interest there, so those dates are the earliest they could be. Add the rate in Accounts.";
-      if (w.code === "minimum_unknown") return "No minimum payment on file for " + who + ". The plan sets nothing aside for it. Add it in Accounts.";
-      if (w.code === "limit_unknown") return "No credit limit on file for " + who + ". It is left out of card use and gets no card-use target.";
+      if (w.code === "apr_unknown") return "No rate (APR) on file for " + who + ". Add it in Accounts.";
+      if (w.code === "minimum_unknown") return "No minimum payment on file for " + who + ". Add it in Accounts.";
+      if (w.code === "limit_unknown") return "No credit limit on file for " + who + ". Left out of card use.";
       return "";
     }).filter(Boolean);
     list(plan.excluded).forEach(function (e) { items.push("Left out: " + e.name + " — its balance is not on file."); });
@@ -473,7 +703,7 @@
       ? '<button class="btn-line" type="button" data-act="more-months">Show ' + Math.min(PAGE, months.length - n) + ' more months</button>'
       : "";
     return '<details class="card months-card" data-slot="months-wrap"><summary><span class="eyebrow">Month by month</span> ' +
-      '<span class="caption">' + esc(plural(months.length, "month", "months")) + ' — what you pay, the interest, and what is left</span></summary>' +
+      '<span class="caption">' + esc(plural(months.length, "month", "months")) + '</span></summary>' +
       '<div class="scroll-x"><table><thead><tr><th>By</th><th class="r">You pay</th><th class="r">' + (aprMissing ? "Interest (known rates)" : "Interest") +
       '</th><th class="r">Left to pay</th><th class="r">Card use</th><th>Extra goes to</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + more + '</details>';
   }
@@ -497,7 +727,7 @@
     }).join("");
     return '<details class="card"><summary><span class="eyebrow">How the cash check works</span></summary>' +
       '<ul class="facts-list">' + rows + '</ul>' +
-      '<p class="caption">Only this month is checked. Money coming in is not counted yet, so later months are not checked. Personal cash and business cash are never added together.</p></details>';
+      '<p class="caption">Only this month is checked. Personal cash and business cash are never added together.</p></details>';
   }
 
   function renderHow(data, staff) {
@@ -506,12 +736,13 @@
       "Each minimum payment stays at today's amount.",
       "No new charges on the cards.",
       "Each month of the plan ends on the same day of the month as today.",
-      "Card-use targets come from UnderwriteIQ, Fundhub's credit engine: 30% is the line it needs to count a file fundable, and 10% is its target for every card."
+      "Card-use targets from UnderwriteIQ: 30% is the fundable line, 10% the target.",
+      "Payment plans charge no interest."
     ];
     var src = "";
     if (staff && data && data.sources) {
       var s = data.sources;
-      src = '<p class="caption">Staff only · sources: ' + esc([s.debts, s.cash].concat(list(s.targets)).concat(Object.keys(s.methods || {}).map(function (k) { return k + ": " + s.methods[k]; })).join(" · ")) + '</p>';
+      src = '<p class="caption">Staff only · sources: ' + esc([s.debts, s.cash].concat(s.income ? [s.income] : []).concat(list(s.targets)).concat(Object.keys(s.methods || {}).map(function (k) { return k + ": " + s.methods[k]; })).join(" · ")) + '</p>';
     }
     return '<details class="card"><summary><span class="eyebrow">How this is worked out</span></summary><ul class="facts-list">' +
       items.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("") + '</ul>' + src + '</details>';
@@ -528,13 +759,19 @@
         : "") + '</section>';
   }
 
+  /* Repeat bills with "Cancel it for me" (wave 4, unit CANCEL): bill-cancel.js
+     draws it from data.bill_cancel; nothing when that file is not loaded. */
+  function billCard(data) {
+    return root.FHBillCancel && data ? root.FHBillCancel.renderCard(data.bill_cancel) : "";
+  }
+
   function renderResults(data, plan, opts) {
     opts = opts || {};
-    if (!plan.ok) return renderNotOk(data, plan);
+    if (!plan.ok) return renderNotOk(data, plan) + renderIncomeCard(data, plan) + renderCleanupCard(data) + billCard(data);
     /* The debts table needs seven columns, so it and the chart each take the
        full width (a half-width card cut the last two columns off at 1440). */
     return '<div class="grid tiles">' + tileDebtFree(plan) + tileInterest(plan) + tileCardUse(plan) + tileCash(plan) + '</div>' +
-      renderDebtsCard(data, plan) + renderChartCard(plan, opts.chartWidth) +
+      renderIncomeCard(data, plan) + renderCleanupCard(data) + billCard(data) + renderDebtsCard(data, plan) + renderChartCard(plan, opts.chartWidth) +
       renderMonths(plan, opts.shown) + '<section class="assumptions" aria-label="Plan assumptions"><h2>Assumptions &amp; cash checks</h2>' + renderCashDetail(data, plan) + renderHow(data, !!opts.staff) + '</section>' +
       (data && data.tip ? '<p class="tip"><span class="eyebrow">UnderwriteIQ</span>' + esc(data.tip) + '</p>' : "");
   }
@@ -545,7 +782,7 @@
 
   /** The whole section for one state: data (the GET), plan (math.buildPlan), settings. */
   function render(data, plan, settings, opts) {
-    if (!hasDebts(data)) return renderEmpty(data);
+    if (!hasDebts(data)) return renderEmpty(data) + billCard(data);
     return renderHead(data) + renderControls(data, plan, settings) +
       '<div data-slot="results" aria-live="polite">' + renderResults(data, plan, opts) + '</div>';
   }
@@ -654,7 +891,6 @@
       if (m && wasOpen) m.open = true;
       var notes = {
         "amount-note": renderAmountNote(state.plan),
-        "method-note": methodWords(state.data, state.settings.method).detail,
         "save-note": renderSaveNote(state.data, state.settings)
       };
       Object.keys(notes).forEach(function (k) { var s = slot(k); if (s) s.textContent = notes[k]; });
@@ -702,7 +938,8 @@
         state.data = res.body;
         state.math = out[1];
         var d = res.body.defaults || {};
-        state.settings = { method: d.method || "avalanche", monthly_cents: d.monthly_cents, goal: d.goal ? { kind: d.goal.kind, by: d.goal.by } : null };
+        state.settings = { method: d.method || "avalanche", monthly_cents: d.monthly_cents, goal: d.goal ? { kind: d.goal.kind, by: d.goal.by } : null,
+          financing_first: d.financing_first === true };
         if (ctx.onData) ctx.onData(res.body);
         paintAll();
       });
@@ -768,6 +1005,7 @@
       var body = { action: "save_plan", method: state.settings.method, monthly_cents: state.settings.monthly_cents };
       var g = state.settings.goal;
       if (g && g.kind && g.by) body.goal = { kind: g.kind, by: g.by };
+      if (state.plan && state.plan.has_financing) body.financing_first = state.settings.financing_first === true;
       if (clientId) body.client_id = clientId;
       var label = btn.textContent;
       btn.disabled = true;
@@ -806,8 +1044,18 @@
         return;
       }
       var act = t.getAttribute("data-act");
+      if (root.FHBillCancel && root.FHBillCancel.handles(act)) {
+        root.FHBillCancel.act(t, act, { data: state.data, send: send, path: READ_PATH, clientId: clientId,
+          repaint: function () { if (hasDebts(state.data)) paintResults(); else paintAll(); } });
+        return;
+      }
       if (act === "retry") load();
       if (act === "use-amount") setAmount(Number(t.getAttribute("data-cents")));
+      if (act === "fin-first" && state.math) {
+        state.settings.financing_first = state.settings.financing_first !== true;
+        t.setAttribute("aria-checked", state.settings.financing_first ? "true" : "false");
+        schedule();
+      }
       if (act === "save") save(t);
       if (act === "more-months") { state.shown += PAGE; paintResults(); }
     }
@@ -880,6 +1128,7 @@
     money: money, day: day, pct: pct, apr: apr, toCents: toCents, classify: classify, sliderMax: sliderMax,
     render: render, renderControls: renderControls, renderResults: renderResults, renderLoading: renderLoading,
     renderError: renderError, renderEmpty: renderEmpty, renderGoalNote: renderGoalNote, renderSaveNote: renderSaveNote,
+    renderIncomeCard: renderIncomeCard, renderAmountNote: renderAmountNote, renderCleanupCard: renderCleanupCard, paymentChip: paymentChip,
     chartSvg: chartSvg, mount: mount
   };
 

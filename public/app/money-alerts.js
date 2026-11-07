@@ -1,6 +1,16 @@
-/* File protection alerts — FinanceOS.sections.alerts (/app/money-alerts.html).
+/* Alerts — FinanceOS.sections.alerts (/app/money-alerts.html).
  * Capital Blueprint launch, unit B2, the screen
- * (ops/workflows/blueprint-launch-2026-10-06.md, map items 11–14).
+ * (ops/workflows/blueprint-launch-2026-10-06.md, map items 11–14), organized by
+ * unit AL2 (Chris, 2026-11-07: "organize it... they can add alerts too... add
+ * recurring expenses... organize it by business").
+ *
+ * THE ORDER ON THE SCREEN. Add alert / Add bill; what Needs you; a switcher for
+ * Personal and each business; then, for the one picked, Payments due, Bills and
+ * Smart alerts (the GET's `board`, built by src/finance/file-alerts/board.mjs);
+ * then Settings: the phone alert switch and the four text alerts below. The
+ * client's own alerts and bills are added, changed and removed in one form
+ * (POST add_custom / update_custom / remove_custom / set_custom_phone).
+ * Short words only (owner rule 2026-11-07): no explanation lines, no disclaimers.
  *
  * Four texts guard a client's credit file: pay a card down before its statement
  * closes, a promo rate ending (60 / 30 / 7 days), the cash cushion (6 months of
@@ -10,13 +20,23 @@
  * lets the client (or staff) switch each one on or off, set a card's promo, and
  * tell us the day a hand-entered card's statement closes.
  *
- * ONE READ, THREE WRITES. GET /api/money/alerts — the contract is
+ * ONE READ, NINE WRITES. GET /api/money/alerts — the contract is
  * docs/finance/file-protection-alerts.md, and
  * src/finance/file-alerts/file-alerts.fixture.json is a real answer a test pins.
  * POST /api/money/alerts with action
  *   set_alert                 { kind, enabled }
  *   set_promo                 { account_id, ends_on, apr_pct }  (ends_on null clears it)
  *   set_statement_close_day   { account_id, day }
+ *   set_bill_important        { bill_id, important }   (a found bill's phone alert, unit D)
+ *   set_phone_alerts          { enabled }
+ *   add_custom / update_custom  { kind, name, amount_cents, cadence, day_of_month | start_on, scope, entity_id, phone_alert }
+ *   set_custom_phone          { id, enabled }
+ *   remove_custom             { id }   (unit AL2: the client's own alerts and bills)
+ *
+ * PHONE ALERTS. Each payment and bill on the board shows its own phone alert day
+ * (or Alert off); the Phone alerts card in Settings has the one switch, which
+ * kinds are on, and what already went. The phone itself only ever shows a fixed
+ * sentence with no amount, bank, card or typed name (src/push/payload.mjs).
  * After a promo or close-day save the section reads the GET again, so the dates
  * on the screen are the server's. The one date worked out here is the day of a
  * promo text: the end date minus 60, 30 or 7 days, firing on that day and the
@@ -55,6 +75,53 @@
   var PROMO_MAX_DAYS = 5 * 366;
   /* A promo text fires on its day and the two days after (PROMO_WINDOW_DAYS). */
   var PROMO_WINDOW_DAYS = 3;
+  /* Phone alerts (unit D, 2026-11-06): where a client turns on notifications. */
+  var PHONE_SETUP_HREF = "/app/client-portal.html#push-card";
+  var PHONE_KINDS = ["card_due", "statement_close", "important_bill", "loan_due", "credit_line_due", "plan_due", "custom_alert", "custom_bill"];
+  var PHONE_FALLBACK = {
+    card_due: "Card payment due", statement_close: "Statement closes", important_bill: "Important bill",
+    loan_due: "Loan payment due", credit_line_due: "Credit line payment due", plan_due: "Payment plan due",
+    custom_alert: "Alert you added", custom_bill: "Bill you added"
+  };
+  /* Why a card or bill has no phone alert set, in words (reasons from src/finance/file-alerts/phone-alerts.mjs). */
+  var PHONE_REASON = {
+    no_due_date: "No due date from your bank link yet",
+    due_date_passed: "Waits for the next statement",
+    payment_recorded: "Paid this cycle",
+    nothing_due: "Nothing due",
+    paid_off: "Paid off",
+    no_statement_cycle: "No statement on file yet",
+    no_statement_close_day: "Needs the day its statement closes",
+    no_balance: "Nothing to pay down",
+    expected_date_passed: "Waits for the next charge",
+    no_expected_date: "No next charge date yet",
+    not_a_sure_bill: "Not a sure repeat bill yet",
+    late: "Past due, so no \u201cdue soon\u201d alert",
+    paid: "Paid",
+    no_installment: "No payment left on this plan"
+  };
+  /* Phone alerts listed before "Show all". */
+  var PHONE_SHOW = 5;
+
+  /* The organized board (unit AL2, 2026-11-07): Personal and each business, and in
+     each one Payments due, Bills and Smart alerts. The GET's `board` is built by
+     src/finance/file-alerts/board.mjs; this file only paints it. */
+  var CADENCE_WORDS = {
+    once: "One time", weekly: "Every week", biweekly: "Every 2 weeks", monthly: "Every month", annual: "Every year"
+  };
+  var ALERT_CADENCES = ["monthly", "once"];
+  var BILL_CADENCES = ["monthly", "weekly", "biweekly", "annual"];
+  var AMOUNT_WORDS = { minimum: " min", left: " left" };
+  /* The server's limits (src/finance/file-alerts/custom.mjs). */
+  var NAME_MAX = 80;
+  var AMOUNT_MAX_CENTS = 100000000000;
+  var CUSTOM_MAX_DAYS_AHEAD = Math.round(5 * 365.25);
+  var CUSTOM_MAX_DAYS_BACK = Math.round(10 * 365.25);
+  /* A phone alert with no day set, in one or two words. */
+  var CHIP_REASON = {
+    payment_recorded: "Paid", paid: "Paid", late: "Late", nothing_due: "Nothing due", paid_off: "Paid off",
+    no_balance: "Nothing due", due_date_passed: "Next cycle", expected_date_passed: "Next cycle", date_passed: "Done"
+  };
 
   /* ── small helpers ─────────────────────────────────────────────────────── */
 
@@ -84,6 +151,11 @@
     var c = String(abs % 100);
     if (c.length < 2) c = "0" + c;
     return (neg ? "−$" : "$") + dollars + "." + c;
+  }
+  /* cents → "$2,700", rounded UP to the dollar: what the texts say ("about $2,700"). */
+  function dollarsUp(cents) {
+    if (!isNum(cents)) return "—";
+    return "$" + String(Math.ceil(Math.max(0, cents) / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   }
   function pct(v) { return isNum(v) ? (Math.round(v * 10) / 10) + "%" : "—"; }
   /* A rate as stored, to the hundredth: 3.99%, never rounded to 4%. */
@@ -180,6 +252,27 @@
     return "Credit card";
   }
   function kindTag(k) { return TAG[k] ? ' <span class="tag">' + esc(TAG[k]) + '</span>' : ""; }
+
+  /* A bank's own logo through the shared helper (public/app/bank-logo.js: Plaid's
+     first, then the bank book's file, else nothing). Never drawn here. */
+  function logoHtml(logo, name) {
+    var helper = root.FHBankLogo;
+    return helper && typeof helper.html === "function" && logo ? helper.html(logo, name) : "";
+  }
+
+  /* "$12.50" typed in → 1250 cents, or null when it is not a plain amount. */
+  function dollarsToCents(text) {
+    var s = String(text == null ? "" : text).replace(/[$,\s]/g, "");
+    if (!/^(\d+(\.\d{0,2})?|\.\d{1,2})$/.test(s)) return null;
+    var parts = s.split(".");
+    var cents = Number(parts[0] || "0") * 100 + Number(((parts[1] || "") + "00").slice(0, 2));
+    return isFinite(cents) ? cents : null;
+  }
+  function centsToInput(cents) {
+    if (!isNum(cents)) return "";
+    var c = String(Math.round(cents) % 100);
+    return Math.floor(Math.round(cents) / 100) + "." + (c.length < 2 ? "0" + c : c);
+  }
 
   /* ── reading the answer ────────────────────────────────────────────────── */
 
@@ -354,17 +447,11 @@
     list(data && data.cards).forEach(function (c) {
       if (needsDay(c)) out.push({ text: "Add the statement day for " + cardName(c) + ".", to: "fa-cd-" + domId(c.account_id), label: "Add the day" });
     });
+    /* Cash that is short is a smart alert on the board; only a check that cannot run is a to-do here. */
     var r = (data && data.reserve) || {};
-    var months = reserveMonths(data);
     CASH_KINDS.forEach(function (k) {
       var v = r[k];
-      if (!v) return;
-      if (v.state === "below") {
-        out.push({
-          text: TAG[k] + " cash is " + (isNum(v.short_cents) ? money(v.short_cents) + " " : "") + "short of " + months + " months of minimums.",
-          to: "fa-cash-" + k, label: "See it"
-        });
-      } else if (v.state === "unknown" && v.reason && v.reason !== "no_minimums") {
+      if (v && v.state === "unknown" && v.reason && v.reason !== "no_minimums") {
         out.push({ text: "We cannot check your " + k + " cash yet. " + reasonWords(v.reason, k), to: "fa-cash-" + k, label: "See it" });
       }
     });
@@ -378,15 +465,18 @@
     return out;
   }
 
-  /* ── head, notices, tiles ──────────────────────────────────────────────── */
+  /* ── head, notices, what needs the client ──────────────────────────────── */
 
-  var TITLE = "File protection alerts";
+  var TITLE = "Alerts";
 
-  function renderHead(data) {
-    var who = data && data.client && data.client.name ? data.client.name + " · " : "";
-    return '<div class="head"><div><h1>' + TITLE + '</h1><p class="caption">' +
-      esc(who + "We text you before something can hurt your credit file. Here is what we watch, and when we text you next.") +
-      '</p></div></div>';
+  function renderHead(data, ui, opts) {
+    var who = opts && opts.staff && data && data.client && data.client.name
+      ? '<p class="caption">' + esc(data.client.name) + '</p>' : "";
+    /* While a form is open its Save is the one filled button, so the two adds step aside. */
+    var acts = ui && ui.form ? "" : '<div class="head-act">' +
+      '<button type="button" class="btn-primary" data-act="add" data-kind="alert">Add alert</button>' +
+      '<button type="button" class="btn-line" data-act="add" data-kind="bill">Add bill</button></div>';
+    return '<div class="head"><div class="head-main"><h1>' + TITLE + '</h1>' + who + '</div>' + acts + '</div>';
   }
 
   function renderNotices(data, opts) {
@@ -394,25 +484,16 @@
     if (data && data.enrolled && data.enrolled.any === false) {
       out += '<section class="card notice" aria-labelledby="fa-n-plan"><h2 id="fa-n-plan">No texts go out yet</h2><p>' +
         esc(opts.staff
-          ? "This client has neither the Capital Blueprint nor a FinanceOS plan, so the daily check skips them. What you set here starts working once one is on the file."
-          : "These texts come with the Capital Blueprint or a FinanceOS plan. You can set everything up below, and the texts start once one is on your file.") +
+          ? "This client has neither the Capital Blueprint nor a FinanceOS plan, so the daily check skips them."
+          : "Texts come with the Capital Blueprint or FinanceOS.") +
         '</p><a class="btn-line" href="' + esc(withClient(SETUP_HREF, opts.clientId)) + '">Set up FinanceOS</a></section>';
     }
     if (settingsOf(data).texts_blocked) {
-      var bp = data && data.enrolled && data.enrolled.blueprint;
       out += '<section class="card notice is-warn" aria-labelledby="fa-n-stop"><h2 id="fa-n-stop">Texts are off for this phone</h2><p>' +
-        esc((opts.staff
-          ? "This client replied STOP, so we cannot text them. Nothing on this page will be sent until they text START to us."
-          : "You replied STOP, so we cannot text you. Nothing on this page will be sent. To turn texts back on, text START to us.") +
-          (bp ? " If new credit shows up, your Fundhub team still gets a task." : "")) +
+        esc(opts.staff ? "This client replied STOP, so we cannot text them." : "You replied STOP. Text START to us to turn texts back on.") +
         '</p></section>';
     }
     return out;
-  }
-
-  function tile(id, label, big, body) {
-    return '<section class="card tile" aria-labelledby="fa-tl-' + id + '"><h2 class="eyebrow" id="fa-tl-' + id + '">' + esc(label) + '</h2>' +
-      '<span class="big">' + big + '</span>' + body + '</section>';
   }
 
   function needItem(n) {
@@ -422,63 +503,327 @@
     return '<li><span>' + esc(n.text) + '</span>' + act + '</li>';
   }
 
-  function tileNeeds(data, opts) {
+  /* What only the client can fix, in a short list. Nothing at all when nothing is needed. */
+  function renderNeeds(data, opts) {
     var items = needsOf(data, opts);
-    var body = items.length
-      ? '<ul class="need-list">' + items.slice(0, 3).map(needItem).join("") + '</ul>' +
-        (items.length > 3 ? '<p class="caption">And ' + (items.length - 3) + ' more below.</p>' : "")
-      : '<p class="caption">Nothing right now. If something comes up, it shows here.</p>';
-    return tile("needs", "Needs you", esc(items.length), body);
+    if (!items.length) return "";
+    return '<section class="card needs" aria-labelledby="fa-needs-h"><h2 id="fa-needs-h">Needs you</h2>' +
+      '<ul class="need-list">' + items.map(needItem).join("") + '</ul></section>';
   }
 
-  function tileNext(data, opts) {
+  /* ── the board: a switcher, then Payments due, Bills, Smart alerts ─────── */
+
+  function boardOf(data) {
+    var b = data && data.board;
+    return b && Array.isArray(b.scopes) && b.scopes.length ? b : null;
+  }
+  function scopeNow(data, ui) {
+    var b = boardOf(data);
+    if (!b) return null;
+    var want = ui && ui.scope;
+    var hit = null;
+    b.scopes.forEach(function (s) { if (!hit && s.key === want) hit = s; });
+    if (hit) return hit;
+    b.scopes.forEach(function (s) { if (!hit && s.key === b.default_scope) hit = s; });
+    return hit || b.scopes[0];
+  }
+
+  /* The phone alert for one payment or bill, in one or two words. `data` brings the
+     one phone switch and a STOP, which turn every alert off at once. */
+  function chip(phone, today, data) {
+    var p = phone || {};
+    var all = data && data.phone;
+    if (p.on === false || (all && (all.enabled === false || all.opted_out))) return { cls: "word-muted", text: "Alert off" };
+    if (p.sent === "sent") return { cls: "word-ok", text: "Alert sent" };
+    if (p.alert_on) {
+      var n = daysBetween(today, p.alert_on);
+      return { cls: "word-ok", text: n !== null && n <= 0 ? "Alert today" : "Alert " + shortDay(p.alert_on, today) };
+    }
+    return { cls: p.reason === "late" ? "word-warn" : "word-muted", text: CHIP_REASON[p.reason] || "No alert yet" };
+  }
+  function chipHtml(c) { return '<span class="badge ' + c.cls + '">' + esc(c.text) + '</span>'; }
+
+  function scopeButtons(data, ui) {
+    var b = boardOf(data);
+    if (!b || b.scopes.length < 2) return "";
+    var now = scopeNow(data, ui);
+    return '<div class="scopes" role="group" aria-label="Show alerts for">' + b.scopes.map(function (s) {
+      var on = s.key === now.key;
+      return '<button type="button" class="scope" data-act="scope" data-scope="' + esc(s.key) + '" aria-pressed="' + (on ? "true" : "false") + '">' +
+        esc(s.name) + '</button>';
+    }).join("") + '</div>';
+  }
+
+  function amountLine(p) {
+    if (!isNum(p.amount_cents)) return "";
+    return money(p.amount_cents) + (AMOUNT_WORDS[p.amount_is] || "");
+  }
+
+  function paymentRow(data, p, ui, today) {
+    var bits = [];
+    var date = p.due_on ? (p.type === "alert" ? shortDay(p.due_on, today) : "Due " + shortDay(p.due_on, today)) : "No due date yet";
+    bits.push(esc(date));
+    var amt = amountLine(p);
+    if (amt) bits.push('<span class="num">' + esc(amt) + '</span>');
+    if (p.type === "alert" && p.cadence) bits.push(esc(CADENCE_WORDS[p.cadence] || p.cadence));
+    if (p.close_on) bits.push(esc("Closes " + shortDay(p.close_on, today)));
+    /* A card with no close day is asked for it once, in Needs you; the row only says so. */
+    if (p.needs_close_day) bits.push(esc("No close day"));
+    var side = chipHtml(chip(p.phone, today, data));
+    if (p.type === "alert" && p.item_id) {
+      side += '<button type="button" class="btn-text" data-act="edit-custom" data-id="' + esc(p.item_id) + '" aria-label="' + esc("Edit " + p.name) + '">Edit</button>';
+    }
+    return '<li class="row pay-row" data-row="' + esc(p.id) + '">' +
+      '<div class="row-main"><p class="row-name">' + logoHtml(p.logo, p.institution || p.name) + '<span>' + esc(p.name) + '</span></p>' +
+      '<p class="caption">' + bits.join(" · ") + '</p></div>' +
+      '<div class="row-side">' + side + '</div>' + renderMsg(ui, "custom:" + p.item_id) + '</li>';
+  }
+
+  function billSwitch(b, ui) {
+    var custom = b.source === "added";
+    var id = custom ? b.item_id : b.bill_id;
+    var key = custom ? "custom:" + id : "bill:" + id;
+    var busy = !!ui.busy[key];
+    var on = custom ? b.phone_alert !== false : b.important === true;
+    return '<button type="button" class="switch" role="switch" aria-checked="' + (on ? "true" : "false") + '"' +
+      ' aria-label="' + esc("Phone alert for " + (b.name || "this bill")) + '" data-act="' + (custom ? "toggle-custom" : "toggle-bill") + '"' +
+      ' data-id="' + esc(id) + '"' + (busy ? ' aria-disabled="true" aria-busy="true"' : "") + '>' +
+      '<span class="sw-word" aria-hidden="true">' + (busy ? "Saving…" : on ? "On" : "Off") + '</span>' +
+      '<span class="track" aria-hidden="true"><span class="thumb"></span></span></button>';
+  }
+
+  function billRow(data, b, ui, today) {
+    var bits = [];
+    if (isNum(b.amount_cents)) bits.push('<span class="num">' + esc(money(b.amount_cents)) + '</span>');
+    if (b.cadence) bits.push(esc(CADENCE_WORDS[b.cadence] || upper(b.cadence)));
+    bits.push(b.next_on ? esc("Next " + shortDay(b.next_on, today)) : esc(reasonText(b.next_unknown_reason || "no_expected_date")));
+    var custom = b.source === "added";
+    var c = chip(b.phone, today, data);
+    var alertLine = c.cls === "word-ok" ? '<span class="caption ph-alert">' + esc(c.text) + '</span>' : "";
+    var edit = custom
+      ? '<button type="button" class="btn-text" data-act="edit-custom" data-id="' + esc(b.item_id) + '" aria-label="' + esc("Edit " + b.name) + '">Edit</button>' : "";
+    var key = custom ? "custom:" + b.item_id : "bill:" + b.bill_id;
+    return '<li class="row bill-row" data-row="' + esc(b.id) + '">' +
+      '<div class="row-main"><p class="row-name"><span>' + esc(b.name || "Repeat bill") + '</span>' +
+      (custom ? ' <span class="tag">Added</span>' : "") + '</p>' +
+      '<p class="caption">' + bits.join(" · ") + '</p>' + alertLine + '</div>' +
+      '<div class="row-side">' + billSwitch(b, ui) + edit + '</div>' + renderMsg(ui, key) + '</li>';
+  }
+
+  var SMART_CHIP = {
+    charged_twice: "Charged twice", price_up: "Price went up", cash_low: "Cash low"
+  };
+
+  /* A card over 10% says what to pay to get under it; every card says the day it closes or is due. */
+  function overTen(s) { return isNum(s.pay_cents) && s.pay_cents > 0; }
+  /* A pay-by is a warning when the card is over 10%, or when a payment is due within two days. */
+  function payByWarn(s) { return overTen(s) || (s.tight === true && s.for !== "statement_close"); }
+
+  function smartWords(data, s, scope, today) {
+    if (s.kind === "pay_by") {
+      var when = s.for === "due_date" && s.due_on ? "Due " + shortDay(s.due_on, today) + "."
+        : s.close_on ? "Closes " + shortDay(s.close_on, today) + "." : "";
+      var pay = overTen(s) ? "Pay " + money(s.pay_cents) + " to " + (s.close_on ? "report" : "get") + " under 10%. " : "";
+      return {
+        chip: s.tight ? "Pay today" : "Pay by " + shortDay(s.on, today),
+        name: s.name,
+        line: pay + when
+      };
+    }
+    if (s.kind === "price_up") {
+      return { chip: SMART_CHIP.price_up, name: s.name, line: money(s.from_cents) + " to " + money(s.to_cents) + (s.on ? " on " + shortDay(s.on, today) : "") + "." };
+    }
+    if (s.kind === "charged_twice") {
+      return { chip: SMART_CHIP.charged_twice, name: s.name, line: money(s.amount_cents) + ", " + (isNum(s.times) ? s.times : 2) + " times" + (s.on ? ", " + shortDay(s.on, today) : "") + "." };
+    }
+    if (s.kind === "cash_low") {
+      return {
+        chip: SMART_CHIP.cash_low,
+        name: (scope && scope.kind === "personal" ? "Personal" : (scope && scope.name) || "Business") + " cash",
+        line: money(s.cash_cents) + " of a " + (s.minimums_is_floor ? "at least " : "") + money(s.need_cents) + " cushion. Short " + money(s.short_cents) + "."
+      };
+    }
+    if (s.kind === "seasoning") {
+      return {
+        chip: "Seasoned in " + plural(s.days_left, "day", "days"),
+        name: s.name,
+        line: (s.opened_on ? "Opened " + shortDay(s.opened_on, today) + ". " : "") + (s.on ? "Seasoned " + shortDay(s.on, today) + "." : "")
+      };
+    }
+    return null;
+  }
+
+  function smartItem(data, s, scope, today) {
+    var w = smartWords(data, s, scope, today);
+    if (!w) return "";
+    /* Seasoning, and a pay-by day with nothing over 10% and no payment about to be late, are calm. */
+    var warn = s.kind === "pay_by" ? payByWarn(s) : s.kind !== "seasoning";
+    /* Personal cash is the exact check the cash text runs, so it can open that box. */
+    var see = s.kind === "cash_low" && scope && scope.kind === "personal"
+      ? ' <button type="button" class="btn-text" data-act="jump" data-to="fa-cash-personal">See it</button>' : "";
+    return '<li class="smart-item is-' + esc(s.kind) + '"><span class="badge ' + (warn ? "word-warn" : "word-ok") + '">' + esc(w.chip) + '</span>' +
+      '<div class="smart-main"><p class="row-name">' + logoHtml(s.logo, s.institution || s.name) + '<span>' + esc(w.name) + '</span></p>' +
+      '<p class="caption">' + esc(w.line) + see + '</p></div></li>';
+  }
+
+  function section(id, title, count, body) {
+    return '<section class="card board-sec" id="' + id + '" aria-labelledby="' + id + '-h">' +
+      '<div class="sec-head"><h2 id="' + id + '-h">' + esc(title) + '</h2>' +
+      (count ? '<span class="count" aria-label="' + esc(plural(count, "item", "items")) + '">' + esc(count) + '</span>' : "") + '</div>' + body + '</section>';
+  }
+
+  function renderBoard(data, ui, opts) {
+    ui = normalUi(ui);
+    opts = opts || {};
     var today = todayOf(data);
-    var best = null;
-    ["payment_timing", "promo_end"].forEach(function (k) {
-      var n = nextFor(data, k, opts);
-      if (n.when !== "date" && n.when !== "soon") return;
-      var rank = n.when === "soon" ? today : n.on;
-      if (!best || rank < best.rank) best = { kind: k, n: n, rank: rank };
-    });
-    if (best) {
-      var when = best.n.when === "soon" ? "At our next daily check." : upper(inWords(daysBetween(today, best.n.on))) + ".";
-      return tile("next", "Next text", esc(best.n.when === "soon" ? "Within a day" : shortDay(best.n.on, today)),
-        '<p class="caption">' + esc(when + " " + kindLabel(data, best.kind) + " · " + best.n.about) + '</p>');
-    }
-    var b = blockOf(data, "payment_timing");
-    if (b === "plan" || b === "stop") {
-      return tile("next", "Next text", "None", '<p class="caption">' + esc(blockWords(data, "payment_timing", opts)) + '</p>');
-    }
-    var watch = [];
-    if (!blockOf(data, "cash_reserve")) watch.push("your cash");
-    if (!blockOf(data, "new_credit")) watch.push("new credit");
-    return tile("next", "Next text", "—", '<p class="caption">' + esc("No dated text is planned." +
-      (watch.length ? " We still check " + andList(watch) + " every day." : "")) + '</p>');
+    var s = scopeNow(data, ui);
+    if (!s) return "";
+    var pays = list(s.payments);
+    var bills = list(s.bills);
+    var smart = list(s.smart);
+    var sorted = s.kind === "unknown"
+      ? '<p class="caption">Sort these into personal or business. <a class="btn-text" href="' + esc(withClient(ACCOUNTS_HREF, opts.clientId)) + '">Open Accounts</a></p>' : "";
+    var checks = (boardOf(data) || {}).checks || {};
+    var unread = function (what) { return '<p class="empty-line">' + esc("We could not load " + what + ". Try again soon.") + '</p>'; };
+    var mineUnread = checks.custom === false ? unread("what you added") : "";
+    var billsUnread = checks.bills === false ? unread("your bills") : "";
+    return '<div class="board" data-scope="' + esc(s.key) + '">' + scopeButtons(data, ui) + renderMsg(ui, "board") + sorted +
+      section("fa-pay", "Payments due", pays.length, (pays.length
+        ? '<ul class="rows">' + pays.map(function (p) { return paymentRow(data, p, ui, today); }).join("") + '</ul>'
+        : mineUnread ? "" : '<p class="empty-line">Nothing due.</p>') + mineUnread) +
+      section("fa-bills", "Bills", bills.length, (bills.length
+        ? '<ul class="rows">' + bills.map(function (b) { return billRow(data, b, ui, today); }).join("") + '</ul>'
+        : billsUnread || mineUnread ? "" : '<p class="empty-line">No bills yet.</p>') + billsUnread + mineUnread) +
+      section("fa-smart", "Smart alerts", smart.length, smart.length
+        ? '<ul class="smart-list">' + smart.map(function (x) { return smartItem(data, x, s, today); }).join("") + '</ul>'
+        : '<p class="empty-line">All clear.</p>') +
+      '</div>';
   }
 
-  function tileLast(data, opts) {
+  /* ── add or change an alert or a bill the client keeps themself ────────── */
+
+  function customById(data, id) {
+    var hit = null;
+    list(data && data.custom).forEach(function (c) { if (!hit && c && c.id === id) hit = c; });
+    return hit;
+  }
+
+  /* The businesses the client can pick: each named one on the board, else one "Business". */
+  function forOptions(data) {
+    var out = [{ value: "personal", label: "Personal" }];
+    var named = [];
+    var b = boardOf(data);
+    list(b && b.scopes).forEach(function (s) { if (s.entity_id) named.push({ value: "biz:" + s.entity_id, label: s.name }); });
+    return out.concat(named.length ? named : [{ value: "business", label: "Business" }]);
+  }
+
+  /* The form's starting values: the draft, else the saved item, else the scope in view. */
+  function formValues(data, ui) {
+    var f = ui.form || {};
+    if (f.draft) return f.draft;
+    var saved = f.id ? customById(data, f.id) : null;
+    if (saved) {
+      return {
+        name: saved.name || "", amount: centsToInput(saved.amount_cents), cadence: saved.cadence,
+        day: saved.day_of_month ? String(saved.day_of_month) : "", date: saved.start_on || "",
+        target: saved.scope === "personal" ? "personal" : saved.entity_id ? "biz:" + saved.entity_id : "business",
+        phone: saved.phone_alert !== false
+      };
+    }
+    var s = scopeNow(data, ui);
+    var target = !s || s.kind === "personal" ? "personal" : s.entity_id ? "biz:" + s.entity_id : "business";
+    var allowed = forOptions(data).map(function (o) { return o.value; });
+    return { name: "", amount: "", cadence: "monthly", day: "", date: "", target: allowed.indexOf(target) === -1 ? "personal" : target, phone: true };
+  }
+
+  function optionList(values, words, selected) {
+    return values.map(function (v) {
+      return '<option value="' + esc(v) + '"' + (v === selected ? " selected" : "") + '>' + esc(words[v] || v) + '</option>';
+    }).join("");
+  }
+
+  function renderForm(data, ui) {
+    var f = ui.form;
+    if (!f) return "";
+    var bill = f.kind === "bill";
+    var v = formValues(data, ui);
+    var err = ui.msgs["form-err"] || null;
+    var bad = function (name) { return err && err.field === name ? ' aria-invalid="true" aria-describedby="fa-cf-msg"' : ""; };
+    var busy = !!ui.busy.form;
+    var noun = bill ? "bill" : "alert";
+    var cadences = bill ? BILL_CADENCES : ALERT_CADENCES;
+    var cadence = cadences.indexOf(v.cadence) === -1 ? "monthly" : v.cadence;
     var today = todayOf(data);
-    var alerts = list(data && data.alerts);
-    if (!alerts.length) return tile("last", "Last text", "—", '<p class="caption">No texts sent yet.</p>');
-    var first = alerts[0];
-    var dayIso = String(first.sent_at || "").slice(0, 10);
-    var same = alerts.filter(function (a) { return String(a.sent_at || "").slice(0, 10) === dayIso; });
-    var labels = [];
-    same.forEach(function (a) {
-      var l = a.kind_label || kindLabel(data, a.kind);
-      if (labels.indexOf(l) === -1) labels.push(l);
-    });
-    var words = same.length > 1
-      ? plural(same.length, "text", "texts") + ": " + andList(labels) + "."
-      : (first.kind_label || kindLabel(data, first.kind)) + (first.label ? " · " + upper(first.label) : "") + ".";
-    if (same.some(function (a) { return a.delivery === "task_only"; })) {
-      words += " " + (opts.staff ? "Texts were off (STOP), so the team got a task instead." : "Texts were off, so your Fundhub team got a task instead.");
+    var when = cadence === "monthly"
+      ? '<div class="field"><label for="fa-cf-day">Day of the month</label><select id="fa-cf-day" name="day"' + bad("day_of_month") + '>' + dayOptions(v.day) + '</select></div>'
+      : '<div class="field"><label for="fa-cf-date">' + (cadence === "once" ? "Date" : "Next charge") + '</label>' +
+        '<input id="fa-cf-date" name="date" type="date" value="' + esc(v.date) + '"' + (cadence === "once" ? ' min="' + esc(today) + '"' : "") + bad("start_on") + '></div>';
+    var phoneOn = v.phone !== false;
+    var remove = "";
+    if (f.id) {
+      remove = ui.askRemoveCustom === f.id
+        ? '<div class="danger" role="group" aria-labelledby="fa-cf-rq"><p id="fa-cf-rq"><strong>' + esc("Remove " + (v.name || "this " + noun) + "?") + '</strong> Its phone alerts stop.</p>' +
+          '<div class="edit-act"><button type="button" class="btn-danger" data-act="remove-custom" data-id="' + esc(f.id) + '">Yes, remove it</button>' +
+          '<button type="button" class="btn-text" data-act="keep-custom">Keep it</button></div></div>'
+        : '<div class="danger"><button type="button" class="btn-text" data-act="ask-remove-custom" data-id="' + esc(f.id) + '">Remove this ' + noun + '</button></div>';
     }
-    return tile("last", "Last text", timeTag(first.sent_at, today), '<p class="caption">' + esc(words) + '</p>');
+    return '<form class="card cform" data-form="custom" novalidate aria-labelledby="fa-cf-h">' +
+      '<h2 id="fa-cf-h">' + (f.id ? "Edit " : "Add ") + noun + '</h2>' +
+      '<div class="edit-grid">' +
+      '<div class="field"><label for="fa-cf-name">Name</label><input id="fa-cf-name" name="name" type="text" maxlength="' + NAME_MAX + '" autocomplete="off" value="' + esc(v.name) + '"' + bad("name") + '></div>' +
+      '<div class="field"><label for="fa-cf-amount">' + (bill ? "Amount" : "Amount (optional)") + '</label>' +
+      '<span class="money-box"><span class="pct-sign" aria-hidden="true">$</span><input id="fa-cf-amount" name="amount" type="text" inputmode="decimal" autocomplete="off" value="' + esc(v.amount) + '"' + bad("amount_cents") + '></span></div>' +
+      '<div class="field"><label for="fa-cf-cadence">' + (bill ? "How often" : "Repeats") + '</label><select id="fa-cf-cadence" name="cadence" data-cadence' + bad("cadence") + '>' +
+      optionList(cadences, CADENCE_WORDS, cadence) + '</select></div>' +
+      when +
+      '<div class="field"><label for="fa-cf-for">For</label><select id="fa-cf-for" name="target"' + bad("scope") + '>' +
+      forOptions(data).map(function (o) { return '<option value="' + esc(o.value) + '"' + (o.value === v.target ? " selected" : "") + '>' + esc(o.label) + '</option>'; }).join("") +
+      '</select></div>' +
+      '<div class="field"><label for="fa-cf-phone" id="fa-cf-ph">Phone alert</label>' +
+      '<button type="button" class="switch" id="fa-cf-phone" role="switch" aria-checked="' + (phoneOn ? "true" : "false") + '" aria-labelledby="fa-cf-ph" data-act="form-phone">' +
+      '<span class="sw-word" aria-hidden="true">' + (phoneOn ? "On" : "Off") + '</span><span class="track" aria-hidden="true"><span class="thumb"></span></span></button></div>' +
+      '</div>' +
+      '<p class="field-msg" id="fa-cf-msg" role="alert">' + (err ? esc(err.text) : "") + '</p>' +
+      '<div class="edit-act"><button type="submit" class="btn-primary" data-act="save-custom"' + (busy ? ' aria-disabled="true" aria-busy="true"' : "") + '>' +
+      (busy ? "Saving…" : "Save " + noun) + '</button>' +
+      '<button type="button" class="btn-text" data-act="cancel-custom">Cancel</button></div>' +
+      remove + '</form>';
   }
 
-  function renderTiles(data, opts) {
-    return '<div class="grid tiles">' + tileNeeds(data, opts) + tileNext(data, opts) + tileLast(data, opts) + '</div>';
+  /* The form's values → the POST body, or { field, text } in words. Same limits as the server. */
+  function checkCustom(kind, v, today) {
+    var name = String(v.name || "").replace(/\s+/g, " ").trim();
+    if (!name) return { field: "name", text: "Give it a name." };
+    if (name.length > NAME_MAX) return { field: "name", text: "Use " + NAME_MAX + " letters or fewer." };
+    var amount = null;
+    if (String(v.amount || "").trim() !== "") {
+      amount = dollarsToCents(v.amount);
+      if (amount === null || amount <= 0 || amount > AMOUNT_MAX_CENTS) return { field: "amount_cents", text: "Type the amount like 45 or 45.99." };
+    } else if (kind === "bill") {
+      return { field: "amount_cents", text: "Type the amount like 45 or 45.99." };
+    }
+    var cadence = v.cadence;
+    if ((kind === "bill" ? BILL_CADENCES : ALERT_CADENCES).indexOf(cadence) === -1) return { field: "cadence", text: "Pick how often." };
+    var body = { kind: kind, name: name, amount_cents: amount, cadence: cadence, phone_alert: v.phone !== false };
+    if (cadence === "monthly") {
+      var d = Number(v.day);
+      if (!(d >= 1 && d <= 31 && Math.floor(d) === d)) return { field: "day_of_month", text: "Pick a day from the list." };
+      body.day_of_month = d;
+    } else {
+      if (parseIso(v.date) === null) return { field: "start_on", text: "Pick a real date, like Dec 6, 2026." };
+      var ahead = daysBetween(today, v.date);
+      if (cadence === "once" && ahead < 0) return { field: "start_on", text: "That day has passed. Pick today or a later day." };
+      if (ahead > CUSTOM_MAX_DAYS_AHEAD) return { field: "start_on", text: "That day is more than 5 years away. Check the year." };
+      if (ahead < -CUSTOM_MAX_DAYS_BACK) return { field: "start_on", text: "That day is too long ago. Check the year." };
+      body.start_on = v.date;
+    }
+    var t = String(v.target || "personal");
+    if (t === "personal") body.scope = "personal";
+    else {
+      body.scope = "business";
+      if (t.indexOf("biz:") === 0) body.entity_id = t.slice(4);
+    }
+    return { body: body };
   }
 
   /* ── one protection card ───────────────────────────────────────────────── */
@@ -487,21 +832,6 @@
     var m = ui.msgs[key];
     if (!m) return "";
     return '<p class="msg' + (m.bad ? " is-bad" : "") + '"' + (id ? ' id="' + esc(id) + '"' : "") + ' tabindex="-1" data-msg="' + esc(key) + '">' + esc(m.text) + '</p>';
-  }
-
-  function watchWords(data, kind) {
-    if (kind === "payment_timing") {
-      return "Each card tells the credit bureaus its balance on the day its statement closes. We text you " +
-        plural(leadDays(data), "day", "days") + " before, so you can pay it down first.";
-    }
-    if (kind === "promo_end") {
-      return "When a card's promo rate (like 0%) ends, its normal rate starts. We text you " + thresholdWords(data) +
-        " before it ends, with how much to pay each month.";
-    }
-    if (kind === "cash_reserve") {
-      return "We check your cash against " + reserveMonths(data) + " months of your minimum payments. A missed payment can hurt your file before your next funding sequence.";
-    }
-    return "A new card, loan or credit check (inquiry) can push back your next funding sequence. We watch your linked accounts and your credit pulls.";
   }
 
   function renderNextLine(n, today) {
@@ -556,9 +886,8 @@
     return '<div class="needs-day">' +
       '<p class="nd-ask"><span class="badge word-warn">Needs a day</span> <strong>' +
       esc(many ? "Which day of the month does each statement close?" : "Which day of the month does this card's statement close?") + '</strong></p>' +
-      '<p>We need it so we can text you before it reports. <span class="caption">It is on your card statement, often called the closing date.</span></p>' +
       rows +
-      '<div class="nd-act"><button type="button" class="btn-primary" data-act="save-days"' + (busy ? ' aria-disabled="true" aria-busy="true"' : "") + '>' +
+      '<div class="nd-act"><button type="button" class="btn-line" data-act="save-days"' + (busy ? ' aria-disabled="true" aria-busy="true"' : "") + '>' +
       (busy ? "Saving…" : many ? "Save days" : "Save day") + '</button>' + renderMsg(ui, "save-days") + '</div>' +
       '</div>';
   }
@@ -639,14 +968,19 @@
 
   /* — Promo rate ending — */
 
+  /* The payoff at the promo rate (payoffAtRate in src/finance/file-alerts/promo.mjs):
+     the same amount the promo text and the intro countdown say, in whole dollars
+     rounded up. With no rate on file it is only the least: "at least", never "to clear". */
   function payoffWords(p, today) {
     var pay = p.payoff;
+    var floor = !!pay && (pay.monthly_is_floor === true || !isNum(p.apr_pct));
     if (pay && isNum(pay.payments) && pay.payments > 1) {
-      return 'Pay about <strong>' + esc(money(pay.monthly_cents)) + ' a month</strong> ' +
-        esc("for the next " + pay.payments + " months to clear it in time.");
+      return (floor ? 'At least <strong>' : 'Pay about <strong>') + esc(dollarsUp(pay.monthly_cents)) + ' a month</strong> ' +
+        esc("for the next " + pay.payments + " months" + (floor ? ". Rate not on file." : " to clear it in time."));
     }
     if (pay && isNum(pay.payments)) {
-      return 'Pay all <strong>' + esc(money(pay.total_cents)) + '</strong> ' + esc("before " + shortDay(p.ends_on, today) + " to clear it in time.");
+      return (floor ? 'At least <strong>' : 'Pay all <strong>') + esc(money(pay.total_cents)) + '</strong> ' +
+        esc("before " + shortDay(p.ends_on, today) + (floor ? ". Rate not on file." : " to clear it in time."));
     }
     if (!isNum(p.balance_cents)) return esc("We do not have this card's balance, so we cannot work out a monthly amount.");
     return esc("Nothing is owed on this card, so there is nothing to clear.");
@@ -685,7 +1019,7 @@
       '<p>Left to pay: <span class="num">' + esc(money(p.balance_cents)) + '</span></p>' +
       '<p class="payoff">' + payoffWords(p, today) + '</p>' +
       renderSteps(data, c, blocked) +
-      '<p class="caption">' + esc(sourceWords(p, opts) + (isNum(p.apr_pct) && p.apr_pct > 0 ? " The monthly amount does not count interest." : "")) + '</p>';
+      '<p class="caption">' + esc(sourceWords(p, opts)) + '</p>';
   }
 
   function removeBlock(c, ui) {
@@ -788,8 +1122,6 @@
     var notes = [];
     if (v.state === "unknown") notes.push(reasonWords(v.reason, kind));
     if (isNum(v.clarity_cents)) notes.push("Minimums include " + money(v.clarity_cents) + " a month for your Fundhub payment plan.");
-    if (v.minimums_is_floor) notes.push("A card or loan has no minimum on file, so the real need may be higher.");
-    if (isNum(v.cash_accounts) && v.cash_accounts > 0) notes.push("Cash counted from " + plural(v.cash_accounts, "account", "accounts") + ".");
     var fix = v.state === "unknown" && FIXABLE[v.reason] && !opts.quiet
       ? '<p><a class="btn-text" href="' + esc(withClient(ACCOUNTS_HREF, opts.clientId)) + '">Open Accounts</a></p>'
       : "";
@@ -817,18 +1149,15 @@
           (isNum(nc.minimums_cents) ? " (" + money(nc.minimums_cents) + " a month in minimums)" : "") + ".") +
         (opts.quiet ? "" : ' <a class="btn-text" href="' + esc(withClient(ACCOUNTS_HREF, opts.clientId)) + '">Sort them in Accounts</a>') + '</p>'
       : "";
-    return '<div class="cash-grid">' + CASH_KINDS.map(function (k) { return cashBox(data, k, r[k], opts); }).join("") + '</div>' + ncLine +
-      '<p class="caption">Personal and business cash are checked on their own. We never add them together.</p>';
+    return '<div class="cash-grid">' + CASH_KINDS.map(function (k) { return cashBox(data, k, r[k], opts); }).join("") + '</div>' + ncLine;
   }
 
   /* — New credit — */
 
   function renderNewBody(data, ui, opts) {
     var bp = data && data.enrolled && data.enrolled.blueprint;
-    return '<p>If one is not yours, reply to the text and tell us.</p>' +
-      (bp ? '<p class="caption">' + esc(opts.staff
-        ? "This client has the Capital Blueprint, so their Fundhub team gets a task too."
-        : "Your Fundhub team gets a task too, so they can help.") + '</p>' : "");
+    return '<p>Not yours? Reply to the text.</p>' +
+      (bp ? '<p class="caption">' + esc(opts.staff ? "Their Fundhub team gets a task too." : "Your Fundhub team gets a task too.") + '</p>' : "");
   }
 
   var BODY = {
@@ -890,10 +1219,102 @@
       '<div class="prot-head"><h2 id="fa-t-' + kind + '">' + esc(kindLabel(data, kind)) + '</h2>' +
       '<div class="sw-wrap">' + sw + renderMsg(ui, "toggle:" + kind) + '</div></div>' +
       (kind === "payment_timing" ? renderPayLead(data, ui) : "") +
-      '<p class="watch">' + esc(watchWords(data, kind)) + '</p>' +
       renderNextLine(nextFor(data, kind, opts), todayOf(data)) +
       BODY[kind](data, ui, opts) +
       renderSent(data, kind, ui, opts) +
+      '</section>';
+  }
+
+  /* ── phone alerts: the one switch, the phone, which kinds are on, what went ─
+     The GET's `phone` (docs/finance/file-protection-alerts.md). Each payment's
+     and bill's own alert day is on the board above; this card is the settings.
+     The lock screen shows a fixed sentence with no amount, bank or card. */
+
+  function phoneOf(data) { return (data && data.phone) || null; }
+  /* Everything on unless the client switched it off; a STOP stops all of them; the
+     statement push follows the pay-before-close switch. */
+  function phoneKindOn(data, kind) {
+    var p = phoneOf(data);
+    if (!p || p.enabled === false || p.opted_out) return false;
+    if (kind === "statement_close") return kindOn(data, "payment_timing");
+    return true;
+  }
+  function phoneLabel(data, kind) {
+    var k = phoneOf(data) && phoneOf(data).kinds;
+    return (k && k[kind] && k[kind].label) || PHONE_FALLBACK[kind] || kind;
+  }
+  function reasonText(reason) { return PHONE_REASON[reason] || "No alert set yet"; }
+
+  function phoneStatus(data, opts) {
+    var p = phoneOf(data);
+    if (p.opted_out) {
+      return '<p class="next-line is-blocked">' + esc(opts.staff ? "This client replied STOP, so no phone alerts go." : "You replied STOP, so no phone alerts go.") + '</p>';
+    }
+    if (p.enabled === false) return '<p class="next-line is-blocked">Phone alerts are off.</p>';
+    if (p.has_phone === null) return '<p class="next-line is-blocked">We could not check for a phone. Try again soon.</p>';
+    if (p.has_phone === false) {
+      return '<div class="next-line is-blocked"><p>' + esc(opts.staff ? "No phone set up yet." : "Turn on notifications on your phone first.") + '</p>' +
+        (opts.staff ? "" : '<a class="btn-line" href="' + esc(PHONE_SETUP_HREF) + '">Set up my phone</a>') + '</div>';
+    }
+    return '<p class="next-line">' + esc("Phone set up. Alerts go out " + (p.send_window || "9 a.m. to 5 p.m. Arizona time") + ".") + '</p>';
+  }
+
+  var PHONE_STATE_WORDS = {
+    waiting: "Waiting for 9 a.m.", sending: "Sending", sent: "Sent", stopped: "Stopped",
+    no_phone: "No phone to send to", not_sent: "Not sent", unknown: "Not sure it arrived"
+  };
+
+  function renderPhoneSent(data, ui, today) {
+    var p = phoneOf(data);
+    var all = list(p.sent);
+    if (!all.length) return "";
+    var open = !!ui.expanded.phone;
+    var shown = open ? all : all.slice(0, PHONE_SHOW);
+    var names = {};
+    list(data.bills).forEach(function (b) { names[b.id] = b.name; });
+    list(data.custom).forEach(function (c) { names[c.id] = c.name; });
+    list(p.cards).forEach(function (c) { names[c.account_id] = cardName(c); });
+    list(p.loans).forEach(function (l) { names[l.account_id] = l.name; });
+    list(p.plans).forEach(function (pl) { names[pl.installment_id] = pl.name; });
+    var items = shown.map(function (a) {
+      var about = names[a.subject_id] || "";
+      var word = PHONE_STATE_WORDS[a.state] || "Not sure it arrived";
+      return '<li class="sent-item"><div class="sent-meta">' + timeTag(a.created_at, today) +
+        '<span>' + esc((a.kind_label || phoneLabel(data, a.kind)) + (about ? " · " + about : "") + (a.about_on ? " · " + shortDay(a.about_on, today) : "")) + '</span>' +
+        '<span class="badge ' + (a.state === "sent" ? "word-ok" : a.state === "not_sent" || a.state === "unknown" ? "word-warn" : "word-muted") + '">' + esc(word) + '</span></div></li>';
+    }).join("");
+    var more = all.length > PHONE_SHOW
+      ? '<button type="button" class="btn-text" data-act="more" data-kind="phone" aria-expanded="' + (open ? "true" : "false") + '">' +
+        (open ? "Show fewer" : "Show all " + all.length + " phone alerts") + '</button>'
+      : "";
+    return '<div class="sent"><h3 class="eyebrow" id="fa-s-phone">Phone alerts sent</h3>' +
+      '<ol class="sent-list" aria-labelledby="fa-s-phone">' + items + '</ol>' + more + '</div>';
+  }
+
+  function renderPhone(data, ui, opts) {
+    var p = phoneOf(data);
+    if (!p) return "";
+    ui = normalUi(ui);
+    opts = opts || {};
+    var today = todayOf(data);
+    var on = p.enabled !== false;
+    var busy = !!ui.busy["toggle-phone"];
+    var sw = '<button type="button" class="switch" role="switch" aria-checked="' + (on ? "true" : "false") + '" aria-labelledby="fa-t-phone"' +
+      ' data-act="toggle-phone"' + (busy ? ' aria-disabled="true" aria-busy="true"' : "") + '>' +
+      '<span class="sw-word" aria-hidden="true">' + (busy ? "Saving…" : on ? "On" : "Off") + '</span>' +
+      '<span class="track" aria-hidden="true"><span class="thumb"></span></span></button>';
+    var kinds = PHONE_KINDS.map(function (k) {
+      var live = phoneKindOn(data, k);
+      return '<li><span class="badge ' + (live ? "word-ok" : "word-muted") + '">' + (live ? "On" : "Off") + '</span> ' + esc(phoneLabel(data, k)) + '</li>';
+    }).join("");
+    /* One line, no paragraph (QA21; owner rule 2026-11-07, short client words). */
+    return '<section class="card prot phone' + (on ? "" : " is-off") + '" id="fa-phone" aria-labelledby="fa-t-phone">' +
+      '<div class="prot-head"><h2 id="fa-t-phone">Phone alerts</h2>' +
+      '<div class="sw-wrap">' + sw + renderMsg(ui, "toggle-phone") + '</div></div>' +
+      '<p class="caption">A buzz before each payment. No amounts on the lock screen.</p>' +
+      phoneStatus(data, opts) +
+      '<ul class="ph-kinds" aria-label="Which phone alerts are on">' + kinds + '</ul>' +
+      renderPhoneSent(data, ui, today) +
       '</section>';
   }
 
@@ -903,21 +1324,24 @@
     ui = ui || {};
     return {
       msgs: ui.msgs || {}, busy: ui.busy || {}, drafts: ui.drafts || {}, expanded: ui.expanded || {},
-      editPromo: ui.editPromo || null, askRemove: ui.askRemove || null, editDay: ui.editDay || null
+      editPromo: ui.editPromo || null, askRemove: ui.askRemove || null, editDay: ui.editDay || null,
+      scope: ui.scope || null, form: ui.form || null, askRemoveCustom: ui.askRemoveCustom || null
     };
   }
 
-  /* Nothing to watch: no cards, no texts, and neither cash check can run. */
+  /* Nothing to watch: no cards, no texts, no board items, nothing added, and neither cash check can run. */
   function isEmpty(data) {
     var r = (data && data.reserve) || {};
     function unknown(k) { return !r[k] || r[k].state === "unknown"; }
-    return !list(data && data.cards).length && !list(data && data.alerts).length && unknown("personal") && unknown("business");
+    var b = boardOf(data);
+    var items = b ? b.scopes.some(function (s) { return list(s.payments).length || list(s.bills).length || list(s.smart).length; }) : false;
+    return !list(data && data.cards).length && !list(data && data.alerts).length && !items && !list(data && data.custom).length &&
+      unknown("personal") && unknown("business");
   }
 
   function renderEmpty(opts) {
     return '<section class="card empty" aria-labelledby="fa-empty"><h2 id="fa-empty">Nothing to watch yet</h2>' +
-      '<p>When a card or bank account is on your file, we can text you before something hurts your credit file: before a statement reports, before a promo ends, and when your cash runs low.</p>' +
-      '<a class="btn-primary" href="' + esc(withClient(ACCOUNTS_HREF, opts.clientId)) + '">Add an account</a></section>';
+      '<a class="btn-line" href="' + esc(withClient(ACCOUNTS_HREF, opts.clientId)) + '">Add an account</a></section>';
   }
 
   /** The whole section for one answer: data (the GET), ui (open editors, messages), opts ({ staff, clientId }). */
@@ -926,16 +1350,20 @@
     opts = opts || {};
     var empty = isEmpty(data);
     var o = { staff: !!opts.staff, clientId: opts.clientId || "", quiet: empty };
-    return renderHead(data) + renderNotices(data, o) + (empty ? renderEmpty(o) : renderTiles(data, o)) +
+    return renderHead(data, ui, o) + renderNotices(data, o) + renderForm(data, ui) +
+      (empty ? renderEmpty(o) : renderNeeds(data, o) + renderBoard(data, ui, o)) +
+      '<h2 class="settings-h" id="fa-settings">Settings</h2>' +
+      renderPhone(data, ui, o) +
       '<div class="grid prots">' + kindsOf(data).map(function (k) { return renderKind(data, k, ui, o); }).join("") + '</div>';
   }
 
   function renderLoading() {
-    var tileSk = '<div class="card tile skel"><span class="sk sk-s"></span><span class="sk sk-l"></span><span class="sk sk-m"></span></div>';
+    var secSk = '<div class="card board-sec skel"><span class="sk sk-s"></span><span class="sk sk-m"></span><span class="sk sk-m"></span></div>';
     var protSk = '<div class="card prot skel"><span class="sk sk-m"></span><span class="sk sk-s"></span><span class="sk sk-l"></span>' +
       '<span class="sk sk-m"></span><span class="sk sk-m"></span><span class="sk sk-s"></span></div>';
-    return '<div class="head"><div><h1>' + TITLE + '</h1><p class="caption">Loading your alerts…</p></div></div>' +
-      '<div class="grid tiles" aria-busy="true">' + tileSk + tileSk + tileSk + '</div>' +
+    return '<div class="head"><div class="head-main"><h1>' + TITLE + '</h1><p class="caption">Loading…</p></div></div>' +
+      '<div class="board" aria-busy="true"><div class="scopes skel"><span class="sk sk-pill"></span><span class="sk sk-pill"></span></div>' +
+      secSk + secSk + secSk + '</div>' +
       '<div class="grid prots" aria-busy="true">' + protSk + protSk + protSk + protSk + '</div>';
   }
 
@@ -990,6 +1418,20 @@
       if (/credit card/.test(m)) return "This only works for a credit card.";
       return "We could not find that card. Reload the page and try again.";
     }
+    if (field === "bill_id") return "We could not find that bill. Reload the page and try again.";
+    /* The client's own alerts and bills (unit AL2). */
+    if (field === "name") return "Give it a name of " + NAME_MAX + " letters or fewer.";
+    if (field === "amount_cents") return "Type the amount like 45 or 45.99.";
+    if (field === "cadence") return "Pick how often.";
+    if (field === "day_of_month") return "Pick a day from the list.";
+    if (field === "start_on") {
+      if (/passed/.test(m)) return "That day has passed. Pick today or a later day.";
+      if (/years/.test(m)) return "That day is too far away. Check the year.";
+      return "Pick a real date, like Dec 6, 2026.";
+    }
+    if (field === "scope" || field === "entity_id") return "Pick who it is for from the list.";
+    if (field === "kind" && /up to/.test(m)) return "You have the most alerts and bills you can keep. Remove one first.";
+    if (field === "id") return "We could not find that one. Reload the page and try again.";
     return "That change was not accepted. Reload the page and try again.";
   }
 
@@ -1002,6 +1444,8 @@
     if (s === 400 && b.error === "invalid_input") return { field: b.field || null, text: fieldWords(b.field, b.message) };
     if (s === 400) return { text: "That change was not accepted. Reload the page and try again." };
     if (s === 403) return { text: "This login is not allowed to change these alerts." };
+    if (s === 404 && b.field === "bill_id") return { field: "bill_id", text: "We could not find that bill. Reload the page and try again." };
+    if (s === 404 && (b.field === "id" || b.field === "entity_id")) return { field: b.field, text: fieldWords(b.field, b.message) };
     if (s === 404) return { field: "account_id", text: "We could not find that card. Reload the page and try again." };
     if (s === 503 || b.db === "down") return { text: "Our database is not answering right now. Try again in a few minutes." };
     if (s >= 200 && s < 300 && b.ok === true) return null;
@@ -1113,6 +1557,21 @@
         var d = q("#fa-de-" + domId(ui.editDay));
         if (d) ui.drafts["day:" + ui.editDay] = d.value;
       }
+      if (ui.form && q('[data-form="custom"]')) ui.form.draft = formDraft();
+    }
+    /* The alert/bill form as typed: { name, amount, cadence, day, date, target, phone }. */
+    function formDraft() {
+      var prev = (state.ui.form && state.ui.form.draft) || formValues(state.data, state.ui);
+      var phone = q('[data-act="form-phone"]');
+      return {
+        name: q("#fa-cf-name") ? val("#fa-cf-name") : prev.name,
+        amount: q("#fa-cf-amount") ? val("#fa-cf-amount") : prev.amount,
+        cadence: q("#fa-cf-cadence") ? val("#fa-cf-cadence") : prev.cadence,
+        day: q("#fa-cf-day") ? val("#fa-cf-day") : prev.day,
+        date: q("#fa-cf-date") ? val("#fa-cf-date") : prev.date,
+        target: q("#fa-cf-for") ? val("#fa-cf-for") : prev.target,
+        phone: phone ? phone.getAttribute("aria-checked") === "true" : prev.phone
+      };
     }
     function repaint(focusSel) {
       if (!state.data) return;
@@ -1182,6 +1641,214 @@
         state.ui.msgs[key] = { text: text };
         repaint(sel);
         say(kindLabel(state.data, kind) + ": " + text);
+      });
+    }
+
+    /* The one switch for every phone alert. */
+    function togglePhone(btn) {
+      var key = "toggle-phone";
+      if (state.ui.busy[key] || !state.data || !state.data.phone) return;
+      var next = btn.getAttribute("aria-checked") !== "true";
+      var sel = '[data-act="toggle-phone"]';
+      state.ui.msgs = {};
+      state.ui.busy[key] = true;
+      repaint(sel);
+      return post({ action: "set_phone_alerts", enabled: next }).then(function (res) {
+        delete state.ui.busy[key];
+        var p = postProblem(res);
+        if (p && p.signin) { leave(); return; }
+        if (p) {
+          state.ui.msgs[key] = { bad: true, text: p.text };
+          repaint(sel);
+          say(p.text);
+          return;
+        }
+        var saved = res.body && res.body.saved;
+        state.data.phone.enabled = saved && typeof saved.phone_alerts === "boolean" ? saved.phone_alerts : next;
+        var text = state.data.phone.enabled
+          ? "Saved. Phone alerts are on."
+          : "Saved. Phone alerts are off.";
+        state.ui.msgs[key] = { text: text };
+        repaint(sel);
+        say("Phone alerts: " + text);
+      });
+    }
+
+    /* Mark one repeat bill Important (or not), then read the server's dates again. */
+    function toggleBill(btn) {
+      var id = btn.getAttribute("data-id");
+      var key = "bill:" + id;
+      if (!id || state.ui.busy[key] || !state.data) return;
+      var next = btn.getAttribute("aria-checked") !== "true";
+      var sel = '[data-act="toggle-bill"][data-id="' + domId(id) + '"]';
+      state.ui.msgs = {};
+      state.ui.busy[key] = true;
+      repaint(sel);
+      return post({ action: "set_bill_important", bill_id: id, important: next }).then(function (res) {
+        var p = postProblem(res);
+        if (p && p.signin) throw SIGNIN;
+        if (p) {
+          delete state.ui.busy[key];
+          state.ui.msgs[key] = { bad: true, text: p.text };
+          repaint(sel);
+          say(p.text);
+          return;
+        }
+        return refresh().then(function (fresh) {
+          delete state.ui.busy[key];
+          if (!fresh) {
+            list(state.data.bills).forEach(function (b) { if (b.id === id) b.important = next; });
+            eachBoardRow(function (r) { if (r.bill_id === id) { r.important = next; r.phone = Object.assign({}, r.phone, { on: next }); } });
+          }
+          var days = (state.data.phone && state.data.phone.days_before && state.data.phone.days_before.important_bill) || 3;
+          var text = next
+            ? "Phone alert on. It goes " + plural(days, "day", "days") + " before it charges."
+            : "Phone alert off.";
+          state.ui.msgs[key] = { text: text + (fresh ? "" : " Reload the page to see the new date.") };
+          repaint(sel);
+          say(text);
+        });
+      }).then(null, function (e) {
+        delete state.ui.busy[key];
+        if (e === SIGNIN) leave();
+      });
+    }
+
+    function eachBoardRow(fn) {
+      var b = state.data && state.data.board;
+      list(b && b.scopes).forEach(function (s) { list(s.payments).concat(list(s.bills)).forEach(fn); });
+    }
+
+    /* Show Personal or one business. Nothing is saved; the choice lives on this screen. */
+    function pickScope(key) {
+      state.ui.scope = key;
+      state.ui.msgs = {};
+      repaint('[data-act="scope"][data-scope="' + key.replace(/"/g, "") + '"]');
+    }
+
+    function openForm(kind, id) {
+      state.ui.msgs = {};
+      state.ui.askRemoveCustom = null;
+      state.ui.form = { kind: kind, id: id || null, draft: null };
+      repaint("#fa-cf-name");
+    }
+    function closeForm(focusSel) {
+      state.ui.form = null;
+      state.ui.askRemoveCustom = null;
+      delete state.ui.msgs["form-err"];
+      repaint(focusSel || '[data-act="add"][data-kind="alert"]');
+    }
+
+    /* Save the open form: check it here with the server's own limits, then post it. */
+    function saveCustom() {
+      var f = state.ui.form;
+      if (!f || state.ui.busy.form) return;
+      f.draft = formDraft();
+      state.ui.msgs = {};
+      var checked = checkCustom(f.kind, f.draft, todayOf(state.data));
+      var FIELD_SEL = { name: "#fa-cf-name", amount_cents: "#fa-cf-amount", cadence: "#fa-cf-cadence", day_of_month: "#fa-cf-day",
+        start_on: "#fa-cf-date", scope: "#fa-cf-for", entity_id: "#fa-cf-for", kind: "#fa-cf-name", id: "#fa-cf-name" };
+      if (!checked.body) {
+        state.ui.msgs["form-err"] = { bad: true, field: checked.field, text: checked.text };
+        repaint(FIELD_SEL[checked.field] || "#fa-cf-name");
+        say(checked.text);
+        return;
+      }
+      var body = checked.body;
+      if (f.id) { body.action = "update_custom"; body.id = f.id; } else body.action = "add_custom";
+      state.ui.busy.form = true;
+      repaint('[data-act="save-custom"]');
+      return post(body).then(function (res) {
+        var p = postProblem(res);
+        if (p && p.signin) throw SIGNIN;
+        if (p) {
+          delete state.ui.busy.form;
+          state.ui.msgs["form-err"] = { bad: true, field: p.field, text: p.text };
+          repaint(FIELD_SEL[p.field] || '[data-act="save-custom"]');
+          say(p.text);
+          return;
+        }
+        var saved = res.body && res.body.saved;
+        return refresh().then(function (fresh) {
+          delete state.ui.busy.form;
+          var noun = f.kind === "bill" ? "Bill" : "Alert";
+          var text = noun + " saved." + (fresh ? "" : " Reload the page to see it.");
+          state.ui.form = null;
+          /* Show the scope the item went to, so the client sees it land. */
+          if (saved && saved.scope) state.ui.scope = saved.scope === "personal" ? "personal" : saved.entity_id ? "biz:" + saved.entity_id : "business";
+          if (saved && saved.id) state.ui.msgs["custom:" + saved.id] = { text: text };
+          else state.ui.msgs.board = { text: text };
+          repaint(saved && saved.id ? '[data-act="edit-custom"][data-id="' + domId(saved.id) + '"]' : '[data-act="add"][data-kind="alert"]');
+          say(text);
+        });
+      }).then(null, function (e) {
+        delete state.ui.busy.form;
+        if (e === SIGNIN) leave();
+      });
+    }
+
+    function removeCustom(id) {
+      if (!id || state.ui.busy.form) return;
+      state.ui.busy.form = true;
+      return post({ action: "remove_custom", id: id }).then(function (res) {
+        var p = postProblem(res);
+        if (p && p.signin) throw SIGNIN;
+        if (p) {
+          delete state.ui.busy.form;
+          state.ui.msgs["form-err"] = { bad: true, field: p.field, text: p.text };
+          repaint('[data-act="remove-custom"]');
+          say(p.text);
+          return;
+        }
+        return refresh().then(function (fresh) {
+          delete state.ui.busy.form;
+          state.ui.form = null;
+          state.ui.askRemoveCustom = null;
+          var text = "Removed." + (fresh ? "" : " Reload the page to see it gone.");
+          state.ui.msgs.board = { text: text };
+          repaint('[data-act="add"][data-kind="alert"]');
+          say(text);
+        });
+      }).then(null, function (e) {
+        delete state.ui.busy.form;
+        if (e === SIGNIN) leave();
+      });
+    }
+
+    /* The phone switch on a bill the client added. */
+    function toggleCustom(btn) {
+      var id = btn.getAttribute("data-id");
+      var key = "custom:" + id;
+      if (!id || state.ui.busy[key] || !state.data) return;
+      var next = btn.getAttribute("aria-checked") !== "true";
+      var sel = '[data-act="toggle-custom"][data-id="' + domId(id) + '"]';
+      state.ui.msgs = {};
+      state.ui.busy[key] = true;
+      repaint(sel);
+      return post({ action: "set_custom_phone", id: id, enabled: next }).then(function (res) {
+        var p = postProblem(res);
+        if (p && p.signin) throw SIGNIN;
+        if (p) {
+          delete state.ui.busy[key];
+          state.ui.msgs[key] = { bad: true, text: p.text };
+          repaint(sel);
+          say(p.text);
+          return;
+        }
+        return refresh().then(function (fresh) {
+          delete state.ui.busy[key];
+          if (!fresh) {
+            list(state.data.custom).forEach(function (c) { if (c.id === id) c.phone_alert = next; });
+            eachBoardRow(function (r) { if (r.item_id === id) { r.phone_alert = next; r.phone = Object.assign({}, r.phone, { on: next }); } });
+          }
+          var text = next ? "Phone alert on." : "Phone alert off.";
+          state.ui.msgs[key] = { text: text + (fresh ? "" : " Reload the page to see the new date.") };
+          repaint(sel);
+          say(text);
+        });
+      }).then(null, function (e) {
+        delete state.ui.busy[key];
+        if (e === SIGNIN) leave();
       });
     }
 
@@ -1346,10 +2013,35 @@
       if (!t || !el.contains(t)) return;
       var act = t.getAttribute("data-act");
       var id = t.getAttribute("data-id");
-      if (act === "save-promo" && e.preventDefault) e.preventDefault();
+      if ((act === "save-promo" || act === "save-custom") && e.preventDefault) e.preventDefault();
       if (t.getAttribute("aria-disabled") === "true") return;
       if (act === "retry") load();
+      else if (act === "scope") pickScope(t.getAttribute("data-scope") || "");
+      else if (act === "add") openForm(t.getAttribute("data-kind") === "bill" ? "bill" : "alert", null);
+      else if (act === "edit-custom") {
+        var item = customById(state.data, id);
+        if (item) openForm(item.kind === "bill" ? "bill" : "alert", id);
+      } else if (act === "cancel-custom") {
+        var was = state.ui.form && state.ui.form.id;
+        closeForm(was ? '[data-act="edit-custom"][data-id="' + domId(was) + '"]' : null);
+      } else if (act === "save-custom") saveCustom();
+      else if (act === "form-phone") {
+        /* Flip the switch itself; the repaint reads the form back from the page. */
+        if (state.ui.form) {
+          t.setAttribute("aria-checked", t.getAttribute("aria-checked") === "true" ? "false" : "true");
+          repaint('[data-act="form-phone"]');
+        }
+      } else if (act === "ask-remove-custom") {
+        state.ui.askRemoveCustom = id;
+        repaint('[data-act="keep-custom"]');
+      } else if (act === "keep-custom") {
+        state.ui.askRemoveCustom = null;
+        repaint('[data-act="ask-remove-custom"]');
+      } else if (act === "remove-custom") removeCustom(id);
+      else if (act === "toggle-custom") toggleCustom(t);
       else if (act === "toggle") toggle(t);
+      else if (act === "toggle-phone") togglePhone(t);
+      else if (act === "toggle-bill") toggleBill(t);
       else if (act === "save-days") saveDays();
       else if (act === "jump") jump(t.getAttribute("data-to"));
       else if (act === "more") {
@@ -1393,13 +2085,22 @@
        submit), which onClick handles. This catches any submit that gets past it. */
     function onSubmit(e) {
       var f = e.target;
-      if (!f || !f.getAttribute || f.getAttribute("data-form") !== "promo") return;
+      var form = f && f.getAttribute ? f.getAttribute("data-form") : null;
+      if (form !== "promo" && form !== "custom") return;
       if (e.preventDefault) e.preventDefault();
-      savePromo(f.getAttribute("data-id"));
+      if (form === "custom") saveCustom();
+      else savePromo(f.getAttribute("data-id"));
+    }
+    function onChange(e) {
+      var t = e.target;
+      if (!t || !t.getAttribute || !state.ui.form || t.getAttribute("data-cadence") === null) return;
+      state.ui.form.draft = formDraft();
+      repaint("#fa-cf-cadence");
     }
 
     el.addEventListener("click", onClick);
     el.addEventListener("submit", onSubmit);
+    el.addEventListener("change", onChange);
     var first = load();
     return {
       ready: first,
@@ -1407,6 +2108,7 @@
       unmount: function () {
         el.removeEventListener("click", onClick);
         el.removeEventListener("submit", onSubmit);
+        el.removeEventListener("change", onChange);
         el.innerHTML = "";
       }
     };
@@ -1440,7 +2142,9 @@
     money: money, day: day, shortDay: shortDay, relDay: relDay, inWords: inWords, ordinal: ordinal, cardName: cardName,
     withClient: withClient, classify: classify, postProblem: postProblem, checkPromo: checkPromo,
     needsOf: needsOf, nextFor: nextFor, promoSteps: promoSteps, isEmpty: isEmpty,
-    render: render, renderKind: renderKind, renderTiles: renderTiles, renderLoading: renderLoading, renderError: renderError,
+    render: render, renderKind: renderKind, renderBoard: renderBoard, renderForm: renderForm, renderNeeds: renderNeeds,
+    renderLoading: renderLoading, renderError: renderError, checkCustom: checkCustom, dollarsToCents: dollarsToCents, chip: chip,
+    renderPhone: renderPhone, phoneKindOn: phoneKindOn,
     mount: mount
   };
 

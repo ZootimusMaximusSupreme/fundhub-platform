@@ -1,5 +1,15 @@
 // GET  /api/money/strategy[?client_id=<uuid>]
 // POST /api/money/strategy  { action: "save_plan", method, monthly_cents, goal?, client_id? }
+// POST /api/money/strategy  { action: "cancel_bill", bill_id, client_id? }
+// POST /api/money/strategy  { action: "set_cancel_link", bill_id, url, client_id }   (staff only)
+//
+// "Cancel it for me" (Finance OS wave 4, unit CANCEL): GET also carries
+// bill_cancel — every repeat bill with where its cancel ask stands (Requested /
+// Working / Cancelled, read from the Fundhub team task the press opened) and
+// the merchant's own cancel link when a team member saved one
+// (src/banking/bill-cancel.mjs). cancel_bill opens that team task; it cancels
+// nothing itself and calls no merchant. set_cancel_link is a team member saving
+// the merchant's own cancel page they used.
 //
 // The FinanceOS Strategy section (/app/money-strategy.html): how to pay the
 // cards and loans down — highest rate first, card use first, or smallest
@@ -29,6 +39,7 @@ import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs
 import { ROLE_SETS, requireRole, isUuid, CLIENT_DATA_ERRORS } from "../../src/http/read-api.mjs";
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { strategyPayload, savePlan, readSettings } from "../../src/finance/payment-strategy.mjs";
+import { readBillCancel, requestBillCancel, setCancelLink } from "../../src/banking/bill-cancel.mjs";
 import { CashflowInputError } from "../../src/banking/cashflow.mjs";
 import { readBody } from "../banking/sync-accounts.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
@@ -67,6 +78,9 @@ export default async function handler(req, res, deps = {}) {
   const env = deps.env || process.env;
   const load = deps.strategyPayload || strategyPayload;
   const save = deps.savePlan || savePlan;
+  const readCancel = deps.readBillCancel || readBillCancel;
+  const askCancel = deps.requestBillCancel || requestBillCancel;
+  const saveLink = deps.setCancelLink || setCancelLink;
 
   const method = req.method || "GET";
   if (method !== "GET" && method !== "POST") {
@@ -89,7 +103,35 @@ export default async function handler(req, res, deps = {}) {
     if (method === "GET") {
       const payload = await load(database, { orgId, clientId, env, asOf: now });
       if (!payload) return res.status(404).json({ ok: false, error: "not_found" });
-      return res.status(200).json(payload);
+      /* The repeat bills block reads on its own; a failed read is
+         { ok: false } inside it and the rest of the plan still answers. */
+      let billCancel;
+      try { billCancel = await readCancel(database, { orgId, clientId, viewer: who.kind }); }
+      catch { billCancel = { ok: false, reason: "read_failed" }; }
+      return res.status(200).json({ ...payload, bill_cancel: billCancel });
+    }
+
+    if (body.action === "cancel_bill" || body.action === "set_cancel_link") {
+      const billId = typeof body.bill_id === "string" ? body.bill_id.trim() : "";
+      if (!isUuid(billId)) return res.status(400).json({ ok: false, error: "bad_bill_id", message: "Pick a bill from the list." });
+      let r;
+      if (body.action === "cancel_bill") {
+        r = await askCancel(database, { orgId, clientId, billId, actor: who.kind, staffId: who.staffId, now });
+      } else {
+        /* A team member saves the merchant's own cancel page. A client never does. */
+        if (who.kind !== "staff") return res.status(403).json({ ok: false, error: "staff_only", message: "Only the Fundhub team can save a cancel link." });
+        r = await saveLink(database, { orgId, clientId, billId, url: body.url, staffId: who.staffId });
+      }
+      if (!r || !r.ok) {
+        const error = (r && r.error) || "not_saved";
+        const status = error === "bill_not_found" ? 404 : error === "bad_url" || error === "bad_bill_id" ? 400 : 500;
+        const message = error === "bill_not_found" ? "That bill is not on your file anymore. Reload the page."
+          : error === "bad_url" ? "Use the full link. It starts with https://"
+            : "That did not save. Try again in a moment.";
+        return res.status(status).json({ ok: false, error, message });
+      }
+      const { ok, ...rest } = r;
+      return res.status(200).json({ ok: true, action: body.action, ...rest });
     }
 
     if (body.action !== "save_plan") return res.status(400).json({ ok: false, error: "unknown_action" });

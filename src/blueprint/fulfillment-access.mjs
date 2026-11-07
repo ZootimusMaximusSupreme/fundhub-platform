@@ -12,7 +12,8 @@ export async function getBlueprintFulfillmentAccess(db, { orgId, clientId, now =
             g.funding_round_id AS "roundId", g.opens_at AS "opensAt",g.submissions_closed_at AS "submissionsClosed", g.status, g.execution_owner AS "executionOwner",
             g.source_transaction_id AS "transactionId", g.source_entitlement_id AS "entitlementId",
             p.code AS "productCode", sp.sale_id AS "saleId",fr.status AS "roundStatus",
-            fr.approved_amount AS "roundApprovedAmount",fr.funded_amount AS "roundFundedAmount"
+            fr.approved_amount AS "roundApprovedAmount",fr.funded_amount AS "roundFundedAmount",
+            fr.round_number AS "roundNumber"
        FROM blueprint_fulfillment_engagements g
        JOIN entitlements e ON e.id=g.source_entitlement_id AND e.org_id=g.org_id AND e.client_id=g.client_id
        JOIN transactions t ON t.id=g.source_transaction_id AND t.id=e.source_transaction_id

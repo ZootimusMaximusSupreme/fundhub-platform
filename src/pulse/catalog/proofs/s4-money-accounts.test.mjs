@@ -78,7 +78,13 @@ test("the forms post the exact request and the section repaints from the answer"
       },
     });
     await page.waitForSelector("#add-business");
-    assert.deepEqual(reads, [`?client_id=${CLIENT_ID}`]);
+    // In the frame the Accounts tab also holds the What you have card (money-tradelines.js), which
+    // reads its own view at the same time. The standalone page has only the Accounts read.
+    const expectedReads = target.entry === "frame"
+      ? [`?client_id=${CLIENT_ID}`, `?view=tradelines&client_id=${CLIENT_ID}`]
+      : [`?client_id=${CLIENT_ID}`];
+    await waitFor(() => reads.length >= expectedReads.length);
+    assert.deepEqual([...reads].sort(), [...expectedReads].sort());
 
     // `rows.business` and `rows.save` are one listed row on the frame, so the frame claims it after both forms pass.
     const addBusiness = async () => {

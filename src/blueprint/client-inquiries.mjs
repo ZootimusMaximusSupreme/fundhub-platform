@@ -5,6 +5,8 @@ import { launchBureauCallForCase } from "../inquiry-ops/bureau-call.mjs";
 import { addBusinessDays } from "../inquiry-ops/business-days.mjs";
 import { verifiedIdentity } from "../identity/verified.mjs";
 import { captureInquiryBaseline, genuineInquiryReport, verifyClientInquiryRemovals, reviewInquiryEvidence } from "../inquiry-ops/verify-removal.mjs";
+import { bureauDialPlan } from "../inquiry-ops/bureau-dial-plan.mjs";
+import { inquiryCall } from "./fulfillment-cycle.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const INQUIRY_PORTALS = Object.freeze({
@@ -15,6 +17,8 @@ export const INQUIRY_PORTALS = Object.freeze({
 export const INQUIRY_DOCUMENT_UPLOAD_PORTALS = Object.freeze({
   EX: "https://www.experian.com/consumer/upload/"
 });
+
+const UPLOAD_LABELS = Object.freeze({ id_document: "Government photo ID", proof_of_address: "Proof of address", ssn_card: "SSN card" });
 
 export class ClientInquiryError extends Error {
   constructor(code, message, status = 400) { super(message); this.code = code; this.status = status; }
@@ -127,6 +131,8 @@ export async function readClientInquiries(db, scope, deps = {}) {
           OR subtype IN ('funding_inquiry_removal','funding_personal_info','inquiry_submission_receipt'))
       ORDER BY generated_at DESC LIMIT 100`, [scope.orgId, scope.clientId]
   )).rows;
+  let dial = [];
+  try { dial = (deps.bureauDialPlan || bureauDialPlan)(); } catch { dial = []; }
   const result = [];
   for (const row of cases) {
     const evidence = await evidenceRow(db, scope, row.id);
@@ -137,10 +143,14 @@ export async function readClientInquiries(db, scope, deps = {}) {
     const clientCanAct = isActive && executionOwner === "client" && !completed;
     const callState = evidence?.call_state || "idle";
     const canLaunch = clientCanAct && packet.complete === true && identityReviewed && ["idle", "failed"].includes(callState);
+    const items = inquiries.map(item => ({ id: item.id, name: item.inquiry_name || item.inquiry,
+      state: item.removal_verified_at && (item.removal_verified_report_id || item.removal_verified_document_id)
+        ? "removed_verified" : evidence?.submitted_at ? "pending_verification" : "open",
+      verifiedAt: item.removal_verified_at || null, sourceReportId: item.removal_verified_report_id || null }));
     result.push({ id: row.id, bureau: row.selected_bureaus_raw, status: row.case_status, executionOwner,
       packet: { complete: packet.complete === true, identityReviewed, missing: packet.missing || [],
         uploads: (packet.missing || []).filter(kind => kind !== "authorization").map(subtype => ({
-          label: ({ id_document: "Government photo ID", proof_of_address: "Proof of address", ssn_card: "SSN card" })[subtype] || subtype,
+          label: UPLOAD_LABELS[subtype] || subtype,
           kind: "client_upload", subtype
         })) },
       portalUrl: INQUIRY_PORTALS[row.selected_bureaus_raw] || null,
@@ -148,10 +158,13 @@ export async function readClientInquiries(db, scope, deps = {}) {
       submittedAt: evidence?.submitted_at || null, submissionReference: evidence?.submission_reference || null,
       receiptDocumentId: evidence?.receipt_document_id || null, nextCheckAt: evidence?.next_check_at || null,
       call: { status: callState, callId: evidence?.call_id || null, canLaunch },
-      inquiries: inquiries.map(item => ({ id: item.id, name: item.inquiry_name || item.inquiry,
-        state: item.removal_verified_at && (item.removal_verified_report_id || item.removal_verified_document_id)
-          ? "removed_verified" : evidence?.submitted_at ? "pending_verification" : "open",
-        verifiedAt: item.removal_verified_at || null, sourceReportId: item.removal_verified_report_id || null })),
+      inquiries: items,
+      /* The fulfillment cycle: "Call <bureau>" yourself, with a short script and the
+         number the Fundhub caller dials. Only while the client runs this case. */
+      selfCall: clientCanAct ? inquiryCall({ bureau: row.selected_bureaus_raw, inquiries: items,
+        missing: (packet.missing || []).filter(kind => kind !== "authorization")
+          .map(subtype => UPLOAD_LABELS[subtype] || subtype),
+        name: identity?.legalName || null, dial }) : null,
       documents,
       actions: { canRecordSubmission: clientCanAct && !evidence?.submitted_at,
         canLaunchCall: canLaunch, canCheckSavedEvidence: isActive && Boolean(evidence) } });

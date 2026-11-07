@@ -115,7 +115,8 @@ export const SHIFTS = Object.freeze({
       "text-path",
       "upload-door",
       "vendor-keys",
-      "whop-billing"
+      "whop-billing",
+      "whop-plans"
     ])
   }),
   "pulse-hourly-d": Object.freeze({

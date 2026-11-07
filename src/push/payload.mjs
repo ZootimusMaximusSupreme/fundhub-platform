@@ -93,7 +93,21 @@ export const APPROVED_BODIES = Object.freeze({
   check_in:         "Time for your check-in. Open Fundhub.",
   call_confirmation: "Please confirm your upcoming call in FundHub.",
   update:           "There is an update on your file. Open FundHub.",
-  test:             "Test notification from FundHub."
+  test:             "Test notification from FundHub.",
+  /* Finance OS phone alerts (src/push/finance-alerts.mjs, owner-set 2026-11-06).
+     "Soon" and never a day count: the alert can land on the day itself, and a
+     digit is refused on a lock screen anyway. No card, bank or amount. */
+  card_payment_due:     "A card payment is due soon. Open Fundhub to see it.",
+  card_statement_close: "A card statement closes soon. Open Fundhub to see when to pay.",
+  bill_charge_soon:     "An important bill charges soon. Open Fundhub to see it.",
+  /* D2 (owner-set 2026-11-07): every payment, not only cards. */
+  loan_payment_due:        "A loan payment is due soon. Open Fundhub to see it.",
+  credit_line_payment_due: "A credit line payment is due soon. Open Fundhub to see it.",
+  plan_payment_due:        "A payment on your plan is due soon. Open Fundhub to see it.",
+  /* AL2 (owner ask 2026-11-07): alerts and repeat bills the client adds by hand.
+     Never the name they typed: it could hold anything. */
+  custom_reminder_due: "An alert you set is due soon. Open Fundhub to see it.",
+  custom_bill_soon:    "A bill you added charges soon. Open Fundhub to see it."
 });
 
 export const APPROVED_BODY_KEYS = Object.freeze(Object.keys(APPROVED_BODIES));
@@ -103,7 +117,10 @@ const APPROVED_BODY_TEXT = Object.freeze(Object.values(APPROVED_BODIES));
     A kind is always also a body key; the extra keys above exist so a kind can
     have a second approved wording without a second kind. */
 export const PUSH_KINDS = Object.freeze([
-  "payment_due", "statement_close", "document_needed", "check_in", "call_confirmation", "update", "test"
+  "payment_due", "statement_close", "document_needed", "check_in", "call_confirmation", "update", "test",
+  "card_payment_due", "card_statement_close", "bill_charge_soon",
+  "loan_payment_due", "credit_line_payment_due", "plan_payment_due",
+  "custom_reminder_due", "custom_bill_soon"
 ]);
 
 /** kind → its default body. A subset of APPROVED_BODIES, kept under the old
@@ -130,8 +147,12 @@ const LESSON_SLUGS = [
   "the-money-talk", "tried-before", "blueprint-value", "blueprint-in-action",
   "your-data-is-safe"
 ];
+/** A finance phone alert opens Finance OS at its Alerts section. */
+export const FINANCE_ALERTS_URL = "/app/financeos.html#alerts";
+/** A payment-plan alert opens Finance OS at Payments, where the plan and its schedule are. */
+export const FINANCE_PAYMENTS_URL = "/app/financeos.html#payments";
 export const APPROVED_URLS = Object.freeze([
-  DEFAULT_URL, ...LESSON_SLUGS.map((slug) => `/slideshows/${slug}.html`)
+  DEFAULT_URL, ...LESSON_SLUGS.map((slug) => `/slideshows/${slug}.html`), FINANCE_ALERTS_URL, FINANCE_PAYMENTS_URL
 ]);
 
 // Staff work alerts use a separate fixed vocabulary. A client ID travels only
@@ -311,5 +332,7 @@ export default {
   GENERIC_BODIES,
   PUSH_KINDS,
   TITLE,
-  DEFAULT_URL
+  DEFAULT_URL,
+  FINANCE_ALERTS_URL,
+  FINANCE_PAYMENTS_URL
 };

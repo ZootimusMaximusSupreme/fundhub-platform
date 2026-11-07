@@ -17,6 +17,10 @@ const prep=page=>page.locator('#blueprint-plan');
 const banner=page=>page.locator('#blueprint-demo-banner');
 const journey=page=>page.locator('[data-blueprint-journey]:visible');
 const sampleFile=name=>({name,mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\n'+FILE_BODY+'\n%%EOF')});
+/* The full credit report button for one soft pull (public/app/blueprint-cycle.js). */
+const pullLabel=at=>'Open the full credit report from '+new Date(at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+/* Whole dollars, rounded down, the way the application guide shows money. */
+const wholeDollars=cents=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.floor(cents/100));
 
 async function open(page,context,{existing=false,offer='implementation',scenario=null}={}){
   const seen={api:[],external:[],errors:[]};trackers.set(page,seen);
@@ -173,6 +177,23 @@ async function financeTab(page,key){
   await expect(panel).not.toContainText(/Loading[^\n]*(?:…|\.{3})/i);
   await expect(panel).not.toContainText(/: coming soon|could not load|couldn’t load|unable to load/i);
   return panel;
+}
+/* UI-STANDARDS sections 0, 5 and 11: every visible control the sample data
+   shows is at least 44px tall. Measures the real hit area (a checkbox or radio
+   by its label) inside one FinanceOS section: how many were measured, and
+   every one that is shorter. */
+async function smallTargets(page,key){
+  return page.evaluate(key=>{
+    const panel=document.getElementById('fos-'+key),out=[];let checked=0;
+    const sel='button,a[href],select,input:not([type=hidden]),textarea,summary,[role=button],[role=switch],[role=tab],[tabindex]:not([tabindex="-1"])';
+    for(const el of panel.querySelectorAll(sel)){
+      const target=(el.matches('input[type=checkbox],input[type=radio]')&&el.closest('label'))||el,box=target.getBoundingClientRect();
+      if(!box.width||!box.height||getComputedStyle(target).visibility==='hidden'||target.closest('[hidden]'))continue;
+      checked++;
+      if(box.height<44)out.push(el.tagName.toLowerCase()+' "'+(el.innerText||el.value||el.getAttribute('aria-label')||'').trim().slice(0,40)+'" '+Math.round(box.width)+'x'+Math.round(box.height));
+    }
+    return {checked,small:out};
+  },key);
 }
 
 test.afterEach(async({page},info)=>{
@@ -522,12 +543,14 @@ for(const width of [1440,390])test.describe(`Full Blueprint demo ${width}px`,()=
     expect(before.opportunity.combined.status).toBe('overlap_review_required');
     expect(before.opportunity.steps.filter(s=>['formation','ein','business_credit','bank_preparation'].includes(s.key)).every(s=>s.liftCents===null)).toBe(true);
     const readiness=journey(page).locator('.bj-readiness');
-    await expect(readiness).toContainText(/checklist/i);await expect(journey(page)).toContainText(/not.*approval|not.*guarantee/i);
+    await expect(readiness).toContainText(/checklist/i);
+    // Short client words (owner rule 2026-11-07): the amounts are labelled as estimates; no approval disclaimer.
+    await expect(journey(page).locator('.bj-funding .bj-label').first()).toHaveText('Estimate');await expect(journey(page)).not.toContainText(/Estimates are not approvals/i);
     await expect(journey(page).locator('.bj-fundability-state')).toHaveText('Preparing your credit file');
     const blockers=journey(page).getByRole('list',{name:'Remaining fundability checks',exact:true});
     await expect(blockers).toContainText('State filing proof needed');await expect(blockers).toContainText('EIN proof needed');
     await expect(blockers).toContainText('Matching business report needed');
-    await preview(page,context,()=>journey(page).getByRole('button',{name:'Open full credit report',exact:true}).click(),'document',async popup=>{
+    await preview(page,context,()=>journey(page).getByRole('button',{name:pullLabel(before.creditContext.asOf),exact:true}).click(),'document',async popup=>{
       await expect(popup.locator('body')).toContainText(before.creditContext.reportId);
       for(const panel of progress.scores.personal)await expect(popup.locator('body')).toContainText(String(panel.score));
       await expect(popup.locator('body')).toContainText(/Full sample credit report/i);
@@ -692,7 +715,8 @@ for(const width of [1440,390])test.describe(`Full Blueprint demo ${width}px`,()=
       expect(data.opportunity).toEqual(plan.opportunity);
       await expect(capacity).toContainText((plan.opportunity.personal.currentCents/100).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}));
       for(const business of plan.businessPlans.businesses)await expect(capacity).toContainText(business.name);
-      await expect(capacity).toContainText(/not an approval|not a bank.s yes/i);
+      /* Short client words (owner rule 2026-11-07, QA17): no wall of Unknown, no disclaimer. */
+      await expect(capacity).not.toContainText(/Unknown|not a bank approval|not a bank.s yes|not a lift per card|issued funding/i);
       const accounts=await financeTab(page,'accounts');
       for(const business of plan.businessPlans.businesses)await expect(accounts).toContainText(business.name);
       const overview=await read(page,'/api/money/overview');
@@ -721,6 +745,157 @@ for(const width of [1440,390])test.describe(`Full Blueprint demo ${width}px`,()=
       expect((await read(page,'/api/blueprint/plan')).opportunity).toEqual(plan.opportunity);
       if(offer==='preparation')await expect(full(page)).toBeHidden();
     }
+  });
+
+  test('DEMO18 every FinanceOS section shows the sample money year, every control is 44px tall, and nothing reaches /api',async({page,context})=>{
+    test.setTimeout(150000);
+    // A pre-existing bearer token and session cookie are present: the demo must still never call /api.
+    await open(page,context,{existing:true});
+    const usd=cents=>(cents/100).toLocaleString('en-US',{style:'currency',currency:'USD'});
+    let measured=0;
+    for(const scenario of ['optimize','ready']){
+      await stage(page,scenario);
+      const destination=page.locator('a[href*="/app/financeos.html"]:visible').first();
+      await destination.click();expect(new URL(page.url()).pathname).toBe('/app/financeos.html');
+      const overview=await read(page,'/api/money/overview'),credit=await read(page,'/api/money/credit'),capacity=await read(page,'/api/money/fundability');
+      // The engine's pinned numbers, as the sample reads hand them to the real renderers.
+      const day=scenario==='ready'?'2026-11-06':'2026-10-06';
+      expect(overview.as_of.slice(0,10)).toBe(day);expect(overview.sandbox).toBe(false);
+      expect(overview.debt.cards.map(c=>c.balance_cents)).toEqual(scenario==='ready'?[40000,25000]:[240000,85000]);
+      expect(credit.utilization.percent).toBe(scenario==='ready'?5:25);
+      expect(credit.inquiries.total).toBe(scenario==='ready'?0:3);
+      expect([credit.personal.transunion.score,credit.personal.experian.score,credit.personal.equifax.score]).toEqual(scenario==='ready'?[715,712,718]:[665,662,668]);
+      expect(capacity.opportunity.personal.currentCents).toBe(scenario==='ready'?10400000:9360000);
+      const trends=await read(page,'/api/money/trends?range=12m');
+      expect(trends.daily.days).toHaveLength(365);expect(trends.daily.days.at(-1)).toBe(day);
+      expect(trends.daily.cash.personal.cents.filter(v=>v!==null).length).toBe(scenario==='ready'?365:334);
+      expect(trends.daily.cards_used_pct.at(-1)).toBe(scenario==='ready'?5:25);
+      const sections={
+        overview:[usd(overview.cash.personal.cents),usd(overview.debt.total_cents),credit.utilization.percent+'%'],
+        accounts:['Sample Everyday Checking','Sample High-Yield Savings','Sample Card A','Sample Auto Loan','Cedar Grove LLC'],
+        payments:['You do not owe Fundhub anything right now','Sample Card A','Sample Auto Loan'],
+        transfers:['Money moves are off','Sample Card'],
+        alerts:['Sample Card A ending 1144','Sample Card B ending 7302'],
+        next:['Do not open new credit'],
+        credit:[String(credit.personal.experian.score),String(credit.personal.equifax.score),String(credit.personal.transunion.score),'Sample Auto Loan'],
+        fundability:[usd(capacity.opportunity.personal.currentCents).replace('.00','')],
+        strategy:['Sample Auto Loan','21.99%','26.99%'],
+        banks:['Chase','Bank of America','$5,000',scenario==='ready'?'You have 0 inquiries now':'You have 3 inquiries now'],
+        declines:['Sample Neighborhood Bank'],
+        helper:['Start a conversation'],
+        plan:['Pay Sample Card A','Pay Sample Auto Loan'],
+        vault:['No papers on your list yet'],
+        connections:['No processor connected yet'],
+        setup:['4 of 4 steps done']
+      };
+      for(const [key,words] of Object.entries(sections)){
+        const panel=await financeTab(page,key);await noOverflow(page);
+        for(const text of words)await expect(panel,`${scenario} ${key} shows ${text}`).toContainText(text);
+        if(key==='overview'){
+          const open=panel.locator('summary',{hasText:'Trends & cashflow'});await open.click();
+          await expect(panel.locator('.trends svg').first(),'The trend lines draw the sample year').toBeVisible();
+          await expect(panel).not.toContainText('No history yet');
+        }
+        if(key==='credit'&&scenario==='ready')await expect(panel.locator('svg.chart'),'Two saved pulls draw the score line').toBeVisible();
+        const targets=await smallTargets(page,key);measured+=targets.checked;
+        expect(targets.small,`${scenario} ${key}: every visible control is at least 44px tall`).toEqual([]);
+      }
+      await page.locator('.client-ios-nav').getByRole('link',{name:'Home',exact:true}).click();await expect(journey(page)).toBeVisible();
+    }
+    expect(measured,'The 44px check measured the sections\' real controls').toBeGreaterThan(40);
+  });
+
+  test('DEMO19 the client fulfillment cycle runs on the sample: full reports, letter steps, the bureau call, the guide and the CSM stop',async({page,context})=>{
+    test.setTimeout(90000);
+    await open(page,context,{scenario:'optimize'});
+    // Every soft pull so far has its own full credit report.
+    const plan=await read(page,'/api/blueprint/plan');
+    expect(plan.cycle.fullReports.map(r=>[r.version,r.newest])).toEqual([[1,true]]);
+    const credit=journey(page).locator('.bj-credit');
+    await expect(credit.getByText('Full credit reports',{exact:true})).toBeVisible();
+    await expect(credit.getByRole('button',{name:/^Open the full credit report from /})).toHaveCount(1);
+    await preview(page,context,()=>credit.getByRole('button',{name:pullLabel(plan.cycle.fullReports[0].pulledAt),exact:true}).click(),'document',async popup=>{
+      await expect(popup.locator('body')).toContainText(plan.creditContext.reportId);
+    });
+    // Letters: the exact bureau address, approve, print, then check the address.
+    const app=await preparation(page);await app.getByRole('button',{name:'Letters and responses',exact:true}).click();
+    const letter=(await read(page,'/api/blueprint/letter-mailing')).letters[0];
+    const steps=app.locator('.bc-letter[data-bc-letter="'+letter.documentId+'"]');
+    for(const line of letter.to.lines)await expect(steps).toContainText(line);
+    await expect(steps.getByRole('button',{name:'The address is right',exact:true})).toHaveCount(0);
+    await steps.getByRole('button',{name:'Approve letter',exact:true}).click();
+    await expect(steps).toContainText('✓ Approved');
+    await preview(page,context,()=>steps.getByRole('button',{name:'Open and print',exact:true}).click(),'document');
+    await steps.getByRole('button',{name:'The address is right',exact:true}).click();
+    await expect(steps).toContainText('✓ Address checked');
+    expect((await read(page,'/api/blueprint/letter-mailing')).letters[0].approval.addressCheckedAt).toBeTruthy();
+    await noOverflow(page);
+    await page.reload();
+    const again=await preparation(page);await again.getByRole('button',{name:'Letters and responses',exact:true}).click();
+    await expect(again.locator('.bc-letter[data-bc-letter="'+letter.documentId+'"]'),'The approval and the address check are kept').toContainText('✓ Address checked');
+    // Inquiry removal: call the bureau with the number the Fundhub caller dials.
+    await tab(page,'Inquiry removal');
+    const call=full(page).locator('.bc-call');
+    await expect(call).toContainText('Call Experian');
+    await expect(call.getByRole('link',{name:'(855) 414-6048',exact:true})).toHaveAttribute('href','tel:+18554146048');
+    await expect(call).toContainText('Please check: Sample Community Bank inquiry.');
+    await expect(call).not.toContainText(/fraud/i);
+    await noOverflow(page);
+    // Ready: both pulls, the application guide, and no call once the inquiries are removed.
+    await stage(page,'ready');await tab(page,'Today');
+    await expect(journey(page).locator('.bj-credit').getByRole('button',{name:/^Open the full credit report from /})).toHaveCount(2);
+    await tab(page,'Applications');
+    const funding=await read(page,'/api/blueprint/funding');
+    const income=Object.fromEntries(funding.guide.rows.map(r=>[r.key,r]));
+    const guide=full(page).locator('.bc-guide');
+    await expect(guide).toContainText('Your application guide');
+    await expect(guide).toContainText(wholeDollars(income.personal.yearlyCents)+' a year');await expect(guide).toContainText('From your plan');
+    await expect(guide).toContainText(wholeDollars(income.household.yearlyCents)+' a year');await expect(guide).toContainText('From your bank deposits');
+    await expect(guide).toContainText('Business income');await expect(guide).toContainText('Not on file');
+    await noOverflow(page);
+    await tab(page,'Inquiry removal');await expect(full(page).locator('.bc-call')).toHaveCount(0);
+    // A preparation buyer who is fundable stops at "Book a call with your CSM".
+    await selectOffer(page,'preparation');await stage(page,'ready');
+    const next=journey(page).locator('.bj-next');
+    await expect(next).toContainText('You are fundable. Book a call with your CSM.');
+    await preview(page,context,()=>next.getByRole('button',{name:'Book a call',exact:true}).click(),'document',async popup=>{
+      await expect(popup.locator('body')).toContainText('Sample booking page');
+    });
+    await expect(next).toContainText('Your CSM will reach out.');
+    expect((await read(page,'/api/money/ready-to-fund')).status).toBe('requested');
+    await noOverflow(page);
+  });
+
+  test('DEMO20 FinanceOS Alerts shows the organized board, and an alert the client adds lands on it and survives a reload',async({page,context})=>{
+    test.setTimeout(90000);
+    await open(page,context,{scenario:'optimize'});
+    await page.locator('a[href*="/app/financeos.html"]:visible').first().click();expect(new URL(page.url()).pathname).toBe('/app/financeos.html');
+    const before=await read(page,'/api/money/alerts');
+    /* The section list draws after the page loads: wait for it (or the phone-width menu button). */
+    const sections=()=>expect(page.locator('#tab-alerts:visible, #fos-nav-toggle:visible').first()).toBeVisible({timeout:15000});
+    await sections();
+    let panel=await financeTab(page,'alerts');
+    expect(before.board.scopes.map(s=>s.name)).toEqual(['Personal','Cedar Grove LLC','Juniper Services LLC','Willow Studio LLC']);
+    const scopes=panel.locator('[data-act="scope"]');
+    await expect(scopes).toHaveText(before.board.scopes.map(s=>s.name));
+    await expect(panel.locator('#fa-pay')).toContainText('Sample Card A ending 1144');
+    await expect(panel.locator('#fa-bills')).toContainText('Adobe Creative Cloud');
+    await expect(panel.locator('#fa-smart')).toContainText('Charged twice');
+    await panel.locator('[data-act="add"][data-kind="alert"]').click();
+    await panel.locator('#fa-cf-name').fill('Move money to savings');
+    await panel.locator('#fa-cf-day').selectOption('14');
+    await panel.locator('[data-act="save-custom"]').click();
+    await expect(panel.locator('#fa-pay')).toContainText('Move money to savings');
+    const added=await read(page,'/api/money/alerts');
+    expect(added.custom.map(c=>[c.name,c.kind,c.cadence,c.day_of_month,c.scope,c.next_on])).toEqual([['Move money to savings','alert','monthly',14,'personal','2026-10-14']]);
+    expect(added.board.scopes[0].payments.some(p=>p.item_id===added.custom[0].id)).toBe(true);
+    await noOverflow(page);
+    const targets=await smallTargets(page,'alerts');expect(targets.small,'every visible Alerts control is at least 44px tall').toEqual([]);
+    await page.reload();
+    expect((await read(page,'/api/money/alerts')).custom.map(c=>c.name)).toEqual(['Move money to savings']);
+    await sections();
+    panel=await financeTab(page,'alerts');
+    await expect(panel.locator('#fa-pay')).toContainText('Move money to savings');
   });
 
 });

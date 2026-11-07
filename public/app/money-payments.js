@@ -21,7 +21,10 @@
   var READ_PATH = "/api/money/payments";
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var KIND_LABEL = { clarity: "Clarity Payment", bnpl: "Buy now, pay later", other: "Other balance" };
-  var UPCOMING_LABEL = { clarity: "Payment to Fundhub", card_due: "Card payment", bill: "Bill" };
+  var UPCOMING_LABEL = { clarity: "Payment to Fundhub", whop: "Whop payment", card_due: "Card payment", bill: "Bill" };
+  /* Whop plans and the provider logos (unit W): public/app/money-whop-plans.js. A page
+     that does not load it paints neither, and nothing else changes. */
+  function whop() { return root.FHWhopPlans || null; }
   var HELD_WORDS = {
     opted_out: "you asked us not to text you",
     escalation_on_file: "a person on our team is handling your file",
@@ -120,7 +123,7 @@
     });
     var owe = '<section class="card tile" aria-labelledby="t-owe"><h2 class="eyebrow" id="t-owe">You owe Fundhub</h2>' +
       '<span class="big">' + esc(money(o.left_cents)) + '</span>' +
-      '<p class="caption">' + esc(plural(o.open_count || 0, "open plan", "open plans")) + '</p></section>';
+      '<p class="caption">' + esc(plural(o.open_count || 0, "open plan", "open plans") + (whop() ? whop().owedNote(d) : "")) + '</p></section>';
     var late = '<section class="card tile" aria-labelledby="t-late"><h2 class="eyebrow" id="t-late">Late now</h2>' +
       '<span class="big">' + esc(money(o.late_cents || 0)) + '</span>' +
       '<p class="caption">' + (o.late_count ? lateBadge(maxLate(plans)) + ' ' + esc(plural(o.late_count, "plan", "plans")) : "Nothing late. Nice work.") + '</p></section>';
@@ -144,7 +147,38 @@
     return "Coming up";
   }
 
-  function renderPlan(p, staff) {
+  /* The phone alert for a plan's next payment (unit D2, owner-set 2026-11-07):
+     d.phone from GET /api/money/payments. The phone itself only ever shows "A
+     payment on your plan is due soon" — no amount, no lender (src/push/payload.mjs).
+     No phone block (an older server, or the read failed): nothing is claimed. */
+  var ALERTS_HREF = "/app/financeos.html#alerts";
+  var PHONE_SETUP_HREF = "/app/client-portal.html#push-card";
+  function phoneLine(d, p, staff) {
+    var ph = d && d.phone;
+    var v = ph && ph.plans ? ph.plans[p.id] : null;
+    if (!ph || !v || p.status !== "open") return "";
+    var who = staff ? "This client" : "You";
+    var text;
+    var link = "";
+    /* The words follow the "Phone alert" label, so they never start with it again. */
+    if (ph.opted_out) text = who + " replied STOP, so no phone alert goes.";
+    else if (ph.enabled === false) {
+      text = "Off.";
+      if (!staff) link = ' <a class="btn-text" href="' + esc(ALERTS_HREF) + '">Turn them on</a>';
+    } else if (ph.has_phone === false) {
+      text = staff ? "This client has not set up a phone for alerts yet." : "Set up your phone to get a buzz before each payment.";
+      if (!staff) link = ' <a class="btn-text" href="' + esc(PHONE_SETUP_HREF) + '">Set up my phone</a>';
+    } else if (v.reason === "late") text = "This payment is past due, so no “due soon” phone alert goes.";
+    else if (v.sent === "sent") text = "Sent for " + day(v.due_on, true) + ".";
+    else if (v.alert_on) {
+      // Inside the window the alert goes today, whatever the days left: say only that.
+      text = String(v.alert_on) <= String(d.as_of || "").slice(0, 10) ? "Goes today."
+        : "Goes " + day(v.alert_on, true) + ", " + plural(isNum(ph.days_before) ? ph.days_before : 3, "day", "days") + " before it is due.";
+    } else return "";
+    return '<p class="phone-line caption"><span class="eyebrow">Phone alert</span> ' + esc(text) + link + '</p>';
+  }
+
+  function renderPlan(p, staff, d) {
     var rows = list(p.installments).map(function (i) {
       return '<tr' + (i.state === "late" ? ' class="is-late"' : "") + '><td>' + esc(i.seq) + '</td><td>' + esc(day(i.due_on)) + '</td>' +
         '<td class="r num">' + esc(money(i.amount_cents)) + '</td><td class="r num">' + esc(money(i.paid_cents)) + '</td>' +
@@ -157,12 +191,13 @@
       : "—";
     var controls = staff && p.status === "open" ? renderPlanControls(p) : "";
     return '<article class="card plan" data-plan="' + esc(p.id) + '">' +
-      '<div class="plan-head"><div><p class="plan-name">' + esc(cap(p.name)) + '</p>' +
+      '<div class="plan-head"><div>' + (whop() ? whop().providerLogo(p) : "") + '<p class="plan-name">' + esc(cap(p.name)) + '</p>' +
       '<p class="caption">' + esc(KIND_LABEL[p.kind] || "Balance") + ' · owed to ' + esc(p.owed_to) + '</p></div>' +
       '<div>' + status + '</div></div>' +
       '<dl class="facts"><div><dt class="caption">Left to pay</dt><dd class="big">' + esc(money(p.left_cents)) + '</dd></div>' +
       '<div><dt class="caption">Paid so far</dt><dd class="num">' + esc(money(p.paid_cents)) + ' of ' + esc(money(p.original_cents)) + '</dd></div>' +
       '<div><dt class="caption">Next payment</dt><dd class="num">' + next + '</dd></div></dl>' +
+      phoneLine(d, p, staff) +
       bar(p.paid_cents, p.original_cents) +
       '<div class="scroll-x" tabindex="0" role="region" aria-label="Payment schedule for ' + esc(cap(p.name)) + '. Scroll horizontally for all columns."><table><caption class="caption">Payment schedule</caption><thead><tr><th>#</th><th>Due</th><th class="r">Amount</th><th class="r">Paid</th><th>Status</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div>' + controls + '</article>';
@@ -179,12 +214,16 @@
 
   function renderOwed(d, staff) {
     var plans = list(d && d.plans);
+    // The client's Whop plans sit under the Clarity plans. With Whop plans (or a Whop read
+    // that failed) on the screen, the "nothing owed" card would not be true, so it waits.
+    var whopPart = whop() ? whop().renderSection(d, { staff: staff }) : "";
     var body = plans.length
-      ? '<div class="plans">' + plans.map(function (p) { return renderPlan(p, staff); }).join("") + '</div>'
+      ? '<div class="plans">' + plans.map(function (p) { return renderPlan(p, staff, d); }).join("") + '</div>'
+      : whopPart ? ""
       : '<section class="card empty"><h2>You do not owe Fundhub anything right now</h2>' +
         '<p>When you pay Fundhub over time — a Clarity Payment or a buy now, pay later plan — each plan shows up here with its due dates.</p></section>';
     return '<section class="block" aria-labelledby="b-owe"><h2 id="b-owe">What you owe Fundhub</h2>' +
-      '<p class="caption">Each plan, the next payment, and anything late.</p>' + body +
+      '<p class="caption">Each plan, the next payment, and anything late.</p>' + body + whopPart +
       (staff ? renderAddPlan() : "") + '</section>';
   }
 
@@ -205,12 +244,14 @@
     var items = list(d && d.upcoming);
     var body = items.length
       ? '<ul class="rows">' + items.slice(0, 12).map(function (u) {
-        return '<li class="row"><span class="row-main"><span class="row-name">' + esc(cap(u.name)) + '</span>' +
+        /* Pay now / I paid on a card row (unit I6, public/app/pay-now.js). */
+        var pay = root.FinanceOS && root.FinanceOS.payNow ? root.FinanceOS.payNow.slot(u) : "";
+        return '<li class="row' + (pay ? ' has-pay-now' : '') + '"><span class="row-main"><span class="row-name">' + esc(cap(u.name)) + '</span>' +
           '<span class="caption">' + esc(UPCOMING_LABEL[u.type] || "Due") + '</span></span>' +
-          '<span class="row-amt"><span class="num">' + esc(money(u.amount_cents)) + '</span><br><span class="caption">' + esc(day(u.on, true)) + '</span></span></li>';
+          '<span class="row-amt"><span class="num">' + esc(money(u.amount_cents)) + '</span><br><span class="caption">' + esc(day(u.on, true)) + '</span></span>' + pay + '</li>';
       }).join("") + '</ul>'
       : '<p class="caption">Nothing due in the next 30 days.</p>';
-    return '<section class="card" aria-labelledby="b-up"><h2 class="eyebrow" id="b-up">Coming up</h2>' + body + '</section>';
+    return '<section class="card" aria-labelledby="b-up"><h2 class="eyebrow" id="b-up">Payments due</h2>' + body + '</section>';
   }
 
   /* One plain sentence per thing the helper (or a person) did. */
@@ -385,6 +426,8 @@
         if (kind === "signin" && root.location) { root.location.href = signInUrl(); return; }
         if (kind !== "ok") { paint(renderError(kind)); return; }
         paint(render(res.body, { staff: staff }));
+        var pn = root.FinanceOS && root.FinanceOS.payNow;
+        if (pn && el.querySelector && el.querySelector("[data-pay-card]")) pn.enhance(el, { clientId: clientId, apiGet: get, apiPost: send });
       });
     }
 

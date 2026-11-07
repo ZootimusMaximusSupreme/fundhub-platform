@@ -246,3 +246,49 @@ for, records what they say, and mentions what they do not have yet.
 **A CSM may record the two conversation consents and NOT a soft-pull consent.**
 A consent is what unlocks a credit pull, so the role set on this endpoint is
 gated per kind: `role_may_not_capture_this_kind` is the refusal.
+
+---
+
+## Where each client is, and the nudge (traced 2026-11-07)
+
+Owner call, 2026-11-07: CSMs see where each client is without opening the
+whole client dashboard, get a falling-behind list, and nudge — help, or a paid
+consulting call. Traced from `api/read/csm-queue.mjs`,
+`src/csm/client-tracking.mjs`, `public/app/csm-tracking.js` and
+`src/messaging/compose.mjs`.
+
+```mermaid
+flowchart TD
+    A["csm-queue.html<br/>section: Where each client is"] --> B["GET /api/read/csm-queue?view=tracking<br/>owner, admin, csm only"]
+    B --> C["one statement, every source org-scoped:<br/>client_waypoints · clarity_payments · account_statement_cycles<br/>blueprint_bank_relationship_todos · messages"]
+    C --> D{"falling behind?<br/>src/csm/client-tracking.mjs"}
+    D -->|"step blocked<br/>client step 9+ days late (ladder done)<br/>client step 9+ days with no due date<br/>bank says a payment is late<br/>Fundhub plan payment late"| E[Falling-behind list, first]
+    D -->|none of those| F[All clients view only]
+    E --> G["See where they are<br/>GET ?view=tracking&client_id="]
+    F --> G
+    G --> H["step · payments · seasoning day N of 30<br/>apply gate: UnderwriteIQ fundable + no inquiries + an account open 30+ days"]
+    H --> I["Nudge: help text or paid call offer<br/>words signed Chris, editable"]
+    I --> J["POST /api/messages<br/>existing staff reply path, needs a shift"]
+    J --> K["dispatcher: gate, quiet hours, opt-outs"]
+```
+
+* **Same door, second answer.** `?view=tracking` on the queue read. No new
+  route. The plain queue read is unchanged (same statement, same roles).
+* **Falling behind uses the nudge ladder's own clock.** A client-owned step is
+  behind once it is 9 days late — the day `src/nudge/ladder.mjs` hands it to a
+  person — or has sat 9 days with no due date. A late step under 9 days shows
+  "auto reminders still going" and is not on the list, so a CSM does not text on
+  top of the automatic texts. A step only our team can do is never the client
+  falling behind. A blocked step always is.
+* **Unknown stays unknown.** No bank payment data is "not known yet", not 0
+  late. No Fundhub plan is not "0 plan payments late".
+* **The apply gate repeats the owner rule** (owner calls part 3) until unit L4's
+  `src/finance/apply-gate.mjs` lands. The list only runs UnderwriteIQ for a
+  client with a seasoned account, because without one the gate is locked
+  whatever the engine says. `UNVERIFIED`: the swap to L4's gate.
+* **The nudge is not a new send path.** It is the staff reply
+  (`composeAndSend`), so the shift check, the gate, quiet hours and opt-outs all
+  hold, and the message row carries `sender_staff_id`. "Last team text" on each
+  row is read back from those rows. No consulting-call price is stored anywhere
+  in the repo, so the call offer names none; the client is told the price comes
+  next.

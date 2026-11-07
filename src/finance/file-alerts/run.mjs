@@ -5,6 +5,9 @@
 //   2. promo end        a card's promo ends in 60 / 30 / 7 days    -> one text per card per threshold
 //   3. cash cushion     personal or business cash < 6 x minimums   -> one text per drop, re-armed on recovery
 //   4. new credit       a new card or loan, a new inquiry          -> one text + a CSM task for a Blueprint file
+//   5. phone alerts     a card due soon, a statement closing soon, -> one push per card or bill per cycle
+//                       an important bill charging soon, an alert     (queued here; see below)
+//                       or bill the client added by hand
 //
 // IT DOES NOT SEND. sendTemplated writes a `messages` row at status='queued'. The
 // dispatcher (src/messaging/dispatch.mjs) is the only thing that hands it to a
@@ -28,6 +31,14 @@
 //
 // NEVER THROWS FOR THE WHOLE CLIENT. One kind failing is recorded in `errors` and
 // the next kind still runs.
+//
+// PHONE ALERTS ARE QUEUED, NOT SENT (unit D, owner-set 2026-11-06). Step 5 writes
+// one `messages` row per owed push (channel 'push', status 'queued') through
+// queuePhoneAlert in src/push/finance-alerts.mjs, and the dispatcher delivers it
+// between 9 a.m. and 5 p.m. Arizona. Which card or bill is owed is
+// ./phone-alerts.mjs: the card-due and pay-before-close pushes run the same
+// planners as the texts. A client who switched phone alerts off, said STOP, or
+// has no phone set up for alerts gets no row. The texts above are unchanged.
 
 import { sendTemplated as defaultSend } from "../../workflows/messaging.mjs";
 import { createTask as defaultCreateTask } from "../../lib/create-task.mjs";
@@ -40,6 +51,12 @@ import { planPromoEnd } from "./promo.mjs";
 import { evaluateReserve, planCashReserve, CASH_KINDS } from "./cash-reserve.mjs";
 import { planNewAccounts, diffCreditPulls, planNewPull } from "./new-credit.mjs";
 import { TASK_SOURCE, TASK_ROLE, readPayBeforeCloseDays, DAY_MS } from "./common.mjs";
+import { planPhoneAlerts } from "./phone-alerts.mjs";
+import { listAlertBills as defaultListBills } from "./bills.mjs";
+import { listCustomItems as defaultListCustom } from "./custom.mjs";
+import { phoneState as defaultPhoneState, queuePhoneAlert as defaultQueuePhone } from "../../push/finance-alerts.mjs";
+import { listWhopPlans as defaultListWhop } from "../whop-plans.mjs";
+import { planBundleAlerts as defaultPlanBundle } from "./bundle.mjs";
 
 /** How far back the "already sent" keys are read. Keys carry dates or ids that never
  *  come round again, so anything older cannot collide. */
@@ -60,13 +77,21 @@ export async function runFileAlerts(conn, { orgId, clientId, now = new Date(), e
   const loadPulls = deps.loadLatestPulls || defaultLoadPulls;
   const isOptedOut = deps.isOptedOut || defaultIsOptedOut;
   const isBlueprint = deps.isBlueprint || defaultIsBlueprint;
+  const phone = {
+    state: deps.phone?.state || defaultPhoneState,
+    queue: deps.phone?.queue || defaultQueuePhone,
+    listBills: deps.phone?.listBills || defaultListBills,
+    listCustom: deps.phone?.listCustom || defaultListCustom,
+    listWhop: deps.phone?.listWhop || defaultListWhop
+  };
 
   const nowDate = new Date(now);
   const nowIso = nowDate.toISOString();
   const out = {
     clientId, ok: true, today: nowIso.slice(0, 10),
     sent: [], held: [], notQueued: [], rearmed: [], skipped: [],
-    reserve: {}, errors: []
+    reserve: {}, errors: [],
+    phone: { queued: [], already: [], held: [], skipped: [] }
   };
 
   const snap = await loadSnapshot(conn, { orgId, clientId, asOf: nowDate });
@@ -77,7 +102,7 @@ export async function runFileAlerts(conn, { orgId, clientId, now = new Date(), e
     orgId, clientId, since: new Date(nowDate.getTime() - KEY_HISTORY_DAYS * DAY_MS).toISOString()
   });
   const optedOut = !!(await isOptedOut(conn, clientId, "sms"));
-  out.settings = { payment_timing: settings.payment_timing, promo_end: settings.promo_end, cash_reserve: settings.cash_reserve, new_credit: settings.new_credit };
+  out.settings = { payment_timing: settings.payment_timing, promo_end: settings.promo_end, cash_reserve: settings.cash_reserve, new_credit: settings.new_credit, phone_alerts: settings.phone_alerts !== false };
   out.optedOut = optedOut;
 
   let blueprint = null; // looked up once, and only if a task could be opened
@@ -232,6 +257,53 @@ export async function runFileAlerts(conn, { orgId, clientId, now = new Date(), e
     });
   }
 
+  /* 5. phone alerts — queued for the dispatcher's 9-to-5 window, one per card or bill per cycle */
+  await guarded("phone_alerts", async () => {
+    const held = (reason) => out.phone.held.push({ reason });
+    if (settings.phone_alerts === false) { held("switched_off"); return; }
+    const state = await phone.state(conn, { orgId, clientId });
+    if (state.optedOut) { held("opted_out"); return; }
+    if (!state.hasPhone) { held("no_phone_on_file"); return; }
+    const bills = await phone.listBills(conn, { orgId, clientId });
+    const custom = await phone.listCustom(conn, { orgId, clientId });
+    // The client's open Whop plans (unit W): a charge in 0 to 3 days is owed a push. A
+    // failed read is recorded and costs only the Whop pushes, never the card or bill ones.
+    const whop = await Promise.resolve().then(() => phone.listWhop(conn, { orgId, clientId })).catch((e) => {
+      out.errors.push({ kind: "phone_alerts_whop", error: String((e && e.message) || e).slice(0, 300) });
+      return [];
+    });
+    const subtypes = new Map((snap.overview?.accounts || []).map((a) => [String(a.id), a.subtype ?? null]));
+    const plans = planPhoneAlerts({
+      cards,
+      loans: snap.overview?.debt?.loans || [],
+      cycleOf,
+      subtypeOf: (a) => subtypes.get(String(a.account_id)) ?? null,
+      bills,
+      plans: snap.clarityPlans || [],
+      whop,
+      custom,
+      settings, today: out.today, daysBefore: readPayBeforeCloseDays(env)
+    });
+    out.phone.skipped.push(...plans.skipped);
+    for (const plan of plans.owed) {
+      const q = await phone.queue(conn, { orgId, clientId, plan, now: nowDate });
+      const line = { kind: plan.kind, key: plan.key, label: plan.label, dueOn: plan.dueOn };
+      if (q && q.queued) out.phone.queued.push({ ...line, messageId: q.messageId, rearmed: !!q.rearmed });
+      else out.phone.already.push(line);
+    }
+  });
+
+
+  /* 6-7. the alerts bundle (unit AL): a card over 10% after funding, a business score that changed */
+  await guarded("bundle", async () => {
+    const planBundle = deps.planBundleAlerts || defaultPlanBundle;
+    const bundle = await planBundle(conn, { orgId, clientId, snap, today: out.today, now: nowDate, env, settings }, deps);
+    for (const s of bundle.skipped) skip(s.kind, s.subject, s.reason);
+    for (const plan of bundle.plans) {
+      if (known.has(plan.key)) { skip(plan.kind, plan.label, "already_sent"); continue; }
+      await deliver(plan);
+    }
+  });
   return out;
 }
 

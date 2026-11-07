@@ -10,9 +10,18 @@
 // READ-ONLY and org-scoped. Every clause carries org_id — the CSM sees the
 // clients of their own company and no others.
 
+//
+// ?view=tracking — WHERE EACH CLIENT IS (unit N, owner call 2026-11-07).
+// The same door, a second answer: each client's current step and days on it,
+// late payments, bank seasoning and whether they can apply yet, with the
+// clients falling behind first. ?view=tracking&client_id=<uuid> is one client,
+// with UnderwriteIQ read and the nudge words. Owner, admin and CSM only. Read
+// only — the nudge is sent by the CSM through POST /api/messages. The rules
+// live in src/csm/client-tracking.mjs; this file gates.
+
 import { db } from "../../src/db.mjs";
 import { requireAuth as defaultRequireAuth } from "../../src/http/middleware/requireAuth.mjs";
-import { ROLE_SETS, requireRole, isUuid, page, pageParams } from "../../src/http/read-api.mjs";
+import { ROLE_SETS, requireRole, isUuid, page, pageParams, CLIENT_DATA_ERRORS } from "../../src/http/read-api.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
 import { toCents, fromCents } from "../../src/commissions/money.mjs";
 
@@ -149,12 +158,64 @@ export default async function handler(req, res, deps = {}) {
     return res.status(403).json({ ok: false, error: "forbidden" });
   }
 
+  if (req.query && req.query.view !== undefined) {
+    return tracking(req, res, { database, staff, deps });
+  }
+
   const { limit, offset } = pageParams(req.query || {});
 
   try {
     const { rows } = await database.query(QUEUE_SQL, [orgId, limit, offset]);
     return res.status(200).json({ ok: true, ...page(rows.map(presentRow), { limit, offset }) });
   } catch (e) {
+    if (dbDown(res, e)) return;
+    throw e;
+  }
+}
+
+/* The tracking view. The role gate is narrower than the queue's: the CSM desk
+   roles only (TRACKING_ROLES), checked before any data is read. A client in
+   another company is 404, not 403, the same as every one-client read. */
+async function tracking(req, res, { database, staff, deps }) {
+  const q = req.query || {};
+  if (q.view !== "tracking") {
+    return res.status(400).json({ ok: false, error: "invalid_parameter", message: "view must be tracking" });
+  }
+  const mod = deps.tracking || await import("../../src/csm/client-tracking.mjs");
+  if (!requireRole(res, staff, mod.TRACKING_ROLES)) return;
+  const now = typeof deps.now === "function" ? deps.now() : new Date();
+
+  try {
+    if (q.client_id !== undefined) {
+      if (!isUuid(q.client_id)) {
+        return res.status(400).json({ ok: false, error: "invalid_parameter", message: "client_id must be a uuid" });
+      }
+      const one = await mod.readClientPosition(database, {
+        orgId: staff.org_id,
+        clientId: String(q.client_id).trim(),
+        now,
+        fundabilityFn: deps.fundability,
+        readRelationshipsFn: deps.readRelationships,
+        listPlansFn: deps.listPlans
+      });
+      if (!one) return res.status(404).json({ ok: false, error: "not_found" });
+      return res.status(200).json(one);
+    }
+    const list = await mod.readTrackingList(database, {
+      orgId: staff.org_id,
+      staffId: staff.id || null,
+      query: q,
+      now,
+      fundabilityFn: deps.fundability
+    });
+    return res.status(200).json(list);
+  } catch (e) {
+    if (e && e.code === "BAD_TRACKING_INPUT") {
+      return res.status(400).json({ ok: false, error: "invalid_parameter", message: e.message });
+    }
+    if (CLIENT_DATA_ERRORS.has(e && e.code)) {
+      return res.status(400).json({ ok: false, error: "invalid_parameter" });
+    }
     if (dbDown(res, e)) return;
     throw e;
   }

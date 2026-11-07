@@ -1,0 +1,33 @@
+/* Business gas cards (fuel-cards.js) — a plain block inside each business on
+   the Accounts tab, divided from the accounts above by a hairline. Every rule
+   is under .fc-block. Every control at least 44px tall; inputs 16px; the
+   status is a word in a pill (UI-STANDARDS §12.6); one column on a phone. */
+
+.fc-block{display:block;min-width:0;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.fc-block .fc-title{margin:0 0 8px;font-weight:600;color:var(--ink)}
+.fc-block .caption{font-size:var(--fs-caption,.8125rem);color:var(--text-dim,var(--gray));overflow-wrap:anywhere;margin:0}
+.fc-block .fc-rows{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.fc-block .fc-row{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:var(--paper,#FAFAF8)}
+.fc-block .fc-head{display:flex;align-items:center;gap:8px;min-width:0}
+.fc-block .fc-logo{flex:0 0 auto;width:28px;height:28px;border-radius:6px;object-fit:contain;background:#FFFFFF}
+.fc-block .fc-name{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.fc-block .fc-risk{margin:0;color:#92400E;font-weight:600;overflow-wrap:anywhere}
+.fc-block .fc-state{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0}
+.fc-block .fc-pill{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border:1px solid var(--ink);border-radius:999px;font-size:var(--fs-caption,.8125rem);font-weight:600;color:var(--ink);white-space:nowrap}
+.fc-block .fc-link{display:inline-flex;align-items:center;min-height:44px;min-width:44px;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.fc-block .fc-track{width:100%;min-width:0}
+.fc-block .fc-track>summary{display:flex;align-items:center;min-height:44px;font-weight:600;color:var(--ink);cursor:pointer}
+.fc-block .fc-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;margin-top:8px}
+.fc-block .fc-f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fc-block .fc-f label{font-size:var(--fs-caption,.8125rem);color:var(--text-dim,var(--gray))}
+.fc-block .fc-f input{min-height:44px;min-width:0;width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:#FFFFFF;color:var(--ink);font:inherit;font-size:16px;box-sizing:border-box}
+.fc-block .fc-f input:focus{outline:2px solid var(--ink);outline-offset:1px}
+.fc-block .fc-form-act{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:8px}
+.fc-block .fc-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;border-radius:8px;border:1px solid var(--ink);background:transparent;color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.fc-block .fc-btn[disabled]{opacity:.6;cursor:default}
+.fc-block :is(.fc-btn,.fc-link):focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+@media (max-width:760px){
+  .fc-block .fc-row{padding:12px}
+  .fc-block .fc-fields{grid-template-columns:minmax(0,1fr)}
+}

@@ -87,13 +87,100 @@ test("full: businesses with their info, you, Not sorted yet, Move to… on every
   assert.match(html, /data-form="create_business"/);
 });
 
-test("a null is a dash, never $0.00; unset price shows $X", () => {
-  const t = text(M.render(view()));
+test("a null is a dash, never $0.00; an unset price is left out, never $X (QA23)", () => {
+  const html = M.render(view());
+  const t = text(html);
   assert.match(t, /Mystery Savings ••5505.*— balance/);
   assert.match(t, /Due day —/);
   assert.match(t, /Minimum —/);
   assert.doesNotMatch(t, /\$0\.00/);
-  assert.match(t, /\$X per container a month/);
+  assert.doesNotMatch(t, /\$X/);
+  assert.doesNotMatch(html, /class="caption billing"/, "no price line without a price");
+  const priced = view();
+  priced.billing = { containers: 2, price_per_container_cents: 4900, monthly_cents: 9800 };
+  assert.match(text(M.render(priced)), /2 containers with accounts · \$49\.00 per container a month · \$98\.00 a month\. Empty containers are free\./);
+});
+
+test("one add form, two ways to save: Track the balance (picked) or Just record it", () => {
+  const html = M.render(view());
+  assert.equal((html.match(/data-form="add_account"/g) || []).length, 1, "one form");
+  assert.equal((html.match(/data-form="add_tradeline"/g) || []).length, 0, "no second add form");
+  const form = /<form data-form="add_account" novalidate>[\s\S]*?<\/form>/.exec(html)[0];
+  assert.match(html, /<summary>Add an account<\/summary>/);
+  assert.match(form, /role="radiogroup" aria-labelledby="na-mode-h"/);
+  assert.match(form, /<label class="btn"><input type="radio" name="mode" value="track" checked aria-describedby="na-mode-help"> Track the balance<\/label>/);
+  assert.match(form, /<label class="btn"><input type="radio" name="mode" value="record" aria-describedby="na-mode-help"> Just record it<\/label>/);
+  assert.match(form, /id="na-mode-help">It joins your balances\.<\/p>/);
+  for (const [id, label] of [["na-creditor", "Bank or lender"], ["na-product", "Card name"], ["na-record_type", "Type"],
+    ["na-record_limit", "Limit"], ["na-opened", "Opened"], ["na-belongs_to", "Belongs to"]]) {
+    assert.match(form, new RegExp(`data-mode="record"[^>]* hidden><label for="${id}">${label}</label>`), label);
+  }
+  assert.match(form, /<div class="f" data-mode="record" data-only-limit="1" hidden><label for="na-record_limit">/);
+  assert.match(form, /name="opened" type="month"/);
+  /* Until What you have hands over its read, the choices are the server's types and this read's businesses. */
+  assert.match(form, /<option value="line_of_credit">Line of credit<\/option>/);
+  assert.match(form, /<option value="personal" selected>Personal<\/option><option value="entity:aaaaaaaa-0000-0000-0000-000000000002">Fundhub LLC<\/option>/);
+  assert.equal((form.match(/class="btn-primary"/g) || []).length, 1, "one Save");
+});
+
+test("Just record it takes What you have's own choices once that card has its read", () => {
+  const sandbox = { window: { FHTradelines: { addOptions: {
+    types: [{ value: "credit_card", label: "Credit card", limit: true }, { value: "loan", label: "Loan", limit: false }],
+    belongs_to: [{ value: "personal", label: "Personal" }, { value: "business:sample rentals llc", label: "Sample Rentals LLC" }] } } } };
+  vm.runInNewContext(JS, sandbox);
+  const form = /<form data-form="add_account" novalidate>[\s\S]*?<\/form>/.exec(sandbox.window.FHMoneyAccounts.render(view()))[0];
+  assert.match(form, /<option value="business:sample rentals llc">Sample Rentals LLC<\/option>/);
+  assert.doesNotMatch(form, /line_of_credit/, "the card's own type list");
+});
+
+/* A mounted section with a document that records events (patch 4). */
+function mountWith(post) {
+  const events = [];
+  const sandbox = { window: {
+    document: { dispatchEvent: (e) => events.push(e), addEventListener() {}, removeEventListener() {} },
+    CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init && init.detail; } }
+  } };
+  vm.runInNewContext(JS, sandbox);
+  const listeners = {};
+  const el = { innerHTML: "", querySelector: () => null, contains: () => true, addEventListener: (k, fn) => { listeners[k] = fn; } };
+  const sent = [];
+  sandbox.window.FinanceOS.sections.accounts.mount(el, { clientId: "11111111-2222-3333-4444-555555555555",
+    apiGet: async () => ({ status: 200, body: view() }), apiPost: async (p, b) => { sent.push(b); return post(b); } });
+  /* The submit handler starts the save and returns; the save is done a tick later. */
+  const submit = (elements) => {
+    listeners.submit({ preventDefault() {},
+      target: { getAttribute: (k) => (k === "data-form" ? "add_account" : null), elements, querySelector: () => null } });
+    return settle();
+  };
+  return { el, events, sent, submit };
+}
+const radio = (value, checked) => ({ name: "mode", type: "radio", value, checked });
+const box = (name, value) => ({ name, type: "text", value });
+function settle() { return new Promise((r) => setTimeout(r, 0)); }
+
+test("each save fires fh:accounts-changed after the repaint, so What you have reloads", async () => {
+  const m = mountWith(async () => ({ status: 201, body: view() }));
+  await settle();
+  await m.submit([radio("track", true), radio("record", false), box("name", "Chase Ink"), box("type", "credit_card"), box("limit", "10,000"),
+    box("creditor", "ignored"), box("record_type", "loan")]);
+  assert.deepEqual(m.sent, [{ action: "add_account", name: "Chase Ink", type: "credit_card", limit: "10,000", client_id: "11111111-2222-3333-4444-555555555555" }]);
+  assert.deepEqual(m.events.map((e) => [e.type, e.detail.action]), [["fh:accounts-changed", "add_account"]]);
+  assert.match(m.el.innerHTML, /Your businesses/);
+});
+
+test("Just record it posts add_tradeline and keeps this section's own view", async () => {
+  const m = mountWith(async () => ({ status: 201, body: { ok: true, action: "add_tradeline", view: "tradelines", groups: [] } }));
+  await settle();
+  await m.submit([radio("track", false), radio("record", true), box("name", ""), box("creditor", "Bank of America"), box("product", "Customized Cash"),
+    box("record_type", "credit_card"), box("record_limit", "6,000"), box("opened", "2024-02"), box("belongs_to", "entity:" + BIZ)]);
+  assert.deepEqual(m.sent, [{ action: "add_tradeline", creditor: "Bank of America", type: "credit_card", belongs_to: "entity:" + BIZ,
+    product: "Customized Cash", limit: "6,000", opened: "2024-02", client_id: "11111111-2222-3333-4444-555555555555" }]);
+  assert.deepEqual(m.events.map((e) => [e.type, e.detail.action]), [["fh:accounts-changed", "add_tradeline"]]);
+  assert.match(m.el.innerHTML, /Your businesses/, "the section is not painted with the What you have answer");
+  const empty = mountWith(async () => ({ status: 201, body: view() }));
+  await settle();
+  await empty.submit([radio("record", true), box("creditor", ""), box("record_type", "credit_card"), box("belongs_to", "personal")]);
+  assert.deepEqual(empty.sent, [], "no bank or lender: nothing is sent");
 });
 
 test("forms ask for last 4 only — never a full account number, EIN or SSN", () => {

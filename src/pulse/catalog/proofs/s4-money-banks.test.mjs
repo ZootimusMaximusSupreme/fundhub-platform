@@ -50,6 +50,12 @@ function banksRead() {
   return answer;
 }
 
+/* In the frame the local banks box (unit LOC, public/app/local-banks.js) reads its own
+   view next to the plan. planReads() drops that read; localReads() keeps only it. */
+const isLocal = (q) => q.startsWith("?view=local_banks");
+const planReads = (reads) => reads.filter((q) => !isLocal(q));
+const localReads = (reads) => reads.filter(isLocal);
+
 async function openBanks(open, target, { session = FINANCE_STAFF, clientId = CLIENT_ID, write } = {}) {
   const resource = moneyResource("banks", { read: banksRead, write });
   const { page, errors } = await open(entryUrl(target.entry, { ...target, clientId }), { session, handlers: resource.handlers });
@@ -63,7 +69,8 @@ test("staff plan controls post the exact request on the page and in the frame", 
     // Every control below is staff only: the same section opened by a client draws none of them.
     const clientView = await openBanks(open, target, { session: CLIENT, clientId: "" });
     await clientView.page.waitForSelector(".fh-banks .card");
-    assert.deepEqual(clientView.reads, [""], "a client asks for their own file, with no client_id");
+    assert.deepEqual(planReads(clientView.reads), [""], "a client asks for their own file, with no client_id");
+    assert.ok(localReads(clientView.reads).every((q) => q === "?view=local_banks"), "the local banks box sends no client_id for a client");
     const clientControls = await clientView.page.locator(".fh-banks .staff, .fh-banks form[data-form]").count();
     await clientView.page.close();
     const staffOnly = () => assert.equal(clientControls, 0, `${target.entry}: a client sees none of the staff plan controls`);
@@ -71,7 +78,8 @@ test("staff plan controls post the exact request on the page and in the frame", 
     const ctx = await openBanks(open, target);
     const { page, posts, reads } = ctx;
     await page.waitForSelector(".fh-banks .addbank");
-    assert.deepEqual(reads, [`?client_id=${CLIENT_ID}`]);
+    assert.deepEqual(planReads(reads), [`?client_id=${CLIENT_ID}`]);
+    assert.ok(localReads(reads).every((q) => q === `?view=local_banks&client_id=${CLIENT_ID}`), "staff: the local banks box names the client too");
     // Every good save is followed by a re-read that repaints the section. Wait for it
     // before the next press, or the repaint can wipe what the next press just wrote.
     let expectedReads = reads.length;
@@ -186,13 +194,13 @@ test("the page gate: a client reads only their own file and sees no plan control
   await proof.check(ROW.page.gate, async () => {
     const own = await openBanks(open, ENTRIES.page, { session: CLIENT, clientId: "" });
     await own.page.waitForSelector(".fh-banks .card");
-    assert.deepEqual(own.reads, [""], "a client asks for their own file, with no client_id");
+    assert.deepEqual(planReads(own.reads), [""], "a client asks for their own file, with no client_id");
     assert.equal(await own.page.locator(".fh-banks .staff").count(), 0, "a client sees no plan controls");
     await own.page.close();
 
     const staff = await openBanks(open, ENTRIES.page);
     await staff.page.waitForSelector(".fh-banks .staff");
-    assert.deepEqual(staff.reads, [`?client_id=${CLIENT_ID}`]);
+    assert.deepEqual(planReads(staff.reads), [`?client_id=${CLIENT_ID}`]);
     assert.ok(await staff.page.locator(".fh-banks .staff").count() > 0, "staff on a client file see the plan controls");
     await staff.page.close();
 

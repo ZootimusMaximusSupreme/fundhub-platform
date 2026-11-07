@@ -1,0 +1,15 @@
+/* Bank logo (bank-logo.js). The bank's own mark beside its name: 28px, rounded,
+   on white with the shared hairline so a white logo still has an edge. Loaded
+   before the Astra sheets, which stay last in the cascade (UI-STANDARDS §0). */
+.fh-bank-logo {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  margin: 0 8px 0 0;
+  border: 1px solid var(--line, #E3E5E0);
+  border-radius: 6px;
+  background: #fff;
+  object-fit: contain;
+  vertical-align: middle;
+}

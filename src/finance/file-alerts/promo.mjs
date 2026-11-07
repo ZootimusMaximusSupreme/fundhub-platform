@@ -19,10 +19,17 @@
 // THE PAYOFF LINE IS ARITHMETIC ON STORED NUMBERS, NEVER A GUESS. The balance is
 // the card's current balance. The number of monthly payments left is the days left
 // divided by 30, rounded, and never less than one (60 days is two payments, 30 or
-// fewer is one: pay all of it). The monthly amount is the balance divided by that,
-// rounded UP, so the plan clears it with a little to spare. No interest is
-// modelled — the text says "about". With no balance on file there is no payoff
-// line: it says where to look instead of making a number up.
+// fewer is one: pay all of it). The monthly amount uses the promo rate (Codex design
+// review, binding, 2026-11-07: a no-interest amount is never said to clear a balance
+// that is charged interest): at 0% it is the balance divided by the payments,
+// rounded UP; at a known rate above 0% it adds that rate's interest each month
+// (APR ÷ 12) and is the level payment that reaches zero on the last payment, rounded
+// UP. With no rate on file the interest is unknown, so the even split is only the
+// least: the text says "at least … Rate not on file" and never "to clear". The same
+// payoffAtRate() feeds the Alerts screen (./read.mjs) and the intro countdown
+// (./intro-countdown.mjs), so the text, Settings and the countdown say one amount.
+// With no balance on file there is no payoff line: it says where to look instead of
+// making a number up.
 
 import { parseIsoDate, daysBetween } from "../../banking/statement-cycles.mjs";
 import {
@@ -36,7 +43,7 @@ export function paymentsLeft(daysLeft) {
   return Math.max(1, Math.round(daysLeft / 30));
 }
 
-/** The payoff plan for a balance and the days left, or null with no balance to pay. */
+/** The even split: a balance over the payments left, or null with no balance to pay. */
 export function promoPayoff({ balanceCents, daysLeft } = {}) {
   const balance = toCentsOrNull(balanceCents);
   if (balance === null || balance <= 0) return null;
@@ -44,12 +51,46 @@ export function promoPayoff({ balanceCents, daysLeft } = {}) {
   return { payments, monthly_cents: Math.ceil(balance / payments), total_cents: balance };
 }
 
-/** The sentence after the date. */
-export function payoffDetail(balanceCents, daysLeft) {
+/** A stored rate fraction (0.0999) as a percent to the thousandth (9.99). Null stays null. */
+export function promoPct(fraction) {
+  if (fraction === null || fraction === undefined || fraction === "") return null;
+  const n = Number(fraction);
+  return Number.isFinite(n) ? Math.round(n * 100000) / 1000 : null;
+}
+
+/**
+ * payoffAtRate({ balanceCents, daysLeft, aprPct }) → null with nothing to pay, else
+ * { payments, monthly_cents, total_cents, monthly_is_floor }.
+ *
+ *   aprPct           the promo rate in percent (9.99), 0 for a 0% promo, null when not on file
+ *   total_cents      what clears it: the balance at 0%, monthly × payments at a rate above 0%
+ *   monthly_is_floor true when no rate is on file: monthly_cents is the least, not a payoff
+ */
+export function payoffAtRate({ balanceCents, daysLeft, aprPct } = {}) {
+  const plain = promoPayoff({ balanceCents, daysLeft });
+  if (!plain) return null;
+  const apr = aprPct === null || aprPct === undefined || aprPct === "" ? null : Number(aprPct);
+  if (apr === null || !Number.isFinite(apr) || apr < 0) return { ...plain, monthly_is_floor: true };
+  const i = apr / 100 / 12;
+  if (i === 0) return { ...plain, monthly_is_floor: false };
+  const n = plain.payments;
+  // The level payment, rounded up to the cent. The millionth of a cent taken off first is
+  // floating-point dust (120000 at 9.99% for one month is exactly 120999, not 121000).
+  const monthly = Math.ceil((plain.total_cents * i) / (1 - (1 + i) ** -n) - 1e-6);
+  return { payments: n, monthly_cents: monthly, total_cents: monthly * n, monthly_is_floor: false };
+}
+
+/** The sentence after the date. `aprPct` is the promo rate in percent; null when not on file. */
+export function payoffDetail(balanceCents, daysLeft, aprPct = null) {
   const balance = toCentsOrNull(balanceCents);
   if (balance === null) return " Open your Money page to see what you still owe.";
-  const plan = promoPayoff({ balanceCents: balance, daysLeft });
+  const plan = payoffAtRate({ balanceCents: balance, daysLeft, aprPct });
+  if (!plan) return "";
   const owe = ` You still owe ${dollars(balance)}.`;
+  if (plan.monthly_is_floor) {
+    if (plan.payments === 1) return `${owe} Pay all of it before then. Rate not on file.`;
+    return `${owe} Pay at least ${wholeDollarsUp(plan.monthly_cents)} a month for the next ${plan.payments} months. Rate not on file.`;
+  }
   if (plan.payments === 1) return `${owe} Pay all of it before then to clear it in time.`;
   return `${owe} Pay about ${wholeDollarsUp(plan.monthly_cents)} a month for the next ${plan.payments} months to clear it in time.`;
 }
@@ -98,8 +139,9 @@ export function planPromoEnd(card, cycle, { today } = {}) {
   const label = cardWords(card);
   const date = shortDate(endsOn);
   const days = inDays(daysLeft);
-  const detail = payoffDetail(balance, daysLeft);
-  const payoff = promoPayoff({ balanceCents: balance, daysLeft });
+  const aprPct = promoPct(cycle?.promo_apr);
+  const detail = payoffDetail(balance, daysLeft, aprPct);
+  const payoff = payoffAtRate({ balanceCents: balance, daysLeft, aprPct });
   return {
     alert: true,
     kind: "promo_end",
@@ -119,6 +161,7 @@ export function planPromoEnd(card, cycle, { today } = {}) {
       balance_cents: balance,
       payments_left: payoff ? payoff.payments : null,
       monthly_cents: payoff ? payoff.monthly_cents : null,
+      monthly_is_floor: payoff ? payoff.monthly_is_floor : null,
       promo_apr: cycle?.promo_apr === null || cycle?.promo_apr === undefined ? null : Number(cycle.promo_apr)
     }
   };

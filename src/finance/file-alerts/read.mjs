@@ -18,11 +18,27 @@ import { isOptedOut } from "../../lib/opt-out.mjs";
 import * as defaultStore from "./store.mjs";
 import { loadSnapshot as defaultLoadSnapshot } from "./snapshot.mjs";
 import { evaluateReserve, CASH_KINDS } from "./cash-reserve.mjs";
-import { promoPayoff, nextPromoAlert } from "./promo.mjs";
+import { payoffAtRate, nextPromoAlert } from "./promo.mjs";
+import { listAlertBills as defaultListBills, billView } from "./bills.mjs";
+import { listCustomItems as defaultListCustom, customView } from "./custom.mjs";
+import { buildAlertBoard, seasoningRows } from "./board.mjs";
+import { readRelationships as defaultReadRelationships } from "../bank-strategy.mjs";
+import { loadBillCleanup } from "../../banking/bill-cleanup.mjs";
+import { seasoningClock } from "../apply-gate.mjs";
+import { attachAccountLogos } from "../../banking/institution-logos.mjs";
+import {
+  PHONE_KINDS, PHONE_LABELS, BILL_PUSH_DAYS_BEFORE, planCardDuePush, planBillPush, planLoanDuePush,
+  planInstallmentPush, planLabel, isCreditLine
+} from "./phone-alerts.mjs";
+import { REMIND_DAYS_BEFORE } from "../../banking/card-due-reminders.mjs";
+import {
+  phoneState as defaultPhoneState, listPhoneAlerts as defaultListPhoneAlerts
+} from "../../push/finance-alerts.mjs";
 import {
   KINDS, KIND_LABELS, PROMO_THRESHOLDS, RESERVE_MONTHS, readPayBeforeCloseDays,
   isoDay, addDaysIso, toCentsOrNull
 } from "./common.mjs";
+import { BUNDLE_LABELS } from "./bundle-common.mjs";
 
 const pctOf = (fraction) => (fraction === null || fraction === undefined || fraction === ""
   ? null
@@ -42,15 +58,18 @@ function cardView(card, cycle, { today, daysBefore, alerts }) {
   if (endsOn) {
     const daysLeft = daysBetween(today, endsOn);
     const balance = toCentsOrNull(card.balance_cents);
+    const aprPct = pctOf(cycle.promo_apr);
     promo = {
       ends_on: endsOn,
       days_left: daysLeft,
       ended: daysLeft !== null && daysLeft < 0,
-      apr_pct: pctOf(cycle.promo_apr),
+      apr_pct: aprPct,
       source: cycle.promo_source ?? null,
       set_at: cycle.promo_set_at ?? null,
       balance_cents: balance,
-      payoff: daysLeft !== null && daysLeft >= 0 ? promoPayoff({ balanceCents: balance, daysLeft }) : null,
+      // At the promo rate, the same amount the promo text and the intro countdown say
+      // (payoffAtRate in ./promo.mjs). No rate on file: monthly_is_floor, never a payoff.
+      payoff: daysLeft !== null && daysLeft >= 0 ? payoffAtRate({ balanceCents: balance, daysLeft, aprPct }) : null,
       next_alert: daysLeft !== null && daysLeft >= 0 ? nextPromoAlert(endsOn, today) : null,
       alerted_thresholds: mine
         .filter((a) => a.kind === "promo_end" && isoDay(a.due_on) === endsOn)
@@ -101,6 +120,81 @@ function reserveView(verdict, open) {
   };
 }
 
+/* A read the phone block needs that could not be made answers null, never a
+   made-up "no phone" or "no bills": the screen then says it could not check. */
+async function orNull(fn) {
+  try { return await fn(); } catch { return null; }
+}
+
+/* Each account's bank logo for the board (unit H, src/banking/institution-logos.mjs):
+   Plaid's own logo first, then the bank book's file. A Map of account id to logo; an
+   account with no logo is left out, so it shows its name only. */
+async function accountLogos(conn, { orgId, clientId, accounts = [] } = {}) {
+  const rows = (Array.isArray(accounts) ? accounts : []).filter((a) => a && a.id)
+    .map((a) => ({ id: String(a.id), name: a.name ?? null, source: "bank_account" }));
+  const logos = new Map();
+  if (!rows.length) return logos;
+  const view = await attachAccountLogos(conn, { orgId, clientId, view: { unassigned: { accounts: rows, cards: [], loans: [] } } });
+  for (const r of (view && view.unassigned && view.unassigned.accounts) || []) {
+    if (r && r.logo) logos.set(String(r.id), r.logo);
+  }
+  return logos;
+}
+
+/** When the next phone alert about one payment goes, or why none is set, from a plan. */
+function alertView(plan, today) {
+  if (plan.push) return { on: plan.dueOn, alert_on: today, reason: null };
+  const alertOn = plan.reason === "not_yet" && plan.dueOn ? addDaysIso(plan.dueOn, -REMIND_DAYS_BEFORE) : null;
+  return { on: plan.dueOn ?? null, alert_on: alertOn, reason: plan.reason };
+}
+function cardDueView(card, cycle, today, subtype) {
+  return alertView(planCardDuePush(card, cycle, { today, subtype }), today);
+}
+
+/** The phone alert block: which alerts are on, for which card, loan, bill and plan, and what already went. */
+function phoneView({ settings, state, optedOutSms, cards, loans = [], plans = [], cycleOf, subtypeOf, bills, sent, today }) {
+  const enabled = settings.phone_alerts !== false;
+  const optedOut = !!optedOutSms || !!(state && state.optedOut);
+  const on = (kind) => enabled && !optedOut && (kind !== "statement_close" || settings.payment_timing !== false);
+  return {
+    enabled,
+    opted_out: optedOut,
+    // null: the phone read failed, so the screen must not say "no phone".
+    has_phone: state ? state.hasPhone : null,
+    send_window: "9 a.m. to 5 p.m. Arizona time",
+    kinds: Object.fromEntries(PHONE_KINDS.map((k) => [k, { on: on(k), label: PHONE_LABELS[k] }])),
+    days_before: { card_due: REMIND_DAYS_BEFORE, important_bill: BILL_PUSH_DAYS_BEFORE, loan_due: REMIND_DAYS_BEFORE, plan_due: REMIND_DAYS_BEFORE },
+    cards: cards.map((c) => ({
+      account_id: c.account_id,
+      name: c.name,
+      mask: c.mask,
+      kind: c.kind ?? null, // personal or business: a business card is alerted like any card
+      credit_line: isCreditLine(subtypeOf(c)),
+      due: cardDueView(c, cycleOf(c), today, subtypeOf(c)),
+      close: { on: c.pay_before.next_close_on, alert_on: c.pay_before.text_on, reason: c.pay_before.unknown_reason }
+    })),
+    // Every loan and line of credit (D2, owner-set 2026-11-07).
+    loans: loans.map((l) => ({
+      account_id: l.account_id,
+      name: l.name,
+      mask: l.mask,
+      kind: l.kind ?? null,
+      credit_line: isCreditLine(subtypeOf(l)),
+      due: alertView(planLoanDuePush(l, cycleOf(l), { today, subtype: subtypeOf(l) }), today)
+    })),
+    // Each open payment plan owed to Fundhub (Clarity Payments): its next unpaid installment.
+    plans: plans.map((row) => ({
+      plan_id: row.plan_id ? String(row.plan_id) : null,
+      installment_id: row.installment_id ? String(row.installment_id) : null,
+      name: planLabel(row),
+      plan_kind: row.kind ?? null,
+      ...alertView(planInstallmentPush(row, { today }), today)
+    })),
+    important_count: Array.isArray(bills) ? bills.filter((b) => b.important).length : null,
+    sent: Array.isArray(sent) ? sent : null
+  };
+}
+
 /**
  * fileAlertsPayload(conn, { orgId, clientId, now, env }) → the contract, or null when
  * the client is not in that org (the caller answers 404).
@@ -114,13 +208,17 @@ export async function fileAlertsPayload(conn, { orgId, clientId, now = new Date(
   if (!snap) return null;
   const { today } = snap;
 
-  const [settings, alerts, state, optedOut, blueprint, entitlement] = await Promise.all([
+  const [settings, alerts, state, optedOut, blueprint, entitlement, billRows, phone, phoneSent, customRows] = await Promise.all([
     store.readSettings(conn, { orgId, clientId }),
     store.listAlerts(conn, { orgId, clientId, limit: 50 }),
     store.reserveState(conn, { orgId, clientId }),
     (deps.isOptedOut || isOptedOut)(conn, clientId, "sms"),
     (deps.isBlueprint || isCapitalBlueprintBuyer)(conn, { orgId, clientId }),
-    (deps.financeOsEntitlement || financeOsEntitlement)(conn, { orgId, clientId, asOf: nowDate })
+    (deps.financeOsEntitlement || financeOsEntitlement)(conn, { orgId, clientId, asOf: nowDate }),
+    orNull(() => (deps.listBills || defaultListBills)(conn, { orgId, clientId })),
+    orNull(() => (deps.phoneState || defaultPhoneState)(conn, { orgId, clientId })),
+    orNull(() => (deps.listPhoneAlerts || defaultListPhoneAlerts)(conn, { orgId, clientId, limit: 20 })),
+    orNull(() => (deps.listCustom || defaultListCustom)(conn, { orgId, clientId }))
   ]);
 
   const daysBefore = readPayBeforeCloseDays(env);
@@ -147,6 +245,43 @@ export async function fileAlertsPayload(conn, { orgId, clientId, now = new Date(
     minimums_cents: unsortedMins.length ? unsortedMins.reduce((a, b) => a + b, 0) : null
   };
 
+  /* Repeat bills, each with its Important mark and when its phone alert goes. */
+  const bills = Array.isArray(billRows)
+    ? billRows.map((row) => {
+      const view = billView(row);
+      const plan = planBillPush(row, { today });
+      const alertOn = plan.push ? today
+        : plan.reason === "not_yet" && plan.dueOn ? addDaysIso(plan.dueOn, -BILL_PUSH_DAYS_BEFORE) : null;
+      const sentFor = Array.isArray(phoneSent)
+        ? phoneSent.find((a) => a.kind === "important_bill" && a.subject_id === view.id && a.about_on === view.next_expected_on)
+        : null;
+      return { ...view, phone: { alert_on: view.important ? alertOn : null, reason: view.important ? plan.reason : null, sent: sentFor ? sentFor.state : null } };
+    })
+    : null;
+  const cycleOf = (c) => snap.cycleByAccount.get(String(c.account_id)) ?? null;
+  const subtypes = new Map((snap.overview?.accounts || []).map((a) => [String(a.id), a.subtype ?? null]));
+  const subtypeOf = (a) => subtypes.get(String(a.account_id)) ?? null;
+  const phoneBlock = phoneView({
+    settings, state: phone, optedOutSms: optedOut, cards, cycleOf, subtypeOf, bills, sent: phoneSent, today,
+    loans: snap.overview?.debt?.loans || [],
+    plans: snap.clarityPlans || []
+  });
+
+  /* The client's own alerts and repeat bills (unit AL2), and the organized board:
+     Personal and each business, with Payments due, Bills and Smart alerts. Bill
+     cleanup (unit C, src/banking/bill-cleanup.mjs), the seasoning clock (unit L4,
+     src/finance/apply-gate.mjs) and bank logos (unit H) are read here; deps can stand
+     in for each. One that fails simply adds nothing (`board.checks` says which ran). */
+  const custom = Array.isArray(customRows) ? customRows.map((row) => customView(row, { today, sent: phoneSent })) : null;
+  const cleanup = await orNull(() => (deps.loadBillCleanup || loadBillCleanup)(conn, { orgId, clientId, asOf: nowDate }));
+  const clockOf = deps.seasoningClock || seasoningClock;
+  const seasoning = await orNull(async () => seasoningRows(await (deps.readRelationships || defaultReadRelationships)(conn, { orgId, clientId, today }), clockOf, today));
+  const logos = await orNull(() => (deps.accountLogos || accountLogos)(conn, { orgId, clientId, accounts: snap.overview?.accounts || [] }));
+  const board = buildAlertBoard({
+    today, snap, cards, phone: phoneBlock, bills, billRows: Array.isArray(billRows) ? billRows : [], custom, reserve,
+    cleanup, seasoning, logos: logos instanceof Map ? logos : new Map()
+  });
+
   const name = [snap.client.first_name, snap.client.last_name].filter(Boolean).join(" ") || null;
   return {
     ok: true,
@@ -167,10 +302,14 @@ export async function fileAlertsPayload(conn, { orgId, clientId, now = new Date(
     },
     cards,
     reserve,
+    phone: phoneBlock,
+    bills,
+    custom,
+    board,
     alerts: alerts.map((a) => ({
       id: a.id,
       kind: a.kind,
-      kind_label: KIND_LABELS[a.kind] ?? a.kind,
+      kind_label: KIND_LABELS[a.kind] ?? BUNDLE_LABELS[a.kind] ?? a.kind,
       account_id: a.bank_account_id ?? null,
       label: a.subject_label ?? null,
       threshold: a.threshold ?? null,

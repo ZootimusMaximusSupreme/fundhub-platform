@@ -113,6 +113,73 @@ describe("GET /api/money/trends — staff", () => {
   });
 });
 
+describe("GET /api/money/trends — any dates and one account (CFO build, unit A)", () => {
+  const ACCT = "abcdef01-2345-4678-9abc-def012345678";
+  const asClient = (query, build = spyBuild()) => {
+    const res = makeRes();
+    return handler({ method: "GET", query }, res, { db: db(), requirePrincipal: gateAs(clientPrincipal()), moneyTrends: build, now: NOW })
+      .then(() => ({ res, build }));
+  };
+
+  test("from and to are passed on as a pair, with no preset", async () => {
+    const { res, build } = await asClient({ from: "2025-01-01", to: "2025-06-30" });
+    assert.equal(res.statusCode, 200);
+    assert.equal(build.calls[0].from, "2025-01-01");
+    assert.equal(build.calls[0].to, "2025-06-30");
+    assert.equal(build.calls[0].range, null);
+    assert.equal(build.calls[0].clientId, MINE);
+  });
+
+  test("a preset still passes no dates", async () => {
+    const { build } = await asClient({ range: "30d" });
+    assert.equal(build.calls[0].range, "30d");
+    assert.equal(build.calls[0].from, null);
+    assert.equal(build.calls[0].to, null);
+    assert.equal(build.calls[0].accountId, null);
+  });
+
+  test("bad dates are a 400 that says why, and nothing is read", async () => {
+    const cases = [
+      [{ from: "2025-02-30", to: "2025-03-01" }, /real dates/],
+      [{ from: "2025-03-02", to: "2025-03-01" }, /on or before/],
+      [{ from: "2023-01-01", to: "2025-06-30" }, /24 months/],
+      [{ from: "2025-01-01" }, /both/],
+      [{ range: "90d", from: "2025-01-01", to: "2025-02-01" }, /not both/]
+    ];
+    for (const [query, words] of cases) {
+      const { res, build } = await asClient(query);
+      assert.equal(res.statusCode, 400, JSON.stringify(query));
+      assert.match(res.body.error, words);
+      assert.equal(build.calls.length, 0, "nothing is read for a bad window");
+    }
+  });
+
+  test("account: a uuid is passed on with the session's own client; anything else is 400", async () => {
+    const { res, build } = await asClient({ account: ACCT, client_id: OTHER });
+    assert.equal(res.statusCode, 200);
+    assert.equal(build.calls[0].accountId, ACCT);
+    assert.equal(build.calls[0].clientId, MINE, "an account never moves the read to another client");
+    const bad = await asClient({ account: "1; DROP TABLE" });
+    assert.equal(bad.res.statusCode, 400);
+    assert.equal(bad.build.calls.length, 0);
+  });
+
+  test("an account that is not this file's open account → 404, the same answer as another client", async () => {
+    const { res } = await asClient({ account: ACCT }, async () => null);
+    assert.equal(res.statusCode, 404);
+    assert.deepEqual(res.body, { ok: false, error: "not_found" });
+  });
+
+  test("staff: the account is checked against the ?client_id file in their org", async () => {
+    const build = spyBuild();
+    const res = makeRes();
+    await handler({ method: "GET", query: { client_id: OTHER, account: ACCT, from: "2026-01-01", to: "2026-02-01" } }, res,
+      { db: db([OTHER]), requirePrincipal: gateAs(staffPrincipal("owner")), moneyTrends: build, now: NOW });
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual([build.calls[0].clientId, build.calls[0].orgId, build.calls[0].accountId], [OTHER, ORG, ACCT]);
+  });
+});
+
 describe("GET /api/money/trends — the door", () => {
   test("no session is 401; 405 on POST", async () => {
     let res = makeRes();

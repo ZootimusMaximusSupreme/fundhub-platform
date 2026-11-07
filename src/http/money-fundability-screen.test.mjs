@@ -2,7 +2,7 @@
 // functions against a fixture that is the REAL read of the simulated sample
 // client (029964c5…, one sample credit file, read-only, 2026-10-06), and checks
 // the page rules: null is a dash never 0, status in words not colour, engine
-// sentences verbatim, the "if removed" line says it is not promised, businesses
+// sentences verbatim (no "not promised" rider on screen), businesses
 // one card each and never added up, four states, the shared nav, scoped styles,
 // no px font sizes, and a phone layout.
 import { test } from "node:test";
@@ -127,10 +127,15 @@ test("phone: every card row stacks to one column and nothing forces the page wid
   const decls = CSS.replace(/@media[^{]+\{/g, "");
   for (const m of decls.matchAll(/(?:^|[;{])\s*(?:min-)?width\s*:\s*(\d+)px/g)) assert.ok(Number(m[1]) <= 64, m[0]);
   assert.match(CSS, /\.fh-fundability \.fd-scroll\{overflow-x:auto\}/, "the per-business table scrolls inside its own box");
-  // "Jan 2027" ran into "Today" at 375px; the phone shows "+3 mo" instead.
+  // "Jan 2027" ran into "Today" at 375px; the phone shows "+6 mo" instead.
   assert.match(phone, /\.fh-fundability \.fd-xl-long\{display:none\}/);
   assert.match(phone, /\.fh-fundability \.fd-xl-short\{display:inline\}/);
-  assert.match(F.renderChart(fixture()), /<span class="fd-xl-long">Jan 2027<\/span><span class="fd-xl-short">\+3 mo<\/span>/);
+  // QA18: at 320px "Today" and "+3 mo" still ran together ("Today+3 mo"), so the
+  // phone shows fewer dates: Today, +6 mo, +12 mo. The 3-month dot and tap stay.
+  const chart = F.renderChart(fixture());
+  assert.match(chart, /<span class="fd-xl-long">Jan 2027<\/span><\/span>/, "the 3-month date keeps its wide label only");
+  assert.deepEqual([...chart.matchAll(/<span class="fd-xl-short">([^<]*)<\/span>/g)].map((m) => m[1]), ["Today", "+6 mo", "+12 mo"]);
+  assert.equal((chart.match(/class="fd-col"/g) || []).length, 4, "every date keeps its tap target");
 });
 
 test("full: fundability now, the money, and the 12-month comparison — from the real sample read", () => {
@@ -139,7 +144,8 @@ test("full: fundability now, the money, and the 12-month comparison — from the
   assert.match(html, /Sample report/);
   assert.match(t, /Fundability now 5 of 6 Fundable UnderwriteIQ checks passed · 1 not yet/);
   assert.match(t, /In 12 months on your plan: 5 of 6/);
-  assert.match(t, /Funding estimate \$212,000 UnderwriteIQ's first look, not a bank's yes\./);
+  assert.match(t, /Funding estimate \$212,000 From your best card and your best loan\./);
+  assert.doesNotMatch(t, /not a bank's yes/, "no disclaimer: the word estimate says it (owner rule 2026-11-07)");
   assert.match(t, /In 12 months 5 of 6 Fundable On your plan, by Oct 7, 2027/);
   assert.doesNotMatch(t, /\$636,000/, "never the per-bureau sum (owner walk finding 9)");
 });
@@ -196,14 +202,15 @@ test("the chart: today and three dates, a solid plan line, assumptions on the ch
   for (const m of html.matchAll(/aria-label="([^"]+)"/g)) assert.ok(m[1].length > 8, "every date button says what it is");
 });
 
-test("if removed: its own dashed line with open dots, and it always says it is not promised", () => {
+test("if removed: its own dashed line with open dots, and no not-promised rider on screen", () => {
   const d = withDisputes();
   const html = F.renderChart(d);
   assert.match(html, /fd-line fd-line-ifr/);
   assert.match(html, /fd-dot-ifr/);
   const t = text(html);
-  assert.match(t, /If removed — dashed line, open dots\. Not promised\./);
-  assert.match(t, /If removed .* That is not promised — a bureau can keep an item\./);
+  assert.match(t, /If removed — dashed line, open dots\./);
+  assert.match(t, /If removed .* If the disputed account comes off|If removed .* negative items go from/);
+  assert.doesNotMatch(t, /not promised|not a promise/i, "short client words: no rider (owner rule 2026-11-07)");
   assert.match(t, /Your plan on file: disputes on 1 negative account\./);
   const later = text(F.render(d));
   assert.match(later, /If removed: \d of 6/);
@@ -225,11 +232,15 @@ test("businesses: one card each, a container with no details asks for them, and 
   // printed verbatim — it is not a total.)
   assert.doesNotMatch(text(cards.join(' ')), /\bTotal\b|all businesses|businesses combined|combined (estimate|score|funding)/i,
     "legacy per-business cards never invent a portfolio sum");
-  const combined = html.match(/<section class="card fd-tile" data-opportunity-combined>[\s\S]*?<\/section>/)?.[0];
-  assert.ok(combined, "the shared current-engine view must explain unknown portfolio capacity");
-  assert.match(text(combined), /Combined modeled capacity Current modeled capacity Unknown Modeled scenario Unknown Estimated change Unknown/);
-  assert.match(text(combined), /shared personal-guarantee overlap has been resolved.*personal estimate is counted once/);
-  assert.doesNotMatch(combined, /\$[\d,]+/, "unknown portfolio capacity is never a dollar amount");
+  // QA17 (short client words, owner rule 2026-11-07): an unknown total is not
+  // shown, nothing reads "Unknown", no disclaimer, and each business with no
+  // estimate yet is one line.
+  const opp = html.slice(html.indexOf("data-funding-opportunity"), html.indexOf('aria-labelledby="fd-t-now"'));
+  assert.doesNotMatch(html, /data-opportunity-combined/, "an unknown total is not shown, so it is never a dollar amount");
+  assert.doesNotMatch(opp, /Unknown|modeled capacity|not a bank approval|counted once|personal-guarantee/);
+  assert.match(text(opp), /Personal Needs a credit report/);
+  assert.deepEqual([...opp.matchAll(/<li data-opportunity-business>([\s\S]*?)<\/li>/g)].map((m) => text(m[1]).trim()),
+    ["Alpha Consulting LLC — needs its state filing proof", "Beta Marketing LLC — needs its state filing proof"]);
   assert.equal(d.opportunity.combined.currentCents, null);
   assert.equal(d.opportunity.combined.projectedCents, null);
   const alpha = d.businesses[0].now.funding_estimate_cents;
@@ -243,9 +254,10 @@ test("the current full CRS model renders its exact capacity without the legacy L
   d.engine = { name: 'underwrite_iq_crs' };
   d.opportunity.personal = { currentCents: 9360000, projectedCents: 10400000, liftCents: 1040000 };
   const html = F.render(d), t = text(html);
-  assert.match(t, /Personal Current modeled capacity \$93,600 Modeled scenario \$104,000 Estimated change \$10,400/);
-  assert.match(t, /Combined modeled capacity Current modeled capacity Unknown/);
-  assert.match(t, /not a bank approval or issued funding/);
+  assert.match(t, /Personal Estimate today \$93,600 With your plan \$104,000 Change \$10,400/);
+  assert.doesNotMatch(html, /data-opportunity-combined/, "an unknown total is not shown (QA17)");
+  assert.doesNotMatch(t, /Unknown|modeled capacity|not a bank approval|issued funding|What this cannot look ahead on/,
+    "no wall of Unknown and no disclaimer: the word estimate says it (QA17)");
   assert.doesNotMatch(t, /\b[0-9]+ of [0-9]+\b|× band|Fundability now/,
     "a current full-engine response must not be relabeled with the separate legacy Lite score");
   assert.equal((html.match(/data-opportunity-business/g) || []).length, 2);
@@ -258,7 +270,7 @@ test("a real additive CRS opportunity wins over conflicting legacy dollar estima
   d.opportunity.personal = { status: 'modeled', currentCents: 9360000, projectedCents: 10400000, liftCents: 1040000, blockers: [] };
   assert.notEqual(legacyAmount, d.opportunity.personal.currentCents);
   let t = text(F.render(d));
-  assert.match(t, /Current modeled capacity \$93,600/);
+  assert.match(t, /Estimate today \$93,600/);
   assert.doesNotMatch(t, new RegExp(F.money(legacyAmount).replace(/[$]/g, '\\$')),
     'the same real file must never show the conflicting legacy personal estimate');
   assert.doesNotMatch(t, /\b[0-9]+ of [0-9]+\b|× band|Fundability now/);
@@ -266,9 +278,49 @@ test("a real additive CRS opportunity wins over conflicting legacy dollar estima
   d.opportunity.personal = { status: 'unknown', currentCents: null, projectedCents: null, liftCents: null,
     blockers: ['current_engine_does_not_expose_safe_capacity'] };
   t = text(F.render(d));
-  assert.match(t, /Personal Current modeled capacity Unknown Modeled scenario Unknown/);
+  assert.match(t, /Personal Needs a report review/);
+  assert.doesNotMatch(t, /Unknown/, "a safety hold is one short line, not a wall of Unknown (QA17)");
   assert.doesNotMatch(t, new RegExp(F.money(legacyAmount).replace(/[$]/g, '\\$')),
     'a current full-engine safety hold must not fall back to old dollars');
+});
+
+test("the funding opportunity: estimates where the engine has them, one line where it does not, and no disclaimer (QA17)", () => {
+  const opportunity = {
+    basis: "current_crs_engine",
+    personal: { status: "modeled", currentCents: 10400000, projectedCents: 10400000, liftCents: 0, blockers: [] },
+    combined: { status: "modeled", currentCents: 15400000, projectedCents: 15400000, liftCents: 0, blockers: [] },
+    businesses: [
+      { name: "Cedar Grove LLC", status: "modeled", currentCents: 5000000, projectedCents: 6000000, liftCents: 1000000, blockers: [] },
+      { name: "Willow Studio LLC", status: "unknown", currentCents: null, projectedCents: null, liftCents: null,
+        blockers: ["formed_business_not_on_file", "formation_evidence_required", "ein_evidence_required", "matched_business_credit_report_required"] },
+      { name: "Juniper Services LLC", status: "unknown", currentCents: null, projectedCents: null, liftCents: null,
+        blockers: ["matched_business_credit_report_required"] }
+    ],
+    steps: [
+      { key: "utilization", currentCents: 9360000, projectedCents: 10400000, liftCents: 1040000, status: "modeled_scenario",
+        reason: "The existing engine's scenario assumes all card balances reach its utilization target. This is one joint scenario, not a lift per card." },
+      { key: "formation", currentCents: null, projectedCents: null, liftCents: null, status: "not_modeled",
+        reason: "This is a preparation or evidence requirement. The existing engine does not assign a standalone dollar lift to completing it." }
+    ],
+    limitations: ["Modeled capacity is not an approval, issued credit, or usable funding."]
+  };
+  const html = F.renderOpportunity(opportunity);
+  const t = text(html);
+  // The plan does not move the personal estimate: one amount, no "$0" change.
+  assert.match(t, /Personal Estimate today \$104,000 Combined estimate Estimate today \$154,000/);
+  assert.doesNotMatch(t, /With your plan \$104,000|Change \$0/);
+  // A business with an estimate keeps its numbers; one without is one line.
+  assert.match(t, /Cedar Grove LLC Estimate today \$50,000 With your plan \$60,000 Change \$10,000/);
+  assert.match(html, /<li data-opportunity-business><strong>Willow Studio LLC<\/strong> — not\u00a0on\u00a0file\u00a0yet<\/li>/,
+    "one line, and the reason moves whole to the next line on a narrow phone");
+  assert.match(html, /<li data-opportunity-business><strong>Juniper Services LLC<\/strong> — needs\u00a0its\u00a0business\u00a0report<\/li>/);
+  assert.equal((html.match(/data-opportunity-business/g) || []).length, 3, "every business shows once");
+  // Only a step with a dollar change shows, and never the engine's caveat.
+  assert.match(t, /What each step changes Card balances Estimated funding change: \$10,400/);
+  assert.doesNotMatch(t, /LLC formation|Not modeled|not a lift per card|joint scenario|standalone dollar lift/);
+  assert.doesNotMatch(t, /Unknown|modeled capacity|not an approval|issued credit|usable funding/);
+  // An unknown total is never shown.
+  assert.doesNotMatch(F.renderOpportunity({ ...opportunity, combined: { currentCents: null, blockers: ["business_capacity_incomplete"] } }), /data-opportunity-combined/);
 });
 
 test("no business yet: says what will appear and one way to make it appear", () => {
@@ -294,6 +346,8 @@ test("what this cannot look ahead on is said in words", () => {
   assert.match(t, /What this cannot look ahead on Credit scores\. UnderwriteIQ reads your scores from a pull\./);
   assert.match(t, /Hard inquiries and late payments\. UnderwriteIQ counts them but has no age window/);
   assert.match(t, /Banking history\./);
+  assert.match(t, /Whether a dispute works\. An "if removed" line shows what UnderwriteIQ would say\./);
+  assert.doesNotMatch(t, /It is not a promise/, "the rider is dropped on screen; the read keeps it");
 });
 
 test("empty: no credit file → 'run your soft pull', one button, to the Setup tab", () => {

@@ -50,6 +50,13 @@ export function memoryDb({ client = { id: TEST_CLIENT, org_id: TEST_ORG, first_n
       }
       if (/SELECT id, status FROM applications WHERE id = \$1::uuid/.test(s)) return { rows: applications.filter((a) => a.id === params[0]) };
       if (/FROM applications WHERE org_id = \$1::uuid AND client_id = \$2::uuid/.test(s)) return { rows: applications };
+      // The applications tracker card on the same GET (src/finance/applications-tracker.mjs,
+      // read by api/blueprint/declines.mjs): the round applications, no rows the
+      // client added, no linked accounts, no Plaid cards.
+      if (/FROM applications a LEFT JOIN lenders l/.test(s)) return { rows: applications };
+      if (/FROM finance_applications WHERE org_id = \$1::uuid AND client_id = \$2::uuid/.test(s)) return { rows: [] };
+      if (/raw->'fundhub_application' AS link FROM bank_accounts/.test(s)) return { rows: [] };
+      if (/FROM bank_accounts a JOIN plaid_items i/.test(s)) return { rows: [] };
       if (/FROM lenders/.test(s)) return { rows: lenders };
       if (/FROM documents WHERE id = \$1::uuid/.test(s)) return { rows: documents.filter((d) => d.id === params[0]) };
       if (/SELECT count\(\*\)::int AS n FROM blueprint_declines/.test(s)) return { rows: [{ n: pastesToday }] };

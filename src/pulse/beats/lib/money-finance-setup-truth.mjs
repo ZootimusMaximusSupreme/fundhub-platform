@@ -3,7 +3,7 @@
 // Two yes-or-no questions a paying client would feel:
 //
 //   finance-os-setup:paid-turns-on   Did every client who paid the setup fee get FinanceOS turned on?
-//   finance-os-setup:price-set       Does the Setup page have a price, or does it show "$X"?
+//   finance-os-setup:price-set       Does the Setup page have a price, or does it hide the price line?
 //
 // The setup fee is one payment_links row: purpose 'custom' and description 'Finance OS setup'
 // (src/finance/money-setup.mjs SETUP_PURPOSE and SETUP_DESCRIPTION). When Commas says it is paid,
@@ -136,7 +136,7 @@ function checkPriceSet({ env }) {
   return row(
     id,
     "FAIL",
-    `${SETUP_FEE_ENV} is not set to a whole number of cents above zero, so Step 1 on the Setup page shows "$X" and the Pay button answers 409 price_not_set.`,
+    `${SETUP_FEE_ENV} is not set to a whole number of cents above zero, so Step 1 on the Setup page shows no price (the line is hidden) and the Pay button answers 409 price_not_set.`,
     `Set ${SETUP_FEE_ENV} (whole cents) on Netlify production, without --secret, then ship once. The price is Chris's call. ` +
       `Read src/finance/money-setup.mjs readSetupFeeCents and api/money/setup.mjs. ${TRIP}`
   );

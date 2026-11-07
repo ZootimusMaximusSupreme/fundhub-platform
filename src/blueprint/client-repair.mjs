@@ -12,9 +12,16 @@ import { violationsByBureauFromMergedCrs } from "../metro2/diy/from-crs.mjs";
 import { derogatoryClaimsByBureau, mergeDerogatoryClaims } from "../metro2/diy/derogatory.mjs";
 import { nextRound } from "../metro2/rounds/state.mjs";
 import { genuineInquiryReport } from "../inquiry-ops/verify-removal.mjs";
+import { letterCycle, readLetterApprovals } from "./fulfillment-cycle.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ROUNDS = ["R1", "R2", "R3", "R4", "R5", "R6"];
+/* The client paid the $97 "we mail it for you" for this letter (letter-mailing.mjs),
+   so Fundhub mails it and the client's own submission is closed. l = the letter. */
+const paidFundhubMailingSql = (letter = "l.id", org = "l.org_id", client = "l.client_id") => `SELECT 1 FROM blueprint_letter_mailing_envelopes e
+  JOIN blueprint_letter_mailing_orders o ON o.id=e.order_id AND o.org_id=e.org_id AND o.client_id=e.client_id
+  WHERE e.dispute_letter_id=${letter} AND e.org_id=${org} AND e.client_id=${client}
+    AND o.payment_state='paid' AND e.state IN ('ready','sending','accepted','needs_review')`;
 export class ClientRepairError extends Error {
   constructor(code, message, status = 400) { super(message); this.code = code; this.status = status; }
 }
@@ -70,9 +77,11 @@ async function casesAndLetters(db, scope) {
     WHERE i.org_id=$1::uuid AND i.client_id=$2::uuid ORDER BY i.created_at,i.id`, [scope.orgId, scope.clientId])).rows;
   const letters = (await db.query(
     `SELECT l.id,l.case_id,l.bureau,l.round,l.target,l.status,l.created_at,d.id AS document_id,
-            s.submission_reference,s.receipt_document_id,s.submitted_at,s.channel
+            d.current_version_id AS document_version_id,
+            s.submission_reference,s.receipt_document_id,s.submitted_at,s.channel,
+            EXISTS(${paidFundhubMailingSql()}) AS fundhub_mailing
        FROM dispute_letters l LEFT JOIN LATERAL (
-         SELECT id FROM documents WHERE org_id=l.org_id AND client_id=l.client_id
+         SELECT id,current_version_id FROM documents WHERE org_id=l.org_id AND client_id=l.client_id
           AND kind='deliverable' AND subtype='metro2_dispute_letter_pack'
           AND metadata->>'letterId'=l.id::text AND current_version_id IS NOT NULL
          ORDER BY generated_at DESC LIMIT 1) d ON true
@@ -105,9 +114,10 @@ async function permittedRepairRound(db, scope, data) {
 
 export async function readClientRepair(db, scope, deps = {}) {
   requireScope(scope);
-  const [program, authorization, data, stage, services] = await Promise.all([
+  const [program, authorization, data, stage, services, approvals] = await Promise.all([
     programFor(db, scope), authority(db, scope, deps), casesAndLetters(db, scope),
-    (deps.readRepairStage || readRepairStage)(db, scope), servicesFor(db, scope, deps)
+    (deps.readRepairStage || readRepairStage)(db, scope), servicesFor(db, scope, deps),
+    (deps.readLetterApprovals || readLetterApprovals)(db, scope)
   ]);
   const currentRound = await permittedRepairRound(db, scope, data);
   const currentLetters = data.letters.filter(letter => letter.round === currentRound);
@@ -126,9 +136,13 @@ export async function readClientRepair(db, scope, deps = {}) {
       letters: data.letters.filter(letter => letter.case_id === row.id).map(letter => ({
         id: letter.id, documentId: letter.document_id || null, bureau: letter.bureau, round: letter.round,
         target: letter.target, status: letter.status,
+        /* The fulfillment cycle: the exact bureau address and this version's approval. */
+        ...letterCycle({ bureau: letter.bureau, target: letter.target || "bureau",
+          versionId: letter.document_version_id || null, approvals }),
         canRecordSubmission: scope.engagement.status === "active"
           && !teamOwnsRepair(services, letter.round) && authorization.signed && authorization.packetComplete
-          && authorization.identityReviewed && !letter.submitted_at && ["generated", "ready"].includes(letter.status),
+          && authorization.identityReviewed && !letter.submitted_at && ["generated", "ready"].includes(letter.status)
+          && letter.fundhub_mailing !== true,
         submission: letter.submitted_at ? { reference: letter.submission_reference, receiptDocumentId: letter.receipt_document_id,
           submittedAt: letter.submitted_at, channel: letter.channel } : null
       })) })), actions: { canGenerate } };
@@ -184,6 +198,8 @@ export async function recordClientRepairSubmission(db, scope, input, deps = {}) 
       if (prior.submission_reference !== reference || prior.receipt_document_id !== input.receiptDocumentId || prior.channel !== input.channel) fail("submission_already_saved", "This letter already has its submission receipt.", 409);
       return { ok: true, status: "submitted_awaiting_response", letterId: letter.id, submittedAt: prior.submitted_at, replayed: true };
     }
+    if ((await tx.query(`${paidFundhubMailingSql("$1::uuid", "$2::uuid", "$3::uuid")} LIMIT 1`,
+      [letter.id, scope.orgId, scope.clientId])).rows[0]) fail("fundhub_mailing_this_letter", "Fundhub is mailing this letter for you.", 409);
     if (!["generated", "ready"].includes(letter.status) || letter.send_claimed_at || letter.mailed_at) fail("repair_letter_already_handled", "This letter is already being handled. Ask the Fundhub team before sending it again.", 409);
     const receipt = (await tx.query(
       `SELECT d.id FROM documents d WHERE d.id=$1::uuid AND d.org_id=$2::uuid AND d.client_id=$3::uuid

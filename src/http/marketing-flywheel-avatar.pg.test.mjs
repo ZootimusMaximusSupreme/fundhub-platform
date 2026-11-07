@@ -244,7 +244,7 @@ describe("Build the avatar on the server (real Postgres)", { skip: !HAS_DB ? "no
     const job = (await db.query(`SELECT * FROM marketing_jobs WHERE id = $1`, [first.body.job.id])).rows[0];
     assert.equal(job.kind, "avatar");
     assert.equal(Number(job.payload.run_cap_usd), 20);
-    assert.match(job.payload.service_description, /^The Fundhub \$10,000 white-label partnership/);
+    assert.match(job.payload.service_description, /^The Fundhub \$30,000 white-label partnership/);
 
     const model = fakeModel();
     const { hits } = await withNoNetwork(async () => {

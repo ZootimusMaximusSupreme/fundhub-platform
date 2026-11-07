@@ -73,7 +73,7 @@ test("the catalogue states the four owner-set prices, in integer cents", () => {
   assert.equal(bySlug.autopsy.priceCents, 2700, "Decline Autopsy is $27");
   assert.equal(bySlug.board.priceCents, 4700, "Winner's Board is $47");
   assert.equal(bySlug.trial.priceCents, 29700, "Live Trial is $297");
-  assert.equal(bySlug.partner.priceCents, 1000000, "partner entry is $10,000, once");
+  assert.equal(bySlug.partner.priceCents, 3000000, "partner entry is $30,000, once (owner-set 2026-11-07)");
 
   for (const item of cat.items) {
     assert.ok(Number.isInteger(item.priceCents), `${item.slug}: money is integer cents, never dollars`);
@@ -90,7 +90,7 @@ test("prices are rendered, never invented: display and label are composed from t
   assert.equal(bySlug.board.priceDisplay, "$47");
   assert.equal(bySlug.board.priceLabel, "$47/month", "the board is the only recurring one");
   assert.equal(bySlug.trial.priceLabel, "$297 once");
-  assert.equal(bySlug.partner.priceLabel, "$10,000 once");
+  assert.equal(bySlug.partner.priceLabel, "$30,000 once");
 
   // NULL MEANS UNKNOWN AND MUST SURVIVE — it never becomes $0.
   assert.equal(priceLabel(null, "one_time"), null);

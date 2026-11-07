@@ -1114,6 +1114,24 @@
    ]
   },
   {
+   "key": "SMS-FILE-PROTECT-BUSINESS-CREDIT",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/migrations/578_finance_alerts_bundle.sql"
+   ]
+  },
+  {
+   "key": "SMS-FILE-PROTECT-CARD-OVER-10",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/migrations/578_finance_alerts_bundle.sql"
+   ]
+  },
+  {
    "key": "SMS-FILE-PROTECT-CASH-RESERVE",
    "channel": "sms",
    "approvedBySeed": true,
@@ -1156,6 +1174,15 @@
    "inactive": false,
    "files": [
     "db/migrations/433_finance_os_card_due_template.sql"
+   ]
+  },
+  {
+   "key": "SMS-FINANCE-WEEKLY-MONEY",
+   "channel": "sms",
+   "approvedBySeed": true,
+   "inactive": false,
+   "files": [
+    "db/migrations/578_finance_alerts_bundle.sql"
    ]
   },
   {

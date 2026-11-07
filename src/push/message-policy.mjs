@@ -1,6 +1,7 @@
 // A companion alert is allowed only after the ordinary email/SMS dispatcher
 // records a real provider send. Never place message copy on the lock screen.
 import { inDripWindow } from "../messaging/send-window.mjs";
+import { FINANCE_TEXT_KEYS, companionForFinanceText } from "./finance-alerts.mjs";
 
 export const PROMOTIONAL_KEY = /^(?:BS-|(?:SMS|EMAIL)-(?:BS|NOBOOK|S05A|SLO|OFFER|N[0-9]{2}|AISET03|S02))/;
 const BS_PRECALL_SMS = "SMS-BS01-02-PRECALL";
@@ -32,6 +33,9 @@ export async function notificationForSentMessage(db, message, { now = new Date()
 
   const key = String(message.template_key || "");
   if (key === BOOKING_CONFIRM_SMS) return { kind: "call_confirmation" };
+  // A card-due or pay-before-close text: its finance phone alert, when the daily
+  // pass queued one, is the buzz for this event (src/push/finance-alerts.mjs).
+  if (FINANCE_TEXT_KEYS.has(key)) return companionForFinanceText(db, message);
   if (!PROMOTIONAL_KEY.test(key)) return { kind: "update" };
 
   // The three planned lesson alerts follow successful source messages. The

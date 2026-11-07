@@ -1,0 +1,53 @@
+{
+  "_note": "Sample. Fictional payers for the Money coming in block on /app/money-strategy.html. Shape: inputs.income as src/finance/payment-strategy.mjs incomeForPlan() builds it. Joined to money-strategy.sample.json (as_of 2026-10-07).",
+  "ok": true,
+  "as_of": "2026-10-07",
+  "floor_cents": 0,
+  "floor_source": "buffer-supplied",
+  "by_kind": {
+    "personal": { "monthly_cents": 420000, "counted": 1, "not_counted": 2, "bills_cents": 268000, "bill_count": 2, "unsure_bill_count": 0 },
+    "business": { "monthly_cents": 250000, "counted": 1, "not_counted": 0, "bills_cents": 30000, "bill_count": 1, "unsure_bill_count": 1 },
+    "unknown": { "monthly_cents": null, "counted": 0, "not_counted": 0, "bills_cents": 0, "bill_count": 0, "unsure_bill_count": 0 }
+  },
+  "items": [
+    {
+      "id": "sample-chk-p:SAMPLE CO PAYROLL", "source": "paycheck", "name": "SAMPLE CO PAYROLL", "kind": "personal",
+      "cadence": "biweekly", "typical_cents": 210000, "monthly_cents": 420000, "sure_per_month": 2,
+      "next_on": "2026-10-16", "last_on": "2026-10-02", "times_seen": 12,
+      "account_name": "Personal Checking", "account_mask": "1101", "container_name": null,
+      "payouts_per_month": null, "months": null, "reason": null
+    },
+    {
+      "id": "merchant:sample-commas", "source": "merchant_payout", "name": "Commas payouts", "kind": "business",
+      "cadence": null, "typical_cents": null, "monthly_cents": 250000, "sure_per_month": null,
+      "next_on": null, "last_on": "2026-10-05", "times_seen": null,
+      "account_name": null, "account_mask": null, "container_name": "Sample Business LLC",
+      "payouts_per_month": 2,
+      "months": [
+        { "month": "2026-07", "payouts_cents": 300000 },
+        { "month": "2026-08", "payouts_cents": 250000 },
+        { "month": "2026-09", "payouts_cents": 400000 }
+      ],
+      "reason": null
+    }
+  ],
+  "not_counted": [
+    {
+      "id": "sample-chk-p:SAMPLE TAX REFUND", "source": "deposit", "name": "SAMPLE TAX REFUND", "kind": "personal",
+      "cadence": null, "typical_cents": 184000, "monthly_cents": null, "sure_per_month": null,
+      "next_on": null, "last_on": "2026-09-21", "times_seen": 1,
+      "account_name": "Personal Checking", "account_mask": "1101", "container_name": null,
+      "payouts_per_month": null, "months": null, "reason": "one_off_not_repeating"
+    },
+    {
+      "id": "sample-chk-p:SAMPLE SIDE GIG", "source": "deposit", "name": "SAMPLE SIDE GIG", "kind": "personal",
+      "cadence": "weekly", "typical_cents": 30000, "monthly_cents": null, "sure_per_month": 4,
+      "next_on": null, "last_on": "2026-10-03", "times_seen": 2,
+      "account_name": "Personal Checking", "account_mask": "1101", "container_name": null,
+      "payouts_per_month": null, "months": null, "reason": "seen_twice_needs_a_third"
+    }
+  ],
+  "months_judged": ["2026-07", "2026-08", "2026-09"],
+  "merchant_unavailable": false,
+  "capped": false
+}

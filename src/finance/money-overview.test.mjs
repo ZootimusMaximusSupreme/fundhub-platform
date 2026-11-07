@@ -106,7 +106,10 @@ describe("buildMoneyOverview — full client", () => {
     // The live fixture has no bills, dues or months yet; these keys are the board's.
     assert.deepEqual(Object.keys(out.bills[0]).sort(),
       ["amount_cents", "cadence", "container_id", "kind", "name", "next_on"]);
-    assert.deepEqual(Object.keys(out.upcoming[0]).sort(), ["amount_cents", "name", "on", "type"]);
+    // A card row also names its card (unit I6, 2026-11-07: the "Pay now" / "I paid" controls).
+    assert.equal(out.upcoming[0].type, "card_due");
+    assert.deepEqual(Object.keys(out.upcoming[0]).sort(), ["account_id", "amount_cents", "name", "on", "type"]);
+    assert.deepEqual(Object.keys(out.upcoming.find((u) => u.type === "bill")).sort(), ["amount_cents", "name", "on", "type"]);
     assert.deepEqual(keysDeep(out.cashflow.months[0]), {
       business: { in_cents: null, out_cents: null }, month: null,
       personal: { in_cents: null, out_cents: null }, unknown: { in_cents: null, out_cents: null }
@@ -164,7 +167,7 @@ describe("buildMoneyOverview — full client", () => {
 
   test("upcoming: the next 30 days, by date", () => {
     assert.deepEqual(out.upcoming, [
-      { type: "card_due", name: "Business Amex", on: "2026-10-21", amount_cents: 13500 },
+      { type: "card_due", account_id: "a4", name: "Business Amex", on: "2026-10-21", amount_cents: 13500 },
       { type: "bill", name: "Rent", on: "2026-11-01", amount_cents: 250000 }
     ]);
   });

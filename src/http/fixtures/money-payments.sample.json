@@ -158,6 +158,20 @@
       "plan_id": "c1a71e00-0000-4000-8000-000000000001"
     }
   ],
+  "phone": {
+    "enabled": true,
+    "opted_out": false,
+    "has_phone": true,
+    "days_before": 3,
+    "plans": {
+      "c1a71e00-0000-4000-8000-000000000001": {
+        "due_on": "2026-10-02",
+        "alert_on": null,
+        "reason": "late",
+        "sent": null
+      }
+    }
+  },
   "agent_log": [
     {
       "id": "10910000-0000-4000-8000-000000000001",

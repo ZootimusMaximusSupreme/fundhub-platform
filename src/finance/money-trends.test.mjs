@@ -5,7 +5,9 @@ import assert from "node:assert/strict";
 
 import {
   addDays, dayRange, lastMonths, readRange, cardsUsed, buildSnapshot,
-  rebuildBalances, backfillRollups, buildTrends, planBackfill, backfillClient, snapshotClient, moneyTrends
+  rebuildBalances, backfillRollups, buildTrends, planBackfill, backfillClient, snapshotClient, moneyTrends,
+  readDay, addMonths, monthsBetween, readWindow, trendWindow, MAX_SPAN_MONTHS,
+  pickerType, accountChoices, pickAccount, buildAccountSeries
 } from "./money-trends.mjs";
 
 const ENT_P = { id: "e-p", kind: "personal", name: "Chris" };
@@ -319,5 +321,278 @@ describe("moneyTrends — the read against a stand-in db", () => {
     assert.equal(t.sales, null);
     assert.equal(t.sales_unavailable, true);
     assert.equal(t.daily.cash.business.cents.at(-1), 200);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Any dates and one account (Finance OS CFO build, unit A, 2026-11-07)
+ * ------------------------------------------------------------------ */
+
+describe("any date range — reading from and to", () => {
+  test("a real day passes; a day that does not exist, or another format, is refused", () => {
+    assert.equal(readDay("2026-02-28"), "2026-02-28");
+    assert.equal(readDay("2024-02-29"), "2024-02-29", "a leap day is a real day");
+    assert.equal(readDay(" 2026-11-06 "), "2026-11-06");
+    for (const bad of ["2026-02-30", "2025-02-29", "2026-13-01", "2026-00-10", "2026-1-5", "11/06/2026", "2026-11-06T00:00:00Z", "", null, undefined, "today"]) {
+      assert.equal(readDay(bad), null, `${bad} is not a day`);
+    }
+  });
+
+  test("months move by the calendar and a short month keeps its last day", () => {
+    assert.equal(addMonths("2026-11-06", -24), "2024-11-06");
+    assert.equal(addMonths("2026-03-31", -1), "2026-02-28");
+    assert.equal(addMonths("2024-02-29", -24), "2022-02-28");
+    assert.equal(addMonths("2026-01-15", 1), "2026-02-15");
+    assert.deepEqual(monthsBetween("2025-11-20", "2026-02-03"), ["2025-11", "2025-12", "2026-01", "2026-02"]);
+    assert.deepEqual(monthsBetween("2026-02-03", "2026-02-27"), ["2026-02"]);
+  });
+
+  test("presets still work; from and to come back as a pair", () => {
+    assert.deepEqual(readWindow({}), { ok: true, range: "90d", from: null, to: null });
+    assert.deepEqual(readWindow({ range: "12m" }), { ok: true, range: "12m", from: null, to: null });
+    assert.deepEqual(readWindow({ from: "2026-01-01", to: "2026-03-31" }), { ok: true, range: null, from: "2026-01-01", to: "2026-03-31" });
+    assert.equal(readWindow({ from: "2026-05-05", to: "2026-05-05" }).ok, true, "one day is a range");
+  });
+
+  test("bad windows are refused with words: bad range, both, one date, a fake day, backwards, too long", () => {
+    const refused = (q) => {
+      const w = readWindow(q);
+      assert.equal(w.ok, false, JSON.stringify(q));
+      assert.equal(typeof w.error, "string");
+      return w.error;
+    };
+    assert.match(refused({ range: "7d" }), /30d, 90d or 12m/);
+    assert.match(refused({ range: "30d", from: "2026-01-01", to: "2026-02-01" }), /not both/);
+    assert.match(refused({ from: "2026-01-01" }), /both/);
+    assert.match(refused({ to: "2026-01-01" }), /both/);
+    assert.match(refused({ from: "2026-02-30", to: "2026-03-10" }), /real dates/);
+    assert.match(refused({ from: "2026-03-10", to: "2026-03-09" }), /on or before/);
+    assert.match(refused({ from: "2024-11-05", to: "2026-11-06" }), /24 months/);
+  });
+
+  test("exactly 24 months is allowed; one day more is not", () => {
+    assert.equal(MAX_SPAN_MONTHS, 24);
+    assert.equal(readWindow({ from: "2024-11-06", to: "2026-11-06" }).ok, true);
+    assert.equal(readWindow({ from: "2024-11-05", to: "2026-11-06" }).ok, false);
+  });
+
+  test("a custom window covers exactly from to to; a preset still ends today", () => {
+    const w = trendWindow({ asOf: "2026-11-06T15:00:00Z", from: "2026-10-30", to: "2026-11-02" });
+    assert.equal(w.custom, true);
+    assert.equal(w.range, null);
+    assert.deepEqual(w.days, ["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02"]);
+    assert.deepEqual(w.months, ["2026-10", "2026-11"]);
+    const p = trendWindow({ asOf: "2026-11-06T15:00:00Z", range: "30d" });
+    assert.equal(p.custom, false);
+    assert.equal(p.to, "2026-11-06");
+    assert.equal(p.days.length, 30);
+    assert.deepEqual(p.months, ["2026-10", "2026-11"]);
+    const long = trendWindow({ asOf: "2026-11-06T15:00:00Z", from: "2024-11-06", to: "2026-11-06" });
+    assert.equal(long.days.length, 731, "two years of days, nothing cut off");
+    assert.equal(long.months.length, 25);
+  });
+
+  test("buildTrends on any dates: the window is the dates, rows outside it are dropped, gaps stay null", () => {
+    const t = buildTrends({
+      asOf: "2026-11-06T15:00:00Z", from: "2026-03-01", to: "2026-03-05",
+      rollups: [
+        { day: "2026-02-28", cash_personal_cents: "999" },
+        { day: "2026-03-02", cash_personal_cents: "100000", estimated: true },
+        { day: "2026-03-05", cash_personal_cents: "0" }
+      ]
+    });
+    assert.equal(t.custom, true);
+    assert.equal(t.range, null);
+    assert.equal(t.from, "2026-03-01");
+    assert.equal(t.to, "2026-03-05");
+    assert.deepEqual(t.daily.days, ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05"]);
+    assert.deepEqual(t.daily.cash.personal.cents, [null, 100000, null, null, 0], "a real $0 is 0; a missing day is null");
+    assert.deepEqual(t.daily.estimated, [null, true, null, null, false]);
+    assert.deepEqual(t.monthly.months, ["2026-03"]);
+    assert.equal(JSON.stringify(t).includes("999"), false, "a day before from is not shown");
+    // A preset read is unchanged: range named, custom false.
+    const p = buildTrends({ asOf: "2026-11-06T15:00:00Z", range: "12m" });
+    assert.equal(p.range, "12m");
+    assert.equal(p.custom, false);
+    assert.equal(p.account, null);
+    assert.deepEqual(p.accounts, []);
+  });
+});
+
+describe("one account — the picker list and the ownership check", () => {
+  const ENTS = [{ id: "e-p", kind: "personal", name: "Me" }, { id: "e-b", kind: "business", name: "Fundhub LLC" }];
+  const ROWS = [
+    { id: "b1", name: "Business Checking", mask: "4455", account_type: "depository", account_subtype: "checking", entity_id: "e-b", institution_name: "Chase" },
+    { id: "p2", name: "Sapphire Preferred", mask: "1234567812345678", account_type: "credit", account_subtype: "credit card", entity_id: "e-p" },
+    { id: "p1", name: null, official_name: "Everyday Checking", mask: "0001", account_type: "depository", account_subtype: "checking", entity_id: "e-p" },
+    { id: "p3", name: "Rainy Day", account_type: "depository", account_subtype: "savings", entity_kind: "personal" },
+    { id: "u1", name: "Money Market", account_type: "depository", account_subtype: "money market" },
+    { id: "b2", name: "SBA Loan", account_type: "loan", entity_id: "e-b" },
+    { id: "x1", name: "Old Card", account_type: "credit", entity_id: "e-p", closed_at: "2026-09-01T00:00:00Z" }
+  ];
+
+  test("type words: card, checking, savings, loan; anything else is other", () => {
+    assert.equal(pickerType("credit", "credit card"), "card");
+    assert.equal(pickerType("loan", null), "loan");
+    assert.equal(pickerType("depository", "checking"), "checking");
+    assert.equal(pickerType("depository", "Savings"), "savings");
+    assert.equal(pickerType("depository", "money market"), "other", "a money market is not called checking");
+    assert.equal(pickerType("depository", null), "other");
+    assert.equal(pickerType("investment", "brokerage"), "other");
+  });
+
+  test("open accounts only, named the overview's way, sorted by kind then type", () => {
+    const list = accountChoices({ accounts: ROWS, entities: ENTS });
+    assert.deepEqual(list.map((a) => a.id), ["p1", "p3", "p2", "b1", "b2", "u1"]);
+    assert.equal(list.some((a) => a.id === "x1"), false, "a closed account is not offered");
+    const p1 = list.find((a) => a.id === "p1");
+    assert.equal(p1.label, "Everyday Checking ••0001", "no name → the official name");
+    const p2 = list.find((a) => a.id === "p2");
+    assert.equal(p2.mask, "5678", "never more than the last four");
+    assert.equal(p2.label, "Sapphire Preferred ••5678");
+    assert.equal(p2.kind, "personal", "kind comes from the container");
+    assert.equal(p2.type, "card");
+    assert.equal(list.find((a) => a.id === "p3").label, "Rainy Day", "no mask stored → no dots");
+    assert.equal(list.find((a) => a.id === "b1").institution, "Chase");
+    assert.equal(list.find((a) => a.id === "u1").kind, "unknown");
+    for (const a of list) assert.deepEqual(Object.keys(a).sort(), ["id", "institution", "kind", "label", "mask", "name", "subtype", "type"]);
+  });
+
+  test("the ownership check finds only an account on this list", () => {
+    const list = accountChoices({ accounts: ROWS, entities: ENTS });
+    assert.equal(pickAccount(list, "p2").id, "p2");
+    assert.equal(pickAccount(list, "P2").id, "p2", "a uuid in capitals is the same account");
+    assert.equal(pickAccount(list, "someone-elses-card"), null);
+    assert.equal(pickAccount(list, "x1"), null, "a closed account is not pickable");
+    assert.equal(pickAccount(list, null), null);
+    assert.equal(pickAccount([], "p2"), null);
+  });
+});
+
+describe("one account — its own lines", () => {
+  const DAYS = ["2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05"];
+  const CARD = { id: "p2", label: "Sapphire ••5678", kind: "personal", type: "card" };
+  const CHECKING = { id: "p1", label: "Everyday ••0001", kind: "personal", type: "checking" };
+
+  test("a card: owed each day, a gap is null, limit used only where the limit is known", () => {
+    const s = buildAccountSeries({
+      account: CARD, days: DAYS, rows: [
+        { day: "2026-11-01", current_balance_cents: "250000", credit_limit_cents: "1000000", estimated: false },
+        { day: "2026-11-02", current_balance_cents: "300000", credit_limit_cents: null, estimated: false },
+        { day: "2026-11-04", current_balance_cents: "-5000", credit_limit_cents: "1000000", estimated: false },
+        { day: "2026-11-05", current_balance_cents: "333333", credit_limit_cents: "0", estimated: false }
+      ]
+    });
+    assert.deepEqual(s.balance_cents, [250000, 300000, null, -5000, 333333]);
+    assert.deepEqual(s.limit_cents, [1000000, null, null, 1000000, 0]);
+    assert.deepEqual(s.used_pct, [25, null, null, 0, null],
+      "25%; no limit → null; no row → null; overpaid → 0%; a $0 limit → null, never Infinity");
+    assert.deepEqual(s.estimated, [false, false, null, false, false]);
+    assert.equal(s.has_history, true);
+    assert.equal(s.label, "Sapphire ••5678");
+  });
+
+  test("used is owed over limit, rounded to one place, the Cards used math", () => {
+    const s = buildAccountSeries({
+      account: CARD, days: ["2026-11-01"],
+      rows: [{ day: "2026-11-01", current_balance_cents: "132040", credit_limit_cents: "800000" }]
+    });
+    assert.equal(s.used_pct[0], cardsUsed([{ balance_cents: 132040, limit_cents: 800000 }]).pct);
+    assert.equal(s.used_pct[0], 16.5);
+  });
+
+  test("a bank account: balance only, estimated days kept, no limit series", () => {
+    const s = buildAccountSeries({
+      account: CHECKING, days: DAYS, rows: [
+        { day: "2026-11-01", current_balance_cents: "421055", source: "backfill", estimated: true },
+        { day: "2026-11-03", current_balance_cents: "0", source: "snapshot", estimated: false },
+        { day: "2026-10-20", current_balance_cents: "777", estimated: false }
+      ]
+    });
+    assert.deepEqual(s.balance_cents, [421055, null, 0, null, null], "a day outside the window is dropped; a real $0 stays 0");
+    assert.deepEqual(s.estimated, [true, null, false, null, null]);
+    assert.equal(s.used_pct, null, "only a card has limit used");
+    assert.equal(s.limit_cents, null);
+  });
+
+  test("no rows → has_history false, every point null; no account → null", () => {
+    const s = buildAccountSeries({ account: CARD, days: DAYS, rows: [] });
+    assert.equal(s.has_history, false);
+    assert.ok(s.balance_cents.every((v) => v === null));
+    assert.ok(s.used_pct.every((v) => v === null));
+    assert.equal(buildAccountSeries({ account: null, days: DAYS }), null);
+  });
+});
+
+describe("moneyTrends — any dates and one account against a stand-in db", () => {
+  const ASOF = new Date("2026-11-06T15:00:00Z");
+  const MINE = "aaaaaaaa-0000-4000-8000-000000000001";
+  const THEIRS = "bbbbbbbb-0000-4000-8000-000000000002";
+  function accountDb() {
+    const seen = [];
+    return {
+      seen,
+      query: async (sql, params) => {
+        seen.push({ sql, params });
+        if (/FROM clients/.test(sql)) return { rows: [{ id: "c", first_name: "Sam", last_name: "Lee" }] };
+        if (/FROM bank_accounts a/.test(sql)) {
+          assert.deepEqual(params, ["c", "o"], "the account list is this client's, in this org");
+          return { rows: [{ id: MINE, name: "Sapphire", mask: "5678", account_type: "credit", entity_kind: "personal" }] };
+        }
+        if (/FROM finance_account_daily/.test(sql)) {
+          return {
+            rows: params[2] === MINE && params[0] === "o" && params[1] === "c"
+              ? [{ day: "2026-11-05", current_balance_cents: "200000", credit_limit_cents: "1000000", estimated: false }]
+              : [{ day: "2026-11-05", current_balance_cents: "123456789", credit_limit_cents: "1", estimated: false }]
+          };
+        }
+        return { rows: [] };
+      }
+    };
+  }
+
+  test("an own account comes back with its lines, and the day query carries org, client and account", async () => {
+    const db = accountDb();
+    const t = await moneyTrends(db, { orgId: "o", clientId: "c", range: "30d", accountId: MINE, asOf: ASOF });
+    assert.equal(t.account.id, MINE);
+    assert.equal(t.account.type, "card");
+    assert.equal(t.account.balance_cents.at(-2), 200000);
+    assert.equal(t.account.used_pct.at(-2), 20);
+    assert.equal(t.account.balance_cents.at(-1), null, "today has no row yet → a gap");
+    const q = db.seen.find((s) => /FROM finance_account_daily/.test(s.sql));
+    assert.deepEqual(q.params, ["o", "c", MINE, "2026-10-08", "2026-11-06"]);
+    assert.match(q.sql, /org_id = \$1 AND client_id = \$2 AND bank_account_id = \$3/);
+    assert.deepEqual(t.accounts.map((a) => a.id), [MINE]);
+  });
+
+  test("an account that is not one of this client's → null (the endpoint's 404), nothing of it returned", async () => {
+    const t = await moneyTrends(accountDb(), { orgId: "o", clientId: "c", range: "30d", accountId: THEIRS, asOf: ASOF });
+    assert.equal(t, null);
+  });
+
+  test("no account asked → no day query, account null, the picker list still there", async () => {
+    const db = accountDb();
+    const t = await moneyTrends(db, { orgId: "o", clientId: "c", range: "90d", asOf: ASOF });
+    assert.equal(t.account, null);
+    assert.equal(t.accounts.length, 1);
+    assert.equal(db.seen.some((s) => /FROM finance_account_daily/.test(s.sql)), false);
+  });
+
+  test("any dates: rollups and money in/out are read from `from` to `to`", async () => {
+    const db = accountDb();
+    const t = await moneyTrends(db, { orgId: "o", clientId: "c", range: null, from: "2025-06-10", to: "2025-08-20", asOf: ASOF });
+    assert.equal(t.custom, true);
+    assert.equal(t.range, null);
+    assert.equal(t.daily.days[0], "2025-06-10");
+    assert.equal(t.daily.days.at(-1), "2025-08-20");
+    assert.deepEqual(t.monthly.months, ["2025-06", "2025-07", "2025-08"]);
+    const roll = db.seen.find((s) => /FROM finance_client_daily/.test(s.sql));
+    assert.deepEqual(roll.params, ["c", "o", "2025-06-10", "2025-08-20"]);
+    const tx = db.seen.find((s) => /to_char\(posted_on/.test(s.sql));
+    assert.deepEqual(tx.params, ["c", "o", "2025-06-10", "2025-08-20"], "money in/out counts only the days inside the dates");
+    // A preset still starts money in/out on the first of its first month.
+    const db2 = accountDb();
+    await moneyTrends(db2, { orgId: "o", clientId: "c", range: "90d", asOf: ASOF });
+    assert.deepEqual(db2.seen.find((s) => /to_char\(posted_on/.test(s.sql)).params, ["c", "o", "2026-09-01", "2026-11-06"]);
   });
 });

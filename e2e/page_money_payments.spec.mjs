@@ -25,6 +25,8 @@ for(const width of [1440,390,320]){
    if(state==='full'){
     await expect(page.locator('.fh-payments .plan').first()).toBeVisible();
     await expect(page.locator('.fh-payments .staff')).toHaveCount(0);
+    // The plan's phone alert line (unit D2): the sample's next payment is late, so it says why none goes.
+    await expect(page.locator('.fh-payments .plan .phone-line').first()).toContainText('past due');
     await page.getByRole('button',{name:'Talk to a person'}).focus();
     await page.keyboard.press('Enter');
     await expect(page.locator('.act-msg')).toContainText('reach out soon');

@@ -1,0 +1,20 @@
+/* Whop plans + provider logos inside the Payments section (money-whop-plans.js, unit W).
+   The plan cards reuse the Payments card rules (.card.plan, .plan-head, .facts, .tag, .late,
+   .bar, .phone-line in money-payments.css and money-payments-ios.css), so a Whop plan and a
+   Clarity plan look the same. This file adds only the logos and the Whop sub-heading.
+   Every rule is under .fh-payments. 8px spacing scale; no px font sizes. */
+
+/* A company's own logo: its file, at one height, never stretched. */
+.fh-payments .fh-provider-logo{display:block;height:20px;width:auto;max-width:132px;object-fit:contain;flex:0 0 auto}
+.fh-payments .plan-brand{margin:0 0 8px}
+
+.fh-payments .whop-plans{margin-top:24px;min-width:0}
+.fh-payments .whop-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 16px}
+.fh-payments .whop-head h3{margin:0;font-size:1.0625rem;font-weight:650;line-height:1.3;color:var(--ink)}
+.fh-payments .whop-head .caption{flex:1 1 auto;min-width:0}
+.fh-payments .whop-plans>.caption{margin:0}
+.fh-payments .whop-plan .plan-title{min-width:0}
+.fh-payments .whop-plan .plan-name{overflow-wrap:anywhere}
+.fh-payments .whop-plan .nowrap{white-space:nowrap}
+/* Links on the phone line stay a full 44px tap target. */
+.fh-payments .whop-plan .phone-line .btn-text{display:inline-flex;align-items:center;min-height:44px;min-width:44px}

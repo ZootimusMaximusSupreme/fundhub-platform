@@ -20,6 +20,8 @@ export const UWIQ_DELIVERABLES_CONTENTS = Object.freeze([
  * @property {OfferKey} key
  * @property {string} name
  * @property {number} priceCents  amount charged on the pay link (deposit for FUNDING_DFY)
+ * @property {number} [blueprintOwnerDepositCents]  FUNDING_DFY only: the deposit
+ *   for a client who owns the Capital Blueprint (owner-set 2026-11-07: waived, 0)
  * @property {number} [priceMinCents]
  * @property {number} [priceMaxCents]
  * @property {number} [successFeePercent]  10 = 10%
@@ -106,6 +108,16 @@ export const OFFERS = Object.freeze({
     key: "FUNDING_DFY",
     name: "Funding, done-for-you",
     priceCents: 300000,
+    /* owner-set 2026-11-07: $3,000 deposit waived for Blueprint owners.
+       Chris: "we waive the 3k deposit if they have Blueprint, that's a fact."
+       He first settled it on 2026-11-01 ("no new deposit",
+       docs/sops/weekend-2026-10-24/04-sales-call-script.md), but nothing in
+       code carried it until now. A client who owns the Capital Blueprint
+       (UWIQ_DELIVERABLES) starts done-for-you funding at this deposit, $0; the
+       success fee below does not change. Read by the Finance OS funding paths
+       card (src/finance/funding-paths.mjs). The pay link, the deck and the
+       FUNDING-AGREEMENT blanks still use priceCents for every buyer. */
+    blueprintOwnerDepositCents: 0,
     successFeePercent: 10,
     financing: false,
     letters: false,
@@ -266,7 +278,9 @@ export const OFFERS = Object.freeze({
   PARTNER_ENTRY: Object.freeze({
     key: "PARTNER_ENTRY",
     name: "White-label partner program",
-    priceCents: 1000000,
+    /* owner-set 2026-11-07: $30,000. Chris: "white label is 30k". It was
+       1000000 ($10,000). */
+    priceCents: 3000000,
     financing: true,
     letters: false,
     paymentPurpose: "custom",
@@ -281,7 +295,7 @@ export const OFFER_KEYS = Object.freeze(Object.keys(OFFERS));
 // THE WHITE-LABEL PARTNER ADD-ON MENU (docs/specs/W6-pricing-menu.md).
 // Owner-set 2026-08-31. COMPLIANCE REVIEW REQUIRED — recurring fee timing.
 //
-// A partner pays $10,000 once to join and nothing monthly. These three are the
+// A partner pays $30,000 once to join and nothing monthly. These three are the
 // menu on top of that: stack freely, cancel freely, none a prerequisite for
 // another. The 50/50 split never moves for any of them.
 //
@@ -304,7 +318,7 @@ export const OFFER_KEYS = Object.freeze(Object.keys(OFFERS));
 // ONE billing unit. Nothing existing was bent to fit.
 //
 // `financing` IS DELIBERATELY ABSENT. Whether FundHub finances a monthly
-// add-on the way it finances the $10,000 entry is an owner decision nobody has
+// add-on the way it finances the $30,000 entry is an owner decision nobody has
 // made. Absent means not recorded. It is not false.
 //
 // NONE OF THESE EVER PAYS A PARTNER. They are FundHub revenue: `partnerShare`

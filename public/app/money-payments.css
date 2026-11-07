@@ -24,6 +24,10 @@
 .fh-payments .late{display:inline-block;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:999px;padding:0 8px;font-weight:600}
 .fh-payments tr.is-late td{background:#FFFBEB}
 .fh-payments .paid-word{font-weight:600;color:var(--ink)}
+/* The phone alert for a plan's next payment (unit D2): a quiet line under the facts. */
+.fh-payments .phone-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 8px;margin:8px 0 0;color:var(--ink)}
+.fh-payments .phone-line .eyebrow{margin:0}
+.fh-payments .phone-line .btn-text{min-height:44px;padding:0;color:var(--ink)}
 .fh-payments .facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 16px}
 .fh-payments .facts dd{margin:0}
 .fh-payments .bar{display:block;width:100%;height:8px}

@@ -307,7 +307,7 @@ flowchart TD
 | `/api/money/banks` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/connections` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/credit` | GET | employees: owner, admin, sales_manager, closer<br>plus: client |
-| `/api/money/fundability` | GET | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/fundability` | GET | employees: owner, admin, sales_manager, closer, csm<br>plus: client |
 | `/api/money/helper` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/overview` | GET | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/money/payments` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |

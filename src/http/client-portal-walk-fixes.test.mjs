@@ -71,7 +71,225 @@ test("Blueprint funding breakdown includes an existing company without a linked 
   assert.equal((rendered.match(/Planned Company/g) || []).length, 1);
   assert.equal((rendered.match(/Existing Owned Company/g) || []).length, 1);
   assert.match(rendered, /EIN proof needed/);
-  assert.match(rendered, /Company estimates need matching business reports and overlap review/);
+  // Short client words (owner rule 2026-11-07): one short line, no review jargon.
+  assert.match(rendered, /Each business needs its own report\./);
+  assert.doesNotMatch(rendered, /overlap review/);
+});
+
+/* Accountability QA07/QA08 (2026-11-07): an amount the plan does not move shows
+   once, and the panel carries no approval disclaimer or jargon. */
+test("Blueprint funding shows one amount when the plan does not move it, and no approval disclaimer", () => {
+  const context = { window: {}, document: { addEventListener() {} }, location: { origin: "https://app.example.invalid" }, URL, Intl };
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(HERE, "../../public/app/blueprint-journey.js"), "utf8"), context);
+  const data = (projectedCents) => ({ businessPlans: { startedAt: "2026-11-01", businesses: [] },
+    creditContext: { opportunity: { personal: { currentCents: 10400000, projectedCents, blockers: [] }, combined: { currentCents: null }, businesses: [] } },
+    progress: { waypoints: [], scores: { personal: [], business: [] } } });
+  const capacity = (html) => html.match(/<div class="bj-capacity">[\s\S]*?<\/div>/)[0];
+  const same = context.window.FHBlueprintJourney.render({ data: data(10400000) });
+  assert.doesNotMatch(capacity(same), /→/, "$104,000 → $104,000 shows once");
+  assert.equal((capacity(same).match(/\$104,000/g) || []).length, 1);
+  assert.match(capacity(context.window.FHBlueprintJourney.render({ data: data(11000000) })), /→ \$110,000/);
+  assert.doesNotMatch(same, /Estimates are not approvals|counted once|joint paydown/);
+});
+
+/* Accountability QA20 and QA25 (2026-11-07): the bureau rows stop crushing on a
+   phone, and "Your path" says the engine's change in plain words. */
+function journey() {
+  const context = { window: {}, document: { addEventListener() {} }, location: { origin: "https://app.example.invalid" }, URL, Intl };
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(HERE, "../../public/app/blueprint-journey.js"), "utf8"), context);
+  return context.window.FHBlueprintJourney;
+}
+
+test("Blueprint credit rows put each pull's date under its score, and no pull shows no date (QA20)", () => {
+  const J = journey();
+  const data = (personal) => ({ businessPlans: { startedAt: "2026-11-01", businesses: [] },
+    creditContext: { opportunity: { personal: { currentCents: 10400000, projectedCents: 10400000, blockers: [] }, combined: {}, businesses: [] } },
+    progress: { waypoints: [], scores: { personal, business: [] } } });
+  const bureauRows = (html) => html.match(/<section class="bj-credit">[\s\S]*?<\/dl>/)[0].match(/<div>[\s\S]*?<\/div>/g);
+  const none = bureauRows(J.render({ data: data([]) }));
+  assert.equal(none.length, 3);
+  for (const row of none) {
+    assert.match(row, /^<div><dt>(Experian|Equifax|TransUnion)<\/dt><dd>Not pulled yet<\/dd><\/div>$/, "two pieces in the row, and no date with no pull");
+  }
+  const pulled = bureauRows(J.render({ data: data([{ bureau: "experian", score: 712, pulledAt: "2026-11-06T12:00:00Z" }]) }));
+  assert.match(pulled[0], /^<div><dt>Experian<\/dt><dd>712<br><small>Nov 6, 2026<\/small><\/dd><\/div>$/, "the date sits under the score");
+  assert.doesNotMatch(pulled.join(""), /No report date|<\/dd><small>/);
+});
+
+test("Blueprint path: the funding change is the engine's dollars in plain words, never its × numbers (QA25)", () => {
+  const J = journey();
+  const plan = (change) => ({ businessPlans: { startedAt: "2026-11-01", businesses: [] },
+    progress: { waypoints: [], scores: { personal: [], business: [] } },
+    path: { steps: [], milestones: [], counts: { done: 0, total: 0 },
+      funding: { todayCents: 10400000, projectedCents: 10400000, change, business: { unlocked: false, text: "Unlocks after your first business is on file" } },
+      cards: { todayPct: 5, targetPct: 10 }, fundability: null } });
+  const panel = (change) => J.render({ data: plan(change) }).match(/<section class="bj-path">[\s\S]*?<\/section>/)[0];
+  const line = (change) => (panel(change).match(/<p class="bj-impact">([^<]*)<\/p>/) || [])[1] || null;
+  const cardUse = (from, to) => ({ modifier: "utilization", words: "card use", from, to });
+  assert.equal(line({ deltaCents: 1040000, moved: [cardUse(0.9, 1)] }), "+$10,400 now that card use is under 10%");
+  assert.doesNotMatch(panel({ deltaCents: 1040000, moved: [cardUse(0.9, 1)] }), /×/);
+  assert.equal(line({ deltaCents: 500000, moved: [{ modifier: "thinFile", words: "thin file", from: 0.6, to: 1 }, cardUse(0.9, 1)] }),
+    "+$5,000 now that you have 3 or more of your own accounts and card use is under 10%");
+  // A move the engine's own marks cannot name, or a drop, shows the dollars alone.
+  assert.equal(line({ deltaCents: 1040000, moved: [cardUse(0.75, 0.9)] }), "+$10,400 funding");
+  assert.equal(line({ deltaCents: -1040000, moved: [cardUse(1, 0.9)] }), "-$10,400 funding");
+  assert.equal(line({ deltaCents: 0, moved: [cardUse(0.9, 1)] }), null, "no change, no line");
+});
+
+/* Unit S (2026-11-07, Chris's spot): the look-ahead sits INSIDE "Funding you
+   qualify for" and paints only from the look-ahead read. Unit TL: the bank steps
+   carry the "Existing relationship" and "You already have this" tags. */
+function journeyContext(slots = []) {
+  const context = { window: {}, document: { addEventListener() {}, querySelectorAll: () => slots, querySelector: () => null },
+    location: { origin: "https://app.example.invalid" }, URL, Intl, Promise };
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(HERE, "../../public/app/blueprint-journey.js"), "utf8"), context);
+  return context.window.FHBlueprintJourney;
+}
+const LOOK = { ok: true, view: "lookahead", has_pull: true, months: 9, now: { fundhub_score: { score: 62 } },
+  points: [3, 6, 9, 12].map((m) => ({ months: m, scenario: "plan", tier: m >= 9 ? "fundable" : "not_fundable",
+    funding_estimate_cents: m >= 9 ? 10400000 : null, fundhub_score: { score: 60 + m } })) };
+const PATH_DATA = (steps = []) => ({ businessPlans: { startedAt: "2026-11-01", businesses: [] },
+  path: { steps, milestones: [], counts: { done: 0, total: steps.length }, funding: { todayCents: 9360000, projectedCents: 10400000 },
+    cards: {}, fundability: { tier: "not_fundable", text: "4 of 6" }, cash: null, businesses: null, chexsystems: {} },
+  progress: { waypoints: [], scores: { personal: [], business: [] } } });
+
+test("the look-ahead slot is inside Funding you qualify for, and paints only the look-ahead read", async () => {
+  const J = journeyContext();
+  const html = J.render({ data: PATH_DATA() });
+  const card = html.match(/<section class="bj-path">[\s\S]*?<\/section>/)[0];
+  assert.match(card, /Funding you qualify for/);
+  assert.match(card, /<div class="bj-ahead" data-bj-ahead hidden><\/div><\/section>$/, "the slot closes the card, inside it");
+  const ahead = J.aheadHtml(LOOK, 9);
+  assert.match(ahead, /In 9 months on your plan · estimate/);
+  assert.match(ahead, /\$104,000/);
+  assert.match(ahead, /62 → 69/);
+  assert.match(ahead, /data-bj-ahead-month="9" aria-pressed="true"/);
+  assert.match(J.aheadHtml(LOOK, 3), /Not fundable yet/, "no estimate yet: the tier in words, never $0");
+  assert.doesNotMatch(J.aheadHtml(LOOK, 3), /\$0/);
+  assert.equal(J.aheadHtml({ ...LOOK, has_pull: false }, 9), "", "no pull: nothing");
+  assert.equal(J.aheadHtml({ ok: true, view: "fundability", now: {} }, 9), "", "not the look-ahead read: nothing");
+});
+
+test("lookahead(host, request) fills every slot from one read, and a failed or other read leaves it hidden", async () => {
+  const slot = { innerHTML: "", hidden: true };
+  const J = journeyContext([slot]);
+  const asked = [];
+  const host = { querySelector: () => slot };
+  J.lookahead(host, async (p) => { asked.push(p); return LOOK; });
+  await new Promise((r) => setTimeout(r, 0));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(asked, ["/api/money/fundability?view=lookahead"]);
+  assert.equal(slot.hidden, false);
+  assert.match(slot.innerHTML, /\$104,000/);
+
+  const other = { innerHTML: "", hidden: true };
+  const J2 = journeyContext([other]);
+  J2.lookahead({ querySelector: () => other }, async () => ({ ok: true, view: "fundability" }));
+  await new Promise((r) => setTimeout(r, 0));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(other.hidden, true, "the sample demo's plain read keeps the slot hidden");
+  const failed = { innerHTML: "", hidden: true };
+  const J3 = journeyContext([failed]);
+  J3.lookahead({ querySelector: () => failed }, async () => { throw new Error("offline"); });
+  await new Promise((r) => setTimeout(r, 0));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(failed.hidden, true);
+  assert.equal(J3.lookahead({ querySelector: () => null }, async () => assert.fail("no slot, no read")), undefined);
+});
+
+/* Codex CX30: Refresh kept the first look-ahead read forever. Now the page calls
+   refreshLookahead() when it reads its file again, and the engine is asked again. */
+const settle = async () => { await new Promise((r) => setTimeout(r, 0)); await new Promise((r) => setTimeout(r, 0)); };
+const lookAt = (cents) => ({ ...LOOK, points: LOOK.points.map((p) => (p.months === 9 ? { ...p, funding_estimate_cents: cents } : p)) });
+
+test("Refresh reads the look-ahead again, and the old estimate never survives it (CX30)", async () => {
+  const slot = { innerHTML: "", hidden: true };
+  const J = journeyContext([slot]);
+  const host = { querySelector: () => slot };
+  let answer = lookAt(11100000);
+  const asked = [];
+  const request = async (p) => { asked.push(p); if (answer instanceof Error) throw answer; return answer; };
+  J.lookahead(host, request);
+  await settle();
+  assert.match(slot.innerHTML, /\$111,000/);
+  J.lookahead(host, request);
+  await settle();
+  assert.equal(asked.length, 1, "a plain repaint (a tab switch) keeps the one read");
+
+  answer = lookAt(12500000);
+  J.refreshLookahead();
+  assert.equal(slot.hidden, true, "the old estimate leaves the card as soon as Refresh starts");
+  assert.doesNotMatch(slot.innerHTML, /\$111,000/);
+  J.lookahead(host, request);
+  J.lookahead(host, request);
+  await settle();
+  assert.equal(asked.length, 2, "Refresh asks the engine once more; the page painting again while it reads does not ask twice");
+  assert.equal(slot.hidden, false);
+  assert.match(slot.innerHTML, /\$125,000/);
+  assert.doesNotMatch(slot.innerHTML, /\$111,000/);
+
+  answer = new Error("offline");
+  J.refreshLookahead();
+  J.lookahead(host, request);
+  await settle();
+  assert.equal(slot.hidden, true, "a Refresh whose read fails hides the card");
+  assert.doesNotMatch(slot.innerHTML, /\$125,000|\$111,000/);
+});
+
+test("a read from before the Refresh that lands late never paints over the new one (CX30)", async () => {
+  const slot = { innerHTML: "", hidden: true };
+  const J = journeyContext([slot]);
+  const host = { querySelector: () => slot };
+  let landOld;
+  const slow = new Promise((resolve) => { landOld = resolve; });
+  const answers = [slow, lookAt(12500000)];
+  const request = () => answers.shift();
+  J.lookahead(host, request);
+  J.refreshLookahead();
+  await settle();
+  assert.equal(answers.length, 0, "Refresh asked again right away, with a slot already on the page");
+  assert.match(slot.innerHTML, /\$125,000/);
+  landOld(lookAt(11100000));
+  await settle();
+  assert.match(slot.innerHTML, /\$125,000/);
+  assert.doesNotMatch(slot.innerHTML, /\$111,000/);
+});
+
+test("Refresh from one Blueprint page still fills the other page's card (CX30)", async () => {
+  // The plan page has started its read when the funding workspace's Refresh runs.
+  const slot = { innerHTML: "", hidden: true };
+  const J = journeyContext([slot]);
+  const asked = [];
+  J.lookahead({ querySelector: () => slot }, async (p) => { asked.push(p); return lookAt(12500000); });
+  J.refreshLookahead();
+  await settle();
+  assert.equal(asked.length, 2, "the dropped read is asked again, not left empty");
+  assert.equal(slot.hidden, false);
+  assert.match(slot.innerHTML, /\$125,000/);
+});
+
+test("both Blueprint pages read the look-ahead again when they read the file again (CX30)", () => {
+  const fulfillment = fs.readFileSync(path.join(HERE, "../../public/app/blueprint-fulfillment.js"), "utf8");
+  const refresh = fulfillment.slice(fulfillment.indexOf("async function refresh("), fulfillment.indexOf("request('/api/blueprint/funding')"));
+  assert.match(refresh, /FHBlueprintJourney\?\.refreshLookahead\?\.\(\)/, "Refresh drops the old estimate before it reads");
+  const plan = fs.readFileSync(path.join(HERE, "../../public/app/blueprint-plan.js"), "utf8");
+  const load = plan.slice(plan.indexOf("async function load("), plan.indexOf("request('/api/blueprint/plan')", plan.indexOf("async function load(")));
+  assert.match(load, /FHBlueprintJourney\?\.refreshLookahead\?\.\(\)/, "the plan page's read drops it too");
+  const letters = plan.slice(plan.indexOf("if(action==='refresh-letter-reviews')"), plan.indexOf("request('/api/blueprint/plan')", plan.indexOf("if(action==='refresh-letter-reviews')")));
+  assert.match(letters, /FHBlueprintJourney\?\.refreshLookahead\?\.\(\)/, "Refresh letters and reviews reads the plan again, so it drops it too");
+});
+
+test("a bank step shows Existing relationship and You already have this only when the plan says so", () => {
+  const J = journeyContext();
+  const step = (bank) => ({ key: "bank_open_chase", kind: "bank", title: "Open a Chase business checking", state: "open", owner: "client", waitingOn: [], bank });
+  const tagged = J.render({ data: PATH_DATA([step({ name: "Chase", existingRelationship: true, hasAccount: true, tracker: {} })]) });
+  assert.match(tagged, /Existing relationship/);
+  assert.match(tagged, /You already have this/);
+  const plain = J.render({ data: PATH_DATA([step({ name: "Chase", existingRelationship: false, hasAccount: false, tracker: {} })]) });
+  assert.doesNotMatch(plain, /Existing relationship|You already have this/);
 });
 
 describe("client portal — the 2026-09-03 walk findings", () => {

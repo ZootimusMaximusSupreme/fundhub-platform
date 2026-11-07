@@ -4,8 +4,10 @@
 // personal scores with the date each was pulled, the business score, how much
 // of their limits they use, open accounts, inquiries, negative items, the score
 // over time when more than one pull is stored, and UnderwriteIQ's sentences
-// word for word. The rules live in src/finance/credit-overview.mjs; this file
-// gates and fetches. Read only. It never runs a pull.
+// word for word. `credit_history` carries one line per bureau from every saved
+// pull and one set of lines per saved business (src/finance/credit-history.mjs).
+// The rules live in src/finance/credit-overview.mjs; this file gates and
+// fetches. Read only. It never runs a pull.
 //
 // TWO CALLERS — the same gate as api/money/overview.mjs, line for line.
 //
@@ -23,6 +25,7 @@ import { ROLE_SETS, requireRole, isUuid, CLIENT_DATA_ERRORS } from "../../src/ht
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { creditOverview } from "../../src/finance/credit-overview.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
+import { attachCreditLogos } from "../../src/banking/institution-logos.mjs";
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db || db;
@@ -67,7 +70,9 @@ export default async function handler(req, res, deps = {}) {
   try {
     const payload = await build(database, { orgId, clientId, asOf: clock() });
     if (!payload) return res.status(404).json({ ok: false, error: "not_found" });
-    return res.status(200).json(payload);
+    /* Each lender's own logo, matched by its bank name only (owner rule 2026-11-07). */
+    const dressed = await (deps.attachCreditLogos || attachCreditLogos)(database, { orgId, payload });
+    return res.status(200).json(dressed);
   } catch (e) {
     if (CLIENT_DATA_ERRORS.has(e && e.code)) {
       return res.status(400).json({ ok: false, error: "invalid_parameter" });

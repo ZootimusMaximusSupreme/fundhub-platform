@@ -290,8 +290,9 @@ test("Strategy: the method buttons, the amount slider and box, the goal, every U
     assert.equal(await rows(), months, "the second press brings the rest of the plan");
     assert.equal(await page.locator('[data-act="more-months"]').count(), 0, "no button once every month is listed");
 
-    // The three method buttons: one is pressed at a time, the note under them says what it does, and
-    // the order the plan pays the debts in changes with the method.
+    // The three method buttons: one is pressed at a time, and the order the plan pays the debts in
+    // changes with the method. No explanation line sits under them (owner rule, short client words,
+    // 2026-11-07): the buttons and the pay order speak.
     const pressed = () => page.evaluate(() => [...document.querySelectorAll("[data-method]")]
       .filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.getAttribute("data-method")));
     const payOrder = () => page.evaluate(() => [...document.querySelectorAll(".debts-card tbody tr")]
@@ -306,9 +307,10 @@ test("Strategy: the method buttons, the amount slider and box, the goal, every U
     for (const key of ["utilization", "snowball", "avalanche"]) {
       await page.locator(`[data-method="${key}"]`).click();
       assert.deepEqual(await pressed(), [key]);
-      await page.waitForFunction((detail) => document.querySelector('[data-slot="method-note"]')?.innerText.trim() === detail,
-        answer.methods[key].detail);
-      await page.waitForFunction((first) => document.querySelector(".debts-card tbody tr")?.children[1].innerText.startsWith(first), ORDER[key][0]);
+      assert.equal(await page.locator('[data-slot="method-note"]').count(), 0, "no explanation line under the method buttons");
+      // Wait for the redraw: two methods can start with the same debt, so wait for the whole order.
+      await page.waitForFunction((order) => [...document.querySelectorAll(".debts-card tbody tr")]
+        .map((r) => r.children[1].innerText.trim().replace(/\s+(Personal|Business)$/, "")).join("|") === order.join("|"), ORDER[key]);
       assert.deepEqual(await payOrder(), ORDER[key], `${key}: the debts are paid in this order`);
     }
     settings.method = "avalanche";

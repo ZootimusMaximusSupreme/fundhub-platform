@@ -50,3 +50,45 @@ body[data-client-ios][data-client-page="money-credit"] main{padding:24px 32px 56
 @media(max-width:1100px){:is(#credit-root,#fos-credit) .tiles>*{grid-column:span 6}:is(#credit-root,#fos-credit) .two>*{grid-column:span 12}}
 @media(max-width:760px){body[data-client-ios][data-client-page="money-credit"] .mbar{padding:16px}body[data-client-ios][data-client-page="money-credit"] main{padding:20px 16px 40px}:is(#credit-root,#fos-credit) .card{padding:20px}:is(#credit-root,#fos-credit) .credit-facts .card{padding:16px}:is(#credit-root,#fos-credit) .grid{gap:12px}:is(#credit-root,#fos-credit) .head h1{font-size:28px}:is(#credit-root,#fos-credit) .big{font-size:32px}}
 @media(max-width:350px){:is(#credit-root,#fos-credit) .tiles>*{grid-column:span 12}}
+/* Credit over time (spec item 4, 2026-11-06): the bureau lines, the cards-used
+   line and the business picker. money-credit.js draws the chart at the card's
+   real width, so these sizes are true pixels on every screen. Colours are the
+   shared tokens only (fundhub-brand.css). The picker is the Astra client
+   select (48px tall); it only gets a width cap so it fits a 390px phone. */
+:is(#credit-root,#fos-credit) .hist .hist-pick{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:0 0 16px;min-width:0}
+:is(#credit-root,#fos-credit) .hist .hist-pick select{min-width:0;max-width:100%;min-height:48px;border:1px solid var(--line);border-radius:8px;color:var(--ink);background-color:var(--surface)}
+:is(#credit-root,#fos-credit) .hist .hist-body{min-width:0}
+:is(#credit-root,#fos-credit) .hist .hist-sub{margin:0 0 8px}
+:is(#credit-root,#fos-credit) .hist .chart{max-height:none;margin:8px 0 4px;overflow:visible}
+:is(#credit-root,#fos-credit) .hist .chart-label{fill:var(--gray);font-family:var(--sans,-apple-system,sans-serif);font-variant-numeric:tabular-nums}
+:is(#credit-root,#fos-credit) .hist .chart-base{stroke:var(--line);stroke-width:1}
+:is(#credit-root,#fos-credit) .hist .line{fill:none;stroke:var(--ink);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+:is(#credit-root,#fos-credit) .hist .line-eq{stroke-dasharray:8 5}
+:is(#credit-root,#fos-credit) .hist .line-tu{stroke-dasharray:2 5}
+:is(#credit-root,#fos-credit) .hist .dot{fill:var(--ink);stroke:var(--surface);stroke-width:2}
+:is(#credit-root,#fos-credit) .hist .legend{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;margin:4px 0 8px}
+:is(#credit-root,#fos-credit) .hist .key{display:inline-block;width:24px;height:0;border-top:2px solid var(--ink);vertical-align:middle;margin-right:8px}
+:is(#credit-root,#fos-credit) .hist .key-eq{border-top-style:dashed}
+:is(#credit-root,#fos-credit) .hist .key-tu{border-top-style:dotted}
+:is(#credit-root,#fos-credit) .hist .use-title{margin:24px 0 0;font-weight:600;color:var(--ink)}
+:is(#credit-root,#fos-credit) .hist .caption+.caption{margin-top:4px}
+@media(max-width:760px){:is(#credit-root,#fos-credit) .hist .hist-pick select{flex:1 1 auto;width:100%}}
+
+/* Accounts on your credit report on a narrow card (QA24, 2026-11-07). When the card is too narrow
+   for its seven columns (a phone, or a small window), each account stacks: the lender with its
+   logo, then Type and Balance, then Limit or loan, Used, Opened and Status, each with its own
+   name (data-label, set by money-credit.js). A long lender name wraps; nothing is cut off.
+   Colours are the shared tokens (fundhub-brand.css). */
+body[data-client-page] :is(#credit-root,#fos-credit) .acct-card{container-type:inline-size}
+@container (max-width:789px){
+ body[data-client-page] :is(#credit-root,#fos-credit) .acct-card .scroll-x{overflow:visible;border:0;border-radius:0}
+ body[data-client-page] :is(#credit-root,#fos-credit) .acct-card .acct-table thead{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+ body[data-client-page] :is(#credit-root,#fos-credit) .acct-card :is(.acct-table,.acct-table tbody){display:block;width:100%}
+ body[data-client-page] :is(#credit-root,#fos-credit) .acct-card .acct-table tr{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:16px 0;border-bottom:1px solid var(--line)}
+ body[data-client-page] :is(#credit-root,#fos-credit) .acct-card .acct-table tr:first-child{padding-top:0}
+ body[data-client-page] :is(#credit-root,#fos-credit) .acct-card .acct-table tr:last-child{border-bottom:0;padding-bottom:0}
+ body[data-client-page] :is(#credit-root,#fos-credit) .acct-card .acct-table td{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0;padding:0;border:0;white-space:normal;overflow-wrap:anywhere;text-align:right}
+ body[data-client-page] :is(#credit-root,#fos-credit) .acct-card .acct-table td.acct-lender{display:block;font-weight:600;text-align:left;padding-bottom:2px}
+ body[data-client-page] :is(#credit-root,#fos-credit) .acct-card .acct-table td[data-label]::before{content:attr(data-label);margin-right:auto;color:var(--gray);font-size:13px;font-weight:400;text-align:left}
+ body[data-client-page] :is(#credit-root,#fos-credit) .acct-card .acct-table td .used-bar{flex:0 0 64px;margin:0}
+}

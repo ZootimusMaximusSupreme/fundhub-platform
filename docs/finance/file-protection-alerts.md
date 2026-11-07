@@ -20,6 +20,40 @@ opt-out check. Nothing here moves money.
 
 The word is **"the next funding sequence"**, never "round two" (owner-set 2026-10-06).
 
+### 1b. Phone alerts (push notifications) — Finance OS CFO build, unit D (owner-set 2026-11-06)
+
+The same daily pass also queues **phone alerts**. The texts above are unchanged.
+
+| Kind | Goes out when | Once per | What the locked phone shows |
+|---|---|---|---|
+| `card_due` | a card payment is due in 0–3 days and no payment is on file (the card-due text's own planner, `planCardDue`) | card per due date | "A card payment is due soon. Open Fundhub to see it." |
+| `statement_close` | the `payment_timing` text above is owed (same planner, same lead time); off when that switch is off | card per close date | "A card statement closes soon. Open Fundhub to see when to pay." |
+| `important_bill` | a repeat bill the client marked **Important** is expected to charge in 0–3 days | bill per expected date | "An important bill charges soon. Open Fundhub to see it." |
+| `loan_due` | any loan payment is due in 0–3 days (the loan text's own planner, `planLoanDue`; a hand-entered loan counts) | loan per due date | "A loan payment is due soon. Open Fundhub to see it." |
+| `credit_line_due` | the same for a line of credit (its account subtype says "line of credit") | account per due date | "A credit line payment is due soon. Open Fundhub to see it." |
+| `plan_due` | the next unpaid installment of a payment plan owed to Fundhub (Clarity Payments, migration 443) is due in 0–3 days; a tap opens Payments | installment | "A payment on your plan is due soon. Open Fundhub to see it." |
+
+Every payment, not only cards (owner-set 2026-11-07: "business credit cards, lines of credit, any loan
+payment"). A business credit card is a card: `card_due` and `statement_close` cover every credit card,
+personal or business. A plan installment paid between the pass and the send is not sent. The money
+helper's own plan reminder text keeps going; its generic companion push is dropped when the plan push
+covers that installment.
+
+* **The lock screen never shows an amount, a bank name, a card name or account digits.** The three
+  sentences are fixed in `src/push/payload.mjs`, which refuses any other text. A tap opens
+  `/app/financeos.html#alerts`.
+* **Queued, then sent 9 a.m. to 5 p.m. Arizona** (owner-set 2026-10-31). The pass writes one `messages` row
+  (`channel` `push`, `provider_ref` `finance-push:<key>`) with no send time; at 07:30 UTC the dispatcher
+  holds it to 16:00 UTC (the dispatcher is the one writer of `messages.scheduled_at`, which the held-message
+  heartbeat reads). Inside the window the dispatcher hands it to `src/push/finance-alerts.mjs`, which
+  re-checks the window, the dry-run switch and the opt-outs, then sends to the iPhone app and web push.
+* **No push** when the client switched phone alerts off (`set_phone_alerts`), said STOP to texts, opted out
+  of push, or has no phone set up for alerts. A row whose phone answer was unknown is never sent again.
+* **One buzz per event.** When the finance push for a card and date exists, the generic "There is an update
+  on your file" push that used to follow the card-due or pay-before-close text is dropped.
+* **Why a bill or card got none** is on the screen: `phone.cards[].due.reason`, `bills[].phone.reason`
+  (for example `no_due_date`: the card has no due date from the bank link yet).
+
 Every number in a text is computed from a stored fact, never invented:
 
 * **Close date** — the card's statement close day (`account_statement_cycles.statement_close_day`),
@@ -30,8 +64,14 @@ Every number in a text is computed from a stored fact, never invented:
   dollar. 10% is the target the checklist's paydown steps use (`PAYDOWN_TARGET_FRACTION`).
   With no limit on file the text says the balance and stops. With no balance it says the day and stops.
 * **Promo payoff** — payments left = days left ÷ 30, rounded, at least 1 (60 days is 2 payments;
-  30 or fewer is 1, "pay all of it"). Monthly = balance ÷ payments, rounded up. No interest is
-  modelled, so it says "about". With no balance on file it says where to look.
+  30 or fewer is 1, "pay all of it"). The monthly amount uses the promo rate (`payoffAtRate` in
+  `src/finance/file-alerts/promo.mjs`): at 0% it is balance ÷ payments, rounded up; at a known rate
+  above 0% it adds that rate's interest each month (APR ÷ 12) and is the level payment that clears the
+  balance on the last payment, rounded up. The text says it in whole dollars, rounded up ("about").
+  With no rate on file the interest is unknown, so the even split is only the least: the text says
+  "Pay at least $X a month … Rate not on file." and never "to clear it in time". The Alerts screen's
+  Promo rate ending card and the intro rate countdown use the same function, so all three say one
+  amount. With no balance on file it says where to look.
 * **Cash cushion** — see §3.
 
 ## 2. Who gets them, and when
@@ -101,6 +141,11 @@ Top-level keys:
   of texts: say so on the screen, and expect nothing to send).
 * `cards` — one entry per open credit card (below).
 * `reserve` — `months`, `personal`, `business`, `not_counted` (below).
+* `phone` — the phone alerts: which of the three are on, for which card, and what already went (below).
+* `bills` — the client's repeat bills with their **Important** mark (below). `null` when they could not be read.
+* `custom` — the alerts and repeat bills the client added by hand (unit AL2, below). `null` when they could not be read.
+* `board` — the organized Alerts board: Personal and each business, each with Payments due, Bills and
+  Smart alerts (unit AL2, below).
 * `alerts` — what already went out, newest first, up to 50 (below).
 
 ### `cards[]`
@@ -121,7 +166,8 @@ promo: null | {
   apr_pct,                                      // 0 = a 0% promo; null = rate not given
   source ("client"|"staff"), set_at,
   balance_cents,
-  payoff: null | { payments, monthly_cents, total_cents },
+  payoff: null | { payments, monthly_cents, total_cents,   // at the promo rate (payoffAtRate)
+                   monthly_is_floor },          // true = no rate on file: "at least", never a payoff
   next_alert: null | { threshold, on },         // the next of 60/30/7 whose day has not passed
   alerted_thresholds: [60, ...]                 // already sent for this end date
 }
@@ -150,6 +196,103 @@ Plain words for `reason` when `state` is `unknown`: `no_minimums` "No payments o
 
 `reserve.not_counted` is `{ debts, minimums_cents }` — cards and loans whose kind is not sorted yet.
 
+### `phone`
+
+```
+enabled                    // the client's phone alert switch (default on)
+opted_out                  // STOP on texts, or an opt-out on push: nothing goes
+has_phone                  // a phone is set up for alerts; null when that read failed
+send_window                // "9 a.m. to 5 p.m. Arizona time"
+kinds: { card_due, statement_close, important_bill, loan_due, credit_line_due, plan_due: { on, label } }
+days_before: { card_due, important_bill, loan_due, plan_due }   // all 3; statement_close follows pay_before_close_days
+cards: [{ account_id, name, mask, kind, credit_line,          // kind personal | business
+          due:   { on, alert_on, reason },       // reason e.g. "no_due_date", "payment_recorded"
+          close: { on, alert_on, reason } }]     // same dates as cards[].pay_before
+loans: [{ account_id, name, mask, kind, credit_line,
+          due: { on, alert_on, reason } }]       // every loan and line of credit; reason e.g. "paid_off"
+plans: [{ plan_id, installment_id, name, plan_kind,
+          on, alert_on, reason }]                // each open Fundhub plan's next unpaid payment; reason e.g. "late"
+important_count            // bills marked Important; null when bills could not be read
+sent: [{ id, kind, kind_label, subject_id, about_on,
+         state,            // "waiting" | "sending" | "sent" | "stopped" | "no_phone" | "not_sent" | "unknown"
+         reason, send_at, created_at, updated_at }]   // newest first, up to 20; null when unread
+```
+
+### `bills[]`
+
+```
+id, name, cadence, typical_cents,          // the size of the charge, integer cents; null when unknown
+next_expected_on, next_unknown_reason,     // no date is never guessed
+important, bank_account_id,
+phone: { alert_on, reason, sent }          // only for an Important bill; sent is a sent[].state
+```
+
+### `custom[]` (unit AL2, migration 583)
+
+```
+id, kind,                       // "alert" | "bill"
+name, amount_cents,             // integer cents, the size of the payment; null when the client gave none
+cadence,                        // alert: "once" | "monthly"; bill: "weekly" | "biweekly" | "monthly" | "annual"
+day_of_month, start_on,         // monthly: day_of_month (1-31); every other cadence: start_on (YYYY-MM-DD)
+scope, entity_id,               // "personal" | "business"; the business (entities.id) or null
+phone_alert,                    // the client's switch for this one
+next_on,                        // the next date on or after today; null when a one-time date passed
+phone: { alert_on, reason, sent },
+added_by                        // "client" | "staff"
+```
+
+The date math is `src/pulse/beats/lib/custom-alert-plan.mjs` (re-exported by
+`src/finance/file-alerts/custom.mjs`): a monthly day past a month's end lands on its last day; weekly and
+every-two-weeks count from `start_on`; yearly keeps its month and day. The phone alert goes 0 to 3 days
+before each date, once per date (key `custom:<id>:<date>`), with a fixed lock-screen sentence and no name
+or amount.
+
+### `board` (unit AL2)
+
+```
+today, pay_by_days_before,      // 2 (PAY_BY_DAYS_BEFORE in bundle-common.mjs): a couple of days before
+                                // the statement close and the due date (owner call 2026-11-07)
+default_scope,                  // the first scope with anything in it, else "personal"
+checks: { pay_by, cash, bills, custom, bill_cleanup, seasoning },   // which reads fed the board
+scopes: [{
+  key,                          // "personal" | "biz:<entity id>" | "business" (no company yet) | "unknown"
+  kind, name, entity_id,
+  payments: [{ id, type,        // "card" | "credit_line" | "loan" | "plan" | "alert"
+               name, account_id, item_id, institution, logo,
+               due_on, amount_cents, amount_is,       // "minimum" | "payment" | "left" | "amount" | null
+               close_on, needs_close_day, late,
+               phone: { on, alert_on, reason } }],
+  bills:    [{ id, source,      // "found" (the detector) | "added" (the client)
+               bill_id, item_id, name, amount_cents, cadence, next_on, next_unknown_reason,
+               phone: { on, alert_on, reason, sent } }],
+  smart:    [{ id, kind,        // "charged_twice" | "pay_by" | "cash_low" | "price_up" | "seasoning"
+               name, on, ... }],
+  counts: { payments, bills, smart }
+}]
+```
+
+Smart alerts are real data only; a missing fact means no alert, never a guess:
+
+* `pay_by` — one per card that owes money. The alerts bundle's "Pay by" and its over-10% rule live here
+  only; the bundle box on the Alerts tab no longer lists them. `on` is AL's `payBy()`
+  (`src/finance/file-alerts/pay-by.mjs`): two days before the statement close or the due date,
+  whichever comes first, or today when that has passed (`tight`). `for` is `statement_close`,
+  `due_date` or `both`; `close_on` and `due_on` are null when not on file. `over` and `pay_cents` are
+  AL's `cardRule()` (`card-over-10.mjs`): over 10% of the limit, and the balance minus 10% of the limit
+  (null when not over); also `balance_cents`, `limit_cents`, `target_cents`, `used_pct`, `days_left`.
+  Nothing owed, or no close day and no due date ahead, means no alert.
+* `price_up` / `charged_twice` — the bill cleanup's own flags (`src/banking/bill-cleanup.mjs`), placed by
+  the account that pays: `from_cents`, `to_cents`, `change_cents` / `amount_cents`, `times`.
+* `cash_low` — cash under six months of minimums for that scope: `cash_cents`, `need_cents`, `short_cents`.
+  Personal is the exact check the cash text runs; each business is judged on its own cash and debts.
+* `seasoning` — a bank account on the plan still seasoning: `days_left`, `on` (the seasoned day).
+
+Personal and business cash are never added. The read itself runs the bill cleanup
+(`src/banking/bill-cleanup.mjs`), the seasoning clock (`seasoningClock` in `src/finance/apply-gate.mjs`)
+and the bank logos (`attachAccountLogos` in `src/banking/institution-logos.mjs`: Plaid's logo first,
+then the bank book's file); deps can stand in for each. A read that fails adds nothing (`checks` says
+which ran).
+
 ### `alerts[]`
 
 ```
@@ -172,13 +315,24 @@ for the new picture.
 | `set_alert` | `kind` (one of the four), `enabled` (true/false) | `{ kind, enabled }` |
 | `set_promo` | `account_id`, `ends_on` (`YYYY-MM-DD`, today or later, within 5 years; **null clears it**), `apr_pct` (optional percent 0–100; `0` for a 0% promo) | `{ account_id, cleared, promo: { ends_on, apr, source, set_at } \| null }` |
 | `set_statement_close_day` | `account_id`, `day` (1–31; null clears it) | `{ account_id, statement_close_day }` |
+| `set_bill_important` | `bill_id` (this client's own medium- or high-confidence bill), `important` (true/false) | `{ bill_id, important }` |
+| `set_phone_alerts` | `enabled` (true/false) — every phone alert at once | `{ phone_alerts }` |
+| `add_custom` | `kind` (`alert` or `bill`), `name` (1-80), `amount_cents` (whole cents; required for a bill), `cadence`, `day_of_month` (monthly) or `start_on` (every other cadence; a one-time date must not have passed), `scope` (`personal` or `business`), `entity_id` (optional, one of the client's own businesses), `phone_alert` (default true) | one `custom[]` entry |
+| `update_custom` | `id` and the same fields (the kind never changes) | one `custom[]` entry |
+| `set_custom_phone` | `id`, `enabled` (true/false) | `{ id, phone_alert }` |
+| `remove_custom` | `id` — sets `archived_at`; nothing is deleted | `{ id, removed: true }` |
 
 `apr_pct` is **always a percent**: `0.5` is half a percent, not fifty. `account_id` must be this
 client's own open credit card.
 
 Errors: `400 { ok:false, error:"invalid_input", field, message }` (`field` names the input: `kind`,
-`enabled`, `account_id`, `ends_on`, `apr_pct`, `day`); `400 { error:"unknown_action", actions:[...] }`;
-`404` for a card that is not theirs (no hint the id is real); `405` for any method but GET / POST.
+`enabled`, `account_id`, `ends_on`, `apr_pct`, `day`, `bill_id`, `important`, `id`, `name`, `amount_cents`, `cadence`,
+`day_of_month`, `start_on`, `scope`, `entity_id`, `phone_alert`); `400 { error:"unknown_action", actions:[...] }`;
+`404` for a card or bill that is not theirs (no hint the id is real); `405` for any method but GET / POST.
+
+Migration 573 adds `recurring_bills.important` (default false, with who set it and when) and
+`file_protection_settings.phone_alerts` (default true). The detector's re-run never names them, so a
+bill found again keeps its mark.
 
 ## 6. What is stored (migration 471)
 

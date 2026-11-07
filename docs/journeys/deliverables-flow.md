@@ -26,6 +26,17 @@ The report ends with a book-another-call link. Simulated or absent bureau data
 must not be presented as a real report. Local tests do not prove a production
 CRS result, PDF storage, email delivery, or client portal visibility.
 
+2026-11-07 (unit RPT): the same PDF is now laid out like a standard consumer
+credit report under the Fundhub wordmark (Chris: "basic credit reports with the
+Fundhub stuff on it"): name and report date, each bureau's saved score, a
+summary (accounts, open accounts, card use, negative accounts, public records,
+inquiries), every account with its last 24 months of payment history, the
+inquiries, public records and personal info. `src/finance/crs-full-report.mjs`
+reads one view from the saved result and draws it as the PDF and as a
+self-contained web page (`renderCrsFullReportHtml`, not served by any route
+yet). Unknown values print "—"; SSNs, birth dates and full account numbers are
+never printed.
+
 The older diagram and five-file table below describe the interpreted package,
 not this additional complete source report.
 

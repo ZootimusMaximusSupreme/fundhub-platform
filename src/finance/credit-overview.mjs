@@ -20,6 +20,10 @@
 //   inquiries / negatives    the same custom fields toBureaus() reads
 //   suggestions              the same four engine calls api/read/underwrite.mjs
 //                            makes, and the text is returned word for word
+//   credit_history           buildCreditHistory() ./credit-history.mjs
+//                            (one line per bureau per saved pull, one set of
+//                            lines per saved business; a month with no pull
+//                            is a gap)
 //
 // UNKNOWN IS NULL, NEVER 0. A count nobody measured is null and named in
 // `missing`. A screen that shows "0 negative items" on a file nobody counted is
@@ -39,6 +43,12 @@ import { computeUnderwrite, buildSuggestions } from "../underwrite/engine.mjs";
 import { applyStackedBusinessFunding } from "../underwrite/business-funding.mjs";
 import { buildReport } from "../underwrite/report.mjs";
 import { evaluateUtilization } from "../alerts/evaluate.mjs";
+/* Score over time lives in ./credit-history.mjs (spec item 4, 2026-11-06).
+   scorePoints moved there unchanged and is re-exported, so its two readers
+   (this file and ./money-trends.mjs) import it from here as before. */
+import { scorePoints, buildCreditHistory } from "./credit-history.mjs";
+
+export { scorePoints };
 
 /* The same three custom fields toBureaus() reads (src/underwrite/adapter.mjs). */
 const INQUIRY_FIELDS = Object.freeze({
@@ -93,27 +103,6 @@ function safeObject(v) {
 /* ------------------------------------------------------------------ *
  * Scores
  * ------------------------------------------------------------------ */
-
-/**
- * scorePoints — one point per stored pull that carries at least one FICO,
- * oldest first. triMerge() over a one-row list IS that row's scores, with its
- * sandbox and FICO-range rules, so the rules live in one place.
- */
-export function scorePoints(crsRows = []) {
-  const points = [];
-  for (const row of Array.isArray(crsRows) ? crsRows : []) {
-    const t = triMerge([row]);
-    if (t.experian == null && t.equifax == null && t.transunion == null) continue;
-    points.push({
-      pulled_at: iso(row.created_at),
-      experian: t.experian,
-      equifax: t.equifax,
-      transunion: t.transunion,
-      sample: t.sample === true
-    });
-  }
-  return points.sort((a, b) => String(a.pulled_at || "").localeCompare(String(b.pulled_at || "")));
-}
 
 /** Each bureau's newest score, with the date of the pull it came from. */
 export function personalScores(points = []) {
@@ -346,6 +335,9 @@ export function buildCreditOverview({
     negative_items: { count: negatives },
     late_payments: { count: lates },
     history: points.length > 1 ? points : [],
+    /* Score over time: one line per bureau from every saved pull, one set of
+       lines per saved business. Built from the same rows, nothing re-read. */
+    credit_history: buildCreditHistory({ crsRows: newestFirst, businesses }),
     suggestions,
     missing
   };
@@ -369,7 +361,7 @@ const LIABILITY_SQL = `
    WHERE client_id = $1 AND org_id = $2
    ORDER BY as_of DESC`;
 const BUSINESS_SQL = `
-  SELECT name, age_months, entity_data, created_at, updated_at
+  SELECT id, name, age_months, entity_data, created_at, updated_at
     FROM businesses
    WHERE client_id = $1 AND org_id = $2`;
 

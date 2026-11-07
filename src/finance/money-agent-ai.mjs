@@ -53,6 +53,7 @@ import {
   readDeclinePaste, clientIntro, declineFacts, lastDeclineInThread, declineRecordedIn, declineReplyProblems,
   declineRulesReply, declineFollowUpReply, DECLINE_TOPIC_RE, bankInText, textHas, MAX_DECLINE_REPLY_CHARS, MAX_PROMPT_LETTER_CHARS
 } from "./money-decline.mjs";
+import { topicGuidance, topicReply, topicReplyProblems, lessonPromptBlock } from "./money-education.mjs";
 
 /* AGENT_CODE, AGENT_NAME, RUNNER_ENV and RUNNER_MODES moved, unchanged, to
    src/pulse/beats/lib/money-helper-read.mjs (2026-10-20), with runnerMode's rule, so the
@@ -388,6 +389,11 @@ export function buildFacts(ctx = {}) {
      on the turn that carries the letter, or the turns just after it in the same
      chat. Its own words and steps are the only decline words the model may use. */
   if (isObj(ctx.decline_analysis)) facts.decline_analysis = ctx.decline_analysis;
+  /* Fundhub's own lesson for what the client asked (money-education.mjs topicGuidance):
+     ChexSystems, opening accounts, seasoning, card use, inquiries, business credit, gas
+     cards. Only on a turn whose question names one. Its words and numbers are the only
+     lesson words the helper may use, and an answer that uses one names its doc. */
+  if (list(ctx.topic_guidance).length) facts.topic_guidance = list(ctx.topic_guidance).map((g) => ({ ...g }));
 
   const openTasks = list(ctx.openTasks).filter((t) => t && t.id).map((t) => ({
     task_id: String(t.id), title: text(t.title), detail: text(t.detail), due_on: t.due_on || null,
@@ -763,8 +769,9 @@ function withActions(allowed, actions, today) {
 
 /**
  * validateAnswer(raw, ctx) → { ok, reply, actions, problems }
- * ctx = { today, allowed, accounts, openTasks, intent, tip, decline, blueprintBuyer }
+ * ctx = { today, allowed, accounts, openTasks, intent, tip, decline, blueprintBuyer, topics }
  * decline: the decline read for this turn ({ text, hash, facts, recorded }) or null.
+ * topics: the lessons this turn was handed (FACTS.topic_guidance), or [].
  */
 export function validateAnswer(raw, ctx) {
   const problems = [];
@@ -805,6 +812,9 @@ export function validateAnswer(raw, ctx) {
   if (ctx.decline) {
     for (const p of declineReplyProblems(reply, { facts: ctx.decline.facts, text: ctx.decline.text, tip: ctx.tip })) problems.push(p);
   }
+  /* A lesson answer names the doc it came from ("From: Card Paydown lesson."), and no answer
+     offers a tool the owner took out of buyer guidance (money-education.mjs). */
+  for (const p of topicReplyProblems(reply, ctx.topics)) problems.push(p);
   if (actions.some((a) => a.type === "propose_transfer") && !/approv/i.test(reply)) problems.push("transfer_without_approval_words");
   /* A struggling client gets a person — once. When this chat already opened a
      CSM task, saying "I can't pay" again needs no second one (the role-play
@@ -889,12 +899,13 @@ function declineRulesAnswer(decline, { followUp = false } = {}) {
 }
 
 /**
- * rulesAnswer({ intent, kind, input, task, facts, openTasks, today, csmAlready, decline }) →
+ * rulesAnswer({ intent, kind, input, task, facts, openTasks, today, csmAlready, decline, topics }) →
  *   { reply, actions, halt: null | 'stop' | 'legal' }
  * actions here are already in the validated shape. decline: the decline read for
- * this turn ({ text, hash, bank, facts, from, recorded }) or null.
+ * this turn ({ text, hash, bank, facts, from, recorded }) or null. topics: the lessons
+ * this question names (FACTS.topic_guidance), or [].
  */
-export function rulesAnswer({ intent, kind = "message", input = "", task = null, facts = {}, openTasks = [], today, csmAlready = false, decline = null } = {}) {
+export function rulesAnswer({ intent, kind = "message", input = "", task = null, facts = {}, openTasks = [], today, csmAlready = false, decline = null, topics = [] } = {}) {
   if (intent === "stop") return { reply: STOP_REPLY, actions: [], halt: "stop" };
   if (intent === "legal") {
     return { reply: LEGAL_REPLY, actions: [csm("Client mentioned a lawyer to the money helper", `The money helper stopped. Their words: ${clip(input, 300)}`)], halt: "legal" };
@@ -926,6 +937,8 @@ export function rulesAnswer({ intent, kind = "message", input = "", task = null,
   /* A question about a decline pasted earlier in this chat gets the decline's own
      answer. Any other question — what is due, what is late — is still the summary. */
   if (decline && decline.from === "earlier in this chat" && DECLINE_TOPIC_RE.test(input)) return declineRulesAnswer(decline, { followUp: true });
+  /* A question about a money topic gets Fundhub's own lesson and the doc it comes from. */
+  if (intent === "question" && list(topics).length) return { reply: topicReply(topics), actions: [], halt: null };
   return { reply: summaryReply(facts), actions: [], halt: null };
 }
 
@@ -990,7 +1003,9 @@ export function buildPrompt({ agent = {}, facts, openTasks = [], thread = [], tu
     "",
     "EARLIER IN THIS CHAT (oldest first):",
     threadBlock(thread),
-    ""
+    "",
+    /* Only when FACTS has a lesson (money-education.mjs); every other prompt is unchanged. */
+    ...lessonPromptBlock(facts.topic_guidance)
   ];
   let ask;
   if (turn.kind === "task" && turn.task) {
@@ -1112,8 +1127,17 @@ export async function decideTurn({
   const letterHere = !!decline && decline.from === "this message";
   /* What the model sees of this message: the MASKED letter, never the raw paste. */
   const shown = letterHere ? decline.text : turn.input;
+  /* Fundhub's own lessons for what the client asked (money-education.mjs). Never on a task
+     press or a pasted letter, and never on a question about a decline already in this chat:
+     those keep their own answers exactly as before. */
+  const topics = turn.kind === "task" || letterHere || (decline && DECLINE_TOPIC_RE.test(String(turn.input || "")))
+    ? [] : topicGuidance(turn.input);
+  const extra = {
+    ...(decline ? { decline_analysis: decline.facts } : {}),
+    ...(topics.length ? { topic_guidance: topics } : {})
+  };
 
-  const { facts, accounts, openTasks, tip } = buildFacts(decline ? { ...context, decline_analysis: decline.facts } : context);
+  const { facts, accounts, openTasks, tip } = buildFacts(Object.keys(extra).length ? { ...context, ...extra } : context);
   const today = facts.today;
   const intent = turn.kind === "task" ? "task" : classifyInbound(turn.input, agent.guardrails || HELPER_GUARDRAILS);
   /* The allow-list: the facts, plus the client's own words — this message and
@@ -1135,8 +1159,9 @@ export async function decideTurn({
   const declineOut = decline ? { text: decline.text, hash: decline.hash, bank: decline.bank, from: decline.from, recorded: decline.recorded } : null;
 
   const csmAlready = csmAlreadyIn(thread);
+  const lessons = list(facts.topic_guidance);
   const rules = (reason) => {
-    const r = rulesAnswer({ intent, kind: turn.kind, input: turn.input, task: turn.task, facts, openTasks, today, csmAlready, decline });
+    const r = rulesAnswer({ intent, kind: turn.kind, input: turn.input, task: turn.task, facts, openTasks, today, csmAlready, decline, topics: lessons });
     return { brain: BRAIN_RULES, model: null, reply: r.reply, actions: r.actions, halt: r.halt, intent, reason, facts, allowed, decline: declineOut, ai };
   };
 
@@ -1153,7 +1178,7 @@ export async function decideTurn({
   }
   ai.raw = res.json;
   const tipQuotedBefore = !!tip && list(thread).some((t) => t && typeof t.reply === "string" && t.reply.includes(tip));
-  const v = validateAnswer(res.json, { today, allowed, accounts, openTasks, intent, tip, csmAlready, tipQuotedBefore, decline, blueprintBuyer });
+  const v = validateAnswer(res.json, { today, allowed, accounts, openTasks, intent, tip, csmAlready, tipQuotedBefore, decline, blueprintBuyer, topics: lessons });
   if (!v.ok) {
     ai.problems = v.problems;
     return rules(`ai_blocked: ${v.problems.slice(0, 4).join("; ")}`);

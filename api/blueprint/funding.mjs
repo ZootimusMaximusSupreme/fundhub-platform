@@ -4,6 +4,7 @@ import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { reviewOwnedBankDocument } from "../../src/blueprint/bank-evidence.mjs";
 import { getBlueprintFulfillmentAccess, requireBlueprintFulfillmentScope } from "../../src/blueprint/fulfillment-access.mjs";
 import { BlueprintFundingError, openBlueprintLender, finishBlueprintSubmissions, readBlueprintFunding, reportBlueprintApplication } from "../../src/blueprint/client-funding.mjs";
+import { readApplicationGuide } from "../../src/blueprint/fulfillment-cycle.mjs";
 
 const fields = {
   finish_submissions: ["action","idempotencyKey"],
@@ -63,6 +64,12 @@ export default async function handler(req,res,deps = {}) {
     if (Object.keys(req.query || {}).length) throw new BlueprintFundingError("unexpected_query",400);
     if (req.method === "GET") {
       const view = await (deps.readBlueprintFunding || readBlueprintFunding)(database,scope,deps);
+      /* The fulfillment cycle: once the funding controls unlock, an application
+         guide filled only from the income on file. A failed read leaves it null. */
+      if (["ready","awaiting_response"].includes(view?.state) && scope.engagement?.executionOwner === "client") {
+        try { view.guide = await (deps.readApplicationGuide || readApplicationGuide)(database,scope); }
+        catch { view.guide = null; }
+      }
       return res.status(200).json(view);
     }
     const body = req.body;

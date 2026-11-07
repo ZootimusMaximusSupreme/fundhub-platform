@@ -1,0 +1,66 @@
+/* "If they follow the plan" — the staff card (fundhub-plan-card.js). Every rule
+   sits under .fh-plan-card so it drops into the closer cockpit and the staff
+   client file without touching what is around it. Astra look: a white 10px
+   panel, sentence-case gray captions on the caption size, black 8px buttons,
+   every control at least 44px, one column on a phone and no sideways scroll.
+   Sizes come from the brand tokens only (fundhub-brand.css). */
+
+.fh-plan-card{display:block;background:#FFFFFF;color:var(--ink,#0A0A0A);border:1px solid var(--line,#E4E4E7);border-radius:10px;padding:16px 24px;margin:0 0 24px;min-width:0;max-width:100%;overflow-wrap:anywhere}
+.fh-plan-card[hidden]{display:none}
+.fh-plan-card p{margin:0}
+.fh-plan-card .fpc-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px;margin:0 0 8px}
+.fh-plan-card h2{margin:0;font-size:var(--fs-title,1.375rem);font-weight:600;letter-spacing:-.01em;line-height:1.25;color:var(--ink,#0A0A0A)}
+.fh-plan-card h3{margin:0 0 8px;font-size:var(--fs-body,.9375rem);font-weight:600;color:var(--ink,#0A0A0A)}
+.fh-plan-card .fpc-cap{font-size:var(--fs-caption,.8125rem);line-height:1.45;color:var(--gray,#71717A)}
+.fh-plan-card .fpc-sample{font-size:var(--fs-caption,.8125rem);background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:8px;padding:8px 16px;margin:0 0 16px}
+.fh-plan-card .fpc-close{font-size:var(--fs-body,.9375rem);font-weight:600;line-height:1.5;max-width:72ch;margin:0 0 16px}
+
+/* the month picker: four quick picks and any month, 1 to 24 */
+.fh-plan-card .fpc-picks{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 16px}
+.fh-plan-card .fpc-pick{min-height:44px;min-width:56px;padding:0 16px;border-radius:8px;border:1px solid var(--ink,#0A0A0A);background:#FFFFFF;color:var(--ink,#0A0A0A);font:inherit;font-size:var(--fs-body,.9375rem);font-weight:600;cursor:pointer}
+.fh-plan-card .fpc-pick[aria-pressed="true"]{background:var(--ink,#0A0A0A);color:#FFFFFF}
+.fh-plan-card .fpc-pick:focus-visible,.fh-plan-card .fpc-any select:focus-visible,.fh-plan-card .fpc-btn:focus-visible,.fh-plan-card summary:focus-visible{outline:2px solid var(--ink,#0A0A0A);outline-offset:2px}
+.fh-plan-card .fpc-any{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-caption,.8125rem);color:var(--gray,#71717A)}
+.fh-plan-card .fpc-any select{min-height:44px;min-width:120px;max-width:100%;padding:0 8px;border:1px solid var(--line,#E4E4E7);border-radius:8px;background:#FFFFFF;color:var(--ink,#0A0A0A);font:inherit;font-size:var(--fs-body,.9375rem)}
+
+/* today against month N: side by side on a wide screen, stacked on a phone */
+.fh-plan-card .fpc-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:16px;margin:0 0 16px}
+.fh-plan-card .fpc-col{display:flex;flex-direction:column;gap:8px;min-width:0;border:1px solid var(--line,#E4E4E7);border-radius:10px;padding:16px}
+.fh-plan-card .fpc-col.is-dashed{border-style:dashed}
+.fh-plan-card .fpc-col-head{font-size:var(--fs-caption,.8125rem);color:var(--gray,#71717A)}
+.fh-plan-card .fpc-score{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.fh-plan-card .fpc-num{font-size:var(--fs-metric,2rem);font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.fh-plan-card .fpc-of{font-size:var(--fs-caption,.8125rem);color:var(--gray,#71717A)}
+.fh-plan-card .fpc-band{font-weight:600}
+.fh-plan-card .fpc-line{display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-body,.9375rem)}
+.fh-plan-card .fpc-k{color:var(--gray,#71717A);font-size:var(--fs-caption,.8125rem)}
+.fh-plan-card .fpc-skel{min-height:120px;background:linear-gradient(90deg,#F4F4F5,#E4E4E7,#F4F4F5);background-size:200% 100%;animation:fpc-sk 1.2s ease-in-out infinite;border:0}
+@keyframes fpc-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+/* the dated path */
+.fh-plan-card .fpc-block{margin:0 0 16px}
+.fh-plan-card .fpc-steps,.fh-plan-card .fpc-bizlist,.fh-plan-card .fpc-reasons{list-style:none;margin:0;padding:0}
+.fh-plan-card .fpc-step{display:grid;grid-template-columns:minmax(96px,auto) minmax(0,1fr);gap:8px 16px;padding:8px 0;border-top:1px solid var(--line,#E4E4E7)}
+.fh-plan-card .fpc-step:first-child{border-top:0}
+.fh-plan-card .fpc-date{font-size:var(--fs-caption,.8125rem);color:var(--gray,#71717A);white-space:nowrap;font-variant-numeric:tabular-nums}
+.fh-plan-card .fpc-step.is-done .fpc-step-text{color:var(--gray,#71717A)}
+.fh-plan-card .fpc-tag{display:inline-block;font-size:var(--fs-caption,.8125rem);font-weight:600;border:1px solid var(--line,#E4E4E7);border-radius:999px;padding:0 8px;margin-left:8px;color:var(--ink,#0A0A0A)}
+.fh-plan-card .fpc-biz{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px;padding:8px 0;border-top:1px solid var(--line,#E4E4E7)}
+.fh-plan-card .fpc-biz:first-child{border-top:0}
+.fh-plan-card .fpc-biz-name{font-weight:600;min-width:0}
+.fh-plan-card .fpc-biz .fpc-cap{flex-basis:100%}
+.fh-plan-card .fpc-reasons{list-style:decimal;padding-left:24px;display:flex;flex-direction:column;gap:8px}
+.fh-plan-card .fpc-assume summary{display:flex;align-items:center;min-height:44px;cursor:pointer;font-weight:600}
+.fh-plan-card .fpc-assume ul{list-style:disc;padding-left:24px;margin:0;display:flex;flex-direction:column;gap:8px;font-size:var(--fs-caption,.8125rem);color:var(--gray,#71717A)}
+.fh-plan-card .fpc-error{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.fh-plan-card .fpc-btn{min-height:44px;padding:0 24px;border-radius:8px;border:1px solid var(--ink,#0A0A0A);background:var(--ink,#0A0A0A);color:#FFFFFF;font:inherit;font-weight:600;cursor:pointer}
+
+@media (max-width:720px){
+  /* The cockpit stacks its sections by order on a phone; this card follows the credit facts (order 2). */
+  .closer-workspace .fh-plan-card{order:2}
+  .fh-plan-card{padding:16px}
+  .fh-plan-card .fpc-step{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+  .fh-plan-card .fpc-skel{animation:none}
+}

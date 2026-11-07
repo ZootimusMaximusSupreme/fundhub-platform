@@ -99,9 +99,9 @@ test("the price list is src/config/offers.mjs, every row, no second copy", () =>
     assert.equal(row.priceCents, PARTNER_ADD_ONS[k].priceCents, k);
   }
   const text = offerFactsText(facts);
-  assert.match(text, /PARTNER_ENTRY: "White-label partner program" — \$10,000/);
+  assert.match(text, /PARTNER_ENTRY: "White-label partner program" — \$30,000/);
   assert.match(text, /FUNDING_DFY: .* plus a 10% success fee/);
   assert.match(text, /NOT ON FILE: the cost to get a customer/);
-  assert.ok(knownPriceCents().has(1000000));
+  assert.ok(knownPriceCents().has(3000000));
   assert.ok(knownPriceCents().has(OFFERS.UWIQ_DELIVERABLES.priceMinCents));
 });

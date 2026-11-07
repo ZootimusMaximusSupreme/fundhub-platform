@@ -115,8 +115,18 @@
     }
     return '<div class="cash-line" data-kind="' + esc(kind) + '">' +
       '<span class="caption">' + esc(KIND_LABEL[kind]) + ' cash</span>' +
-      '<span class="big">' + esc(money(p.cents, p.is_floor)) + '</span>' +
-      (compact ? '' : '<span class="caption">' + esc(plural(n, "account", "accounts")) + '</span>') + '</div>';
+      '<span class="big"' + countAttrs(p.cents, p.is_floor ? null : "usd2") + '>' + esc(money(p.cents, p.is_floor)) + '</span>' +
+      (compact ? sparkSlot("cash." + kind) : '<span class="caption">' + esc(plural(n, "account", "accounts")) + '</span>') + '</div>';
+  }
+
+  /* For the premium pass (money-premium.js): a number that may count up to
+     the value printed here, and a box for that line's weekly sparkline. Only
+     a real number counts; "at least" totals and dashes never move. */
+  function countAttrs(v, fmt) {
+    return fmt && isNum(v) ? ' data-fh-count="' + v + '" data-fh-fmt="' + fmt + '"' : "";
+  }
+  function sparkSlot(key) {
+    return '<span class="fh-spark-slot" data-fh-spark="' + esc(key) + '" aria-hidden="true" hidden></span>';
   }
 
   function cardsUsed(cards) {
@@ -171,7 +181,8 @@
 
     var debtTile = '<section class="card tile" aria-labelledby="t-debt">' +
       '<h2 class="eyebrow" id="t-debt">What you owe</h2>' +
-      '<span class="big">' + esc(money(debt.total_cents, debt.is_floor)) + '</span>' +
+      '<span class="big"' + countAttrs(debt.total_cents, debt.is_floor ? null : "usd2") + '>' + esc(money(debt.total_cents, debt.is_floor)) + '</span>' +
+      sparkSlot("debt.total") +
       '<p class="caption">All debt we know about</p></section>';
 
     var usedNote;
@@ -183,8 +194,9 @@
     }
     var usedTile = '<section class="card tile" aria-labelledby="t-used">' +
       '<h2 class="eyebrow" id="t-used">Cards used</h2>' +
-      '<span class="big">' + esc(pct(used.pct)) + '</span>' +
+      '<span class="big"' + countAttrs(used.pct, "pct1") + '>' + esc(pct(used.pct)) + '</span>' +
       (used.counted ? usedBar(used.pct) : "") +
+      sparkSlot("cards_used") +
       '<p class="caption">' + esc(usedNote) + '</p></section>';
 
     var nextTile;
@@ -201,7 +213,9 @@
         '<span class="big">—</span><p class="caption">No due dates on file yet</p></section>';
     }
 
-    return nextTile + '<div class="grid tiles">' + cashTile + debtTile + usedTile + '</div>';
+    /* Next due stays directly under the actions (the money-priority rule,
+       e2e/page_money.spec.mjs); the funding hero comes after it. */
+    return nextTile + renderPremiumSlot("top") + '<div class="grid tiles">' + cashTile + debtTile + usedTile + '</div>';
   }
 
   function renderTip(d) {
@@ -215,11 +229,26 @@
     return null;
   }
 
+  /* The bank's own logo beside the account (bank-logo.js): Plaid's, then the
+     bank book's, else nothing (owner rule 2026-11-07). The read puts `logo` on
+     each account; a card or loan row takes its account's logo. */
+  function bankLogo(logo, bank) {
+    var L = root.FHBankLogo;
+    return L ? L.html(logo, bank) : "";
+  }
+  function accountLogo(d, accountId) {
+    var all = list(d.accounts);
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].id === accountId) return bankLogo(all[i].logo, all[i].institution || all[i].name);
+    }
+    return "";
+  }
+
   function accountRow(d, a) {
     var card = isCard(a) ? cardFor(d, a.id) : null;
     var sub = [a.institution, a.subtype || a.type].filter(Boolean).join(" · ");
     var html = '<li class="acct">' +
-      '<div class="acct-main"><div class="acct-name">' + esc(a.name || "Account") +
+      '<div class="acct-main"><div class="acct-name">' + bankLogo(a.logo, a.institution || a.name) + esc(a.name || "Account") +
       (a.mask ? ' <span class="mask">••' + esc(a.mask) + '</span>' : "") + '</div>' +
       '<div class="caption">' + esc(sub) + '</div></div>' +
       '<div class="acct-num"><span class="num">' +
@@ -296,7 +325,7 @@
         '<span class="num">' + esc(money(r.owed_cents, r.is_floor)) + '</span></li>';
     }).join("");
     var cards = list(debt.cards).map(function (c) {
-      return '<tr><td>' + esc(c.name || "Card") + (c.mask ? ' <span class="mask">••' + esc(c.mask) + '</span>' : "") +
+      return '<tr><td>' + accountLogo(d, c.account_id) + esc(c.name || "Card") + (c.mask ? ' <span class="mask">••' + esc(c.mask) + '</span>' : "") +
         '<div class="caption">' + esc(KIND_LABEL[c.kind] || "Not sure yet") + '</div></td>' +
         '<td class="r num">' + esc(money(c.balance_cents)) + '</td>' +
         '<td class="r num">' + esc(money(c.limit_cents)) + '</td>' +
@@ -310,7 +339,7 @@
        owed; payment and due date come from the loan's statement-cycle row.
        A null is a dash, like every other figure here. */
     var loans = list(debt.loans).map(function (l) {
-      return '<tr><td>' + esc(l.name || "Loan") + (l.mask ? ' <span class="mask">••' + esc(l.mask) + '</span>' : "") + '</td>' +
+      return '<tr><td>' + accountLogo(d, l.account_id) + esc(l.name || "Loan") + (l.mask ? ' <span class="mask">••' + esc(l.mask) + '</span>' : "") + '</td>' +
         '<td>' + esc(containerName(d, l)) + '</td>' +
         '<td class="r num">' + esc(money(l.balance_cents)) + '</td>' +
         '<td class="r num">' + esc(money(l.payment_cents)) + '</td>' +
@@ -353,9 +382,34 @@
     return CONTAINER_LABEL[row.kind] || "Not sorted yet";
   }
 
-  /* One cashflow chart per kind. Personal and business never share a bar. */
+  /* The premium bars (money-premium.js barsHtml, the approved demo's look):
+     same months, same cents, axis words readable on a phone. null when that
+     file is not on the page, and the plain bars below are drawn instead. */
+  function premiumBars(months, vals, kind) {
+    var P = root.FHPremium;
+    if (!P || typeof P.barsHtml !== "function") return null;
+    return P.barsHtml({
+      labels: months.map(function (m) { return monthName(m.month); }),
+      short: months.map(function (m) { return monthName(m.month, true); }),
+      series: [
+        { cls: "fh-bar-in", name: "Money in", values: vals.map(function (v) { return v.in_cents; }) },
+        { cls: "fh-bar-out", name: "Money out", values: vals.map(function (v) { return v.out_cents; }) }
+      ],
+      fmt: money,
+      aria: KIND_LABEL[kind] + " money in and out by month"
+    }) || null;
+  }
+
+  /* One cashflow chart per kind. Personal and business never share a bar.
+     A kind with no number in any month says so in words: no dash chart, no
+     table of dashes (premium pass, 2026-11-07). */
   function chartFor(months, kind) {
     var vals = months.map(function (m) { return (m && m[kind]) || {}; });
+    if (!hasAny(months, kind)) {
+      return '<div class="card flow" data-kind="' + esc(kind) + '"><h3 class="eyebrow">' + esc(KIND_LABEL[kind]) + ' cashflow</h3>' +
+        '<p class="caption">No ' + esc(KIND_LABEL[kind].toLowerCase()) + ' bank activity yet.</p></div>';
+    }
+    var fancy = premiumBars(months, vals, kind);
     var max = 0;
     vals.forEach(function (v) {
       if (isNum(v.in_cents)) max = Math.max(max, v.in_cents);
@@ -380,14 +434,15 @@
       '" role="img" aria-label="' + esc(KIND_LABEL[kind]) + ' money in and out by month">' +
       '<line class="chart-base" x1="0" y1="' + H + '" x2="' + (W * months.length) + '" y2="' + H + '"></line>' +
       bars + '</svg>';
+    /* data-label names each amount, so a card too narrow for four columns can stack each
+       month (money-ios.css, QA11b): the month, then In, Out and Left over on their own lines. */
     var rows = vals.map(function (v, i) {
       var net = isNum(v.in_cents) && isNum(v.out_cents) ? v.in_cents - v.out_cents : null;
-      return '<tr><td>' + esc(monthName(months[i].month)) + '</td><td class="r num">' + esc(money(v.in_cents)) +
-        '</td><td class="r num">' + esc(money(v.out_cents)) + '</td><td class="r num">' + esc(money(net)) + '</td></tr>';
+      return '<tr><td class="flow-month">' + esc(monthName(months[i].month)) + '</td><td class="r num" data-label="In">' + esc(money(v.in_cents)) +
+        '</td><td class="r num" data-label="Out">' + esc(money(v.out_cents)) + '</td><td class="r num" data-label="Left over">' + esc(money(net)) + '</td></tr>';
     }).join("");
     return '<div class="card flow" data-kind="' + esc(kind) + '"><h3 class="eyebrow">' + esc(KIND_LABEL[kind]) + ' cashflow</h3>' +
-      '<p class="legend caption"><span class="key key-in"></span>Money in <span class="key key-out"></span>Money out</p>' +
-      svg +
+      (fancy || ('<p class="legend caption"><span class="key key-in"></span>Money in <span class="key key-out"></span>Money out</p>' + svg)) +
       '<div class="scroll-x"><table class="flow-table"><thead><tr><th>Month</th><th class="r">In</th><th class="r">Out</th><th class="r">Left over</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div></div>';
   }
@@ -429,14 +484,22 @@
       (rows ? '<ul class="rows">' + rows + '</ul>' : '<p class="caption">No repeating bills found yet.</p>') + '</div>';
   }
 
+  /* A card row's "Pay now" / "I paid" box (unit I6): pay-now.js fills it after
+     the page paints. A row that is not a card, or has no account_id, gets none. */
+  function payNowSlot(u) {
+    if (!u || u.type !== "card_due" || typeof u.account_id !== "string" || !u.account_id) return "";
+    return '<div class="pay-now" data-pay-card="' + esc(u.account_id) + '" data-pay-due="' + esc(u.on || "") + '"></div>';
+  }
+
   function renderUpcoming(d) {
     var rows = sortedUpcoming(d).map(function (u) {
-      return '<li class="row"><div><div>' + esc(u.name || "") + '</div><div class="caption">' +
+      var slot = payNowSlot(u);
+      return '<li class="row' + (slot ? ' has-pay-now' : '') + '"><div><div>' + esc(u.name || "") + '</div><div class="caption">' +
         esc(upcomingWord(u)) + '</div></div>' +
         '<div class="acct-num"><span class="num">' + esc(day(u.on)) + '</span>' +
-        '<span class="caption">' + esc(money(u.amount_cents)) + '</span></div></li>';
+        '<span class="caption">' + esc(money(u.amount_cents)) + '</span></div>' + slot + '</li>';
     }).join("");
-    return '<div class="card"><h3 class="eyebrow">Coming up</h3>' +
+    return '<div class="card"><h3 class="eyebrow">Payments due</h3>' +
       (rows ? '<ul class="rows">' + rows + '</ul>' : '<p class="caption">No due dates on file yet.</p>') + '</div>';
   }
 
@@ -475,8 +538,15 @@
       '<div class="money-detail-body">' + html + '</div></details>';
   }
 
+  /* The premium pass's two places (money-premium.js): the funding hero above
+     the tiles (under Next due), and the advisor / repair / funding / report
+     row under them. Empty boxes when that file is not on the page. */
+  function renderPremiumSlot(where) {
+    return '<div class="fh-premium-slot" data-fh-premium-slot="' + where + '"></div>';
+  }
+
   function renderFull(d) {
-    return renderSandbox(d) + renderHead(d, true) + renderTiles(d) + renderTip(d) +
+    return renderSandbox(d) + renderHead(d, true) + renderTiles(d) + renderPremiumSlot("more") + renderTip(d) +
       '<section class="money-details" aria-label="Money details">' +
       detail('payments', 'Payments & repeating bills', plural(list(d.upcoming).length, 'upcoming item', 'upcoming items') + ' · ' +
         plural(list(d.bills).length, 'repeating bill', 'repeating bills'), '<div class="grid two">' + renderUpcoming(d) + renderBills(d) + '</div>') +
@@ -494,12 +564,12 @@
   function renderTrendsSlot() { return '<div class="trends-slot" data-trends-slot></div>'; }
 
   function renderEmpty(d) {
-    return renderSandbox(d) + renderHead(d, false) +
+    return renderSandbox(d) + renderHead(d, false) + renderPremiumSlot("top") +
       '<section class="card empty"><h2>No bank accounts yet</h2>' +
       '<p>Connect a bank to see what you have, what you owe, and what is due next. ' +
       'Fundhub only reads your accounts. It never moves money.</p>' +
       '<div class="head-act"><button class="btn-primary" type="button" data-act="connect">Connect a bank</button>' +
-      '<p class="act-msg caption" aria-live="polite"></p></div></section>' +
+      '<p class="act-msg caption" aria-live="polite"></p></div></section>' + renderPremiumSlot("more") +
       (d ? renderBilling(d) : "");
   }
 
@@ -647,15 +717,52 @@
         if (!asked && res.body.client && res.body.client.id) state.clientId = res.body.client.id;
         paint(render(res.body));
         mountTrends();
+        mountPayNow();
+        mountPremium();
       });
     }
 
-    /* The Trends line graphs, from money-trends.js when the page loaded it. */
+    /* "Pay now" / "I paid" on each card due row, from pay-now.js when the page
+       loaded it. Without that file the empty boxes stay hidden. */
+    function mountPayNow() {
+      var p = root.FinanceOS && root.FinanceOS.payNow;
+      if (!p || typeof p.enhance !== "function" || !el.querySelector || !el.querySelector("[data-pay-card]")) return;
+      try { p.enhance(el, { clientId: asked, apiGet: get, apiPost: post }); } catch (e) { /* the rows still show */ }
+    }
+
+
+    /* The Trends line graphs, from money-trends.js when the page loaded it.
+       Each Trends answer is also handed to the premium pass's sparklines, so
+       the daily history is read once, not twice. */
+    var trendsSeen = null;
+    var trendsWatchers = [];
+    function trendsGet(p) {
+      var r = get(p);
+      if (String(p).split("?")[0] === "/api/money/trends") {
+        trendsSeen = Promise.resolve(r);
+        trendsWatchers.forEach(function (fn) { trendsSeen.then(fn); });
+      }
+      return r;
+    }
     function mountTrends() {
       var slot = el.querySelector ? el.querySelector("[data-trends-slot]") : null;
       var t = root.FinanceOS && root.FinanceOS.trends;
       if (!slot || !t || typeof t.mount !== "function") return;
-      try { t.mount(slot, { clientId: asked, apiGet: get, onSignIn: ctx.onSignIn }); } catch (e) { slot.innerHTML = ""; }
+      try { t.mount(slot, { clientId: asked, apiGet: trendsGet, onSignIn: ctx.onSignIn }); } catch (e) { slot.innerHTML = ""; }
+    }
+
+    /* The premium pass (money-premium.js, 2026-11-07): the funding hero, the
+       advisor, repair and funding cards, the monthly report, sparklines and
+       calm motion. Without that file the slots stay empty boxes. */
+    function mountPremium() {
+      var p = root.FinanceOS && root.FinanceOS.premium;
+      if (!p || typeof p.mount !== "function" || !el.querySelector) return;
+      var top = el.querySelector('[data-fh-premium-slot="top"]');
+      var more = el.querySelector('[data-fh-premium-slot="more"]');
+      trendsWatchers = [];
+      var onTrends = function (fn) { trendsWatchers.push(fn); if (trendsSeen) trendsSeen.then(fn); };
+      try { p.mount({ top: top, more: more, root: el }, { clientId: asked, apiGet: get, onSignIn: ctx.onSignIn, onTrends: onTrends }); }
+      catch (e) { if (top) top.innerHTML = ""; if (more) more.innerHTML = ""; }
     }
 
     function connect(btn) {

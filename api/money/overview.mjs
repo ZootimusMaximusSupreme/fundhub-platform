@@ -19,12 +19,18 @@
 //
 // A client in another org is 404, not 403 — "that file is not yours" would tell a
 // prober the uuid is real.
+//
+// ?report=monthly[&month=YYYY-MM] (Finance OS premium pass, 2026-11-07) answers
+// the same file's monthly report as a PDF download instead of JSON: a designed
+// cover, what changed and what is next (src/finance/monthly-report.mjs). Same
+// gate, same two callers, read only. `month` is this month when left out.
 import { db } from "../../src/db.mjs";
 import { requirePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
 import { ROLE_SETS, requireRole, isUuid, CLIENT_DATA_ERRORS } from "../../src/http/read-api.mjs";
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { moneyOverview } from "../../src/finance/money-overview.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
+import { attachOverviewLogos } from "../../src/banking/institution-logos.mjs";
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db || db;
@@ -67,10 +73,44 @@ export default async function handler(req, res, deps = {}) {
     orgId = staff.org_id;
   }
 
+  const report = req.query && req.query.report;
+  if (report !== undefined && report !== null && report !== "") {
+    return monthlyReportPdf(req, res, { database, orgId, clientId, now: clock(), deps });
+  }
+
   try {
     const payload = await build(database, { orgId, clientId, env, asOf: clock() });
     if (!payload) return res.status(404).json({ ok: false, error: "not_found" });
-    return res.status(200).json(payload);
+    /* Each bank's own logo: Plaid's, then the bank book's, else null (owner rule 2026-11-07). */
+    const dressed = await (deps.attachOverviewLogos || attachOverviewLogos)(database, { orgId, clientId, payload });
+    return res.status(200).json(dressed);
+  } catch (e) {
+    if (CLIENT_DATA_ERRORS.has(e && e.code)) {
+      return res.status(400).json({ ok: false, error: "invalid_parameter" });
+    }
+    if (dbDown(res, e)) return;
+    throw e;
+  }
+}
+
+/* The monthly report PDF for the file the gate above already scoped. The
+   report module loads only when a report is asked for. */
+async function monthlyReportPdf(req, res, { database, orgId, clientId, now, deps }) {
+  if (req.query.report !== "monthly") {
+    return res.status(400).json({ ok: false, error: "invalid_parameter", message: "report must be monthly" });
+  }
+  const mod = deps.monthlyReport || (await import("../../src/finance/monthly-report.mjs"));
+  const month = mod.readReportMonth(req.query.month, now);
+  if (!month.ok) return res.status(400).json({ ok: false, error: "invalid_parameter", message: month.error });
+  try {
+    const built = await mod.monthlyReport(database, { orgId, clientId, month: month.month, asOf: now });
+    if (!built) return res.status(404).json({ ok: false, error: "not_found" });
+    const bytes = await mod.renderMonthlyReportPdf(built);
+    res.setHeader("content-type", "application/pdf");
+    res.setHeader("content-disposition", `attachment; filename="${mod.reportFileName(month.month)}"`);
+    res.setHeader("cache-control", "private, no-store");
+    res.setHeader("x-content-type-options", "nosniff");
+    return res.status(200).end(Buffer.from(bytes));
   } catch (e) {
     if (CLIENT_DATA_ERRORS.has(e && e.code)) {
       return res.status(400).json({ ok: false, error: "invalid_parameter" });

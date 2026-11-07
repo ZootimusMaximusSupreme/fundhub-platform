@@ -283,12 +283,14 @@ test("Alerts: each jump link goes where it says, from the spot it is in, and the
     await waitFor(async () => (await focus()) === "fa-cash-personal");
     await a.page.close();
 
-    // Cash that is SHORT (not unknown) has its own "See it": it lands on the short box and says how short.
+    // Cash that is SHORT (not unknown) is a smart alert on the board (unit AL2, 2026-11-07), with its own
+    // "See it": it lands on the short box and says how short. It is no longer a to-do in Needs you.
     const short = await open(fixtureCopy(), STAFF, `?client_id=${CLIENT_ID}`);
-    const shortJumps = await short.page.evaluate(() => [...document.querySelectorAll('.need-list [data-act="jump"]')]
-      .map((b) => [b.closest("li").textContent.replace(/\s+/g, " ").trim(), b.getAttribute("data-to")]));
-    assert.ok(shortJumps.some(([text, to]) => /Personal cash is \$85\.57 short of 6 months of minimums\./.test(text) && to === "fa-cash-personal"), JSON.stringify(shortJumps));
-    await short.page.locator('.need-list [data-act="jump"]', { hasText: "See it" }).click();
+    const shortJumps = await short.page.evaluate(() => [...document.querySelectorAll('#fa-smart [data-act="jump"]')]
+      .map((b) => [b.closest("li").innerText.replace(/\s+/g, " ").trim(), b.getAttribute("data-to")]));
+    assert.ok(shortJumps.some(([text, to]) => /Cash low Personal cash \$4,210\.55 of a \$4,296\.12 cushion\. Short \$85\.57\./.test(text) && to === "fa-cash-personal"), JSON.stringify(shortJumps));
+    assert.equal(await short.page.locator(".need-list li", { hasText: "short of" }).count(), 0, "a short cushion is not also a to-do");
+    await short.page.locator('#fa-smart [data-act="jump"]', { hasText: "See it" }).click();
     await waitFor(async () => (await short.page.evaluate(() => document.activeElement && document.activeElement.id)) === "fa-cash-personal");
     await short.page.close();
 
@@ -329,6 +331,8 @@ test("Alerts: each jump link goes where it says, from the spot it is in, and the
     const empty = fixtureCopy();
     empty.cards = [];
     empty.alerts = [];
+    empty.custom = [];
+    empty.board = { ...empty.board, scopes: empty.board.scopes.map((x) => ({ ...x, payments: [], bills: [], smart: [] })) };
     empty.reserve = { months: 6, personal: { state: "unknown", reason: "no_cash_accounts" }, business: { state: "unknown", reason: "no_cash_accounts" }, not_counted: { debts: 0, minimums_cents: null } };
     const e = await open(empty, STAFF, `?client_id=${CLIENT_ID}`);
     assert.deepEqual(await hrefs(e.page, "#alerts-root .empty a"), [["Add an account", toAccounts]]);

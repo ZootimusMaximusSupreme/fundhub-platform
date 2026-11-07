@@ -26,15 +26,27 @@
 //                                       /api/finance/cashflow uses
 //   bills inside that month             src/banking/store.mjs + cashflow-seam.mjs
 //   the floor (a buffer above $0)       src/banking/settings.mjs loadThresholds
+//   money coming in (repeat paychecks,  src/banking/income.mjs loadIncome — the
+//   deposits, merchant payouts)         sure monthly figure, per kind
+//   financing (Clarity Pay / BNPL)      src/finance/clarity-payments.mjs, read only
+//   paid / late, per payment            Plaid's last payment date on the cycle row
+//                                       (the card reminders' own "payment on file" test)
+//   bill cleanup                        src/banking/bill-cleanup.mjs
 //
 // CASH IS NEVER ADDED ACROSS KINDS (spec §4b). Business cash is checked against
 // business debts, personal against personal. A kind whose cash cannot be read
 // says why, in the projector's own words, and the page shows that refusal.
 //
-// ONLY THE FIRST MONTH IS CHECKED AGAINST CASH. Money coming in is not modelled
-// (no inflow is passed to the projector, which can only make it more careful),
-// so a projection past one month would run every account to zero on paper. The
-// page says this in words.
+// ONLY THE FIRST MONTH IS CHECKED AGAINST CASH. Money coming in is not added to
+// that check (no inflow is passed to the projector, which can only make it more
+// careful), so a projection past one month would run every account to zero on
+// paper. The page says this in words.
+//
+// MONEY COMING IN FEEDS A SUGGESTION, NOT THE CHECK (Finance OS CFO build, unit
+// C). inputs.income carries each kind's sure monthly income and bills a month;
+// the shared math (suggestExtra) works out the extra for debt and the slider
+// amount it suggests. The client picks the amount; the cash check above still
+// guards the save.
 //
 // NEVER PAST THE SAFE AMOUNT. A plan whose first month is more than a kind's
 // cash can cover is refused at save, here, and again by the database
@@ -55,6 +67,10 @@ import { toCashflowBills } from "../banking/cashflow-seam.mjs";
 import { listRecurringBillsFor } from "../banking/store.mjs";
 import { PRESENTABLE_LABELS } from "../banking/recurring.mjs";
 import { loadThresholds } from "../banking/settings.mjs";
+import { loadIncome, monthlyBillCents, INCOME_KINDS } from "../banking/income.mjs";
+import { loadBillCleanup } from "../banking/bill-cleanup.mjs";
+import { parseIsoDate, daysBetween } from "../banking/statement-cycles.mjs";
+import { listClarityPayments } from "./clarity-payments.mjs";
 
 export const MAX_MONTHLY_CENTS = 100_000_000; // $1,000,000 a month — a typo guard, not a policy
 
@@ -91,7 +107,12 @@ export function usd(cents) {
    the source is named so the page can say which one it used. */
 const APR_SQL = `
   SELECT bank_account_id::text AS bank_account_id, apr,
-         raw->>'interest_rate_percentage' AS loan_rate
+         raw->>'interest_rate_percentage' AS loan_rate,
+         raw->>'last_payment_date' AS last_payment_date,
+         raw->>'next_payment_due_date' AS next_payment_due_date,
+         raw->'plaid'->>'last_statement_issue_date' AS plaid_statement_date,
+         last_statement_date::text AS last_statement_date,
+         minimum_payment_cents, last_statement_balance_cents
     FROM account_statement_cycles
    WHERE client_id = $1 AND org_id = $2`;
 
@@ -122,11 +143,81 @@ function loanName(l) {
   return text(l.name) || (text(l.mask) ? `Loan ····${l.mask}` : "Loan");
 }
 
+/* ------------------------------------------------------------------ *
+ * Paid / late, per payment (Finance OS wave 3, unit K)
+ * ------------------------------------------------------------------ */
+
+const day = (v) => {
+  const s = text(v);
+  return s && parseIsoDate(s.slice(0, 10)) ? s.slice(0, 10) : null;
+};
+
+/** { bank_account_id → the cycle row } from the same read as aprMap. Pure. */
+export function cycleFacts(rows = []) {
+  const out = new Map();
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const id = text(r && r.bank_account_id);
+    if (id) out.set(id, r);
+  }
+  return out;
+}
+
 /**
- * debtsFromOverview(overview, aprs) → the math's debt list. Pure.
- * Every number is the overview's own; nothing here is a new reading.
+ * paymentStatus(facts, today) → { status, ... } for this cycle's payment.
+ *
+ * THE SAME "PAYMENT ON FILE" TEST AS THE CARD REMINDERS
+ * (src/pulse/beats/lib/card-due-plan.mjs planCardDue, src/finance/money-agent.mjs
+ * cardLateItem): Plaid's last payment date on or after the last statement date
+ * means this cycle's payment was made. So the Strategy screen, the reminder text
+ * and the money helper never disagree about one card.
+ *
+ *   paid         a payment is on file since the last statement
+ *   late         none since the statement, and the due date has passed
+ *   due          none since the statement yet, and the due date is ahead
+ *   nothing_due  the minimum or the statement balance is $0
+ *   null         Plaid gave no payment date (or no statement date to compare
+ *                it with) — said as unknown, never as paid and never as late
+ *
+ * facts: { dueOn, lastPaidOn, statementOn, minCents, statementBalanceCents }
  */
-export function debtsFromOverview(ov, aprs = new Map()) {
+export function paymentStatus(facts = {}, today) {
+  const dueOn = day(facts.dueOn);
+  const lastPaidOn = day(facts.lastPaidOn);
+  const statementOn = day(facts.statementOn);
+  const base = { source: "plaid", due_on: dueOn, last_paid_on: lastPaidOn, days_late: 0 };
+  if (!day(today)) return { ...base, status: null, reason: "bad_today" };
+  if (facts.minCents === 0 || (Number.isSafeInteger(facts.statementBalanceCents) && facts.statementBalanceCents <= 0)) {
+    return { ...base, status: "nothing_due", reason: null };
+  }
+  if (!lastPaidOn) return { ...base, status: null, reason: "no_payment_date" };
+  if (statementOn && daysBetween(statementOn, lastPaidOn) >= 0) return { ...base, status: "paid", reason: null };
+  if (!statementOn) return { ...base, status: null, reason: "no_statement_date" };
+  if (dueOn && daysBetween(dueOn, today) > 0) {
+    return { ...base, status: "late", days_late: daysBetween(dueOn, today), reason: null };
+  }
+  if (dueOn) return { ...base, status: "due", reason: null };
+  return { ...base, status: null, reason: "no_due_date" };
+}
+
+function statusFor(id, facts, dueOn, today) {
+  const f = facts.get(String(id));
+  if (!f || !today) return null;
+  return paymentStatus({
+    dueOn: day(f.next_payment_due_date) || dueOn,
+    lastPaidOn: f.last_payment_date,
+    statementOn: day(f.plaid_statement_date) || day(f.last_statement_date),
+    minCents: int(f.minimum_payment_cents),
+    statementBalanceCents: int(f.last_statement_balance_cents)
+  }, today);
+}
+
+/**
+ * debtsFromOverview(overview, aprs, { facts, today }) → the math's debt list. Pure.
+ * Every number is the overview's own; nothing here is a new reading. `facts`
+ * (cycleFacts) and `today` add each payment's paid / late status; without them
+ * a debt carries payment: null.
+ */
+export function debtsFromOverview(ov, aprs = new Map(), { facts = new Map(), today = null } = {}) {
   const debt = (ov && ov.debt) || {};
   const cards = (Array.isArray(debt.cards) ? debt.cards : []).map((c) => {
     const a = aprs.get(String(c.account_id)) || null;
@@ -141,7 +232,8 @@ export function debtsFromOverview(ov, aprs = new Map()) {
       apr_pct: a ? a.apr_pct : null,
       apr_source: a ? a.apr_source : null,
       min_cents: int(c.min_due_cents),
-      due_on: text(c.due_on)
+      due_on: text(c.due_on),
+      payment: statusFor(c.account_id, facts, text(c.due_on), today)
     };
   });
   const loans = (Array.isArray(debt.loans) ? debt.loans : []).map((l) => {
@@ -157,10 +249,86 @@ export function debtsFromOverview(ov, aprs = new Map()) {
       apr_pct: a ? a.apr_pct : null,
       apr_source: a ? a.apr_source : null,
       min_cents: int(l.payment_cents),
-      due_on: text(l.due_on)
+      due_on: text(l.due_on),
+      payment: statusFor(l.account_id, facts, text(l.due_on), today)
     };
   });
   return [...cards, ...loans];
+}
+
+/* ------------------------------------------------------------------ *
+ * Financing — Clarity Pay and other payment plans (wave 3, unit K)
+ * ------------------------------------------------------------------ */
+
+/**
+ * financingDebts(plans, { today }) → open payment plans as debts. Pure.
+ *
+ * plans are src/finance/clarity-payments.mjs listClarityPayments() rows (its
+ * planView shape): money a client owes Fundhub or a subsidiary on a schedule,
+ * including buy now, pay later plans. Read only — nothing here records a payment.
+ *
+ *   balance   what is left on the plan
+ *   rate      0%: the schedule adds up to the plan amount (migration 443's
+ *             deferred check), so nothing is charged on top. Named, not assumed.
+ *   minimum   what is due inside the plan's first month, late parts included
+ *   kind      "unknown": a plan does not say whether personal or business money
+ *             pays it, and unknown is never folded into personal.
+ *   payment   paid / late / due from the plan's own recorded payments
+ *
+ * WHOP FINANCING IS NOT HERE ON PURPOSE. A Whop checkout records only that a
+ * Blueprint sale required ClarityPay financing (src/payments/whop-blueprint.mjs);
+ * the buyer's monthly ClarityPay schedule is not stored anywhere in this
+ * database. When staff record that schedule as a plan, it arrives through this
+ * same read.
+ */
+export function financingDebts(plans = [], { today } = {}) {
+  if (!parseDay(today)) return [];
+  const end = minusOneDay(addMonths(today, 1));
+  return (Array.isArray(plans) ? plans : [])
+    .filter((p) => p && p.status === "open" && int(p.left_cents) !== null && p.left_cents > 0)
+    .map((p) => {
+      const items = Array.isArray(p.installments) ? p.installments : [];
+      const dueNow = items.filter((i) => int(i.left_cents) > 0 && day(i.due_on) && day(i.due_on) <= end)
+        .reduce((s, i) => s + i.left_cents, 0);
+      const pastDue = items.filter((i) => day(i.due_on) && day(i.due_on) <= today);
+      const lastDue = pastDue.length ? pastDue[pastDue.length - 1] : null;
+      let payment;
+      if (p.is_late) {
+        const firstLate = items.find((i) => i.state === "late") || null;
+        payment = { source: "recorded", status: "late", due_on: firstLate ? firstLate.due_on : null,
+          last_paid_on: null, days_late: int(p.days_late) || 0, reason: null };
+      } else if (lastDue && int(lastDue.left_cents) === 0) {
+        payment = { source: "recorded", status: "paid", due_on: lastDue.due_on,
+          last_paid_on: lastDue.paid_at ? String(lastDue.paid_at).slice(0, 10) : null, days_late: 0, reason: null };
+      } else {
+        payment = { source: "recorded", status: p.next ? "due" : null, due_on: p.next ? p.next.due_on : null,
+          last_paid_on: null, days_late: 0, reason: p.next ? null : "no_schedule" };
+      }
+      return {
+        id: `clarity:${p.id}`,
+        name: text(p.name) || "Payment plan",
+        type: "financing",
+        kind: "unknown",
+        container_id: null,
+        owed_to: text(p.owed_to),
+        balance_cents: int(p.left_cents),
+        limit_cents: null,
+        apr_pct: 0,
+        apr_source: "schedule",
+        min_cents: dueNow,
+        due_on: p.next ? day(p.next.due_on) : null,
+        payment
+      };
+    });
+}
+
+/* A read that failed is "not read", never "no plans". */
+async function readFinancing(listPlans, db, { orgId, clientId, today }) {
+  try {
+    return { ok: true, plans: await listPlans(db, { orgId, clientId, today }) };
+  } catch (e) {
+    return { ok: false, plans: [], reason: e && e.code === "42P01" ? "not_set_up" : "read_failed" };
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -287,6 +455,94 @@ export function cashByKind({ accounts = [], bills = [], debts = [], thresholds =
 }
 
 /* ------------------------------------------------------------------ *
+ * Money coming in — what the extra-for-debt suggestion is built from
+ * ------------------------------------------------------------------ */
+
+/* Only what the page shows. Provider transaction ids and raw descriptors stay
+   on the server. */
+function incomeItem(it) {
+  return {
+    id: String(it.id),
+    source: it.source,
+    name: text(it.name),
+    kind: it.kind || "unknown",
+    cadence: it.cadence ?? null,
+    typical_cents: int(it.typical_cents),
+    monthly_cents: int(it.monthly_cents),
+    sure_per_month: int(it.sure_per_month),
+    next_on: text(it.next_expected_on),
+    last_on: text(it.last_seen_on),
+    times_seen: int(it.occurrence_count),
+    account_name: text(it.account_name),
+    account_mask: text(it.account_mask),
+    container_name: text(it.container_name),
+    payouts_per_month: int(it.payouts_per_month),
+    months: Array.isArray(it.months) ? it.months.map((m) => ({ month: m.month, payouts_cents: int(m.payouts_cents) })) : null,
+    reason: it.reason ?? null
+  };
+}
+
+/**
+ * incomeForPlan({ income, bills, accounts, thresholds }) → inputs.income. Pure.
+ *
+ *   income      src/banking/income.mjs loadIncome() / detectIncome() output
+ *   bills       listRecurringBillsFor() rows (camelCase), the same rows the cash
+ *               check uses
+ *   accounts    the overview's open accounts ({ id, type, kind })
+ *   thresholds  loadThresholds() output
+ *
+ * Per kind: the SURE monthly money coming in (income.mjs), and that kind's
+ * bills a month — the bills the detector is sure of (medium/high), on that
+ * kind's OPEN checking and savings, each at its average month rounded up
+ * (income.mjs monthlyBillCents). A bill charged to a card is not cash out, the
+ * same rule as the cash check. Unsure bills are counted, not added, and named.
+ *
+ * The floor is the org's minimum buffer. Unset, it is $0 with floor_source
+ * "spec-zero" — src/banking/cashflow.mjs paymentWindow()'s own rule ("zero is
+ * the task; a buffer above it is a policy"), so the suggestion and the cash
+ * check never disagree about the cushion.
+ */
+export function incomeForPlan({ income, bills = [], accounts = [], thresholds = {} } = {}) {
+  if (!income || income.ok !== true) {
+    return { ok: false, reason: (income && income.reason) || "not_read" };
+  }
+  const buffer = thresholds && Number.isSafeInteger(thresholds.minBufferCents) ? thresholds.minBufferCents : null;
+  const cashKind = new Map();
+  for (const a of Array.isArray(accounts) ? accounts : []) {
+    if (a && a.type === "depository") cashKind.set(String(a.id), a.kind || "unknown");
+  }
+  const byKind = {};
+  for (const k of INCOME_KINDS) {
+    const mine = (Array.isArray(bills) ? bills : []).filter((b) => b && cashKind.get(String(b.bankAccountId)) === k);
+    const sure = mine.filter((b) => PRESENTABLE_LABELS.includes(b.confidenceLabel));
+    const months = sure.map((b) => monthlyBillCents(b.typicalAmountCents, b.cadence));
+    const src = (income.by_kind && income.by_kind[k]) || {};
+    byKind[k] = {
+      monthly_cents: int(src.monthly_cents),
+      counted: int(src.counted) ?? 0,
+      not_counted: int(src.not_counted) ?? 0,
+      /* A bill whose size or cadence cannot be read makes the month unknown,
+         never smaller. */
+      bills_cents: months.every((c) => c !== null) ? months.reduce((s, c) => s + c, 0) : null,
+      bill_count: sure.length,
+      unsure_bill_count: mine.length - sure.length
+    };
+  }
+  return {
+    ok: true,
+    as_of: text(income.detected_as_of),
+    floor_cents: buffer === null ? 0 : buffer,
+    floor_source: buffer === null ? "spec-zero" : "buffer-supplied",
+    by_kind: byKind,
+    items: (Array.isArray(income.items) ? income.items : []).map(incomeItem),
+    not_counted: (Array.isArray(income.not_counted) ? income.not_counted : []).map(incomeItem),
+    months_judged: Array.isArray(income.months_judged) ? income.months_judged : [],
+    merchant_unavailable: income.merchant_unavailable === true,
+    capped: income.capped === true
+  };
+}
+
+/* ------------------------------------------------------------------ *
  * The read
  * ------------------------------------------------------------------ */
 
@@ -337,16 +593,25 @@ export async function strategyInputs(db, { orgId, clientId, env = process.env, a
   const overview = deps.moneyOverview || moneyOverview;
   const listBills = deps.listRecurringBillsFor || listRecurringBillsFor;
   const thresholdsOf = deps.loadThresholds || loadThresholds;
+  const incomeOf = deps.loadIncome || loadIncome;
+  const plansOf = deps.listClarityPayments || listClarityPayments;
+  const cleanupOf = deps.loadBillCleanup || loadBillCleanup;
   const today = new Date(asOf).toISOString().slice(0, 10);
 
   const ov = await overview(db, { orgId, clientId, env, asOf });
   if (!ov) return null;
-  const [aprRes, bills, thresholds] = await Promise.all([
+  const [aprRes, bills, thresholds, income, financing, cleanup] = await Promise.all([
     db.query(APR_SQL, [clientId, orgId]),
     listBills(db, { orgId, clientId, presentableOnly: false }),
-    thresholdsOf(db, { orgId })
+    thresholdsOf(db, { orgId }),
+    incomeOf(db, { orgId, clientId, asOf }),
+    readFinancing(plansOf, db, { orgId, clientId, today }),
+    cleanupOf(db, { orgId, clientId, asOf })
   ]);
-  const debts = debtsFromOverview(ov, aprMap(aprRes.rows));
+  const debts = [
+    ...debtsFromOverview(ov, aprMap(aprRes.rows), { facts: cycleFacts(aprRes.rows), today }),
+    ...financingDebts(financing.plans, { today })
+  ];
   const cash = cashByKind({ accounts: ov.accounts, bills, debts, thresholds, today });
   return {
     client: ov.client,
@@ -356,10 +621,31 @@ export async function strategyInputs(db, { orgId, clientId, env = process.env, a
     inputs: {
       as_of: today,
       debts,
-      cash: { window: cash.window, by_kind: cash.by_kind }
+      cash: { window: cash.window, by_kind: cash.by_kind },
+      income: incomeForPlan({ income, bills, accounts: ov.accounts, thresholds }),
+      financing: financing.ok ? { ok: true, plans: financingDebts(financing.plans, { today }).length } : { ok: false, reason: financing.reason }
     },
+    bill_cleanup: cleanupForPage(cleanup),
     projections: cash.projections,
     thresholds
+  };
+}
+
+/** The bill-cleanup answer as the page reads it: the flags, or why there are none. */
+export function cleanupForPage(c) {
+  if (!c || c.ok !== true) return { ok: false, reason: (c && c.reason) || "not_read" };
+  return {
+    ok: true,
+    as_of: c.as_of,
+    window_days: c.window_days,
+    checked_bills: c.checked_bills,
+    flags: (Array.isArray(c.flags) ? c.flags : []).map((f) => ({
+      key: f.key, kind: f.kind, name: f.name, money_kind: f.money_kind, cadence: f.cadence,
+      account_name: f.account_name, account_mask: f.account_mask, on: f.on,
+      from_cents: f.from_cents ?? null, to_cents: f.to_cents ?? null, change_cents: f.change_cents ?? null,
+      amount_cents: f.amount_cents ?? null,
+      charges: Array.isArray(f.charges) ? f.charges : []
+    }))
   };
 }
 
@@ -375,7 +661,10 @@ export function planSummary(plan) {
  *  rounded up to the dollar, highest rate first. */
 export function defaultSettings(inputs, saved) {
   if (saved && METHODS.includes(saved.method) && int(saved.monthly_cents) > 0) {
-    return { method: saved.method, monthly_cents: saved.monthly_cents, goal: saved.goal };
+    const out = { method: saved.method, monthly_cents: saved.monthly_cents, goal: saved.goal };
+    /* Present only when on, so the three-key shape other readers pin holds. */
+    if (saved.summary && saved.summary.financing_first === true) out.financing_first = true;
+    return out;
   }
   const probe = buildPlan(inputs, { method: "avalanche", monthly_cents: 1 });
   const min = probe.minimums_cents || 0;
@@ -400,12 +689,16 @@ export async function strategyPayload(db, { orgId, clientId, env = process.env, 
     sources: {
       debts: "src/finance/money-overview.mjs (the Overview tab's cards and loans); APR from account_statement_cycles",
       cash: "src/banking/cashflow.mjs project() + paymentWindow(), first month only, no money in modelled",
+      income: "src/banking/income.mjs (repeat deposits and merchant payouts, sure monthly figure per kind) − bills a month (recurring_bills, average month) − minimums − floor; public/app/money-strategy-math.js suggestExtra",
+      financing: "src/finance/clarity-payments.mjs listClarityPayments (open plans, what is left, recorded payments); paid / late for cards and loans from Plaid's last payment date on account_statement_cycles",
+      bill_cleanup: "src/banking/bill-cleanup.mjs over bank_transactions (repeat bills from src/banking/recurring.mjs)",
       targets: TARGETS.map((t) => t.source),
       methods: Object.fromEntries(Object.entries(METHOD_INFO).map(([k, v]) => [k, v.source]))
     },
     defaults,
     plan: planSummary(plan),
-    saved: saved ? savedForPage(saved) : null
+    saved: saved ? savedForPage(saved) : null,
+    bill_cleanup: built.bill_cleanup
   };
 }
 
@@ -420,7 +713,8 @@ export function savedForPage(saved) {
     cash_check: saved.cash_check,
     saved_by_kind: saved.saved_by_kind,
     saved_at: saved.saved_at,
-    steps: saved.milestones.length
+    steps: saved.milestones.length,
+    ...(saved.summary && saved.summary.financing_first === true ? { financing_first: true } : {})
   };
 }
 
@@ -446,7 +740,11 @@ export function readSettings(body = {}) {
     if (!parseDay(g.by)) return { error: "goal.by must be a date (YYYY-MM-DD)" };
     goal = { kind: g.kind, by: g.by };
   }
-  return { settings: { method, monthly_cents: monthly, goal } };
+  const fin = body.financing_first;
+  if (fin !== undefined && fin !== null && typeof fin !== "boolean") return { error: "financing_first must be true or false" };
+  const settings = { method, monthly_cents: monthly, goal };
+  if (fin === true) settings.financing_first = true;
+  return { settings };
 }
 
 const REFUSALS = {
@@ -535,6 +833,7 @@ export async function savePlan(db, {
     months_saved: plan.months_saved,
     minimums_cents: plan.minimums_cents,
     crossings: plan.crossings,
+    financing_first: plan.financing_first === true,
     cash: plan.cash ? {
       status: plan.cash.status,
       window: built.inputs.cash.window,

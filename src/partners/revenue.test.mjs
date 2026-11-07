@@ -301,21 +301,21 @@ describe("computeAccrual refuses, and says which refusal it is", () => {
   });
 });
 
-describe("computeRecruitBonus — $2,000, once, against the sticker", () => {
-  test("the bonus is 20% of the $10,000 entry fee", () => {
-    assert.equal(ENTRY_FEE_CENTS, 1000000);
+describe("computeRecruitBonus — $6,000, once, against the sticker", () => {
+  test("the bonus is 20% of the $30,000 entry fee (owner-set 2026-11-07)", () => {
+    assert.equal(ENTRY_FEE_CENTS, 3000000);
     assert.equal(RECRUIT_BONUS_PCT, 20);
     const b = computeRecruitBonus();
-    assert.equal(b.grossCents, 1000000);
-    assert.equal(b.shareCents, 200000);
+    assert.equal(b.grossCents, 3000000);
+    assert.equal(b.shareCents, 600000);
     assert.equal(b.sharePct, 20);
   });
 
   test("the promise does not move when the lender remits less", () => {
     // W1 §5: the bonus is set against the sticker, not the remittance. A prime
-    // entry remits $8,500 and a sub-prime one $3,000; the recruiter gets $2,000
+    // entry remits $25,500 and a sub-prime one $9,000; the recruiter gets $6,000
     // either way, and computing it from the entry fee is what guarantees that.
-    assert.equal(computeRecruitBonus().shareCents, 200000);
+    assert.equal(computeRecruitBonus().shareCents, 600000);
   });
 });
 
@@ -462,15 +462,15 @@ describe("accrueForPayment — the writer, against a fake database", () => {
 });
 
 describe("accrueRecruitBonus", () => {
-  test("writes one $2,000 row against the $10,000 entry fee", async () => {
+  test("writes one $6,000 row against the $30,000 entry fee", async () => {
     const db = fakeDb();
     const out = await accrueRecruitBonus(db, {
       orgId: ORG, recruiterPartnerId: PARTNER, transactionId: TX
     });
     assert.equal(out.accrued, true);
     assert.equal(db.rows.length, 1);
-    assert.equal(db.rows[0].gross_amount, "10000.00");
-    assert.equal(db.rows[0].share_amount, "2000.00");
+    assert.equal(db.rows[0].gross_amount, "30000.00");
+    assert.equal(db.rows[0].share_amount, "6000.00");
     assert.equal(db.rows[0].share_pct_applied, 20);
     assert.equal(db.rows[0].client_id, null, "a recruited partner is not a client");
   });

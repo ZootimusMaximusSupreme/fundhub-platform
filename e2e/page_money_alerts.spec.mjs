@@ -13,15 +13,20 @@ for(const width of [1440,390,320])test(`alerts client states and keyboard ${widt
    if(route.request().method()==='POST'){posts.push(route.request().postDataJSON());body={ok:true};}
    else if(state==='loading')return;
    else if(state==='error'){status=500;body={ok:false};}
-   else body=state==='empty'?{...fixture,cards:[],alerts:[],reserve:{personal:{state:'unknown'},business:{state:'unknown'}}}:fixture;
+   else body=state==='empty'?{...fixture,cards:[],alerts:[],custom:[],board:{...fixture.board,scopes:fixture.board.scopes.map(x=>({...x,payments:[],bills:[],smart:[]}))},reserve:{personal:{state:'unknown'},business:{state:'unknown'}}}:fixture;
   }
   await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
  });
  for(state of ['full','empty','error','loading']){
   await page.goto('/app/money-alerts.html');await expect(page.locator('body')).toHaveAttribute('data-client-ios','');
   if(state==='full'){
-   await expect(page.getByRole('switch')).toHaveCount(4);
-   const sw=page.getByRole('switch').first();await sw.focus();await page.keyboard.press('Space');await expect.poll(()=>posts.length).toBeGreaterThan(0);expect(posts[0]).toEqual({action:'set_alert',kind:'payment_timing',enabled:false});
+   // Four text switches and the phone alert switch; Personal has no bills, so no bill switch until the business is picked.
+   await expect(page.locator('[data-act="toggle"]')).toHaveCount(4);
+   await expect(page.getByRole('switch')).toHaveCount(4+1);
+   await page.getByRole('button',{name:'Sample Co LLC'}).tap();
+   await expect(page.getByRole('switch')).toHaveCount(4+1+3);
+   await expect(page.getByRole('switch',{name:'Phone alert for Google Workspace'})).toHaveAttribute('aria-checked','true');
+   const sw=page.locator('[data-act="toggle"]').first();await sw.focus();await page.keyboard.press('Space');await expect.poll(()=>posts.length).toBeGreaterThan(0);expect(posts[0]).toEqual({action:'set_alert',kind:'payment_timing',enabled:false});
    await page.getByRole('button',{name:/Change promo for|Add a promo for/}).first().tap();await expect(page.locator('input[type=date]')).toBeVisible();await page.getByRole('button',{name:'Cancel',exact:true}).tap();
    await sw.tap();await expect.poll(()=>posts.length).toBe(2);expect(posts[1]).toEqual({action:'set_alert',kind:'payment_timing',enabled:true});
   }else if(state==='empty')await expect(page.getByRole('heading',{name:'Nothing to watch yet'})).toBeVisible();
@@ -34,6 +39,6 @@ for(const width of [1440,390,320])test(`alerts client states and keyboard ${widt
 });
 test('alerts staff keeps client context and prior presentation',async({page})=>{
  await page.route('**/api/**',r=>r.fulfill({contentType:'application/json',body:JSON.stringify(r.request().url().includes('auth/session')?{ok:true,principal:'staff'}:fixture)}));
- await page.goto('/app/money-alerts.html?client_id=safe-fixture');await expect(page.getByRole('switch')).toHaveCount(4);
+ await page.goto('/app/money-alerts.html?client_id=safe-fixture');await expect(page.locator('[data-act="toggle"]')).toHaveCount(4);
  await expect(page.locator('body')).not.toHaveAttribute('data-client-ios','');await expect(page.locator('#money-back')).toHaveAttribute('href','finance-os.html?client_id=safe-fixture');await expect(page.locator('#money-nav a').first()).toHaveAttribute('href','/app/financeos.html?client_id=safe-fixture#overview');
 });

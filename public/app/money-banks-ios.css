@@ -41,3 +41,14 @@ body[data-client-ios] :is(#banks-root,#fos-banks) .field :is(input,select){borde
  body[data-client-ios] :is(#banks-root,#fos-banks) .bank-head{flex-wrap:wrap}
  body[data-client-ios] :is(#banks-root,#fos-banks) .big{font-size:30px}
 }
+/* Your bank relationships on a phone: one stacked row per bank, each value under
+   its label, the status chip on one line (accountability QA03, 2026-11-07). */
+@media(max-width:760px){
+ :is(#banks-root,#fos-banks) .rel-table thead{display:none}
+ :is(#banks-root,#fos-banks) .rel-table,:is(#banks-root,#fos-banks) .rel-table tbody,:is(#banks-root,#fos-banks) .rel-table tr,:is(#banks-root,#fos-banks) .rel-table td{display:block;width:100%;min-width:0}
+ :is(#banks-root,#fos-banks) .rel-table tr{padding:12px 0;border-top:1px solid #eceeeb}
+ :is(#banks-root,#fos-banks) .rel-table tbody tr:first-child{border-top:0}
+ :is(#banks-root,#fos-banks) .rel-table td{padding:4px 0;border:0;text-align:left}
+ :is(#banks-root,#fos-banks) .rel-table td[data-label]::before{content:attr(data-label);display:block;font-size:13px;line-height:1.4;color:#656b6c}
+ :is(#banks-root,#fos-banks) .rel-table .status{white-space:nowrap}
+}

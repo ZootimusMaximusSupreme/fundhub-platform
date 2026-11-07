@@ -16,6 +16,7 @@
 import { toCents } from "../commissions/money.mjs";
 import { plaidConfigFromEnv, linkAccount, getAccounts, SEAM_REASONS } from "./plaid.mjs";
 import { saveAccounts, ACCOUNT_TYPES } from "./accounts-store.mjs";
+import { saveLogoQuietly } from "./institution-logos.mjs";
 
 export const PLAID_SANDBOX_LABEL = "(Plaid sandbox — test data)";
 
@@ -131,6 +132,10 @@ export async function completeLink(db, {
   const saved = await saveAccounts(db, got.accounts.map((a) => toStoreAccount(a, { asOf, environment })), {
     orgId, clientId, provider: "plaid", plaidItemId: itemRowId
   });
+
+  /* The bank's own logo, from Plaid, saved once per bank (owner rule 2026-11-07).
+     A side job: it never throws and never fails the link. */
+  await saveLogoQuietly(db, { institutionId: institution?.institution_id ?? null, env, now: asOf });
 
   return { ok: true, itemRowId, environment, institutionName, written: saved.written, accounts: saved.accounts };
 }

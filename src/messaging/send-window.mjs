@@ -63,7 +63,9 @@ export const DRIP_TEMPLATE_KEYS = new Set([
   "EMAIL-S05A-NOSHOW-03", "SMS-S05A-NOSHOW-03",
   "EMAIL-S05A-NOSHOW-04", "SMS-S05A-NOSHOW-04",
   // BS-01: the one real pre-call text in the booked-call sequence.
-  "SMS-BS01-02-PRECALL"
+  "SMS-BS01-02-PRECALL",
+  // Finance OS weekly money text (unit AL, 2026-11-07): Monday 9 a.m. Arizona, a drip.
+  "SMS-FINANCE-WEEKLY-MONEY"
 ]);
 
 /** "instant" | "drip" | "standard" for a template key. A "-B" version sorts as its base key. */

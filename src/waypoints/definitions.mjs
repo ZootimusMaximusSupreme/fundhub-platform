@@ -39,6 +39,15 @@ export function isBlueprintDisputeDefinitionKey(key) {
   return String(key || "").startsWith(BLUEPRINT_DISPUTE_DEFINITION_KEY_PREFIX);
 }
 
+/** Capital Blueprint steps that are not dispute rounds (migration 574: the
+ *  ChexSystems check before any bank account opens). Seeded with the Blueprint
+ *  checklist only; repair-only enroll skips them, the same as the dispute rows. */
+export const BLUEPRINT_ONLY_DEFINITION_KEYS = Object.freeze(["check_chexsystems"]);
+
+export function isBlueprintOnlyDefinitionKey(key) {
+  return isBlueprintDisputeDefinitionKey(key) || BLUEPRINT_ONLY_DEFINITION_KEYS.includes(String(key || ""));
+}
+
 /** The utilization target the Credit Optimization Roadmap works to: 10% of the
  *  limit (scripts/black-reports/fundhub_gen.py target_bal(), :270). Named here
  *  rather than typed inline so the two places that need it cannot drift. */

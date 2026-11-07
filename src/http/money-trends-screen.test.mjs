@@ -13,7 +13,7 @@ import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
-import { buildTrends } from "../finance/money-trends.mjs";
+import { buildTrends, accountChoices, pickAccount } from "../finance/money-trends.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.resolve(HERE, "../../public/app");
@@ -193,4 +193,264 @@ test("credit: a pull missing one bureau breaks that bureau's line instead of bri
   assert.equal((html.match(/<polyline class="line line-ex"/g) || []).length, 0, "Experian has no two pulls in a row");
   assert.equal((html.match(/<polyline class="line line-eq"/g) || []).length, 1);
   assert.equal((html.match(/<circle class="dot"/g) || []).length, 8, "every real score is still a dot");
+});
+
+/* ---- One account and any dates (Finance OS CFO build, unit A, 2026-11-07) ---- */
+
+const ENTS = [{ id: "e-p", kind: "personal", name: "Me" }, { id: "e-b", kind: "business", name: "Sample LLC" }];
+const ACCT_ROWS = [
+  { id: "a-chk", name: "Everyday Checking", mask: "0001", account_type: "depository", account_subtype: "checking", entity_id: "e-p", institution_name: "Sample Bank" },
+  { id: "a-card", name: "Sample Rewards Card", mask: "5678", account_type: "credit", account_subtype: "credit card", entity_id: "e-p", institution_name: "Sample Bank" },
+  { id: "a-biz", name: "Business Checking", mask: "4455", account_type: "depository", account_subtype: "checking", entity_id: "e-b" },
+  { id: "a-loan", name: "Equipment Loan", account_type: "loan", entity_id: "e-b" }
+];
+const CHOICES = accountChoices({ accounts: ACCT_ROWS, entities: ENTS });
+/* Six days of the card: a gap on Oct 3, no limit on Oct 5. */
+const CARD_ROWS = [
+  { day: "2026-10-01", current_balance_cents: "250000", credit_limit_cents: "1000000", estimated: false },
+  { day: "2026-10-02", current_balance_cents: "300000", credit_limit_cents: "1000000", estimated: false },
+  { day: "2026-10-04", current_balance_cents: "320000", credit_limit_cents: "1000000", estimated: false },
+  { day: "2026-10-05", current_balance_cents: "340000", credit_limit_cents: null, estimated: false },
+  { day: "2026-10-06", current_balance_cents: "200000", credit_limit_cents: "1000000", estimated: false }
+];
+const cardRead = () => buildTrends({
+  asOf: ASOF, from: "2026-10-01", to: "2026-10-06", choices: CHOICES,
+  account: pickAccount(CHOICES, "a-card"), accountRows: CARD_ROWS
+});
+
+test("account picker: All accounts first, then the open accounts grouped by kind, named the overview's way", () => {
+  const html = T.renderTrends({ ...DATA, accounts: CHOICES }, "30d");
+  const sel = html.match(/<select data-trends-account>[\s\S]*?<\/select>/);
+  assert.ok(sel, "the picker is drawn when the read names accounts");
+  assert.match(sel[0], /^<select data-trends-account><option value="" selected>All accounts<\/option>/);
+  assert.deepEqual([...sel[0].matchAll(/<optgroup label="([^"]+)">/g)].map((m) => m[1]), ["Personal", "Business"]);
+  assert.deepEqual([...sel[0].matchAll(/<option value="(a-[^"]+)">([^<]+)<\/option>/g)].map((m) => [m[1], m[2]]), [
+    ["a-chk", "Everyday Checking ••0001 · Checking"],
+    ["a-card", "Sample Rewards Card ••5678 · Card"],
+    ["a-biz", "Business Checking ••4455 · Checking"],
+    ["a-loan", "Equipment Loan · Loan"]
+  ]);
+  assert.match(html, /<span class="tlabel">Account<\/span>/, "the picker has a visible label");
+  // No accounts named (an older read, or none connected): no picker at all.
+  assert.doesNotMatch(T.renderTrends(DATA, "30d"), /data-trends-account/);
+});
+
+test("date fields: From and To show the window on screen, with a button that says what it does", () => {
+  const html = T.renderTrends(DATA, "30d");
+  assert.match(html, /<input type="date" name="from" data-trends-from value="2026-09-07"/);
+  assert.match(html, /<input type="date" name="to" data-trends-to value="2026-10-06"/);
+  assert.match(html, /<form class="tdates" data-trends-dates novalidate/);
+  assert.match(html, /<button type="submit" class="btn-secondary tshow" data-trends-show>Show these dates<\/button>/);
+  assert.match(html, /<p class="caption tmsg" data-trends-msg role="status" aria-live="polite"><\/p>/);
+  // Any dates: no preset button is pressed.
+  const custom = T.renderTrends(buildTrends({ asOf: ASOF, from: "2026-08-01", to: "2026-08-31", rollups: rollups() }), null);
+  const pressed = [...custom.matchAll(/data-range="([^"]+)" aria-pressed="true"/g)].map((m) => m[1]);
+  assert.deepEqual(pressed, [], "a custom window presses no preset");
+  assert.match(custom, /value="2026-08-01"/);
+  // Short client words (owner rule 2026-11-07): no how-it-works line for any dates.
+  assert.doesNotMatch(text(custom), /first and last months count only/);
+});
+
+test("one card: owed with its limit, and limit used, as two charts; a gap and an unknown limit are breaks", () => {
+  const d = cardRead();
+  const html = T.renderTrends(d, null);
+  assert.match(html, /<option value="a-card" selected>/);
+  assert.match(text(html), /Sample Rewards Card ••5678 Personal · Card · Sample Bank/);
+  const owed = figure(html, "acct-balance");
+  const used = figure(html, "acct-used");
+  assert.match(text(owed), /Owed and limit/);
+  assert.match(text(owed), /Owed \$2,000\.00 .*Limit \$10,000\.00/);
+  assert.deepEqual([...new Set([...owed.matchAll(/<polyline class="tline (s\d)/g)].map((m) => m[1]))].sort(), ["s1", "s3"],
+    "personal is blue; the limit is its own line");
+  assert.match(text(used), /Limit used 20%/);
+  // Oct 3 has no row, Oct 5 has no limit: the used table says — on both, never 0%.
+  assert.match(used, /<td>Oct 3, 2026<\/td><td class="r num">—<\/td>/);
+  assert.match(used, /<td>Oct 5, 2026<\/td><td class="r num">—<\/td>/);
+  assert.match(used, /<td>Oct 4, 2026<\/td><td class="r num">32%<\/td>/);
+  const usedTitles = [...used.matchAll(/<title>(Limit used · [^<]+)<\/title>/g)].map((m) => m[1]);
+  assert.equal(usedTitles.length, 4, "four days with a known limit; the gap and the no-limit day draw nothing");
+  // The all-accounts charts are not drawn under one account.
+  assert.doesNotMatch(html, /data-chart="(cash|debt|used|flow-personal|flow-business)"/);
+  assert.match(text(html), /This is one account on its own\. A dashed line is an estimate\./);
+  assert.doesNotMatch(text(html), /Limit used is what is owed divided by/);
+});
+
+test("one bank account: a balance line only, in the kind's colour; no history says so in words", () => {
+  const d = buildTrends({
+    asOf: ASOF, range: "30d", choices: CHOICES, account: pickAccount(CHOICES, "a-biz"),
+    accountRows: [{ day: "2026-10-05", current_balance_cents: "1800000", estimated: true }, { day: "2026-10-06", current_balance_cents: "1850000", estimated: false }]
+  });
+  const html = T.renderTrends(d, "30d");
+  const bal = figure(html, "acct-balance");
+  assert.match(text(bal), /Balance over time/);
+  assert.match(text(bal), /Balance \$18,500\.00/);
+  assert.match(bal, /<polyline class="tline s2 test"/, "business is orange; the estimated day is dashed");
+  assert.doesNotMatch(html, /data-chart="acct-used"/, "only a card has limit used");
+  const none = T.renderTrends(buildTrends({ asOf: ASOF, range: "30d", choices: CHOICES, account: pickAccount(CHOICES, "a-loan") }), "30d");
+  assert.match(text(figure(none, "acct-balance")), /No history for this account yet/);
+  assert.doesNotMatch(figure(none, "acct-balance"), /<svg/);
+});
+
+test("the read path: dates win over the range, the account rides along, staff keep client_id", () => {
+  assert.equal(T.pathFor("12m", ""), "/api/money/trends?range=12m");
+  assert.equal(T.pathFor({ range: "30d" }, "c-1"), "/api/money/trends?range=30d&client_id=c-1");
+  assert.equal(T.pathFor({ range: "30d", from: "2026-01-01", to: "2026-02-01", account: "a-card" }, "c-1"),
+    "/api/money/trends?from=2026-01-01&to=2026-02-01&account=a-card&client_id=c-1");
+  assert.equal(T.pathFor({ range: "90d", account: "a-biz" }, ""), "/api/money/trends?range=90d&account=a-biz");
+});
+
+test("the screen checks dates with the server's rules before asking", () => {
+  assert.equal(T.checkDates("2026-01-01", "2026-03-31"), "");
+  assert.equal(T.checkDates("2024-11-06", "2026-11-06"), "", "exactly 24 months is fine");
+  assert.match(T.checkDates("2024-11-05", "2026-11-06"), /24 months or less/);
+  assert.match(T.checkDates("2026-03-02", "2026-03-01"), /on or before To/);
+  assert.match(T.checkDates("2026-02-30", "2026-03-01"), /not real dates/);
+  assert.match(T.checkDates("", "2026-03-01"), /both/);
+});
+
+test("a long window that crosses a year labels its axis with the year; a short one with the day", () => {
+  const short = ["2026-10-04", "2026-10-05", "2026-10-06"];
+  assert.deepEqual([...T.dayAxis(short)], ["Oct 4", "Oct 5", "Oct 6"]);
+  const long = buildTrends({ asOf: ASOF, from: "2025-01-01", to: "2026-10-06" }).daily.days;
+  assert.deepEqual([...T.dayAxis(long)], ["Jan 2025", "Nov 2025", "Oct 2026"]);
+});
+
+test("a 400 from the read says to pick the dates again, in words", () => {
+  assert.equal(T.classify({ status: 400, body: { ok: false } }), "baddates");
+  assert.match(text(T.renderError("baddates", null)), /Pick your dates again, no more than 24 months apart/);
+});
+
+/* ---- Bank waypoints on the Cash chart (2026-11-07). Contract: GET
+   /api/money/banks deposit_plan[]. Fictional sample banks only. ---- */
+
+const PLAN = [
+  { lender_id: "l-a", name: "Sample Bank", logo: "/sample-logos/sample-bank.svg", kind: "bank", open_by: "2026-11-20",
+    deposit_cents: 500000, season_days: 60, reason: "Sample reason: a small opening deposit.", status: "planned" },
+  { lender_id: "l-b", name: "Sample Credit Union", logo: null, kind: "credit_union", open_by: "2026-09-20",
+    deposit_cents: 250000, season_days: null, reason: "Sample reason: members get a business account", status: "deposited" },
+  { lender_id: "l-c", name: "Sample Savings", logo: null, kind: "bank", open_by: null,
+    deposit_cents: 100000, season_days: null, reason: "Sample reason: date waits on your LLC.", status: "planned" },
+  { lender_id: "l-d", name: "Sample Far Bank", logo: null, kind: "bank", open_by: "2027-06-01",
+    deposit_cents: null, season_days: null, reason: "", status: "planned" },
+  { lender_id: "l-e", name: "Sample Odd Logo", logo: "javascript:alert(1)", kind: "bank", open_by: "2026-10-01",
+    deposit_cents: 1000, season_days: null, reason: "", status: "opened" }
+];
+const waypoint = (html, id) => {
+  const m = html.match(new RegExp('<button type="button" class="twp[^"]*" data-waypoint="' + id + '"[^>]*>[\\s\\S]*?</button>'));
+  return m ? m[0] : null;
+};
+const sameMarkup = (a, b) => assert.equal(a.replace(/tc\d+/g, "tc"), b.replace(/tc\d+/g, "tc"));
+
+test("waypoints: a future date draws a marker with the owner's sentence, the logo, a guide and the Plan strip", () => {
+  const cash = figure(T.renderTrends(DATA, "30d", { plan: PLAN }), "cash");
+  const a = waypoint(cash, "l-a");
+  assert.ok(a, "the Nov 20 waypoint is drawn past today");
+  assert.match(a, /aria-label="Open Sample Bank and deposit \$5,000\.00 by Nov 20, 2026\. Sample reason: a small opening deposit\. Status: Planned\."/);
+  assert.match(a, /<img class="twp-logo" src="\/sample-logos\/sample-bank\.svg" alt=""/);
+  assert.match(a, /class="twp st-planned/, "a planned waypoint has the dashed ring");
+  assert.match(cash, /<span class="tplan-label caption" aria-hidden="true">Plan<\/span><div class="tplan"/);
+  assert.match(text(cash), /Open Sample Bank and deposit \$5,000\.00 by Nov 20, 2026\. Sample reason: a small opening deposit\. Status: Planned/,
+    "the tip says the sentence, the reason and the status");
+  assert.equal((cash.match(/<line class="tguide"/g) || []).length, 3, "one dashed guide per drawn waypoint (Sep 20, Oct 1, Nov 20)");
+  // In-window waypoint: a done one has the solid ring and its status word.
+  assert.match(waypoint(cash, "l-b"), /class="twp st-deposited/);
+  assert.match(waypoint(cash, "l-b"), /Sample reason: members get a business account\. Status: Deposited\./, "a reason with no period gets one");
+});
+
+test("waypoints: the money lines stop at today — nothing is drawn past it but the plan", () => {
+  const cash = figure(T.renderTrends(DATA, "30d", { plan: PLAN }), "cash");
+  const today = Number(cash.match(/<line class="ttoday" x1="([\d.]+)"/)[1]);
+  assert.ok(today < 600, "today sits inside the axis because the axis runs on to the plan");
+  const xs = [...cash.matchAll(/<polyline class="tline[^"]*" points="([^"]+)"/g)]
+    .flatMap((m) => m[1].trim().split(/\s+/).map((p) => Number(p.split(",")[0])));
+  assert.ok(xs.length > 0);
+  assert.ok(Math.max(...xs) <= today + 0.05, "no line point is drawn after today");
+  const dotsX = [...cash.matchAll(/<path class="thit" d="M([\d.]+) /g)].map((m) => Number(m[1]));
+  assert.ok(Math.max(...dotsX) <= today + 0.05, "no point is drawn after today");
+  // The table lists only real days: the plan days are not rows of $ amounts.
+  assert.doesNotMatch(cash, /<td>Nov 20, 2026<\/td>/);
+  assert.match(text(cash), /The money lines stop at today/);
+  // The axis now ends after the last waypoint.
+  assert.match(cash, /<div class="tx caption" aria-hidden="true"><span>Sep 7<\/span><span>[^<]+<\/span><span>Nov 2\d<\/span><\/div>/);
+});
+
+test("waypoints: a row with no date is listed as Date not set and never drawn; too far ahead is listed, not drawn", () => {
+  const cash = figure(T.renderTrends(DATA, "30d", { plan: PLAN }), "cash");
+  assert.equal(waypoint(cash, "l-c"), null, "no date → no marker");
+  assert.match(cash, /<p class="tplan-head">Date not set<\/p><ul class="tplan-list"><li>Open Sample Savings and deposit \$1,000\.00\./);
+  assert.equal(waypoint(cash, "l-d"), null, "more than six months ahead → no marker");
+  assert.match(cash, /<p class="tplan-head">Not on these dates<\/p><ul class="tplan-list"><li>Open Sample Far Bank by Jun 1, 2027\./);
+});
+
+test("waypoints: no logo, or a logo address we will not load, shows the bank name in a chip", () => {
+  const cash = figure(T.renderTrends(DATA, "30d", { plan: PLAN }), "cash");
+  assert.match(waypoint(cash, "l-b"), /<span class="twp-chip">Sample Credit Union<\/span>/);
+  assert.doesNotMatch(waypoint(cash, "l-b"), /<img/);
+  assert.match(waypoint(cash, "l-e"), /<span class="twp-chip">Sample Odd Logo<\/span>/);
+  assert.doesNotMatch(cash, /javascript:/);
+});
+
+/* The banks read hands the logo as a string or as { src, alt, source }
+   (src/finance/bank-strategy.mjs pickBankLogo). Plaid's logo is a PNG data URI. */
+test("waypoints: a logo object or a Plaid PNG draws the logo; a bad object still shows the name chip", () => {
+  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==";
+  const plan = [
+    { ...PLAN[0], logo: { src: "/sample-logos/sample-bank.svg", alt: "Sample Bank logo", source: { label: "Bank book" } } },
+    { ...PLAN[1], logo: { src: png, alt: "Sample Credit Union logo" } },
+    { ...PLAN[4], logo: { src: "javascript:alert(1)", alt: "x" } }
+  ];
+  const cash = figure(T.renderTrends(DATA, "30d", { plan }), "cash");
+  assert.match(waypoint(cash, "l-a"), /<img class="twp-logo" src="\/sample-logos\/sample-bank\.svg" alt=""/);
+  assert.match(waypoint(cash, "l-b"), /<img class="twp-logo" src="data:image\/png;base64,iVBORw0KGgoAAAANSUhEUg==" alt=""/);
+  assert.match(waypoint(cash, "l-e"), /<span class="twp-chip">Sample Odd Logo<\/span>/);
+  assert.doesNotMatch(cash, /javascript:|\[object Object\]/);
+});
+
+test("waypoints: with no plan (the banks read failed or is empty) the Cash chart is exactly as before", () => {
+  const plain = T.renderTrends(DATA, "30d");
+  sameMarkup(T.renderTrends(DATA, "30d", { plan: null }), plain);
+  sameMarkup(T.renderTrends(DATA, "30d", { plan: [] }), plain);
+  assert.doesNotMatch(plain, /tplan|tguide|ttoday|data-waypoint/);
+  // And the opposite: the plan really does change the chart.
+  assert.notEqual(T.renderTrends(DATA, "30d", { plan: PLAN }).replace(/tc\d+/g, "tc"), plain.replace(/tc\d+/g, "tc"));
+});
+
+test("waypoints: positions, the six-month cap, and a window that ends before today", () => {
+  const days = buildTrends({ asOf: ASOF, range: "30d" }).daily.days;
+  const L = T.planLayout(PLAN, days, "2026-10-06");
+  assert.deepEqual([...L.drawn.map((m) => m.item.key)], ["l-b", "l-e", "l-a"], "sorted by day");
+  assert.equal(L.extra[0], "2026-10-07", "the axis runs on from the day after today");
+  assert.ok(L.extra.at(-1) >= "2026-11-27", "at least a week of room after the last waypoint");
+  for (const m of L.drawn) {
+    assert.equal(L.allDays[m.idx], m.item.open_by);
+    assert.ok(Math.abs(m.x - (m.idx * 100) / (L.xCount - 1)) < 1e-9);
+  }
+  assert.equal(L.todayIdx, 29);
+  // Exactly six months ahead (183 days) is drawn; one day more is listed.
+  const edge = [{ name: "Sample A", open_by: "2027-04-07" }, { name: "Sample B", open_by: "2027-04-08" }];
+  const E = T.planLayout(edge, days, "2026-10-06");
+  assert.deepEqual([...E.drawn.map((m) => m.item.name)], ["Sample A"]);
+  assert.deepEqual([...E.outside.map((it) => it.name)], ["Sample B"]);
+  // A window that ends before today never runs on into the future.
+  const past = buildTrends({ asOf: ASOF, from: "2026-08-01", to: "2026-08-31" }).daily.days;
+  const P = T.planLayout(PLAN, past, "2026-10-06");
+  assert.equal(P.extra.length, 0);
+  assert.equal(P.drawn.length, 0);
+  assert.deepEqual([...P.outside.map((it) => it.key)].sort(), ["l-a", "l-b", "l-d", "l-e"]);
+});
+
+test("waypoints: no balance history yet → the plan is a list under the empty chart, not a strip", () => {
+  const empty = buildTrends({ asOf: ASOF, range: "30d" });
+  const cash = figure(T.renderTrends(empty, "30d", { plan: PLAN }), "cash");
+  assert.match(text(cash), /No history yet/);
+  assert.doesNotMatch(cash, /class="tplan"/);
+  assert.match(cash, /<p class="tplan-head">Your bank plan<\/p>/);
+  assert.match(text(cash), /Open Sample Bank and deposit \$5,000\.00 by Nov 20, 2026\./);
+});
+
+test("waypoints: one account picked → no plan strip (the plan belongs to the all-accounts Cash chart)", () => {
+  const html = T.renderTrends(cardRead(), null, { plan: PLAN });
+  assert.doesNotMatch(html, /data-waypoint|class="tplan"/);
+  assert.equal(T.banksPath(""), "/api/money/banks");
+  assert.equal(T.banksPath("c-1"), "/api/money/banks?client_id=c-1");
 });

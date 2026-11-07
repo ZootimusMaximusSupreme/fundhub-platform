@@ -230,13 +230,30 @@ export const LETTER_MAILING_SQL = `
            OR (e.state = 'sending' AND (e.claimed_at IS NULL
              OR e.claimed_at < $2::timestamptz - interval '15 minutes'))
            OR (e.state = 'accepted' AND (NULLIF(btrim(e.provider_id), '') IS NULL OR e.accepted_at IS NULL))
+           OR (e.state = 'accepted' AND (e.provider_status = 'cancelled' OR e.returned_at IS NOT NULL))
+           OR (e.state = 'accepted' AND e.provider_status IS NULL
+             AND e.accepted_at < $2::timestamptz - interval '2 days' AND e.accepted_at > $2::timestamptz - interval '45 days')
+           OR (e.state = 'accepted' AND e.expected_delivery_at IS NULL AND e.returned_at IS NULL
+             AND e.provider_status IS DISTINCT FROM 'cancelled'
+             AND e.accepted_at < $2::timestamptz - interval '21 days' AND e.accepted_at > $2::timestamptz - interval '45 days')
+           OR (e.state = 'accepted' AND e.mailed_at IS NULL AND e.provider_status IS DISTINCT FROM 'cancelled'
+             AND e.accepted_at < $2::timestamptz - interval '7 days' AND e.accepted_at > $2::timestamptz - interval '45 days')
+           OR (e.state = 'accepted' AND e.dispute_letter_id IS NOT NULL AND NOT EXISTS (
+             SELECT 1 FROM dispute_letters l WHERE l.id = e.dispute_letter_id AND l.org_id = o.org_id
+               AND l.client_id = o.client_id AND l.postgrid_letter_id = e.provider_id
+               AND ((e.mailed_at IS NULL AND l.status = 'sending' AND l.mailed_at IS NULL)
+                 OR (e.mailed_at IS NOT NULL AND l.status IN ('sent', 'delivered') AND l.mailed_at IS NOT NULL))))
            OR NOT EXISTS (
              SELECT 1 FROM documents d
              JOIN document_versions v ON v.id = e.document_version_id
                AND v.document_id = d.id AND v.org_id = d.org_id
               WHERE d.id = e.document_id AND d.org_id = o.org_id AND d.client_id = o.client_id
-                AND d.kind = 'deliverable' AND d.subtype IN ('funding_inquiry_removal', 'funding_personal_info')
-                AND v.mime_type = 'application/pdf' AND v.checksum = e.checksum
+                AND d.kind = 'deliverable'
+                AND ((d.subtype IN ('funding_inquiry_removal', 'funding_personal_info') AND v.mime_type = 'application/pdf'
+                    AND e.dispute_letter_id IS NULL)
+                  OR (d.subtype = 'metro2_dispute_letter_pack' AND v.mime_type = 'text/html'
+                    AND e.dispute_letter_id IS NOT NULL AND d.metadata->>'letterId' = e.dispute_letter_id::text))
+                AND v.checksum = e.checksum
                 AND v.storage_key = e.snapshot->>'storageKey'
                 AND e.snapshot->>'documentId' = d.id::text
                 AND e.snapshot->>'versionId' = v.id::text

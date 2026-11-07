@@ -2,9 +2,13 @@
 import { planMonthlyDebtPayments } from "./payoff-plan.mjs";
 import { readBlueprintLetterReadiness } from "./letter-mailing.mjs";
 import { readClientProgress as readProgress } from "../progress/read.mjs";
-import { bankStrategy as readBankStrategy } from "../finance/bank-strategy.mjs";
+/* The bank plan with the client's own accounts applied (existing relationships
+   first, no card they already hold), the same read GET /api/money/banks answers. */
+import { bankStrategyWithHoldings as readBankStrategy } from "../finance/tradeline-inventory.mjs";
+import { attachLocalBanks as readLocalBanks } from "../finance/local-banks.mjs";
 import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
 import { buildFundingOpportunity } from "./funding-opportunity.mjs";
+import { readBlueprintPath as readPath } from "../waypoints/blueprint-path-read.mjs";
 
 const REQUIRED_READERS = ["readBusinessPlans", "preparationGuidance", "rankLocalCreditUnions", "websitePrompt"];
 const text = (value) => typeof value === "string" && value.trim() ? value.trim() : null;
@@ -34,6 +38,8 @@ export const BLUEPRINT_GENUINE_CREDIT_SQL = `SELECT id, org_id, client_id, provi
     AND LOWER(COALESCE(result->>'simulated', 'false')) NOT IN ('true', '1')
     AND LOWER(COALESCE(result->>'environment', '')) NOT IN ('sandbox', 'simulated')
   ORDER BY created_at DESC LIMIT 1`;
+/** The FIRST genuine pull, the same filter: "your path" measures change from here. */
+export const BLUEPRINT_FIRST_GENUINE_CREDIT_SQL = BLUEPRINT_GENUINE_CREDIT_SQL.replace("ORDER BY created_at DESC", "ORDER BY created_at ASC");
 
 function unknownCredit() {
   return { source: null, reportId: null, asOf: null, authorizedUserReviewRequired: null,
@@ -84,8 +90,10 @@ export async function buildBlueprintClientPlan(db, { orgId, clientId, now = new 
   const warn = (code, source) => warnings.push({ code, source });
   const readClientProgress = deps.readClientProgress || readProgress;
   const bankStrategy = deps.bankStrategy || readBankStrategy;
+  const attachLocalBanks = deps.attachLocalBanks || readLocalBanks;
   let creditAnalysis = null;
   let creditSource = {};
+  let creditRow = null;
   const [businessPlans, progress, bankPlan, creditContext] = await Promise.all([
     Promise.resolve().then(() => deps.readBusinessPlans(db, scope)).then((value) => {
       if (!value || !Array.isArray(value.businesses) || !Array.isArray(value.existingBusinesses)) {
@@ -104,7 +112,13 @@ export async function buildBlueprintClientPlan(db, { orgId, clientId, now = new 
       if (!value || value.ok === false) { warn("bank_plan_unavailable", "bank_strategy"); return null; }
       if (!value.client?.id) throw new Error("bank_plan_contract_invalid");
       assertIdentity(value, scope);
-      return value;
+      /* The banks near the client's addresses, merged into the bank plan (Finance
+         OS unit LOC, src/finance/local-banks.mjs): `local_banks` and the merged
+         `deposit_plan`, the same read GET /api/money/banks sends. It never throws;
+         if it somehow does, the bank read stays as it came. */
+      return Promise.resolve()
+        .then(() => attachLocalBanks(db, { orgId, clientId, payload: value, now: asOf }))
+        .then((merged) => (merged && typeof merged === "object" ? merged : value), () => value);
     }).catch((error) => {
       if (error?.code === "blueprint_plan_scope_mismatch") throw error;
       warn("bank_plan_unavailable", "bank_strategy"); return null;
@@ -118,6 +132,7 @@ export async function buildBlueprintClientPlan(db, { orgId, clientId, now = new 
         const result = object(row.result);
         creditAnalysis = result.consumerSignals ? result : (deps.runTierEngine || runTierEngineFromCrsResult)(result);
         creditSource = { reportId: row.id, asOf: row.created_at instanceof Date ? row.created_at.toISOString() : text(row.created_at) };
+        creditRow = row;
         return creditFacts(row, () => creditAnalysis);
       }
       catch { creditAnalysis = null; creditSource = {}; warn("credit_context_unavailable", "saved_credit_report"); return unknownCredit(); }
@@ -206,7 +221,37 @@ export async function buildBlueprintClientPlan(db, { orgId, clientId, now = new 
       minimumDepositReferenceCents: bank.minimum_deposit_cents ?? null,
       cashFit: available == null || missingReservations || bank.minimum_deposit_cents == null ? "review_needed" : bank.minimum_deposit_cents <= available - commitmentTotal ? "within_reported_budget" : "exceeds_remaining_budget" })) };
   const payoffCalculation = businessPlans.payoffPlan ? planMonthlyDebtPayments(businessPlans.payoffPlan) : null;
+  /* "Your path" (src/waypoints/blueprint-path.mjs): the checklist, the bank
+     steps, the ChexSystems check, the cash deposit plan and the points
+     UnderwriteIQ measured between the first and the newest genuine pull. */
+  let path = null;
+  try {
+    let firstCreditRow = null;
+    if (creditRow) {
+      const first = (await db.query(BLUEPRINT_FIRST_GENUINE_CREDIT_SQL, [clientId, orgId])).rows[0] || null;
+      if (first) assertIdentity(first, scope, { required: true });
+      firstCreditRow = first && isGenuine(first) ? first : null;
+    }
+    path = await (deps.readBlueprintPath || readPath)(db, scope, { progress, bankPlan, businessPlans,
+      opportunity: creditContext.opportunity, utilization: creditAnalysis?.consumerSignals?.utilization ?? null,
+      newestCredit: creditRow ? { row: creditRow, analysis: creditAnalysis } : null, firstCreditRow,
+      ...(deps.readConnectedCash ? { readConnectedCash: deps.readConnectedCash } : {}),
+      ...(deps.readFundability ? { readFundability: deps.readFundability } : {}),
+      ...(deps.runTierEngine ? { runEngine: deps.runTierEngine } : {}) });
+  } catch (error) {
+    if (error?.code === "blueprint_plan_scope_mismatch") throw error;
+    path = null; warn("blueprint_path_unavailable", "blueprint_path");
+  }
+  /* The fulfillment cycle (src/blueprint/fulfillment-cycle.mjs): which buyer,
+     UnderwriteIQ's fundable gate from the path, and the full report for each
+     soft pull. Wired by GET /api/blueprint/plan; a caller that does not wire it
+     gets no cycle field at all. */
+  const extra = {};
+  if (typeof deps.readCycle === "function") {
+    try { extra.cycle = await deps.readCycle(db, scope, { path }); }
+    catch { extra.cycle = null; warn("cycle_unavailable", "fulfillment_cycle"); }
+  }
   const name = [text(client.first_name), text(client.last_name)].filter(Boolean).join(" ") || null;
   return { ok: true, client: { name }, businessPlans, progress, lessons,
-    localBanks, bankPlan, creditContext, businessLessons, websitePrompts, cashPlan, payoffCalculation, letterResponses, letterReadiness, warnings: warnings.sort((a, b) => a.code.localeCompare(b.code)) };
+    localBanks, bankPlan, creditContext, businessLessons, websitePrompts, cashPlan, payoffCalculation, path, ...extra, letterResponses, letterReadiness, warnings: warnings.sort((a, b) => a.code.localeCompare(b.code)) };
 }

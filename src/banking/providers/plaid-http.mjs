@@ -360,6 +360,52 @@ export async function createLinkToken({ clientUserId, products = ["transactions"
 }
 
 /**
+ * getInstitutionById — POST /institutions/get_by_id
+ * https://plaid.com/docs/api/institutions/#institutionsget_by_id
+ *
+ * The public facts about ONE bank: its name, and — because
+ * options.include_optional_metadata is true — its logo, brand colour and
+ * website. Plaid's own words: the logo is "a base64 encoded 152x152 PNG" and
+ * "not all institutions' logos are available", so `logo` is null for some banks.
+ *
+ * READ ONLY AND NO ACCOUNT. No access token goes in this request, no person's
+ * account is read and no money moves. It is the same answer for every client
+ * who banks there, which is why src/banking/institution-logos.mjs stores it once
+ * per bank. Values come back raw; that module checks them before they are saved.
+ */
+export async function getInstitutionById(institutionId, { countryCodes = ["US"] } = {}, opts = {}) {
+  const id = typeof institutionId === "string" ? institutionId.trim() : "";
+  if (!id) {
+    return {
+      ok: false, blocked: false, transmitted: false, status: 0, data: null,
+      errorCode: null, errorType: null, retryable: false,
+      error: "institution_id is required"
+    };
+  }
+  const r = await plaidPost("/institutions/get_by_id", {
+    institution_id: id,
+    country_codes: countryCodes,
+    options: { include_optional_metadata: true }
+  }, opts);
+  if (!r.ok) return r;
+  const i = r.data?.institution;
+  if (!i || typeof i !== "object" || !i.institution_id) {
+    return { ...r, ok: false, data: null, error: "plaid /institutions/get_by_id answered 200 without an institution" };
+  }
+  const str = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  return {
+    ...r, data: null,
+    institution: {
+      institutionId: String(i.institution_id),
+      name: str(i.name),
+      logo: str(i.logo),
+      primaryColor: str(i.primary_color),
+      url: str(i.url)
+    }
+  };
+}
+
+/**
  * sandboxPublicToken — POST /sandbox/public_token/create
  *
  * SANDBOX HOST ONLY. Makes a public_token for a fake institution without the
@@ -740,7 +786,7 @@ export async function sandboxSimulateLedgerAvailable(opts = {}) {
 
 export default {
   PLAID_HOSTS, hostFor, plaidPost, exchangePublicToken, fetchAccounts, fetchBalances, fetchLiabilities, createLinkToken,
-  sandboxPublicToken, syncTransactions,
+  getInstitutionById, sandboxPublicToken, syncTransactions,
   transferHostRefusal, authorizeTransfer, createTransfer, getTransfer, cancelTransfer, syncTransferEvents,
   getTransferLedger, sandboxSimulateTransfer, sandboxSimulateLedgerAvailable
 };

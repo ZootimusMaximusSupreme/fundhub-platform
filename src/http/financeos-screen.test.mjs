@@ -63,8 +63,35 @@ test("the page loads every section script, then financeos.js last, and both sect
   const srcs = scripts(HTML.replace(plaidLoader[0], emitted(false)));
   // money-trends.js (wave 4, H6) is not a tab: it draws the Trends line graphs
   // inside Overview and the sales line under Connections. It loads right after
-  // money.js, before financeos.js mounts anything.
-  assert.deepEqual(srcs, ["/app/fundhub-font.js", "plaid-stepup.js", SCRIPTS[0], "money-trends.js", ...SCRIPTS.slice(1), "/app/client-ios.js", "financeos.js"]);
+  // money.js, before financeos.js mounts anything. bank-logo.js (owner rule
+  // 2026-11-07) is not a tab either: the shared bank-logo helper, loaded before
+  // every section that draws a bank. pay-now.js (unit I6) is not a tab either:
+  // it fills the Pay now / I paid box on each card due row. money-premium.js
+  // (premium pass, 2026-11-07) is not a tab either: the funding hero, advisor,
+  // repair and funding cards and the monthly report inside Overview.
+  // The other cards that are not tabs load next to the tab that paints them:
+  //   bill-cancel.js (CANCEL)          the Repeat bills card, before money-strategy.js
+  //   funding-paths.js (FUND)          "Your funding paths", before money-fundability.js
+  //   money-applications.js (unit O)   "Your bank applications", before money-declines.js
+  //   money-alerts-bundle.js (unit AL) the Alerts extra, after money-alerts.js
+  //   fuel-cards.js (GAS)              business gas cards, before money-accounts.js
+  //   money-tradelines.js (unit TL)    "What you have", after money-accounts.js
+  //   /app/apply-gate.js (unit L4)     "Can you apply yet?", before money-fundability.js
+  //   money-whop-plans.js (unit W)     Whop plans and provider logos, before money-payments.js
+  //   /app/local-banks.js (unit LOC)   banks near you, the Banks extra, right before financeos.js
+  const BEFORE = { "money-strategy.js": ["bill-cancel.js"], "money-fundability.js": ["/app/apply-gate.js", "funding-paths.js"], "money-declines.js": ["money-applications.js"],
+    "money-accounts.js": ["fuel-cards.js"], "money-payments.js": ["money-whop-plans.js"] };
+  const AFTER = { "money-alerts.js": ["money-alerts-bundle.js"], "money-accounts.js": ["money-tradelines.js"] };
+  const sections = SCRIPTS.slice(1).flatMap((s) => [...(BEFORE[s] || []), s, ...(AFTER[s] || [])]);
+  assert.deepEqual(srcs, ["/app/fundhub-font.js", "plaid-stepup.js", "/app/bank-logo.js", SCRIPTS[0], "money-trends.js", "pay-now.js", "money-premium.js", ...sections, "/app/client-ios.js", "/app/local-banks.js", "financeos.js"]);
+  assert.match(HTML, /<link rel="stylesheet" href="money-applications\.css">/);
+  assert.match(HTML, /<link rel="stylesheet" href="money-alerts-bundle\.css">/);
+  assert.match(HTML, /<link rel="stylesheet" href="funding-paths\.css">/);
+  assert.match(HTML, /<link rel="stylesheet" href="fuel-cards\.css">/);
+  assert.match(HTML, /<link rel="stylesheet" href="money-tradelines\.css">/);
+  assert.match(HTML, /<link rel="stylesheet" href="money-whop-plans\.css">/);
+  assert.match(HTML, /<link rel="stylesheet" href="\/app\/apply-gate\.css">/);
+  assert.match(HTML, /<link rel="stylesheet" href="\/app\/local-banks\.css">/);
   assert.deepEqual(scripts(HTML.replace(plaidLoader[0], emitted(true))),
     srcs.filter(src => src !== 'plaid-stepup.js'),
     "only the explicit full sample route excludes Plaid; all real section scripts remain in order");
@@ -77,9 +104,11 @@ test("the page loads every section script, then financeos.js last, and both sect
   assert.match(HTML, /<link rel="stylesheet" href="money-banks\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-strategy\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-fundability\.css">/);
+  assert.match(HTML, /<link rel="stylesheet" href="money-fundability\.css">\n<link rel="stylesheet" href="funding-paths\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-declines\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-alerts\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-vault\.css">/);
+  assert.match(HTML, /<link rel="stylesheet" href="money-strategy\.css">\n<link rel="stylesheet" href="bill-cancel\.css">/);
   // Each section script says which tab it fills.
   const keys = { "money.js": "overview", "money-next.js": "next", "money-helper.js": "helper", "money-transfers.js": "transfers", "money-plan.js": "plan", "money-banks.js": "banks", "money-strategy.js": "strategy", "money-fundability.js": "fundability", "money-declines.js": "declines", "money-alerts.js": "alerts", "money-vault.js": "vault", "money-accounts.js": "accounts", "money-credit.js": "credit",
     "money-connections.js": "connections", "money-payments.js": "payments", "money-setup.js": "setup" };

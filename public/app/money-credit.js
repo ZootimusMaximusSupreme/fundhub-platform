@@ -7,7 +7,8 @@
  *   - A null is "we do not have this number" and paints "—", never 0.
  *   - A score off a sample report says so, in words, at the top.
  *   - UnderwriteIQ's sentences are printed exactly as the server sent them.
- *   - No chart line is drawn from fewer than two pulls.
+ *   - No chart line is drawn from fewer than two pulls, and a line breaks
+ *     where a month had no pull or a pull did not carry that score.
  *
  * Every render function returns an HTML string and touches no DOM, so
  * src/http/money-credit-screen.test.mjs can run them in Node against a fixture.
@@ -90,8 +91,6 @@
     if (!m) return "—";
     return MONTHS[Number(m[2]) - 1] + " " + Number(m[3]) + ", " + m[1];
   }
-
-  function shortDay(iso) { return day(iso).replace(/, \d{4}$/, ""); }
 
   function stamp(iso) {
     var t = Date.parse(iso || "");
@@ -247,80 +246,312 @@
       '</section>';
   }
 
-  /* Score over time. Only drawn from two or more pulls. Lines differ by dash,
-     not by colour, and the legend says which is which in words. */
-  function renderHistory(d) {
-    var h = list(d.history);
-    var head = '<section class="card" aria-labelledby="c-hist"><h2 class="eyebrow" id="c-hist">Your scores over time</h2>';
-    if (h.length < 2) {
-      return head + '<p class="caption">' + (d.has_pull
-        ? "One pull so far. The chart starts with your next pull."
-        : "No pulls yet.") + '</p></section>';
+  /* ── credit over time ───────────────────────────────────────────────────
+     Spec item 4 (2026-11-06): one line per bureau from every saved pull, and
+     a picker that shows each saved business's own lines. Reads
+     credit_history off /api/money/credit (src/finance/credit-history.mjs).
+     Every point is a real pull. The server marks gap_before where a calendar
+     month passed with no pull, or a pull did not carry that score, and the
+     line breaks there. No chart line is drawn from fewer than two pulls.
+
+     A pure render draws at PLOT_W. mount() measures the card and redraws at
+     its real width, so one unit in the drawing is one pixel on the screen and
+     the labels stay readable on a phone. */
+
+  var PLOT_W = 600;
+  /* Solid, dashed, dotted: the three line hooks both credit stylesheets
+     already carry (money-credit.html and financeos.html). Lines differ by
+     dash, not by colour, and the legend says which is which in words. */
+  var LINE_CLS = ["line-ex", "line-eq", "line-tu"];
+  var KEY_CLS = ["key", "key key-eq", "key key-tu"];
+  /* A business report's own field names, in words. Any other field the
+     report carries is shown under its own name. */
+  var FIELD_WORDS = { commercialScore: "Intelliscore", fsrScore: "Financial stability (FSR)" };
+
+  /* An older read sent only `history` (two or more scored pulls). Same shape
+     as credit_history.personal; a missing score still breaks the line. */
+  function legacyPersonal(history) {
+    var h = list(history);
+    return {
+      pulls: h.map(function (p) { return { pulled_at: p.pulled_at, sample: p.sample === true }; }),
+      series: BUREAUS.map(function (b) {
+        var pts = [], prev = -1;
+        h.forEach(function (p, i) {
+          if (!isNum(p[b.key])) return;
+          pts.push({ pulled_at: p.pulled_at, score: p[b.key], sample: p.sample === true, gap_before: prev >= 0 && i - prev > 1 });
+          prev = i;
+        });
+        return { bureau: b.key, points: pts };
+      }),
+      usage: []
+    };
+  }
+
+  function historyOf(d) {
+    var ch = d && d.credit_history;
+    var personal = ch && ch.personal && Array.isArray(ch.personal.series) ? ch.personal : legacyPersonal(d && d.history);
+    return { personal: personal, businesses: list(ch && ch.businesses) };
+  }
+
+  function bizLabel(biz, all) {
+    var name = biz && biz.name ? biz.name : "Unnamed business";
+    var twin = all.filter(function (o) { return o && o.name === biz.name; }).length > 1;
+    return twin && biz.state ? name + " (" + biz.state + ")" : name;
+  }
+
+  function fieldLabel(field) { return FIELD_WORDS[field] || String(field); }
+
+  /* "Sep 30", or "Sep '25" when the pulls cross a year. */
+  function axisDay(iso, multiYear) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+    if (!m) return "";
+    return MONTHS[Number(m[2]) - 1] + (multiYear ? " '" + m[1].slice(2) : " " + Number(m[3]));
+  }
+
+  /* Which pull dates get a label: the newest always, the rest when there is
+     room. Every pull still gets a tick and a dot. */
+  function labelled(xs, gap) {
+    var keep = [], last = -Infinity, n = xs.length;
+    for (var i = 0; i < n; i++) if (xs[i] - last >= gap) { keep.push(i); last = xs[i]; }
+    if (n && keep[keep.length - 1] !== n - 1) {
+      while (keep.length && xs[n - 1] - xs[keep[keep.length - 1]] < gap) keep.pop();
+      keep.push(n - 1);
     }
-    var W = 600, H = 200, L = 40, R = 16, T = 16, B = 32;
-    var vals = [];
-    h.forEach(function (p) { BUREAUS.forEach(function (b) { if (isNum(p[b.key])) vals.push(p[b.key]); }); });
-    var lo = Math.max(FICO_MIN, Math.floor((Math.min.apply(null, vals) - 20) / 10) * 10);
-    var hi = Math.min(FICO_MAX, Math.ceil((Math.max.apply(null, vals) + 20) / 10) * 10);
-    if (hi <= lo) hi = lo + 10;
-    function x(i) { return L + (i * (W - L - R)) / (h.length - 1); }
-    function y(v) { return T + ((hi - v) * (H - T - B)) / (hi - lo); }
-    var svg = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Scores at each pull">' +
-      '<line class="chart-base" x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '"></line>' +
-      '<text class="chart-label" x="0" y="' + (y(hi) + 4) + '">' + hi + '</text>' +
-      '<text class="chart-label" x="0" y="' + (y(lo) + 4) + '">' + lo + '</text>';
-    BUREAUS.forEach(function (b) {
-      var pts = [];
-      /* A pull with no score from this bureau is a gap: the line breaks there
-         instead of bridging it (wave 4, H6). One run per stretch of pulls. */
+    return keep;
+  }
+
+  /* One chart. dates: every pull in this view, oldest first. series:
+     [{ label, cls, points: [{ pulled_at, value, gap_before }] }]. */
+  function lineChart(o) {
+    var W = Math.max(240, Math.round(o.width || PLOT_W)), H = o.height, L = 44, R = 16, T = 12, B = o.axis ? 30 : 12;
+    var dates = o.dates, n = dates.length;
+    var ts = dates.map(function (iso) { return Date.parse(iso || ""); });
+    var timed = n > 1 && ts.every(isFinite) && Math.max.apply(null, ts) > Math.min.apply(null, ts);
+    var t0 = timed ? Math.min.apply(null, ts) : 0, t1 = timed ? Math.max.apply(null, ts) : 0;
+    function xAt(i) {
+      if (n < 2) return L + (W - L - R) / 2;
+      return timed ? L + ((ts[i] - t0) * (W - L - R)) / (t1 - t0) : L + (i * (W - L - R)) / (n - 1);
+    }
+    var index = {};
+    dates.forEach(function (iso, i) { if (!(iso in index)) index[iso] = i; });
+    function y(v) { return T + ((o.hi - v) * (H - T - B)) / (o.hi - o.lo); }
+    /* Both credit stylesheets pin `.chart text` to 11px. That hatch was for
+       the old chart, whose drawing was scaled to the card. This one is drawn
+       at the card's real width, so a label takes the 13px caption floor
+       (UI-STANDARDS §3) on its tspan, the same on both pages. */
+    function label(x, yy, words, anchor) {
+      return '<text class="chart-label" x="' + x + '" y="' + yy + '"' + (anchor ? ' text-anchor="' + anchor + '"' : "") +
+        '><tspan font-size="13">' + esc(words) + '</tspan></text>';
+    }
+
+    var svg = '<svg class="chart' + (o.cls ? " " + o.cls : "") + '" viewBox="0 0 ' + W + ' ' + H + '" width="' + W +
+      '" height="' + H + '" role="img" aria-label="' + esc(o.aria) + '">';
+    o.ticks.forEach(function (v) {
+      svg += '<line class="chart-base" x1="' + L + '" y1="' + y(v).toFixed(1) + '" x2="' + (W - R) + '" y2="' + y(v).toFixed(1) + '"></line>' +
+        label(0, (y(v) + 4).toFixed(1), o.fmt(v));
+    });
+    var xs = dates.map(function (_, i) { return xAt(i); });
+    if (o.axis) {
+      var years = {};
+      dates.forEach(function (iso) { years[String(iso || "").slice(0, 4)] = true; });
+      var multiYear = Object.keys(years).length > 1;
+      xs.forEach(function (x) {
+        svg += '<line class="chart-base" x1="' + x.toFixed(1) + '" y1="' + (H - B) + '" x2="' + x.toFixed(1) + '" y2="' + (H - B + 4) + '"></line>';
+      });
+      labelled(xs, 56).forEach(function (i) {
+        var anchor = xs[i] - L < 24 ? "start" : W - R - xs[i] < 24 ? "end" : "middle";
+        svg += label(xs[i].toFixed(1), H - 8, axisDay(dates[i], multiYear), anchor);
+      });
+    }
+    o.series.forEach(function (s) {
       var runs = [], run = [];
-      h.forEach(function (p, i) {
-        if (isNum(p[b.key])) {
-          var q = [x(i), y(p[b.key]), p[b.key], p.pulled_at];
-          pts.push(q);
-          run.push(q);
-        } else if (run.length) { runs.push(run); run = []; }
+      list(s.points).forEach(function (p) {
+        if (!isNum(p.value) || !(p.pulled_at in index)) return;
+        var q = [xs[index[p.pulled_at]], y(Math.max(o.lo, Math.min(o.hi, p.value))), p];
+        if (p.gap_before && run.length) { runs.push(run); run = []; }
+        run.push(q);
       });
       if (run.length) runs.push(run);
       runs.forEach(function (r) {
         if (r.length < 2) return;
-        svg += '<polyline class="line line-' + b.short.toLowerCase() + '" points="' +
+        svg += '<polyline class="line ' + s.cls + '" points="' +
           r.map(function (q) { return q[0].toFixed(1) + "," + q[1].toFixed(1); }).join(" ") + '"></polyline>';
       });
-      pts.forEach(function (q) {
-        svg += '<circle class="dot" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="3"><title>' +
-          esc(b.label + " " + q[2] + " on " + day(q[3])) + '</title></circle>';
+      runs.forEach(function (r) {
+        r.forEach(function (q) {
+          svg += '<circle class="dot" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="3.5"><title>' +
+            esc(s.label + " " + o.fmt(q[2].value) + " on " + day(q[2].pulled_at)) + '</title></circle>';
+        });
       });
     });
-    h.forEach(function (p, i) {
-      var anchor = i === 0 ? "start" : i === h.length - 1 ? "end" : "middle";
-      svg += '<text class="chart-label" x="' + x(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + anchor + '">' +
-        esc(shortDay(p.pulled_at)) + '</text>';
+    return svg + '</svg>';
+  }
+
+  function legendOf(series) {
+    return '<p class="legend caption">' + series.map(function (s, i) {
+      return '<span><span class="' + KEY_CLS[i % KEY_CLS.length] + '"></span>' + esc(s.label) + '</span>';
+    }).join("") + '</p>';
+  }
+
+  function anyGap(series) {
+    return series.some(function (s) { return list(s.points).some(function (p) { return p.gap_before === true; }); });
+  }
+
+  function anySample(series) {
+    return series.some(function (s) { return list(s.points).some(function (p) { return p.sample === true; }); });
+  }
+
+  function spanCaption(dates, one, many) {
+    return dates.length + " " + (dates.length === 1 ? one : many) + " · " + day(dates[0]) + " to " + day(dates[dates.length - 1]);
+  }
+
+  /* The sample note is left off when the page's own Sample banner is up:
+     that banner already says the file is a sample. */
+  function notes(series, d) {
+    return (anyGap(series)
+      ? '<p class="caption">A break in a line means a month with no pull, or a pull that did not have that score.</p>' : "") +
+      (anySample(series) && !(d && d.sample === true)
+        ? '<p class="caption">Some points came from a sample report, not a real bureau pull.</p>' : "");
+  }
+
+  function personalBody(d, p, width) {
+    var dates = list(p.pulls).map(function (x) { return x.pulled_at; });
+    if (dates.length < 2) {
+      if (dates.length === 1) {
+        return '<p class="caption">One pull so far, on ' + esc(day(dates[0])) + '. The lines start with your next pull.</p>';
+      }
+      return '<p class="caption">' + (d && d.has_pull
+        ? "One pull so far. The lines start with your next pull."
+        : "No credit pulls are saved yet. Your score lines show up here after your first pull.") + '</p>';
+    }
+    var series = BUREAUS.map(function (b, i) {
+      var s = list(p.series).filter(function (x) { return x && x.bureau === b.key; })[0] || {};
+      return {
+        label: b.label, cls: LINE_CLS[i],
+        points: list(s.points).map(function (q) { return { pulled_at: q.pulled_at, value: q.score, gap_before: q.gap_before, sample: q.sample }; })
+      };
     });
-    svg += '</svg>';
-    var legend = '<p class="legend caption"><span><span class="key"></span>Experian</span>' +
-      '<span><span class="key key-eq"></span>Equifax</span><span><span class="key key-tu"></span>TransUnion</span></p>';
-    return head + svg + legend + '</section>';
+    var vals = [];
+    series.forEach(function (s) { s.points.forEach(function (q) { if (isNum(q.value)) vals.push(q.value); }); });
+    if (!vals.length) return '<p class="caption">No scores on these pulls.</p>';
+    var lo = Math.max(FICO_MIN, Math.floor((Math.min.apply(null, vals) - 20) / 10) * 10);
+    var hi = Math.min(FICO_MAX, Math.ceil((Math.max.apply(null, vals) + 20) / 10) * 10);
+    if (hi <= lo) hi = lo + 10;
+    var mid = Math.round((lo + hi) / 20) * 10;
+    var html = lineChart({
+      dates: dates, series: series, lo: lo, hi: hi, ticks: mid > lo && mid < hi ? [hi, mid, lo] : [hi, lo],
+      fmt: function (v) { return String(v); }, width: width, height: 220, axis: true, aria: "Scores at each pull"
+    }) + legendOf(series) + '<p class="caption">' + esc(spanCaption(dates, "pull", "pulls")) + '</p>';
+
+    /* Cards used at each pull, on the same dates, when the pulls carry it.
+       The 30% gridline is where the server's "good" band ends
+       (UTILISATION_BANDS, src/http/client-detail.mjs; USE_WORDS above). */
+    var use = list(p.usage).map(function (q) {
+      return { pulled_at: q.pulled_at, value: q.percent, gap_before: q.gap_before, sample: q.sample, partial: q.partial };
+    }).filter(function (q) { return isNum(q.value); });
+    if (use.length) {
+      var top = Math.max(100, Math.ceil(Math.max.apply(null, use.map(function (q) { return q.value; })) / 10) * 10);
+      html += '<h3 class="use-title caption">Cards used at each pull</h3>' + lineChart({
+        dates: dates, series: [{ label: "Cards used", cls: LINE_CLS[0], points: use }], lo: 0, hi: top,
+        ticks: [top, 30, 0], fmt: pct, width: width, height: 132, axis: true, cls: "chart-use",
+        aria: "Share of card limits used at each pull"
+      }) + (use.some(function (q) { return q.partial === true; })
+        ? '<p class="caption">Some cards on those pulls had no limit on file.</p>' : "");
+    }
+    return html + notes(series, d);
+  }
+
+  function businessBody(d, biz, label, width) {
+    var dates = list(biz.reports).map(function (r) { return r.pulled_at; });
+    var series = list(biz.series).map(function (s, i) {
+      return {
+        label: fieldLabel(s.field), cls: LINE_CLS[i % LINE_CLS.length],
+        points: list(s.points).map(function (q) { return { pulled_at: q.pulled_at, value: q.score, gap_before: q.gap_before, sample: q.sample }; })
+      };
+    });
+    if (biz.has_report !== true || !dates.length) {
+      return '<p class="caption">No business credit report is saved for ' + esc(label) + ' yet.</p>';
+    }
+    if (dates.length === 1) {
+      var said = series.map(function (s) {
+        var q = s.points[0];
+        return q && isNum(q.value) ? s.label + " " + q.value : null;
+      }).filter(Boolean);
+      return '<p class="caption">One report so far, on ' + esc(day(dates[0])) +
+        (said.length ? ": " + esc(said.join(", ")) : "") + '. The lines start with the next report.</p>';
+    }
+    if (!series.length) {
+      return '<p class="caption">The saved reports for ' + esc(label) + ' have no business score on them.</p>';
+    }
+    return lineChart({
+      dates: dates, series: series, lo: 0, hi: 100, ticks: [100, 50, 0],
+      fmt: function (v) { return String(v); }, width: width, height: 220, axis: true,
+      aria: "Business scores for " + label + " at each report"
+    }) + legendOf(series) + '<p class="caption">' + esc(spanCaption(dates, "report", "reports")) +
+      ' · Experian business scores run 1 to 100.</p>' + notes(series, d);
+  }
+
+  /* opts: { view: "personal" | "biz:<n>", width } */
+  function renderHistory(d, opts) {
+    opts = opts || {};
+    var hist = historyOf(d);
+    var bizs = hist.businesses;
+    var view = String(opts.view || "personal");
+    var n = /^biz:(\d+)$/.exec(view) ? Number(view.slice(4)) : -1;
+    if (!(n >= 0 && n < bizs.length)) { view = "personal"; n = -1; }
+
+    /* The business picker is a native select: the Astra client sheet gives
+       every client select a 48px height on both pages, and a select never
+       scrolls sideways on a 390px phone, however long a business name is. */
+    var pick = "";
+    if (bizs.length) {
+      var all = [{ view: "personal", label: "Personal" }].concat(bizs.map(function (b, i) {
+        return { view: "biz:" + i, label: bizLabel(b, bizs) };
+      }));
+      pick = '<label class="hist-pick"><span class="caption">Show credit for</span> <select data-hist-pick aria-controls="hist-panel">' +
+        all.map(function (t) {
+          return '<option value="' + esc(t.view) + '"' + (t.view === view ? " selected" : "") + '>' + esc(t.label) + '</option>';
+        }).join("") + '</select></label>';
+    }
+
+    var body = n >= 0
+      ? businessBody(d, bizs[n], bizLabel(bizs[n], bizs), opts.width)
+      : personalBody(d, hist.personal, opts.width);
+    var sub = n >= 0
+      ? "Each score on the saved Experian business reports for " + bizLabel(bizs[n], bizs) + "."
+      : "One line for each bureau, one point for each saved credit pull.";
+    return '<section class="card hist" aria-labelledby="c-hist" data-hist><h2 class="eyebrow" id="c-hist">Credit over time</h2>' +
+      pick + '<div class="hist-body" id="hist-panel" data-hist-plot><p class="caption hist-sub">' + esc(sub) + '</p>' +
+      body + '</div></section>';
+  }
+
+  /* The lender's own logo (bank-logo.js), matched by its bank name only, else
+     nothing (owner rule 2026-11-07). */
+  function lenderLogo(a) {
+    var L = root.FHBankLogo;
+    return L && a ? L.html(a.logo, a.lender) : "";
   }
 
   function renderAccounts(d) {
     var rows = list(d.accounts && d.accounts.list);
-    var head = '<section class="card block" aria-labelledby="c-acct"><h2 class="eyebrow" id="c-acct">Accounts on your credit report</h2>';
+    var head = '<section class="card block acct-card" aria-labelledby="c-acct"><h2 class="eyebrow" id="c-acct">Accounts on your credit report</h2>';
     if (!rows.length) {
       return head + '<p class="caption">No accounts on file yet.</p></section>';
     }
+    /* data-label names each value, so a card too narrow for seven columns can stack each
+       account (money-credit-ios.css, QA24): the lender, then its type and balance, then the rest. */
     var body = rows.map(function (a) {
       var used = (isNum(a.balance_cents) && isNum(a.limit_cents) && a.limit_cents > 0 && a.kind !== "installment")
         ? (a.balance_cents / a.limit_cents) * 100 : null;
-      return '<tr><td>' + esc(a.lender || "—") + (a.last4 ? ' <span class="caption">••' + esc(a.last4) + '</span>' : "") + '</td>' +
-        '<td>' + esc(KIND_WORDS[a.kind] || "—") + '</td>' +
-        '<td class="r num">' + esc(money(a.balance_cents)) + '</td>' +
-        '<td class="r num">' + esc(money(a.limit_cents)) + '</td>' +
-        '<td class="r">' + (isNum(used) ? '<span class="num">' + esc(pct(used)) + '</span>' + usedBar(used) : '<span class="caption">—</span>') + '</td>' +
-        '<td>' + esc(day(a.opened_on)) + '</td>' +
-        '<td>' + (a.open ? "Open" : "Closed") + '</td></tr>';
+      return '<tr><td class="acct-lender">' + lenderLogo(a) + esc(a.lender || "—") + (a.last4 ? ' <span class="caption">••' + esc(a.last4) + '</span>' : "") + '</td>' +
+        '<td data-label="Type">' + esc(KIND_WORDS[a.kind] || "—") + '</td>' +
+        '<td class="r num" data-label="Balance">' + esc(money(a.balance_cents)) + '</td>' +
+        '<td class="r num" data-label="Limit or loan">' + esc(money(a.limit_cents)) + '</td>' +
+        '<td class="r" data-label="Used">' + (isNum(used) ? '<span class="num">' + esc(pct(used)) + '</span>' + usedBar(used) : '<span class="caption">—</span>') + '</td>' +
+        '<td data-label="Opened">' + esc(day(a.opened_on)) + '</td>' +
+        '<td data-label="Status">' + (a.open ? "Open" : "Closed") + '</td></tr>';
     }).join("");
-    return head + '<div class="scroll-x"><table><thead><tr><th>Lender</th><th>Type</th>' +
+    return head + '<div class="scroll-x"><table class="acct-table"><thead><tr><th>Lender</th><th>Type</th>' +
       '<th class="r">Balance</th><th class="r">Limit or loan</th><th class="r">Used</th><th>Opened</th><th>Status</th>' +
       '</tr></thead><tbody>' + body + '</tbody></table></div></section>';
   }
@@ -339,9 +570,9 @@
       '</p></div></div>';
   }
 
-  function renderFull(d) {
+  function renderFull(d, opts) {
     return renderSample(d) + renderHead(d) + renderScores(d) + renderFacts(d) +
-      '<div class="grid two">' + renderSays(d) + renderHistory(d) + '</div>' +
+      '<div class="grid two">' + renderSays(d) + renderHistory(d, opts) + '</div>' +
       renderAccounts(d);
   }
 
@@ -377,7 +608,7 @@
       '<button class="btn-primary" type="button" data-act="retry">Try again</button></section>';
   }
 
-  function render(d, setupHref) { return isEmpty(d) ? renderEmpty(d, setupHref) : renderFull(d); }
+  function render(d, setupHref, opts) { return isEmpty(d) ? renderEmpty(d, setupHref) : renderFull(d, opts); }
 
   /* ── browser only ──────────────────────────────────────────────────────── */
 
@@ -446,15 +677,53 @@
     var get = typeof ctx.apiGet === "function" ? ctx.apiGet : function (p) { return call(p); };
     var cid = ctx.clientId || param("client_id") || "";
 
+    /* The Credit over time card: whose credit it shows, and the width it was
+       last drawn at. Only that card is redrawn when either changes. */
+    var data = null, view = "personal", plotW = 0;
+
     function paint(html) { el.innerHTML = html; }
+
+    function opts() { return { view: view, width: plotW || PLOT_W }; }
+
+    /* Redraw the card. A picker that had focus keeps it, so a keyboard or
+       screen-reader user is never dropped back to the top of the page. */
+    function paintHistory() {
+      var card = el.querySelector ? el.querySelector("[data-hist]") : null;
+      if (!card || !data) return;
+      var doc = root.document;
+      var had = !!(doc && doc.activeElement && doc.activeElement.hasAttribute &&
+        doc.activeElement.hasAttribute("data-hist-pick") && card.contains(doc.activeElement));
+      card.outerHTML = renderHistory(data, opts());
+      if (had) {
+        var pick = el.querySelector("[data-hist-pick]");
+        if (pick && pick.focus) pick.focus();
+      }
+    }
+
+    /* Draw at the card's real width, so one unit is one pixel. */
+    function fit() {
+      var box = el.querySelector ? el.querySelector("[data-hist-plot]") : null;
+      var w = box ? Math.round(box.clientWidth || 0) : 0;
+      if (w > 0 && Math.abs(w - plotW) >= 2) { plotW = w; paintHistory(); }
+    }
+
+    var queued = false;
+    function refit() {
+      if (queued) return;
+      queued = true;
+      var later = root.requestAnimationFrame || function (f) { return setTimeout(f, 16); };
+      later(function () { queued = false; fit(); });
+    }
 
     function load() {
       paint(renderLoading());
       return Promise.resolve(get(READ_PATH + (cid ? "?client_id=" + encodeURIComponent(cid) : ""))).then(function (res) {
         var kind = classify(res);
         if (kind === "signin") { root.location.href = signInUrl(); return; }
-        if (kind !== "ok") { paint(renderError(kind)); return; }
-        paint(render(res.body, withClient(SETUP_PATH, cid)));
+        if (kind !== "ok") { data = null; paint(renderError(kind)); return; }
+        data = res.body;
+        paint(render(res.body, withClient(SETUP_PATH, cid), opts()));
+        fit();
       });
     }
 
@@ -462,6 +731,22 @@
       var t = e.target && e.target.closest ? e.target.closest("[data-act]") : null;
       if (t && (!el.contains || el.contains(t)) && t.getAttribute("data-act") === "retry") load();
     });
+
+    /* The business picker. Reading another view sends nothing. */
+    el.addEventListener("change", function (e) {
+      var t = e.target;
+      if (!t || !t.hasAttribute || !t.hasAttribute("data-hist-pick")) return;
+      view = t.value || "personal";
+      paintHistory();
+      fit();
+    });
+
+    /* A FinanceOS tab can open, or a phone can turn, after the first draw.
+       The redraw waits a frame so it never runs inside the resize callback. */
+    if (typeof root.ResizeObserver === "function") {
+      try { new root.ResizeObserver(refit).observe(el); } catch (e) { /* the window listener below still works */ }
+    }
+    if (root.addEventListener) root.addEventListener("resize", refit);
 
     load();
     return { reload: load };
@@ -487,7 +772,7 @@
 
   root.FHMoneyCredit = {
     money: money, day: day, pct: pct, ficoBand: ficoBand, bizBand: bizBand, isEmpty: isEmpty,
-    render: render, renderFull: renderFull, renderEmpty: renderEmpty, renderError: renderError,
+    render: render, renderFull: renderFull, renderHistory: renderHistory, renderEmpty: renderEmpty, renderError: renderError,
     renderLoading: renderLoading, classify: classify, mount: mount
   };
 

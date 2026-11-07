@@ -1,0 +1,42 @@
+/* "Mail it for me · $97" on each repair letter (public/app/blueprint-repair-mail.js).
+   Astra tokens only: white 10px panels, 13px gray captions, black 8px primary
+   buttons, 44px targets, one column on a phone. */
+:is(#blueprint-plan,#blueprint-fulfillment) .brm{display:grid;gap:8px;margin-top:16px;min-width:0;overflow-wrap:anywhere}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-label{display:block;font-size:13px;font-weight:600;color:var(--gray)}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-choice{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+:is(#blueprint-plan,#blueprint-fulfillment) [data-brm-action]{min-height:44px;min-width:44px;border-radius:8px}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-primary,
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-pay{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-pay{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border:1px solid var(--ink);border-radius:8px;font-weight:600;text-decoration:none}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-line{margin:0;font-size:16px}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-problem{font-weight:600;color:var(--danger,var(--ink))}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-status{margin:0;font-size:13px;color:var(--ink)}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-status:empty{display:none}
+
+/* The review: which letters, the return address, yes, pay. */
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-panel{display:grid;gap:12px;margin:0;padding:16px;border:1px solid var(--line);border-radius:10px;background:#fff;min-width:0}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-panel h4{margin:0;font-size:18px}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-pick{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+:is(#blueprint-plan,#blueprint-fulfillment) label.brm-check{display:flex;align-items:center;gap:12px;min-height:44px;margin:0;cursor:pointer}
+:is(#blueprint-plan,#blueprint-fulfillment) label.brm-check input{flex:0 0 22px;width:22px;height:22px;min-height:22px;margin:0}
+:is(#blueprint-plan,#blueprint-fulfillment) label.brm-check span{font-size:16px;line-height:1.4;color:var(--ink)}
+:is(#blueprint-plan,#blueprint-fulfillment) label.brm-agree{align-items:flex-start}
+:is(#blueprint-plan,#blueprint-fulfillment) label.brm-agree input{margin-top:2px}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-field{display:grid;gap:8px}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-field select{width:100%;min-height:44px}
+
+/* The tracker: sending or mailed, delivery, reply due. */
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-track{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-track li{display:grid;align-content:start;gap:2px;min-width:0;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:#fff}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-track span{font-size:16px;font-weight:600}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-track small{font-size:13px;color:var(--gray);font-variant-numeric:tabular-nums}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-track [data-state="done"] span::before{content:"✓ "}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-track [data-state="now"]{border-color:var(--ink)}
+:is(#blueprint-plan,#blueprint-fulfillment) .brm-track [data-state="todo"] span{font-weight:500;color:var(--gray)}
+
+@media (max-width:600px){
+  :is(#blueprint-plan,#blueprint-fulfillment) .brm-track{grid-template-columns:1fr}
+  :is(#blueprint-plan,#blueprint-fulfillment) .brm-track li{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  :is(#blueprint-plan,#blueprint-fulfillment) .brm-track small{flex:0 0 auto;white-space:nowrap}
+  :is(#blueprint-plan,#blueprint-fulfillment) .brm-choice>:is(button,a){flex:1 1 100%;width:100%}
+}

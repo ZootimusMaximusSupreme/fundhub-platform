@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "viewer": "client",
+  "self": {
+    "ok": true,
+    "has_pull": true,
+    "sample": true,
+    "tier": "fundable",
+    "checks_passed": 5,
+    "checks_of": 6,
+    "today_cents": 21200000,
+    "plan_cents": 21200000,
+    "plan_months": 12,
+    "source": "underwrite_iq_lite",
+    "next_step": {
+      "title": "File your LLC",
+      "due_on": "2026-11-20"
+    },
+    "steps_url": "/app/financeos.html#next"
+  },
+  "others": {
+    "ok": true,
+    "affiliate": {
+      "enrolled": false,
+      "share_url": null,
+      "sent": null,
+      "signed_up": null,
+      "direct_pct": 20,
+      "downline_pct": 5,
+      "pays_on": [
+        {
+          "sale": "Done-for-you funding",
+          "of": "what they pay",
+          "when": "after they get funded"
+        },
+        {
+          "sale": "Credit repair",
+          "of": "the price",
+          "when": null
+        },
+        {
+          "sale": "Capital Blueprint",
+          "of": "the price",
+          "when": null
+        },
+        {
+          "sale": "The roadmap",
+          "of": "the price",
+          "when": null
+        }
+      ],
+      "pays_once": true,
+      "dashboard_url": "/app/affiliate.html"
+    },
+    "white_label": {
+      "name": "White-label partner program",
+      "entry_cents": 3000000,
+      "trial_name": "Live Trial — seven days under your brand",
+      "trial_cents": 29700,
+      "url": "/partner/"
+    }
+  },
+  "fundhub": {
+    "ok": true,
+    "done_for_you": {
+      "name": "Funding, done-for-you",
+      "deposit_cents": 300000,
+      "deposit_waived": false,
+      "standard_deposit_cents": 300000,
+      "success_fee_pct": 10
+    },
+    "ready": {
+      "status": "none",
+      "requested_at": null,
+      "done_at": null
+    },
+    "financing": {
+      "provider": "ClarityPay",
+      "offer": "Capital Blueprint",
+      "blueprint_owned": false,
+      "book_url": "https://apply.fundhub.ai/schedule/phonecall",
+      "plans_open": 0,
+      "left_cents": null,
+      "payments_url": "/app/financeos.html#payments"
+    }
+  }
+}

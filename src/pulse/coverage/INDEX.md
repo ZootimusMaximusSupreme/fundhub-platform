@@ -165,6 +165,8 @@ finance-os-money-agent
 finance-os-money-transfers
 finance-os-pull-sweeper
 finance-os-trend-snapshots
+finance-os-weekly-money — Monday 9 a.m. Phoenix Netlify-clock job (unit AL, 2026-11-07); heartbeats.mjs checks its job_heartbeats receipt (red after 3 weeks). Every text it queues is a file_protection_alerts row (kind weekly_money), so alerts:texts-went-out (gap-alerts.mjs mornings, beat-money-alerts.mjs hourly) goes red when one is stuck, failed or held.
+finance-os-whop-plans-sweeper — daily 07:00 UTC Netlify-clock job (unit W, 2026-11-07): a GET-only read of Fundhub's own Whop account into whop_memberships; heartbeats.mjs checks its job_heartbeats receipt (red after 3 days). payments:whop-plans-current (gap-whop-plans.mjs mornings, beat-whop-plans.mjs hourly) goes red when a saved Whop plan was not read in 36 hours or still shows a charge day that has passed, and alerts:phone-alerts-went-out goes red when a Whop charge's phone alert was never queued or did not go out.
 finance/soft-pull
 hiring-bench-sweeper
 hiring-outreach-cadence

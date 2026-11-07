@@ -80,8 +80,44 @@
 .bj-summary [hidden],
 .bj-roadmap [hidden],
 .bj-next [hidden] { display:none!important; }
+/* "Your path": the path panel, the cash plan, the ChexSystems step and the
+   path step list. The same Astra tokens: white 10px panels, 13px gray captions. */
+.bj-summary > :is(.bj-path,.bj-cash) { grid-column:span 6; }
+.bj-path,.bj-cash,.bj-chex { padding:24px;border:1px solid var(--line);border-radius:10px;background:var(--paper);min-width:0; }
+.bj-chex { margin:24px 0; }
+.bj-chip { display:inline-flex;align-items:center;min-height:28px;padding:4px 12px;border-radius:999px;background:var(--soft);font-size:13px;font-weight:650;color:var(--ink); }
+.bj-chip[data-tier="fundable"] { background:color-mix(in srgb,var(--ok) 18%,white); }
+.bj-pathfacts { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:16px 0 0; }
+.bj-pathfacts dt,.bj-bankfacts dt { margin:0 0 4px;font-size:13px;color:var(--gray); }
+.bj-pathfacts dd { margin:0;font-weight:700;overflow-wrap:anywhere; }
+.bj-bankfacts { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:8px 0; }
+.bj-bankfacts dd { margin:0;font-size:14px;font-weight:650;overflow-wrap:anywhere; }
+.bj-logo { width:28px;height:28px;flex:none;object-fit:contain;border-radius:6px;background:#fff;vertical-align:middle;margin-right:10px; }
+.bj-bank { display:inline-flex;align-items:center;min-width:0;font-weight:700; }
+.bj-step h4 { display:flex;align-items:center;gap:0;flex-wrap:wrap; }
+.bj-impact-chip { display:inline-flex;align-items:center;min-height:28px;padding:4px 10px;border-radius:999px;background:var(--soft);font-size:13px;font-weight:650;color:var(--ink);overflow-wrap:anywhere; }
+.bj-impact-chip[data-kind="bank"],.bj-impact-chip[data-kind="none"],.bj-impact-chip[data-kind="open"] { background:transparent;border:1px solid var(--line);color:var(--gray); }
+.bj-impact-chip[data-kind="done"],.bj-impact-chip[data-kind="business_funding"] { background:color-mix(in srgb,var(--accent) 14%,white); }
+.bj-subhead { margin:24px 0 8px!important;font-size:15px!important;font-weight:700; }
+.bj-pathsteps .bj-pathlist { grid-template-columns:1fr;gap:0; }
+.bj-pathsteps .bj-step { grid-template-columns:minmax(0,1fr) auto;gap:8px 24px; }
+.bj-miles,.bj-cashrows { display:grid;gap:0;margin:8px 0 0;padding:0;list-style:none; }
+.bj-miles li,.bj-cashrows li { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;align-items:start;padding:12px 0;border-top:1px solid var(--line); }
+.bj-cashrows li { grid-template-columns:minmax(0,1fr) auto; }
+.bj-cashrows li > .bj-caption { grid-column:1/2;grid-row:2; }
+.bj-cashrows li > strong { grid-column:2;grid-row:1/3;font-variant-numeric:tabular-nums; }
+.bj-cashrows li[data-status="short"] > strong { color:var(--ink); }
+.bj-ol { margin:12px 0;padding-left:22px; }
+.bj-ol li { margin:0 0 8px; }
+.bj-ol a { min-height:44px; }
 @media(max-width:900px) {
   .bj-summary > :is(.bj-funding,.bj-credit,.bj-finance,.bj-help) { grid-column:1/-1; }
+  .bj-summary > :is(.bj-path,.bj-cash) { grid-column:1/-1; }
+}
+@media(max-width:600px) {
+  .bj-path,.bj-cash,.bj-chex { padding:16px; }
+  .bj-pathfacts { grid-template-columns:1fr;gap:12px; }
+  .bj-pathsteps .bj-step { grid-template-columns:minmax(0,1fr); }
 }
 @media(max-width:600px) {
   .bj-summary { gap:16px;margin:16px 0; }
@@ -103,3 +139,40 @@
   .bj-step { grid-template-columns:minmax(0,1fr);gap:12px;padding:16px 0; }
   .bj-step > :is(button,a) { justify-self:start; }
 }
+/* The cash plan's next bank, the what-if amount, and the businesses checklist. */
+.bj-pathfund { margin:8px 0;font-size:28px;font-weight:750;font-variant-numeric:tabular-nums; }
+.bj-pathfund span { font-size:24px; }
+.bj-nextbank { margin:12px 0!important;padding:12px 16px;border-radius:10px;background:var(--soft);font-size:16px;font-weight:700; }
+.bj-whatif { display:grid;gap:8px;margin:8px 0 0;font-size:14px;font-weight:650; }
+.bj-whatif input[type=range] { width:100%;min-height:44px;accent-color:var(--ink); }
+.bj-whatif output { font-variant-numeric:tabular-nums; }
+.bj-whatif label { display:grid;gap:8px; }
+/* The exact amount beside the slider (design review 2026-11-07): Astra field floors, 16px and 48px. */
+.bj-exact input[type=number] { width:100%;max-width:240px;min-height:48px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font:400 16px/1.2 var(--sans);font-variant-numeric:tabular-nums; }
+.bj-exact input[type=number]:focus-visible { outline:2px solid var(--ink);outline-offset:2px; }
+.bj-cashrows small { font-size:13px;font-weight:500;color:var(--gray); }
+.bj-biz { padding:24px;border:1px solid var(--line);border-radius:10px;background:var(--paper);min-width:0; }
+.bj-bizgrid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:16px 0; }
+.bj-bizgrid article { padding:16px;border:1px solid var(--line);border-radius:10px;min-width:0; }
+.bj-bizgrid dl { display:grid;gap:8px;margin:12px 0 0; }
+.bj-bizgrid dt { font-size:13px;font-weight:700;color:var(--ink); }
+.bj-bizgrid dd { margin:0;font-size:13px;color:var(--gray);overflow-wrap:anywhere; }
+@media(max-width:900px) { .bj-bizgrid { grid-template-columns:1fr; } }
+@media(max-width:600px) { .bj-biz { padding:16px; } }
+
+/* The look-ahead inside "Funding you qualify for" (unit S, blueprint-journey.js lookahead()). */
+.bj-ahead { margin-top:16px;padding-top:16px;border-top:1px solid var(--line); }
+.bj-ahead[hidden] { display:none; }
+.bj-ahead-head { display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px; }
+.bj-ahead-fund { font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere; }
+.bj-aheadfacts { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin:12px 0 0; }
+.bj-aheadfacts dt { margin:0 0 4px;font-size:13px;color:var(--gray); }
+.bj-aheadfacts dd { margin:0;font-weight:700;overflow-wrap:anywhere; }
+.bj-ahead-picks { display:flex;flex-wrap:wrap;gap:8px;margin-top:12px; }
+.bj-ahead-picks button { min-height:44px;min-width:56px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font:inherit;font-weight:650;cursor:pointer; }
+.bj-ahead-picks button[aria-pressed="true"] { background:var(--ink);color:var(--paper);border-color:var(--ink); }
+.bj-ahead-picks button:focus-visible { outline:3px solid var(--ink);outline-offset:3px; }
+.bj-tagline { display:flex;flex-wrap:wrap;gap:6px;margin-top:6px; }
+.bj-credit dd small { font-weight:400;font-size:13px;color:var(--gray); }
+/* The plan and workspace hosts style every button by id; the picked month still shows dark. */
+:is(#blueprint-plan,#blueprint-fulfillment) .bj-ahead-picks button[aria-pressed="true"] { background:var(--ink);color:var(--paper);border-color:var(--ink); }

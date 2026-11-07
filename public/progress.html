@@ -219,7 +219,9 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
 </style>
 <link rel="stylesheet" href="/app/client-ios.css">
 <link rel="stylesheet" href="/progress-ios.css">
+<link rel="stylesheet" href="/app/money-premium.css">
 <script defer src="/app/client-ios.js"></script>
+<script defer src="/app/money-premium.js"></script>
 <link rel="stylesheet" href="/app/fundhub-astra.css">
 <link rel="stylesheet" href="/app/fundhub-astra-client.css">
 </head>
@@ -250,6 +252,10 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
     <h2 class="sec">What happens next</h2>
     <section class="card next" id="cNext"></section>
     </div>
+
+    <!-- Repair and funding, one line each (money-premium.js, 2026-11-07).
+         Filled only for a Blueprint client; opens the views in the portal. -->
+    <div class="progress-block work-block" id="cWork" data-fh-premium="work" hidden></div>
 
     <div class="progress-block scores-block">
     <h2 class="sec">Your scores</h2>

@@ -34,6 +34,7 @@ import { toCents } from "../commissions/money.mjs";
 import { listContainers, containerBilling, assignAccount } from "./containers.mjs";
 import { listBusinessInfo } from "./business-info.mjs";
 import { createManualBankAccount, saveStatementCycle, listStatementCycles } from "../banking/accounts.mjs";
+import { attachAccountLogos } from "../banking/institution-logos.mjs";
 
 export const HAND_TYPES = Object.freeze({
   checking: { account_type: "depository", account_subtype: "checking" },
@@ -187,7 +188,9 @@ export async function addHandAccount(db, { orgId, clientId, input, by = {} }) {
  *
  * Each business container carries `business` (its info, or null when none is
  * saved yet). Each hand-entered or bank card or loan carries due_day and
- * min_due_cents from its statement cycle (null = not told).
+ * min_due_cents from its statement cycle (null = not told). Every account, card
+ * and loan carries `institution`, `logo` and `logo_source` — the bank's own logo,
+ * Plaid's first, then the bank book's, else null (src/banking/institution-logos.mjs).
  */
 export async function accountsView(db, { orgId, clientId, env = {} }) {
   const [list, info, billing, cycles] = await Promise.all([
@@ -204,13 +207,17 @@ export async function accountsView(db, { orgId, clientId, env = {} }) {
   });
   const fill = (h) => ({ ...h, cards: withCycle(h.cards), loans: withCycle(h.loans), accounts: withCycle(h.accounts) });
 
-  return {
-    client_id: clientId,
-    containers: list.containers.map((c) => ({
-      ...fill(c),
-      business: c.kind === "business" ? (info.get(String(c.id)) ?? null) : null
-    })),
-    unassigned: fill(list.unassigned),
-    billing
-  };
+  return attachAccountLogos(db, {
+    orgId,
+    clientId,
+    view: {
+      client_id: clientId,
+      containers: list.containers.map((c) => ({
+        ...fill(c),
+        business: c.kind === "business" ? (info.get(String(c.id)) ?? null) : null
+      })),
+      unassigned: fill(list.unassigned),
+      billing
+    }
+  });
 }

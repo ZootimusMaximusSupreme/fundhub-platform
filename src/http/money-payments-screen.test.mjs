@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
+import { sampleWhopPayload } from "./fixtures/whop-plans.sample.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.resolve(HERE, "../../public/app");
@@ -37,7 +38,7 @@ test("the shared money nav, in the board's order, with Payments marked as the cu
   assert.match(HTML, /href="\/app\/financeos\.html#payments" aria-current="page"/);
 });
 
-test("full: what is owed, late said in words, the schedule, coming up, the helper's log, and a person", () => {
+test("full: what is owed, late said in words, the schedule, payments due, the helper's log, and a person", () => {
   const t = text(P.render(fixture()));
   assert.match(t, /You owe Fundhub \$1,450\.00/);
   assert.match(t, /Late now \$500\.00 Late 4 days 1 plan/);
@@ -46,7 +47,7 @@ test("full: what is owed, late said in words, the schedule, coming up, the helpe
   assert.match(t, /Paid so far \$500\.00 of \$1,500\.00/);
   assert.match(t, /Paid so far \$150\.00 of \$600\.00/);
   assert.match(t, /Oct 2, 2026 \$500\.00 \$0\.00 Late 4 days/);
-  assert.match(t, /Coming up/);
+  assert.match(t, /Payments due/);
   assert.match(t, /Business Amex Card payment \$135\.00 Oct 21/);
   assert.match(t, /Checked in again about Fundhub payment plan — payment 2\./);
   assert.match(t, /It never moves money\./);
@@ -139,4 +140,110 @@ test("the section's styles all live under .fh-payments", () => {
 test("the log never claims a text went out when it did not", () => {
   assert.match(P.logSentence({ action: "late_check_in", item_label: "X", message_status: "opted_out" }), /the text was not sent/);
   assert.match(P.logSentence({ action: "held", item_label: "X", reason: "opted_out" }), /asked us not to text you/);
+});
+
+/* ── phone alerts on each plan (unit D2, owner-set 2026-11-07) ── */
+const PLAN_ID = FIXTURE.plans[0].id;
+const planHtml = (html, id = PLAN_ID) => {
+  const start = html.indexOf(`data-plan="${id}"`);
+  return html.slice(start, html.indexOf("</article>", start));
+};
+const withPhone = (over = {}, plan = {}) => {
+  const d = fixture();
+  d.phone = { ...d.phone, ...over, plans: { [PLAN_ID]: { ...d.phone.plans[PLAN_ID], ...plan } } };
+  return d;
+};
+
+test("phone line: the day the alert goes, 3 days before; today inside the window; sent once it went; the label is said once", () => {
+  const before = text(planHtml(P.render(withPhone({}, { reason: null, due_on: "2026-11-02", alert_on: "2026-10-30" }))));
+  assert.match(before, /Phone alert Goes Oct 30, 3 days before it is due\./);
+  // Inside the window it goes today, whatever the days left (here 2), so it does not say "3 days before".
+  const today = text(planHtml(P.render(withPhone({}, { reason: null, due_on: "2026-10-08", alert_on: "2026-10-06" }))));
+  assert.match(today, /Phone alert Goes today\./);
+  assert.doesNotMatch(today, /days before it is due/);
+  const sent = text(planHtml(P.render(withPhone({}, { reason: null, due_on: "2026-10-08", alert_on: "2026-10-06", sent: "sent" }))));
+  assert.match(sent, /Phone alert Sent for Oct 8\./);
+  for (const t of [before, today, sent]) assert.doesNotMatch(t, /Phone alert Phone alert/);
+});
+
+test("phone line: honest when it cannot go — late, STOP, switched off, no phone; staff get no button", () => {
+  assert.match(text(planHtml(P.render(fixture()))), /This payment is past due, so no .due soon. phone alert goes\./);
+  assert.match(text(planHtml(P.render(withPhone({ opted_out: true })))), /You replied STOP, so no phone alert goes\./);
+  const off = planHtml(P.render(withPhone({ enabled: false })));
+  assert.match(text(off), /Phone alert Off\. Turn them on/);
+  assert.doesNotMatch(text(off), /Phone alert Phone alert/);
+  assert.match(off, /href="\/app\/financeos\.html#alerts"/);
+  const noPhone = planHtml(P.render(withPhone({ has_phone: false }, { reason: null, alert_on: "2026-10-30" })));
+  assert.match(noPhone, /href="\/app\/client-portal\.html#push-card"/);
+  const staff = planHtml(P.render(withPhone({ has_phone: false }, { reason: null, alert_on: "2026-10-30" }), { staff: true }));
+  assert.match(text(staff), /This client has not set up a phone for alerts yet\./);
+  assert.doesNotMatch(staff, /Set up my phone|Turn them on/);
+});
+
+test("phone line: no phone block (an older server or a failed read) claims nothing; a settled plan says nothing", () => {
+  const d = fixture();
+  delete d.phone;
+  assert.doesNotMatch(P.render(d), /phone-line/);
+  const settled = withPhone({}, { reason: null, alert_on: "2026-10-30" });
+  settled.plans[0].status = "settled";
+  assert.doesNotMatch(planHtml(P.render(settled)), /phone-line/);
+});
+
+/* Whop plans and the provider logos (unit W): money-whop-plans.js loaded beside this file, the way
+   /app/financeos.html and /app/money-payments.html load both. */
+function loadWithWhop() {
+  const sandbox = { window: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(APP, "money-whop-plans.js"), "utf8"), sandbox);
+  vm.runInNewContext(JS, sandbox);
+  return sandbox.window.FHMoneyPayments;
+}
+const cardOf = (html, attr) => {
+  const at = html.indexOf(attr);
+  assert.ok(at >= 0, attr);
+  return html.slice(at, html.indexOf("</article>", at));
+};
+
+test("both pages load the Whop plans file before the Payments script", () => {
+  assert.match(HTML, /<link rel="stylesheet" href="money-whop-plans\.css">/);
+  assert.match(HTML, /<script defer src="money-whop-plans\.js"><\/script>\s*<script defer src="money-payments\.js"><\/script>/);
+  const fos = fs.readFileSync(path.join(APP, "financeos.html"), "utf8");
+  assert.match(fos, /<link rel="stylesheet" href="money-whop-plans\.css">/);
+  assert.match(fos, /<script defer src="money-whop-plans\.js"><\/script>\s*<script defer src="money-payments\.js"><\/script>/);
+});
+
+test("Whop plans sit under the Clarity plans; only a plan owed to ClarityPay wears its logo; the tile adds the Whop estimate", () => {
+  const PW = loadWithWhop();
+  const d = fixture();
+  d.whop = sampleWhopPayload("2026-10-06").whop;
+  d.upcoming = [...d.upcoming, { type: "whop", name: "Sample Monthly Program", on: "2026-10-08", amount_cents: 50000 }];
+  const html = PW.render(d);
+  const clarity = d.plans.find((p) => p.kind === "clarity");
+  const bnpl = d.plans.find((p) => p.kind === "bnpl");
+  // The sample's Clarity plan is owed to Fundhub LLC: kind "clarity" alone does not prove ClarityPay (Codex CX21).
+  assert.equal(clarity.owed_to, "Fundhub LLC");
+  assert.doesNotMatch(cardOf(html, `data-plan="${clarity.id}"`), /fh-provider-logo|claritypay/);
+  assert.doesNotMatch(cardOf(html, `data-plan="${bnpl.id}"`), /fh-provider-logo/);
+  // A plan that records ClarityPay as who it is paid to wears ClarityPay's own logo.
+  const paidToClarityPay = { ...clarity, id: "c1a71e00-0000-4000-8000-0000000000cc", owed_to: "ClarityPay" };
+  const withProvider = PW.render({ ...d, plans: [...d.plans, paidToClarityPay] });
+  assert.match(cardOf(withProvider, `data-plan="${paidToClarityPay.id}"`), /<img class="fh-provider-logo" src="\/assets\/lenders\/claritypay\.svg" alt="ClarityPay"/);
+  assert.equal((withProvider.match(/alt="ClarityPay"/g) || []).length, 1, "the logo is on that one plan only");
+  const owed = html.slice(html.indexOf('id="b-owe"'));
+  assert.ok(owed.indexOf('class="whop-plans"') > owed.indexOf('data-plan="'), "the Whop plans come after the Clarity plans");
+  assert.equal((owed.match(/data-whop-plan=/g) || []).length, 5);
+  assert.match(text(html), /You owe Fundhub \$1,450\.00 2 open plans · \+\$1,000\.00 on Whop/);
+  assert.match(text(html), /Sample Monthly Program Whop payment \$500\.00 Oct 8/);
+});
+
+test("only Whop plans, or a Whop read that failed: never the 'nothing owed' card; without the Whop file, nothing changes", () => {
+  const PW = loadWithWhop();
+  const only = { ...fixture(), plans: [], whop: sampleWhopPayload("2026-10-06").whop };
+  assert.doesNotMatch(PW.render(only), /You do not owe Fundhub anything right now/);
+  assert.match(PW.render(only), /class="whop-plans"/);
+  const failed = PW.render({ ...fixture(), plans: [], whop: null });
+  assert.doesNotMatch(failed, /You do not owe Fundhub anything right now/);
+  assert.match(text(failed), /Whop plans could not load\. Try again later\./);
+  assert.match(PW.render({ ...fixture(), plans: [] }), /You do not owe Fundhub anything right now/);
+  const alone = P.render({ ...fixture(), whop: sampleWhopPayload("2026-10-06").whop });
+  assert.doesNotMatch(alone, /claritypay|whop-plans|on Whop/);
 });

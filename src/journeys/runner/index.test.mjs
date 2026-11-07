@@ -211,7 +211,12 @@ import { isSyntheticRow } from "./synthetic.mjs";
 // AI COO manager review is also cron-only; its direct task proof is in src/ops/manager-kpi-review.test.mjs.
 // Explicitly authorized Blueprint mailing recovery is cron-only; no journey event fires it.
 // Blueprint bank evidence/report/paid-help recovery is also cron-only.
-const REGISTERED = 109;
+// 109 -> 110 (2026-11-07, Finance OS unit AL): finance-os-weekly-money, the Monday money text. A cron
+// with no event trigger, so it sits in neverFired like every sweeper here.
+// 110 -> 111 (2026-11-07, Finance OS unit W): finance-os-whop-plans-sweeper, the daily read of the Whop
+// plans clients pay Fundhub. Cron-only, so it sits in neverFired; its proof is
+// src/workflows/finance-os-whop-plans-sweeper.test.mjs and src/finance/whop-plans-sync.test.mjs.
+const REGISTERED = 111;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

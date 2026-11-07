@@ -8,6 +8,23 @@
 //   POST { action: "assign",          account_id, container_id }   "Move to…"
 //   POST { action: "unassign",        account_id }                  back to "Not sorted yet"
 //   POST { action: "add_account",     name, type, last4?, balance?, limit?, due_day?, minimum?, container_id? }
+//   POST { action: "track_fuel_card", fuel_card_id, container_id, due_day, limit?, last4? }
+//   POST { action: "set_fuel_card",   lender_id, active? }                (staff only)
+//
+// Business gas cards (Finance OS wave 4, unit GAS): the view also carries
+// fuel_cards — the staff-set list of bank-book gas cards (migration 587) under
+// each business, with the risk line "Miss a payment and it hurts your business
+// credit." track_fuel_card adds one to a business as an ordinary hand-entered
+// card with its due day (so it gets the same phone alerts) and records which
+// list card it is. set_fuel_card puts a bank-book row on the list or takes it
+// off. Rules: src/finance/fuel-cards.mjs.
+//
+//   GET  ?view=tradelines                                  → { ok, view, groups, relationships, counts, add }
+//   POST { action: "add_tradeline", creditor, product?, type, limit?, opened?, belongs_to }
+//        The tradeline inventory (Finance OS wave 4, unit TL): every account on the
+//        credit reports, in Plaid or added by hand, Personal and per business, and
+//        the banks the client already uses. add_tradeline answers with that view.
+//        Rules: src/finance/tradeline-inventory.mjs. The table is migration 590.
 //
 // Every POST answers with the whole view again, so the page repaints from one shape.
 // The rules live in src/finance/money-accounts.mjs, src/finance/business-info.mjs
@@ -35,6 +52,8 @@ import { BankAccountWriteError } from "../../src/banking/accounts.mjs";
 import { createContainer, renameContainer, assignAccount, unassignAccount } from "../../src/finance/containers.mjs";
 import { readBusinessInfo, saveBusinessInfo } from "../../src/finance/business-info.mjs";
 import { accountsView, readHandAccount, addHandAccount } from "../../src/finance/money-accounts.mjs";
+import { readFuelCards, trackFuelCard, setFuelCard } from "../../src/finance/fuel-cards.mjs";
+import { tradelineView, readTradelineEntry, addTradelineEntry } from "../../src/finance/tradeline-inventory.mjs";
 
 const SESSION_OWNED = ["org_id", "orgId"];
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(Object(o ?? {}), k);
@@ -51,10 +70,17 @@ const REASON_STATUS = {
   client_not_found: 404,
   account_not_found: 404,
   container_not_found: 404,
+  business_not_found: 404,
   not_a_business_container: 400,
   container_belongs_to_another_client: 404,
-  container_archived: 409
+  container_archived: 409,
+  fuel_card_not_found: 404,
+  lender_not_found: 404,
+  already_tracked: 409
 };
+
+/* The reads a GET can ask for. No view is the Accounts page itself. */
+const VIEWS = new Set(["tradelines"]);
 
 export default async function handler(req, res, deps = {}) {
   const database = deps.db || db;
@@ -99,11 +125,22 @@ export default async function handler(req, res, deps = {}) {
     by = { kind: "staff", id: staff.id ?? null };
   }
 
-  const view = async () => accountsView(database, { orgId, clientId, env });
+  /* The gas card list reads on its own; a failed read is { ok: false } inside
+     fuel_cards and the accounts still answer. */
+  const fuelRead = deps.readFuelCards || readFuelCards;
+  const fuel = async () => {
+    try { return await fuelRead(database, { orgId, clientId, viewer: by.kind }); }
+    catch { return { ok: false, reason: "read_failed" }; }
+  };
+  const view = async () => ({ ...(await accountsView(database, { orgId, clientId, env })), fuel_cards: await fuel() });
+  const inventory = async () => (deps.tradelineView || tradelineView)(database, { orgId, clientId });
   const refuse = (reason) => res.status(REASON_STATUS[reason] ?? 400).json({ ok: false, error: reason });
 
   try {
     if (req.method === "GET") {
+      const asked = req.query && req.query.view ? String(req.query.view) : "";
+      if (asked && !VIEWS.has(asked)) return res.status(400).json({ ok: false, error: "unknown_view" });
+      if (asked === "tradelines") return res.status(200).json({ ok: true, ...(await inventory()) });
       return res.status(200).json({ ok: true, ...(await view()) });
     }
 
@@ -179,6 +216,28 @@ export default async function handler(req, res, deps = {}) {
         const r = await addHandAccount(database, { orgId, clientId, input, by });
         if (!r.ok) return refuse(r.reason);
         return res.status(201).json({ ok: true, action: "add_account", account_id: r.account_id, ...(await view()) });
+      }
+      case "track_fuel_card": {
+        const r = await (deps.trackFuelCard || trackFuelCard)(database, {
+          orgId, clientId, fuelCardId: body.fuel_card_id, containerId: body.container_id, input: body, by
+        });
+        if (!r.ok) return refuse(r.reason);
+        return res.status(201).json({ ok: true, action: "track_fuel_card", account_id: r.account_id, ...(await view()) });
+      }
+      case "set_fuel_card": {
+        /* The list is the Fundhub team's to set. A client never does. */
+        if (by.kind !== "staff") return res.status(403).json({ ok: false, error: "staff_only" });
+        const r = await (deps.setFuelCard || setFuelCard)(database, {
+          orgId, lenderId: body.lender_id, active: body.active !== false, staffId: by.id
+        });
+        if (!r.ok) return refuse(r.reason);
+        return res.status(200).json({ ok: true, action: "set_fuel_card", card: r.card, ...(await view()) });
+      }
+      case "add_tradeline": {
+        const input = readTradelineEntry(body, { now: clock() });
+        const r = await addTradelineEntry(database, { orgId, clientId, input, by });
+        if (!r.ok) return refuse(r.reason);
+        return res.status(201).json({ ok: true, action: "add_tradeline", entry_id: r.entry_id, ...(await inventory()) });
       }
       default:
         return res.status(400).json({ ok: false, error: "invalid_action" });

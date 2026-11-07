@@ -109,6 +109,7 @@ export const GAP_FILES = Object.freeze([
   ["gap-partners.mjs", () => import("./gap-partners.mjs")],
   ["gap-payments-unmatched.mjs", () => import("./gap-payments-unmatched.mjs")],
   ["gap-payments.mjs", () => import("./gap-payments.mjs")],
+  ["gap-phone-alerts.mjs", () => import("./gap-phone-alerts.mjs")],
   ["gap-pipeline-boards.mjs", () => import("./gap-pipeline-boards.mjs")],
   ["gap-pipeline-facts.mjs", () => import("./gap-pipeline-facts.mjs")],
   ["gap-pixels.mjs", () => import("./gap-pixels.mjs")],
@@ -132,5 +133,6 @@ export const GAP_FILES = Object.freeze([
   ["gap-trip-roadmap.mjs", () => import("./gap-trip-roadmap.mjs")],
   ["gap-underwrite.mjs", () => import("./gap-underwrite.mjs")],
   ["gap-webhooks.mjs", () => import("./gap-webhooks.mjs")],
-  ["gap-whop-billing.mjs", () => import("./gap-whop-billing.mjs")]
+  ["gap-whop-billing.mjs", () => import("./gap-whop-billing.mjs")],
+  ["gap-whop-plans.mjs", () => import("./gap-whop-plans.mjs")]
 ]);

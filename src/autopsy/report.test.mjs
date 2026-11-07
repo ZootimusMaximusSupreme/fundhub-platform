@@ -10,7 +10,8 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
 
-import { buildAutopsyReport, money, AUTOPSY_PRODUCT_CODE } from "./report.mjs";
+import { buildAutopsyReport, money, partnerEntryTerm, AUTOPSY_PRODUCT_CODE } from "./report.mjs";
+import { OFFERS, formatCents } from "../config/offers.mjs";
 import { BUCKETS } from "./fields.mjs";
 import { FUNDING_PRODUCT_CODES, REPAIR_PRODUCT_CODES } from "../affiliates/economics.mjs";
 import { fromCents } from "../commissions/money.mjs";
@@ -129,7 +130,7 @@ describe("*** no earnings claim, no credit-outcome claim ***", () => {
   test("the doors describe TERMS, not outcomes", () => {
     const partner = report.doors.find((d) => d.key === "partner");
     const affiliate = report.doors.find((d) => d.key === "affiliate");
-    assert.match(partner.terms.join(" "), /\$10,000 one time/);
+    assert.match(partner.terms.join(" "), /\$30,000 one time/);
     assert.match(partner.terms.join(" "), /50% of funding and repair/);
     assert.match(partner.terms.join(" "), /Ten funded clients a month/);
     assert.equal(partner.apply.track, "white_label");
@@ -138,6 +139,18 @@ describe("*** no earnings claim, no credit-outcome claim ***", () => {
     for (const d of report.doors) {
       assert.doesNotMatch(d.terms.join(" "), /\bearn(?!ing on)/i, `${d.key} promises earnings`);
     }
+  });
+
+  test("the partner door's price is the catalogue's PARTNER_ENTRY, never typed (owner-set 2026-11-07)", () => {
+    const partner = report.doors.find((d) => d.key === "partner");
+    assert.equal(formatCents(OFFERS.PARTNER_ENTRY.priceCents), "$30,000");
+    assert.equal(partner.terms[0], `${formatCents(OFFERS.PARTNER_ENTRY.priceCents)} one time. No monthly fee on the base program.`);
+  });
+
+  test("a different entry price changes the line; an unusable one names no figure", () => {
+    const other = buildAutopsyReport({ rows: [scored()], reviewedAt: REVIEWED, entryPriceCents: 2500000 });
+    assert.equal(other.doors.find((d) => d.key === "partner").terms[0], "$25,000 one time. No monthly fee on the base program.");
+    assert.equal(partnerEntryTerm(null), "One entry fee, one time. No monthly fee on the base program.");
   });
 
   test("the lender list itself never leaves — counts only", () => {

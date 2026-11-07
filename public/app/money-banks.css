@@ -56,6 +56,14 @@
 .fh-banks .why{display:flex;flex-direction:column;gap:8px}
 .fh-banks .why li{padding-left:16px;border-left:2px solid var(--line)}
 .fh-banks .on-plan{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+/* A bank the client already uses (unit TL): a word on a quiet green tint. */
+.fh-banks .tag-rel{border-color:transparent;background:color-mix(in srgb,var(--ok,#A8D8B0) 50%,#FFFFFF);color:var(--ink2,#252A2D);font-weight:600}
+.fh-banks .have{margin-top:8px;overflow-wrap:anywhere}
+.fh-banks .have-word{font-weight:600;color:var(--ink)}
+.fh-banks .have-card{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.fh-banks .have-list{display:flex;flex-direction:column;gap:8px}
+.fh-banks .have-list li{display:flex;flex-direction:column;gap:4px;padding-top:8px;border-top:1px solid var(--line)}
+.fh-banks .have-list li:first-child{padding-top:0;border-top:0}
 .fh-banks .left-out{margin-top:8px}
 
 /* card stacking */

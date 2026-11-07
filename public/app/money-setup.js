@@ -9,7 +9,7 @@
  *
  * HONESTY RULES (same as money.js):
  *   - Money arrives as integer cents. A price the owner has not set is null
- *     and paints "$X", never $0.00.
+ *     and its words are left out, never "$X" and never $0.00 (QA23).
  *   - A step is "Done" only when the read says so.
  *   - A step that cannot be acted on today shows no button (UI-STANDARDS §5).
  *
@@ -34,9 +34,10 @@
 
   function isNum(v) { return typeof v === "number" && isFinite(v); }
 
-  /* cents → "$1,234.56"; a price not set yet → "$X". */
+  /* cents → "$1,234.56". A price that is not set is null, and its words are left
+     out where it would show (QA23: never "$X"). */
   function price(cents) {
-    if (!isNum(cents)) return "$X";
+    if (!isNum(cents)) return null;
     var abs = Math.round(Math.abs(cents));
     var dollars = String(Math.floor(abs / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     var c = String(abs % 100);
@@ -98,7 +99,7 @@
   function payStep(d, primary) {
     var s = stepOf(d, "pay");
     var fee = d.setup_fee_cents;
-    var title = "Pay setup fee (" + price(fee) + ")";
+    var title = isNum(fee) ? "Pay setup fee (" + price(fee) + ")" : "Pay setup fee";
     if (s.done) {
       if (d.entitled === true && d.paid !== true) {
         return stepRow(1, "pay", d, title, "Included",
@@ -110,7 +111,7 @@
     var cls = primary ? "btn-primary" : "btn-line";
     if (d.open_checkout && d.open_checkout.url) {
       return stepRow(1, "pay", d, title, "Not paid yet",
-        '<p class="caption">You started a checkout for ' + esc(price(d.open_checkout.amount_cents)) + '. Finish it to pay.</p>' +
+        '<p class="caption">You started a checkout' + (isNum(d.open_checkout.amount_cents) ? " for " + esc(price(d.open_checkout.amount_cents)) : "") + '. Finish it to pay.</p>' +
         '<div class="step-act"><a class="' + cls + '" href="' + esc(d.open_checkout.url) + '" rel="noopener">Finish paying</a></div>');
     }
     if (!isNum(fee)) {
@@ -168,16 +169,21 @@
 
   /* ── pieces ────────────────────────────────────────────────────────────── */
 
+  /* Only the prices the read carries show. With none set, the price line is left out. */
   function renderPrice(d) {
     var n = isNum(d.containers) ? d.containers : 0;
-    var line = "Setup " + price(d.setup_fee_cents) + " one time · " + price(d.price_per_container_cents) +
-      " per container per month · you have " + plural(n, "container", "containers");
+    var setup = price(d.setup_fee_cents);
+    var each = price(d.price_per_container_cents);
+    var parts = [];
+    if (setup) parts.push("Setup " + setup + " one time");
+    if (each) parts.push(each + " per container per month");
+    var line = parts.length ? parts.concat(["you have " + plural(n, "container", "containers")]).join(" · ") : "";
     return '<section class="card price-card" aria-labelledby="h-price"><h2 class="eyebrow" id="h-price">Your price</h2>' +
       '<ul class="price-list">' +
-      '<li><span>Setup, one time</span><span class="num">' + esc(price(d.setup_fee_cents)) + '</span></li>' +
-      '<li><span>Per container, per month</span><span class="num">' + esc(price(d.price_per_container_cents)) + '</span></li>' +
+      (setup ? '<li><span>Setup, one time</span><span class="num">' + esc(setup) + '</span></li>' : "") +
+      (each ? '<li><span>Per container, per month</span><span class="num">' + esc(each) + '</span></li>' : "") +
       '<li><span>Your containers</span><span class="num">' + esc(String(n)) + '</span></li>' +
-      '</ul><p class="caption price-line">' + esc(line) + '</p>' +
+      '</ul>' + (line ? '<p class="caption price-line">' + esc(line) + '</p>' : "") +
       '<p class="caption">Each business is one container. So is each person.</p></section>';
   }
 

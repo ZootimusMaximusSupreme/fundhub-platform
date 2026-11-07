@@ -1,0 +1,98 @@
+/* Apply gate component (Finance OS wave 3, unit L4) — public/app/apply-gate.js.
+   The Astra look: white 10px panels with hairlines, 13px sentence-case gray
+   captions, black 8px buttons, every control at least 44 by 44, no sideways
+   scroll at 390 and 320. Tokens come from fundhub-brand.css; the fallbacks are
+   the same values, so the component reads the same wherever it is mounted.
+   Every rule lives under .fh-apply-gate. */
+.fh-apply-gate{
+  --ag-ink:var(--ink,#0D1113);--ag-ink2:var(--ink2,#252A2D);--ag-gray:var(--gray,#626968);
+  --ag-line:var(--line,#E3E5E0);--ag-soft:var(--soft,#F0F1ED);--ag-paper:var(--paper,#F8F8F6);
+  --ag-ok:var(--ok,#A8D8B0);--ag-warn:var(--warn,#F5CE8F);--ag-info:var(--info,#A9C6E8);--ag-accent:var(--accent,#C4B3E5);
+  --ag-ok-ink:#245C30;--ag-warn-ink:#6B4A0E;--ag-info-ink:#24476F;
+  display:grid;gap:24px;min-width:0;color:var(--ag-ink);font-family:var(--sans,ui-rounded,"SF Pro Rounded",system-ui,sans-serif);
+  font-size:16px;line-height:1.5
+}
+.fh-apply-gate *{box-sizing:border-box}
+.fh-apply-gate [hidden]{display:none!important}
+.fh-apply-gate .ag-panel{background:#fff;border:1px solid var(--ag-line);border-radius:10px;padding:24px;
+  box-shadow:0 1px 2px rgba(13,17,19,.024);min-width:0;display:grid;gap:12px;align-content:start}
+.fh-apply-gate .ag-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px 16px}
+.fh-apply-gate .ag-l{display:grid;gap:4px;min-width:0;flex:1 1 260px}
+.fh-apply-gate .ag-h2{margin:0;font-size:22px;font-weight:750;letter-spacing:-.02em;line-height:1.3;text-wrap:balance}
+.fh-apply-gate .ag-h3{margin:0;font-size:18px;font-weight:700;line-height:1.4}
+.fh-apply-gate .ag-cap{display:block;font-size:13px;color:var(--ag-gray);line-height:1.5;margin:0;overflow-wrap:anywhere}
+.fh-apply-gate .ag-body{margin:0;font-size:16px;overflow-wrap:anywhere}
+.fh-apply-gate .ag-note{margin:0;padding:12px 16px;border-radius:8px;background:var(--ag-soft);font-size:13px;font-weight:600}
+.fh-apply-gate .ag-foot{margin-top:4px}
+.fh-apply-gate .ag-count{margin:0;font-size:13px;font-weight:650;color:var(--ag-ink2);font-variant-numeric:tabular-nums}
+
+/* Chips: the word carries the meaning; the colour only echoes it. */
+.fh-apply-gate .ag-chip{display:inline-flex;align-items:center;font-size:13px;font-weight:650;padding:3px 10px;border-radius:999px;
+  background:var(--ag-soft);color:var(--ag-ink2);white-space:nowrap;flex:none}
+.fh-apply-gate .ag-chip.ag-ok{background:color-mix(in srgb,var(--ag-ok) 50%,#fff);color:var(--ag-ok-ink)}
+.fh-apply-gate .ag-chip.ag-warn{background:color-mix(in srgb,var(--ag-warn) 55%,#fff);color:var(--ag-warn-ink)}
+.fh-apply-gate .ag-chip.ag-info{background:color-mix(in srgb,var(--ag-info) 50%,#fff);color:var(--ag-info-ink)}
+
+/* Rows */
+.fh-apply-gate ul{list-style:none;margin:0;padding:0}
+.fh-apply-gate .ag-rows{display:grid}
+.fh-apply-gate .ag-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 0;border-top:1px solid var(--ag-line)}
+.fh-apply-gate .ag-row:first-child{border-top:0}
+.fh-apply-gate .ag-t{display:grid;gap:2px;min-width:0}
+.fh-apply-gate .ag-t b{font-weight:650;overflow-wrap:anywhere}
+.fh-apply-gate .ag-guide{display:grid;gap:4px;padding-top:12px;border-top:1px solid var(--ag-line)}
+
+/* Bank lines and clocks */
+.fh-apply-gate .ag-clocks,.fh-apply-gate .ag-banks{display:grid}
+.fh-apply-gate .ag-clock,.fh-apply-gate .ag-bank{display:grid;gap:8px;padding:16px 0;border-top:1px solid var(--ag-line);min-width:0}
+.fh-apply-gate .ag-clock:first-child,.fh-apply-gate .ag-bank:first-child{border-top:0;padding-top:4px}
+.fh-apply-gate .ag-bank-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}
+.fh-apply-gate .ag-name{display:flex;align-items:center;gap:10px;min-width:0}
+.fh-apply-gate .ag-logo{width:28px;height:28px;flex:none;border-radius:8px;background:#fff;border:1px solid var(--ag-line);object-fit:contain}
+.fh-apply-gate .ag-reasons{display:grid;gap:4px;padding-left:18px;list-style:disc;font-size:14px;color:var(--ag-ink2)}
+.fh-apply-gate .ag-reasons li{overflow-wrap:anywhere}
+.fh-apply-gate .ag-congrats{margin:0;padding:10px 14px;border-radius:8px;font-weight:700;
+  background:color-mix(in srgb,var(--ag-ok) 35%,#fff);color:var(--ag-ok-ink)}
+.fh-apply-gate .ag-none{color:var(--ag-gray)}
+
+/* The seasoning bar: 0 to 90 days. 30, 60 and 90 are marked. */
+.fh-apply-gate .ag-track{position:relative;height:12px;border-radius:8px;background:var(--ag-soft);overflow:hidden}
+.fh-apply-gate .ag-fill{position:absolute;inset:0 auto 0 0;border-radius:8px;background:var(--ag-accent)}
+.fh-apply-gate .ag-mark{position:absolute;top:0;bottom:0;width:2px;background:#fff}
+.fh-apply-gate .ag-m30{left:calc(33.333% - 1px)}
+.fh-apply-gate .ag-m60{left:calc(66.667% - 1px)}
+.fh-apply-gate .ag-m90{right:0}
+.fh-apply-gate .ag-marks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));font-size:13px;color:var(--ag-gray);text-align:right;gap:4px}
+.fh-apply-gate .ag-marks span{overflow-wrap:anywhere}
+.fh-apply-gate .ag-w0{width:0%}.fh-apply-gate .ag-w1{width:5.556%}.fh-apply-gate .ag-w2{width:11.111%}
+.fh-apply-gate .ag-w3{width:16.667%}.fh-apply-gate .ag-w4{width:22.222%}.fh-apply-gate .ag-w5{width:27.778%}
+.fh-apply-gate .ag-w6{width:33.333%}.fh-apply-gate .ag-w7{width:38.889%}.fh-apply-gate .ag-w8{width:44.444%}
+.fh-apply-gate .ag-w9{width:50%}.fh-apply-gate .ag-w10{width:55.556%}.fh-apply-gate .ag-w11{width:61.111%}
+.fh-apply-gate .ag-w12{width:66.667%}.fh-apply-gate .ag-w13{width:72.222%}.fh-apply-gate .ag-w14{width:77.778%}
+.fh-apply-gate .ag-w15{width:83.333%}.fh-apply-gate .ag-w16{width:88.889%}.fh-apply-gate .ag-w17{width:94.444%}
+.fh-apply-gate .ag-w18{width:100%}
+
+/* Buttons and links: 44 by 44 at least; the one dark button is the main action. */
+.fh-apply-gate .ag-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.fh-apply-gate .ag-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:8px 16px;
+  border:1px solid var(--ag-line);border-radius:8px;background:#fff;color:var(--ag-ink);font:inherit;font-size:14px;font-weight:650;
+  text-decoration:none;cursor:pointer;max-width:100%;white-space:normal;text-align:center}
+.fh-apply-gate .ag-btn:hover{background:var(--ag-soft)}
+.fh-apply-gate .ag-btn.ag-dark{background:var(--ag-ink);color:var(--ag-paper);border-color:var(--ag-ink);min-height:48px;font-weight:600}
+.fh-apply-gate .ag-btn.ag-dark:hover{background:var(--ag-ink2)}
+.fh-apply-gate .ag-btn[disabled]{opacity:.6;cursor:progress}
+.fh-apply-gate .ag-btn:focus-visible{outline:2px solid var(--ag-ink);outline-offset:3px}
+.fh-apply-gate .ag-msg{font-size:13px;color:#7E2C21}
+
+/* Loading */
+.fh-apply-gate .ag-sk{display:block;height:14px;border-radius:6px;background:var(--ag-soft)}
+.fh-apply-gate .ag-sk-l{width:70%}
+.fh-apply-gate .ag-sk-m{width:45%}
+
+@media (max-width:480px){
+  .fh-apply-gate .ag-panel{padding:16px}
+  .fh-apply-gate .ag-marks{font-size:13px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .fh-apply-gate .ag-fill{transition:width .3s}
+}

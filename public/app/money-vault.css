@@ -116,6 +116,23 @@
 .fh-vault .vt-btn-no{border-style:dashed}
 .fh-vault .vt-link{display:inline-flex;align-items:center;min-height:40px;padding:0 8px;border:0;background:none;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 
+/* the lender packet — one row per packet: what is ready, what is missing, the download */
+.fh-vault .vt-packet{display:flex;flex-direction:column;gap:8px;margin-bottom:32px}
+.fh-vault .vt-pk-list{display:flex;flex-direction:column}
+.fh-vault .vt-pk{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;align-items:start;padding:16px 0;border-top:1px solid var(--line)}
+.fh-vault .vt-pk:first-child{border-top:0}
+.fh-vault .vt-pk-main{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fh-vault .vt-pk-main .vt-title{font-weight:600}
+.fh-vault .vt-pk-miss-h{font-weight:600;color:var(--ink)}
+.fh-vault .vt-pk-miss{display:flex;flex-direction:column;gap:8px}
+.fh-vault .vt-pk-miss li{display:flex;align-items:center;gap:8px;overflow-wrap:anywhere}
+/* Status is a shape and a word (§12.6): a dashed ring is still owed, a filled one is done. */
+.fh-vault .vt-pk-dot,.fh-vault .vt-pk-tick{flex:none;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px dashed var(--ink);border-radius:999px;color:var(--ink);line-height:1}
+.fh-vault .vt-pk-tick{width:20px;height:20px;margin:0 8px 0 0;border-style:solid;background:var(--ink);color:var(--paper)}
+.fh-vault .vt-pk-all{display:flex;align-items:center;font-weight:600;color:var(--ink)}
+.fh-vault .vt-pk-act{display:flex;flex-direction:column;align-items:flex-end;gap:8px;min-width:0}
+.fh-vault .vt-packet .vt-msg{margin-top:8px}
+
 /* files to sort (staff), other files (client), add a paper (staff) */
 .fh-vault .vt-sort,.fh-vault .vt-other,.fh-vault .vt-add{margin-bottom:32px}
 .fh-vault .vt-sort>h2,.fh-vault .vt-other>h2{margin-bottom:8px}
@@ -159,4 +176,7 @@
   .fh-vault .vt-f{grid-column:span 12}
   .fh-vault .vt-group-count{margin-left:0;flex-basis:100%}
   .fh-vault .vt-complete{grid-template-columns:minmax(0,1fr)}
+  .fh-vault .vt-pk{grid-template-columns:minmax(0,1fr)}
+  .fh-vault .vt-pk-act{align-items:stretch}
+  .fh-vault .vt-pk-act .vt-btn,.fh-vault .vt-pk-act .vt-btn-primary{width:100%}
 }

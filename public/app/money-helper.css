@@ -22,7 +22,7 @@
 .fh-helper .btn-primary:hover{background:var(--ink2)}
 .fh-helper .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);text-align:left}
 .fh-helper .btn:hover{border-color:var(--ink)}
-.fh-helper .btn-text{min-height:40px;padding:0 8px;border:0;background:none;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.fh-helper .btn-text{min-height:44px;padding:0 8px;border:0;background:none;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
 .fh-helper .btn-primary[disabled],.fh-helper .btn[disabled]{opacity:.6;cursor:default}
 .fh-helper :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
@@ -77,6 +77,19 @@
 .fh-helper .empty h2{font-weight:600;color:var(--ink)}
 .fh-helper .empty p{max-width:60ch}
 .fh-helper .suggest{display:flex;flex-wrap:wrap;gap:8px}
+
+/* lessons the helper teaches — short topic buttons above the box to type in. They wrap, so
+   a phone never scrolls sideways. */
+.fh-helper .learn{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;min-width:0}
+.fh-helper .learn-t{margin:0}
+.fh-helper .learn-topics{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.fh-helper .learn-topics .btn{max-width:100%}
+
+/* a lesson answer: the doc it came from on its own line, and an official site it names as a
+   full-size button under the answer */
+.fh-helper .cite{color:var(--text-dim)}
+.fh-helper .links{display:flex;flex-wrap:wrap;gap:8px;max-width:100%}
+.fh-helper .links .btn{max-width:100%}
 
 /* the box to type in — the one primary button on the screen */
 .fh-helper .composer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;align-items:end}

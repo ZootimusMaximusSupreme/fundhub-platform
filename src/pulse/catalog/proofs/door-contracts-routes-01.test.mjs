@@ -319,7 +319,7 @@ const QUESTIONS = [
 
 const GUARANTEE = [
   "If FundHub does not deliver your branded page, your ad set, your live dashboard and your campaign by the end of day one, you get every dollar back, automatically, without asking.",
-  "If you run the full 7 days with at least $500 in spend, your account stays active the whole time, and no call books, you get: a written breakdown of why, at no charge; 7 more days of the machine, at no charge; and your $297 credited in full toward the $10,000 if you join within 30 days.",
+  "If you run the full 7 days with at least $500 in spend, your account stays active the whole time, and no call books, you get: a written breakdown of why, at no charge; 7 more days of the machine, at no charge; and your $297 credited in full toward the $30,000 if you join within 30 days.",
 ];
 
 function trialExpected(overrides) {

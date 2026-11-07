@@ -242,9 +242,10 @@ describe("the whitelist — with detail off, the reachable set is closed", () =>
     }
     assert.deepEqual(APPROVED_TITLES, ["FundHub"]);
     assert.equal(APPROVED_URLS[0], DEFAULT_URL);
-    assert.equal(APPROVED_URLS.length, 23, "portal plus the 22 published lesson routes");
+    assert.equal(APPROVED_URLS.length, 25, "portal, the 22 published lesson routes, and the Finance OS Alerts and Payments sections");
     assert.equal(new Set(APPROVED_URLS).size, APPROVED_URLS.length);
-    for (const url of APPROVED_URLS.slice(1)) {
+    assert.deepEqual(APPROVED_URLS.slice(-2), ["/app/financeos.html#alerts", "/app/financeos.html#payments"]);
+    for (const url of APPROVED_URLS.slice(1, -2)) {
       assert.match(url, /^\/slideshows\/[a-z0-9-]+\.html$/);
     }
     assert.deepEqual([...APPROVED_TAGS], [...PUSH_KINDS]);

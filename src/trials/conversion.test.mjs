@@ -242,11 +242,11 @@ describe("convertTrial", () => {
       orgId: ORG, partnerId: PARTNER, agreementSignedAt: new Date()
     });
     assert.equal(out.trial_rebate_cents, 29700);
-    assert.equal(out.entry_price_cents, 1000000);
+    assert.equal(out.entry_price_cents, 3000000);
     const evt = db.seen.find((s) => /INSERT INTO live_trial_events/i.test(s.sql));
     const detail = JSON.parse(evt.params[3]);
     assert.equal(detail.trial_rebate_cents, 29700);
-    assert.equal(detail.entry_price_cents, 1000000);
+    assert.equal(detail.entry_price_cents, 3000000);
   });
 
   /* NOBODY IS PAID BY THIS CALL. Nothing in production writes partner or

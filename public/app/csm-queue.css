@@ -130,3 +130,93 @@
 #blueprint-csm-services .bcs-skeleton { display: grid; gap: 16px; padding: 8px 0; }
 #blueprint-csm-services .bcs-skeleton span { display: block; height: 16px; border-radius: 4px; background: var(--soft); }
 #blueprint-csm-services .bcs-skeleton span:last-child { width: 60%; }
+/* ── Where each client is (csm-tracking.js, unit N 2026-11-07) ────────────────
+   Reuses the desk's own .card, .btn, .chip, .q-select, .q-area, .q-field and
+   .q-save. Captions are 13px, every control is 44px or more, and nothing here
+   scrolls sideways at 320px. Status always carries a word, never colour alone. */
+.csm-queue-page #csm-tracking{margin:48px 0;min-width:0}
+.csm-queue-page .ct-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:16px}
+.csm-queue-page .ct-intro{min-width:0;flex:1 1 320px}
+.csm-queue-page .ct-intro h2{font-size:var(--fs-title,22px);font-weight:700;line-height:1.25;letter-spacing:-.02em}
+.csm-queue-page .ct-intro p{margin-top:8px;max-width:60ch;font-size:13px;line-height:1.5;color:var(--gray,#626968)}
+.csm-queue-page .ct-filters{display:flex;gap:8px 16px;flex-wrap:wrap;min-width:0}
+.csm-queue-page .ct-filter{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--gray,#626968);min-width:0}
+.csm-queue-page .ct-filter .q-select{min-width:180px;max-width:100%;color:var(--ink,#101416)}
+/* The rounded face sits tall: a 46px select with 12px padding clips its descenders. */
+.csm-queue-page #csm-tracking .q-select{min-height:46px;padding:6px 12px;line-height:1.4;font-size:16px}
+.csm-queue-page .ct-count{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
+.csm-queue-page .ct-count .vl{font-size:32px;font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.csm-queue-page .ct-count .lb{font-size:17px;font-weight:600}
+.csm-queue-page .ct-count .cmp{flex-basis:100%;font-size:13px;color:var(--gray,#626968)}
+.csm-queue-page .ct-banner{display:none;padding:12px 16px;margin:0 0 16px;border:1px solid transparent;border-radius:10px;font-size:14px}
+.csm-queue-page .ct-banner.show{display:block}
+.csm-queue-page .ct-banner.err{background:#f9efec;border-color:#e7cdc6;color:#803f32}
+.csm-queue-page .ct-banner.ok{background:#edf3ed;border-color:#cedfce;color:#36583d}
+.csm-queue-page .ct-list{display:flex;flex-direction:column;min-width:0;border:1px solid var(--line,#e3e5e0);border-radius:10px;background:#fff;overflow:hidden}
+.csm-queue-page .ct-row-main{display:flex;align-items:flex-start;gap:24px;min-width:0}
+.csm-queue-page .ct-who{flex:1;min-width:0}
+.csm-queue-page .ct-name{display:inline-flex;align-items:center;min-height:44px;font-size:18px;font-weight:650;letter-spacing:-.02em;overflow-wrap:anywhere}
+.csm-queue-page .ct-name:hover{text-decoration:underline;text-underline-offset:4px}
+.csm-queue-page .ct-step{font-size:15px;line-height:1.45;overflow-wrap:anywhere}
+.csm-queue-page .ct-facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.csm-queue-page .ct-context{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.csm-queue-page #csm-tracking .chip{font-size:13px}
+.csm-queue-page #csm-tracking .chip.ok{color:#36583d;background:#f0f5ed;border-color:#dce7d5}
+.csm-queue-page .ct-acts{display:flex;flex-shrink:0;gap:8px}
+.csm-queue-page .ct-row.behind{box-shadow:inset 3px 0 0 var(--ink,#101416)}
+.csm-queue-page .ct-detail{border-top:1px solid var(--line,#e3e5e0);margin-top:24px;padding-top:24px;min-width:0}
+.csm-queue-page .ct-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.csm-queue-page .ct-box{min-width:0;padding:16px;border:1px solid var(--line,#e3e5e0);border-radius:10px;background:var(--paper,#f8f8f6)}
+.csm-queue-page .ct-box h3,.csm-queue-page .ct-nudge h3{font-size:13px;font-weight:700;color:var(--gray,#626968);margin-bottom:8px}
+.csm-queue-page .ct-big{font-size:20px;font-weight:700;line-height:1.3;letter-spacing:-.02em;margin-bottom:8px!important;overflow-wrap:anywhere}
+.csm-queue-page .ct-box p{font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.csm-queue-page #csm-tracking .ct-cap{display:block;font-size:13px;line-height:1.5;color:var(--gray,#626968);margin-top:4px;overflow-wrap:anywhere}
+.csm-queue-page .ct-ul{margin:8px 0 0;padding-left:18px;font-size:14px;line-height:1.6}
+.csm-queue-page .ct-season,.csm-queue-page .ct-checks{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
+.csm-queue-page .ct-season li{display:flex;flex-direction:column;gap:2px;min-width:0}
+.csm-queue-page .ct-bank{display:flex;align-items:center;min-width:0;font-size:15px;font-weight:600;overflow-wrap:anywhere}
+.csm-queue-page .ct-bar{position:relative;display:block;margin-top:6px}
+.csm-queue-page .ct-bar progress{display:block;width:100%;height:8px;border:0;border-radius:4px;background:#e6e8e2;-webkit-appearance:none;appearance:none;overflow:hidden}
+.csm-queue-page .ct-bar progress::-webkit-progress-bar{background:#e6e8e2;border-radius:4px}
+.csm-queue-page .ct-bar progress::-webkit-progress-value{background:var(--ink,#101416);border-radius:4px}
+.csm-queue-page .ct-bar progress::-moz-progress-bar{background:var(--ink,#101416);border-radius:4px}
+/* The 30-day and 60-day marks. */
+.csm-queue-page .ct-bar::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent calc(33.333% - 1px),#fff calc(33.333% - 1px),#fff calc(33.333% + 1px),transparent calc(33.333% + 1px),transparent calc(66.666% - 1px),#fff calc(66.666% - 1px),#fff calc(66.666% + 1px),transparent calc(66.666% + 1px))}
+.csm-queue-page .ct-checks li{display:flex;gap:12px;align-items:flex-start;min-width:0}
+.csm-queue-page .ct-checks li>span:last-child{min-width:0}
+.csm-queue-page .ct-mark{flex:0 0 auto;min-width:72px;padding:2px 8px;border:1px solid #d9ded4;border-radius:6px;font-size:13px;font-weight:700;text-align:center;background:#fff}
+.csm-queue-page .ct-checks li.ok .ct-mark{color:#36583d;border-color:#cedfce;background:#f0f5ed}
+.csm-queue-page .ct-checks li.no .ct-mark{color:#803f32;border-color:#e7cdc6;background:#f9efec}
+.csm-queue-page .ct-checks li.unknown .ct-mark{border-style:dashed;color:var(--gray,#626968)}
+.csm-queue-page .ct-nudge{margin-top:24px;padding:16px;border:1px solid var(--line,#e3e5e0);border-radius:10px;background:#fff;min-width:0}
+.csm-queue-page .ct-nudge-row{display:flex;flex-wrap:wrap;gap:0 16px}
+.csm-queue-page .ct-nudge .q-field{margin-top:12px;min-width:0}
+.csm-queue-page .ct-nudge .ct-wide{max-width:none}
+.csm-queue-page .ct-nudge .q-area{font-size:16px;min-height:120px}
+.csm-queue-page .ct-say{display:none;font-size:13px;padding:10px 12px;border-radius:8px}
+.csm-queue-page .ct-say.show{display:inline-block}
+.csm-queue-page .ct-say.ok{background:#edf3ed;color:#36583d}
+.csm-queue-page .ct-say.err{background:#f9efec;color:#803f32}
+.csm-queue-page .ct-foot{margin-top:16px}
+.csm-queue-page .ct-empty{color:var(--gray,#626968);font-size:14px;line-height:1.7}
+.csm-queue-page .ct-empty p+p{margin-top:8px;max-width:68ch}
+.csm-queue-page .ct-empty .btn{margin-top:16px}
+.csm-queue-page .ct-pages{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.csm-queue-page .ct-detail-loading p{font-size:14px;color:var(--gray,#626968)}
+.csm-queue-page .ct-skel{height:132px;background:linear-gradient(100deg,#fff 20%,#f5f6f1 45%,#fff 70%);background-size:220% 100%;animation:qpulse 1.7s ease-in-out infinite;border-bottom:1px solid var(--line,#e3e5e0)}
+.csm-queue-page .ct-skel.small{height:64px;border:1px solid var(--line,#e3e5e0);border-radius:10px;margin-top:12px}
+.csm-queue-page .ct-skel:last-child{border-bottom:0}
+@media(max-width:1100px){
+  .csm-queue-page .ct-row-main{flex-direction:column;gap:16px}
+  .csm-queue-page .ct-acts{width:100%}
+}
+@media(max-width:860px){
+  .csm-queue-page .ct-grid{grid-template-columns:minmax(0,1fr)}
+  .csm-queue-page .ct-filters{width:100%}
+  .csm-queue-page .ct-filter{flex:1 1 140px}
+  .csm-queue-page .ct-filter .q-select{min-width:0;width:100%}
+  .csm-queue-page .ct-acts .btn{flex:1 1 auto}
+  .csm-queue-page .ct-nudge .q-field{flex:1 1 100%}
+  .csm-queue-page .ct-nudge .q-save .btn{width:100%}
+}
+@media(prefers-reduced-motion:reduce){.csm-queue-page .ct-skel{animation:none}}

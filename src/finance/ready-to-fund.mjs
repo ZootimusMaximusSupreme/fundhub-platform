@@ -118,11 +118,51 @@ export async function readPrepCalls(db, { orgId, clientId }) {
   };
 }
 
-/** Status for one client, or null when the client is not in this org. */
+/**
+ * readCsmName — the CSM on the client's file (clients.assigned_csm_staff_id),
+ * by name, only when that staff row is in the client's org, active and not a
+ * demo login. Only the name leaves here, read the way the portal's advisor
+ * card reads a funding advisor's name (api/read/portal-summary.mjs
+ * readAdvisor). No CSM on the file: no query, null. It is its own statement
+ * so the prep-call read above keeps the exact text its checks pin.
+ */
+export async function readCsmName(db, { orgId, staffId }) {
+  if (!staffId) return null;
+  const r = await db.query(
+    `SELECT name FROM staff
+      WHERE id = $1 AND org_id = $2
+        AND status = 'active' AND active = true AND is_demo = false`,
+    [staffId, orgId]
+  );
+  const name = r.rows[0] && r.rows[0].name;
+  return typeof name === "string" && name.trim() ? name.trim() : null;
+}
+
+/**
+ * advisorOf({ csmName }) — the advisor card's person: the CSM on the file, by
+ * name, or null when nobody is assigned (the card then says so). Pure.
+ */
+export function advisorOf(found) {
+  return found && found.csmName ? { name: found.csmName, role: "csm" } : null;
+}
+
+/**
+ * Status for one client, or null when the client is not in this org.
+ * Also carries the advisor card (Finance OS premium pass, 2026-11-07): the
+ * CSM's name and `book_url`, the owner-set booking page BOOK_CALL_URL
+ * (src/deliverables/chrome.mjs) — the same link FinanceOS's "Book a call"
+ * already uses. Nothing is booked from here.
+ */
 export async function readyToFundStatus(db, { orgId, clientId }) {
   const found = await readPrepCalls(db, { orgId, clientId });
   if (!found) return null;
-  return { ...readyStatus(found.rows, { assignedCsm: found.assignedCsm }), process: CSM_PREP_SOURCE };
+  const csmName = await readCsmName(db, { orgId, staffId: found.assignedCsm });
+  return {
+    ...readyStatus(found.rows, { assignedCsm: found.assignedCsm }),
+    process: CSM_PREP_SOURCE,
+    advisor: advisorOf({ csmName }),
+    book_url: BOOK_CALL_URL
+  };
 }
 
 /**

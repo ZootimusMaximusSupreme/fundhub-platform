@@ -1,5 +1,5 @@
 // /app/money-setup.html — runs money-setup.js's own render functions against
-// fixtures. Prices not set paint "$X"; done is only what the read says.
+// fixtures. A price not set is left out, never "$X" (QA23); done is only what the read says.
 import { test } from "node:test";
 import assert from "node:assert";
 import fs from "node:fs";
@@ -53,11 +53,14 @@ test("the page loads money-setup.js, keeps out of the staff shell, and carries t
   assert.match(nav[0], /<a href="\/app\/financeos\.html#setup" aria-current="page">Setup<\/a>/);
 });
 
-test("no price set: $X everywhere, no pay button, soft pull is the one primary action", () => {
+test("no price set: the price is left out (never $X), no pay button, soft pull is the one primary action", () => {
   const html = S.render(fresh());
   const t = text(html);
-  assert.match(t, /Pay setup fee \(\$X\)/);
-  assert.match(t, /Setup \$X one time · \$X per container per month · you have 0 containers/);
+  assert.doesNotMatch(t, /\$X/, "QA23: a price that is not set is never printed as $X");
+  assert.match(t, /Pay setup fee Price not set yet/, "the step names no amount");
+  assert.doesNotMatch(html, /class="caption price-line"/, "no price line without a price");
+  assert.doesNotMatch(t, /Setup, one time|Per container, per month/, "no price rows without a price");
+  assert.match(t, /Your containers 0/);
   assert.match(t, /The setup price is not set yet/);
   assert.doesNotMatch(html, /data-act="checkout"/, "a pay button with no price would do nothing");
   assert.doesNotMatch(t, /\$0\.00/);
@@ -78,6 +81,16 @@ test("price set: pay button is the primary, labelled with the amount", () => {
   assert.match(html, /class="btn-line" type="button" data-act="soft-pull"/);
   assert.equal((html.match(/class="btn-primary"/g) || []).length, 1);
   assert.match(text(html), /Setup \$497\.00 one time · \$49\.00 per container per month · you have 2 containers/);
+});
+
+test("one price set: only that price shows, the other is left out", () => {
+  const d = fresh();
+  d.setup_fee_cents = 49700;
+  d.containers = 2;
+  const t = text(S.render(d));
+  assert.match(t, /Setup \$497\.00 one time · you have 2 containers/);
+  assert.match(t, /Setup, one time \$497\.00/);
+  assert.doesNotMatch(t, /Per container, per month|per container per month|\$X/);
 });
 
 test("an open checkout says finish paying and links to it", () => {
