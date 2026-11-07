@@ -130,10 +130,15 @@
     if (!current()) return;
     if(view === 'preparation') { host.hidden=false;host.innerHTML=button('Back to Blueprint overview','view','data-view="today"');document.body.dataset.blueprintFulfillment='preparation';return; }
     const tabs = [['today','Overview'],['repair','Credit repair'],['inquiries','Inquiry removal'],['funding','Applications'],['services','Reports and help'],['preparation','Preparation steps']];
+    const navigation = `<nav class="bf-tabs" aria-label="Funding workspace">${tabs.map(([key,label]) => button(label,'view',`data-view="${key}" ${view === key ? 'aria-current="page"' : ''}`)).join('')}</nav>`;
     host.innerHTML = `<div class="bf-header"><div><h2>Your Capital Blueprint</h2>${view === 'today' ? '' : `<p class="bf-caption">${esc(stateNames[funding?.state] || 'Your saved funding plan')}</p>`}</div>${button('Refresh','refresh')}</div>
-      <nav class="bf-tabs" aria-label="Funding workspace">${tabs.map(([key,label]) => button(label,'view',`data-view="${key}" ${view === key ? 'aria-current="page"' : ''}`)).join('')}</nav>
-      ${view === 'preparation' ? '<p>Your saved preparation steps are below.</p>' : (screens[view] || today)()}
+      ${view === 'today' ? '' : navigation}${(screens[view] || today)()}
       <div class="bf-status" role="status" aria-live="polite">${esc(notice)}</div>`;
+    if(view === 'today') {
+      const next = host.querySelector('.bj-next');
+      if(next) next.insertAdjacentHTML('afterend',navigation);
+      else host.querySelector('.bf-status').insertAdjacentHTML('beforebegin',navigation);
+    }
     document.body.dataset.blueprintFulfillment = view === 'preparation' ? 'preparation' : 'active';
   }
 

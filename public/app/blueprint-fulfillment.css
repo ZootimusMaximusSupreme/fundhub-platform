@@ -105,7 +105,8 @@ body[data-blueprint-fulfillment="preparation"] #blueprint-fulfillment { padding:
 #blueprint-fulfillment ul { padding-left: 24px; }
 @media (max-width: 600px) {
   #blueprint-fulfillment { padding: 16px; margin: 16px 0; }
-  #blueprint-fulfillment .bf-header { display: block; }
+  #blueprint-fulfillment .bf-header { display: flex; align-items:center; }
+  #blueprint-fulfillment .bf-header h2 { margin:0;font-size:22px;line-height:1.3; }
   #blueprint-fulfillment .bf-tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); overflow: visible; }
   #blueprint-fulfillment .bf-tabs button { min-width: 0; white-space: normal; }
   #blueprint-fulfillment .bf-panel { padding: 16px; }
