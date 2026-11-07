@@ -16,7 +16,7 @@ Law: `.ai/rules/split-and-proceed.md`. Exception: Full End-To-End Audit skips th
 
 ## 1. Check the model before you start
 
-Law: `.ai/rules/model-by-job.md`. State `Model: <tier> — current is <tier>. Match / Switch.` Opus plans and checks slices, Sonnet may do the moves (owner-set 2026-10-21). Chris also said on 2026-10-24 that Opus is not really needed here.
+Law: `.ai/rules/model-by-job.md`. Check the model quietly; say something only when it is too weak for the job (owner-set 2026-11-05). Opus plans and checks slices, Sonnet may do the moves (owner-set 2026-10-21). Chris also said on 2026-10-24 that Opus is not really needed here.
 
 ## 2. Ground rules
 
@@ -26,6 +26,7 @@ Law: `.ai/rules/ground-rules.md`.
 
 Law: `.ai/rules/ground-rules.md`. Left unnumbered on purpose so later section numbers stay put.
 
+No split or model line in chats (owner-set 2026-11-05). Split the work and check the model quietly. Speak up only when the model is too weak. Same law: `.ai/rules/split-and-proceed.md` and `.ai/rules/model-by-job.md`
 GO means keep going (owner-set 2026-10-19). Same law: `.ai/rules/owner-go-no-repeat-approval.md`
 Dictator mode (owner-set 2026-09-08). Same law: `.ai/rules/dictator-owner-overrides.md`
 Do not volunteer fixes (owner-set 2026-09-08). Same law: `.ai/rules/no-extra-holes.md`
@@ -113,7 +114,8 @@ When the rules settle a choice, make it and say what you did (owner-set 2026-10-
 Rules never drift (owner-set 2026-10-24). Same law: `.ai/rules/rules-no-drift.md`
 No new markdown files (owner-set 2026-10-24). Do not create new .md files unless I ask for one. Update an existing file instead. Same law: `.ai/rules/no-new-markdown.md`
 No Josh, it is Chris (owner-set 2026-10-31). Josh is gone. Everything a lead, client or staff member reads or hears says Chris, including the AI setter. Same law: `.ai/rules/no-josh-chris-everywhere.md`
-Check audience data before sharing (owner-set 2026-11-02). Read the list and the destination's allowed data, including selection rules and names; do not send Meta credit-score, income, financial-status or consumer-report segments as Custom Audience or lookalike seeds. Same law: `.ai/rules/audience-data-recipient-check.md`
+Check audience data before sharing (owner-set 2026-11-02, corrected oversight same day). Check selection, uploaded fields, names, and metadata; neutral titles do not cure credit/income-filtered lists. Meta write scripts refuse until source selection is changed in code and reviewed. Same law: `.ai/rules/audience-data-recipient-check.md`
+Meta audience naming hygiene only (superseded 2026-11-02 oversight — not always-on). No credit/income words in Meta audience titles; does not authorize segmented uploads. Same file: `.ai/rules/meta-audience-neutral-labels.md`
 Confirm on the calendar, never by reply (owner-set 2026-10-31). No message asks a lead to reply CONFIRM or YES; the one action is accepting the calendar invite in their email. Same law: `.ai/rules/confirm-on-the-calendar.md`
 
 ## 3. Before writing any code
