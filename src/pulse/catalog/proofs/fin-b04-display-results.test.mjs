@@ -392,5 +392,5 @@ test("the round, contract, letter, pipeline and social writers match what the qu
   assert.match(read("api/messages.mjs"), /requireActiveShift\(req, res, \{ db, principal, exempt: SUPER_ROLES \}\)/);
   assert.match(read("api/chat/messages.mjs"), /requireActiveShift\(req, res, \{\s*db, principal, exempt: SUPER_ROLES\s*\}\)/);
   // the unlock modal hands the client "I would like a call about: <topic>"
-  assert.match(read("src/handlers/client-lifecycle.mjs"), /return \{ firstName: parts\[0\], lastName: null \}/);
+  assert.match(read("src/handlers/client-lifecycle.mjs"), /const one = looksLikeFicoBand\(parts\[0\]\) \? null : parts\[0\];\s*return \{ firstName: one, lastName: null \}/);
 });

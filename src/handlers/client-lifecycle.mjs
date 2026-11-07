@@ -19,6 +19,7 @@ import { ensureCrmContactId, config as crmConfig } from "../messaging/crm-contac
 import { adaptersBlocked } from "../lib/dry-run.mjs";
 import { upsertSurveyCarbonCopy } from "./client-custom-fields.mjs";
 import { stampQualificationBucket } from "../config/survey-qualification.mjs";
+import { looksLikeFicoBand } from "../survey/cf-question-map.mjs";
 import { addTags } from "../workflows/tags.mjs";
 import { demoFlagForEmail } from "../demo/test-identity.mjs";
 import { advanceCardToStage } from "../workflows/cards.mjs";
@@ -53,8 +54,18 @@ function answersTouchBucket(answers) {
 export function splitName(name) {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return { firstName: null, lastName: null };
-  if (parts.length === 1) return { firstName: parts[0], lastName: null };
-  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+  if (parts.length === 1) {
+    const one = looksLikeFicoBand(parts[0]) ? null : parts[0];
+    return { firstName: one, lastName: null };
+  }
+  let first = parts[0];
+  let rest = parts.slice(1).join(" ");
+  if (looksLikeFicoBand(first) && looksLikeFicoBand(rest)) {
+    return { firstName: null, lastName: null };
+  }
+  if (looksLikeFicoBand(first)) first = null;
+  if (looksLikeFicoBand(rest)) rest = null;
+  return { firstName: first, lastName: rest };
 }
 
 /** Stamp a visible warning on the client when the CRM linkage is missing. */

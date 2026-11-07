@@ -13,7 +13,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
-import handler, { stageAmount } from "../../api/dashboard/pipeline.mjs";
+import handler, { pipelineCardPersonName, pipelineSurveySnippet, stageAmount } from "../../api/dashboard/pipeline.mjs";
 import { fakeDb, makeRes, req, runWithSharedDb, staffSession, accountSession, ORG_ID, OTHER_ORG_ID } from "../testing/handler-harness.mjs";
 import { assertSqlHas, bindProblem } from "../testing/s3-scoped-rows.mjs";
 import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
@@ -112,6 +112,30 @@ describe("GET /api/dashboard/pipeline", () => {
     assert.equal(col(res, "closed_won").amount, 0, "an empty column is a real zero");
     assert.equal(stageAmount([]), 0);
     assert.equal(stageAmount([{ amount: null }]), null);
+  });
+
+  test("pipelineCardPersonName never uses a credit band as the person name", () => {
+    assert.equal(
+      pipelineCardPersonName({ first_name: "580-649", last_name: null, email: "x@y.com" }),
+      "(unnamed)"
+    );
+    assert.equal(
+      pipelineCardPersonName({ first_name: "Pat", last_name: "Lee", email: "p@y.com" }),
+      "Pat Lee"
+    );
+  });
+
+  test("pipelineSurveySnippet joins saved survey labels for the card line", () => {
+    assert.equal(
+      pipelineSurveySnippet({
+        survey_target_label: "$50k - $100k",
+        survey_planned_label: "Payroll or rent",
+        survey_fico_label: "620-699"
+      }),
+      "$50k - $100k · Payroll or rent · 620-699"
+    );
+    assert.equal(pipelineSurveySnippet({ survey_fico_label: "580-649" }), "580-649");
+    assert.equal(pipelineSurveySnippet({}), null);
   });
 
   test("the card shows who it is, the unread-message and missing-amount flags, the owner and the survey credit band as the database holds them", async () => {

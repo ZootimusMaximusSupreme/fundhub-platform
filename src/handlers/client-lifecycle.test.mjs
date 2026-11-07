@@ -256,6 +256,8 @@ test("splitName", () => {
   assert.deepEqual(splitName("Cher"), { firstName: "Cher", lastName: null });
   assert.deepEqual(splitName("Mary Jane Watson"), { firstName: "Mary", lastName: "Jane Watson" });
   assert.deepEqual(splitName(""), { firstName: null, lastName: null });
+  assert.deepEqual(splitName("580-649"), { firstName: null, lastName: null });
+  assert.deepEqual(splitName("620-699"), { firstName: null, lastName: null });
 });
 
 test("resolveClient: explicit clientId resolves only when it belongs to the event org", async () => {
