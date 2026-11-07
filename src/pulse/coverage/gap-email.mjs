@@ -77,17 +77,16 @@ SELECT count(*) FILTER (WHERE status = 'failed')::int AS failed_n,
 /* Exact provider_ref is workflow:<template>:magic-link:<link id>.
    A caller that passes its own event id still queues the same template
    a few minutes later. Either match means the mail was queued.
-   The booking confirm links (365 day life, queueEmail false in
-   src/workflows/s-04b-booking-reminders.mjs) ride inside the confirm email and
-   never queue this template, so only short-lived links are read. A null client
-   never matches a null client. */
+   owner-set 2026-11-07: 12 months, one use. Sign-in links now last 12
+   months, so a one-hour life no longer tells a sign-in link apart. Every
+   issued link in the window is watched. A null client never matches a null
+   client. */
 export const MAGIC_LINK_SQL = `
 SELECT count(*)::int AS n
   FROM account_magic_links l
  WHERE l.org_id = $1::uuid
    AND l.outcome = 'issued'
    AND l.created_at >= $2::timestamptz
-   AND (l.expires_at IS NULL OR l.expires_at - l.created_at <= interval '1 hour')
    AND NOT EXISTS (
      SELECT 1
        FROM messages m

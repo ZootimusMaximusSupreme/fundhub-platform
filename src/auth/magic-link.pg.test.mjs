@@ -111,7 +111,7 @@ describe("portal magic-link sign-in", { skip: !HAVE_DB ? "no DATABASE_URL" : fal
       assert.notEqual(row.token_hash, out.token);
       assert.ok(!JSON.stringify(row).includes(out.token), "the cleartext token was stored");
 
-      // Expiry is minutes away, not days.
+      // Expiry is 12 months away (owner-set 2026-11-07: 12 months, one use), not 15 minutes.
       const minutes = (new Date(row.expires_at) - Date.now()) / 60000;
       assert.ok(minutes > LINK_TTL_MINUTES - 2 && minutes <= LINK_TTL_MINUTES + 1,
         `expiry is ${minutes} minutes away`);
@@ -412,6 +412,37 @@ describe("portal magic-link sign-in", { skip: !HAVE_DB ? "no DATABASE_URL" : fal
       const row = (await db.query(
         `SELECT consumed_at FROM account_magic_links WHERE id = $1`, [issued.linkId])).rows[0];
       assert.equal(row.consumed_at, null);
+    });
+
+    test("12 MONTHS — a link clicked on day 364 works once; on day 366 it is refused", async () => {
+      // owner-set 2026-11-07: 12 months, one use. Moving the link 364 or 366
+      // days back in the database is the same as clicking it that many days
+      // after it was sent, because the deadline is a WHERE clause against now().
+      const aged = async (tag, days) => {
+        const email = `${TAG}-v-${tag}@x.io`;
+        const clientId = await mkClient(email);
+        await createAccount(db, { orgId: org, kind: "client", email, password: PW, clientId });
+        const issued = await requestMagicLink(db, { email, ip: IP.c });
+        await db.query(
+          `UPDATE account_magic_links
+              SET created_at = created_at - make_interval(days => $2::int),
+                  expires_at = expires_at - make_interval(days => $2::int)
+            WHERE id = $1`,
+          [issued.linkId, days]);
+        return issued;
+      };
+
+      const day364 = await aged("d364", 364);
+      const first = await verifyMagicLink(db, day364.token, { ip: IP.c });
+      assert.equal(first.ok, true, "a 364-day-old link signs in");
+      const again = await verifyMagicLink(db, day364.token, { ip: IP.c });
+      assert.equal(again.ok, false, "a used link is refused");
+      assert.equal(again.error, "invalid_link");
+
+      const day366 = await aged("d366", 366);
+      const late = await verifyMagicLink(db, day366.token, { ip: IP.c });
+      assert.equal(late.ok, false, "a 366-day-old link is refused");
+      assert.equal(late.error, "invalid_link");
     });
 
     test("a forged token is refused, and looks exactly like an expired one", async () => {

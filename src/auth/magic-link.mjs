@@ -49,15 +49,17 @@ import { resolveDefaultOrg } from "./org.mjs";
 import { createAccountSession, verifyAccountSession } from "./account-session.mjs";
 import { sendTemplated } from "../workflows/messaging.mjs";
 
-/** How long a link is good for. Short because the whole point of a mailed
-    credential is that it stops being one quickly; 15 minutes is long enough to
-    switch to a phone and read the mail, short enough that a link sitting in an
-    archived inbox is not a way in. */
-export const LINK_TTL_MINUTES = 15;
+/** How long an emailed portal sign-in link stays good.
+    owner-set 2026-11-07: 12 months, one use. Chris: "we need to ensure links
+    dont expire for 12 months. its dumb." Before this the link lasted 15
+    minutes. 12 months is 365 days. The sign-in form, the staff "send
+    portal link" button and every other caller of requestMagicLink use this.
+    The link still works only once (verifyMagicLink below). */
+export const LINK_TTL_MINUTES = 365 * 24 * 60;
 
-/** Booking-confirm portal token. Owner 2026-08-23: a confirm email may be
-    opened hours or days later, so that path uses 365 days. Still single-use.
-    Self-service /api/auth/magic-link stays on LINK_TTL_MINUTES. */
+/** Booking-confirm portal link. Same 12 months as LINK_TTL_MINUTES
+    (owner-set 2026-11-07: 12 months, one use). Kept as its own name because
+    older callers and tests read it. Still single-use. */
 export const BOOKING_CONFIRM_LINK_TTL_MINUTES = 365 * 24 * 60;
 
 /** The template the email is written from. There IS a row for this key —
@@ -206,8 +208,8 @@ export async function requestMagicLink(db, {
      than the second deduping into the first and never arriving.
 
      The rendered body carries the URL, and therefore the cleartext token. That
-     is what an email is; it is the one place the token is written down, and it
-     is why the link expires in minutes and dies on first use. */
+     is what an email is; it is the one place the token is written down. The
+     link works once, and it stays good for LINK_TTL_MINUTES (12 months). */
   const url = magicLinkUrl(token, env, { bookingClaim });
   let sent = false;
   if (queueEmail) {

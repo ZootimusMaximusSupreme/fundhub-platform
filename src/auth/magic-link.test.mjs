@@ -136,12 +136,13 @@ describe("magic link — no database needed", () => {
     });
   });
 
-  test("the link is short-lived and the template key is the seeded one", () => {
-    // Both are load-bearing constants rather than preferences: the TTL is what
-    // makes a link left in an inbox stop being a credential, and the key must
-    // match db/seed/007_portal_magic_link_template.sql exactly or sendTemplated
-    // finds no row and silently queues nothing.
-    assert.equal(LINK_TTL_MINUTES, 15);
+  test("the link stays good for 12 months and the template key is the seeded one", () => {
+    // owner-set 2026-11-07: 12 months, one use. 12 months is 365 days. Not 15
+    // minutes, and not 10 years. The key must match
+    // db/seed/007_portal_magic_link_template.sql exactly or sendTemplated finds
+    // no row and silently queues nothing.
+    assert.equal(LINK_TTL_MINUTES, 365 * 24 * 60);
+    assert.equal(LINK_TTL_MINUTES, 525600);
     assert.equal(BOOKING_CONFIRM_LINK_TTL_MINUTES, 365 * 24 * 60);
     assert.equal(MAGIC_LINK_TEMPLATE_KEY, "EMAIL-PORTAL-MAGIC-LINK");
   });

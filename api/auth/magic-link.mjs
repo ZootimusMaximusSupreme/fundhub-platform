@@ -36,7 +36,8 @@ import { safeError } from "../../src/http/health.mjs";
    that has a portal, and says nothing about whether this one does. */
 const UNIFORM_MESSAGE =
   "If that email address has a Fundhub portal, a sign-in link is on its way. " +
-  "The link expires in 15 minutes.";
+  // owner-set 2026-11-07: 12 months, one use.
+  "The link works once and stays good for 12 months.";
 
 function clientIp(req) {
   const xf = req.headers?.["x-forwarded-for"];
