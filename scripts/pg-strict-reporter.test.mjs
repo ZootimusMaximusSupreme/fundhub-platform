@@ -34,11 +34,12 @@ for(const [name,source,status,output] of cases){
 test("actual runner uses the strict reporter only for PG and leaves all twelve unit jobs unchanged",()=>{
   const dir=mkdtempSync(path.join(tmpdir(),"fundhub-pg-runner-"));
   try{
-    for(const p of ["scripts","src/pulse/catalog/proofs"])mkdirSync(path.join(dir,p),{recursive:true});
+    for(const p of ["scripts","src/pulse/catalog/proofs","src/verification"])mkdirSync(path.join(dir,p),{recursive:true});
     // Execute the actual runner/reporter bytes in a tiny discovered suite;
     // no database or application/provider code is involved in this control.
     for(const p of ["run-suite.mjs","run-suite-shards.mjs","pg-strict-reporter.mjs"])
       writeFileSync(path.join(dir,"scripts",p),readFileSync(path.join(HERE,p)));
+    writeFileSync(path.join(dir,"src/verification/scratch-guard.mjs"),readFileSync(path.join(HERE,"../src/verification/scratch-guard.mjs")));
     writeFileSync(path.join(dir,"src/pulse/catalog/proofs/display-proof-cases.mjs"),"export const DISPLAY_PROOF_CASES=[];\n");
     const found=new Map();
     for(let i=0;i<256&&found.size<6;i++){

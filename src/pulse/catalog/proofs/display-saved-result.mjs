@@ -285,8 +285,13 @@ SELECT count(*)::int AS sample_count,
 
 const COMMISSION_SUPERSEDE_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE newer.id IS NULL OR newer.effective_from IS DISTINCT FROM old.effective_to
-         OR NULLIF(BTRIM(COALESCE(newer.notes, '')), '') IS NULL)::int AS bad_count
+       count(*) FILTER (WHERE (newer.id IS NULL AND NOT (
+           COALESCE(old.notes, '') ~ ('(^|[[:space:]])Owner-retired effective '
+             || to_char(old.effective_to AT TIME ZONE 'UTC', 'YYYY-MM-DD')
+             || ' by migration [0-9]+; [^[:space:]]')
+         )) OR (newer.id IS NOT NULL AND (
+           newer.effective_from IS DISTINCT FROM old.effective_to
+           OR NULLIF(BTRIM(COALESCE(newer.notes, '')), '') IS NULL)))::int AS bad_count
   FROM commission_rules old
   LEFT JOIN commission_rules newer ON newer.org_id = old.org_id AND newer.name = old.name
    AND newer.product_id IS NOT DISTINCT FROM old.product_id AND newer.role IS NOT DISTINCT FROM old.role
@@ -378,7 +383,7 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   fundingQuery("Funded amount prompt (window.prompt, up to 3 tries; blank or cancel abandons the move, never sends zero)", "A valid prompt submission must reach the round.funded receipt and equal the amount saved on that funding round.", "funded-prompt", ROUND_FUNDED_SQL),
   query("Page open: commission ledger (ACCRUED and PAID MTD tiles, payout table)", "Every non-demo ledger row returned to the page must link staff and carry a valid state with its required timestamps and payout reference.", "commission-ledger", COMMISSION_LEDGER_SQL),
   query("Page open: commission rules and versions", "Every rule returned to the page must carry the exact method fields and valid product, staff, or tier links it names.", "commission-rules", COMMISSION_RULES_SQL),
-  query("Commission rule 'Close v<N> - open v<N+1>': saves a new effective-dated rate and reason", "Each closed rule must link to its replacement at the exact boundary and keep the submitted reason on the new row.", "commission-supersede", COMMISSION_SUPERSEDE_SQL),
+  query("Commission rule 'Close v<N> - open v<N+1>': saves a new effective-dated rate and reason", "Each closed rule must link to its replacement at the exact boundary and keep the submitted reason on the new row, unless an owner-retired rule has an explicit dated retirement reason.", "commission-supersede", COMMISSION_SUPERSEDE_SQL),
   quietQuery("'Approve selected': moves Accrued rows to Approved", "Each commission.approved receipt must link to the same ledger amount and an approved timestamp and actor, and every approved or paid ledger row must have its approval receipt.", "commission-approved", COMMISSION_APPROVED_SQL),
   quietQuery("'Mark paid...': asks for the ACH / check / payroll id, marks Approved rows Paid (records only, moves no money)", "Each commission.paid receipt must link to the same paid ledger amount and exact payout reference, and every paid ledger row must have its paid receipt.", "commission-paid", COMMISSION_PAID_SQL),
   query("Ledger table (date, person, client, product, rule version, basis, rate, payout, status)", "Every non-demo ledger row shown in this money table must link its staff, client, frozen rule version, product, basis amount, rule rate, payout, date, and status.", "commission-ledger-table", COMMISSION_LEDGER_TABLE_SQL),

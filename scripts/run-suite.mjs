@@ -34,9 +34,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DISPLAY_PROOF_CASES } from "../src/pulse/catalog/proofs/display-proof-cases.mjs";
+import { isLocalScratchDatabaseUrl } from "../src/verification/scratch-guard.mjs";
 import { UNIT_SHARD_COUNT, unitShardFor } from "./run-suite-shards.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+for (const key of ["DATABASE_URL", "MIGRATION_DATABASE_URL", "APP_DATABASE_URL"]) {
+  if (!process.env[key]) continue;
+  assert.ok(isLocalScratchDatabaseUrl(process.env[key]),
+    `Test suite refuses a hosted or non-scratch ${key}; use local scratch Postgres.`);
+}
 
 function walk(dir, out = []) {
   for (const name of fs.readdirSync(dir)) {

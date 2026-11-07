@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
@@ -36,4 +37,16 @@ test("unit CI shards cover every test file exactly once without changing the pg 
 test("unit shard assignment is stable for a file path", () => {
   assert.equal(unitShardFor("src/example.test.mjs"), unitShardFor("src/example.test.mjs"));
   assert.throws(() => unitShardFor("src/example.test.mjs", 0), /positive/);
+});
+
+test("the full suite refuses every hosted database connection before starting tests", () => {
+  const empty = { ...process.env, DATABASE_URL: "", MIGRATION_DATABASE_URL: "", APP_DATABASE_URL: "" };
+  for (const key of ["DATABASE_URL", "MIGRATION_DATABASE_URL", "APP_DATABASE_URL"]) {
+    const run = spawnSync(process.execPath, [path.join(ROOT, "scripts/run-suite.mjs")], {
+      cwd: ROOT, env: { ...empty, [key]: "postgres://test:test@production.example/fundhub" }, encoding: "utf8"
+    });
+    assert.equal(run.status, 1, `${key} must stop the suite`);
+    assert.match(run.stderr, new RegExp(`Test suite refuses a hosted or non-scratch ${key}`));
+    assert.doesNotMatch(run.stderr, /\[run-suite\] (unit|pg):/, "no test child should start");
+  }
 });

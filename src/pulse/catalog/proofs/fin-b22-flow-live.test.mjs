@@ -177,8 +177,9 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
 // ── staff replies ───────────────────────────────────────────────────────────
 {
   const reply = (id, over = {}) => ({
-    id, org_id: ORG, direction: "outbound", channel: "sms", status: "delivered", sender_staff_id: u(950),
-    provider_message_id: `SM${id.slice(-4)}`, is_demo: false, created_at: ago(2 * HOUR), last_attempt_at: ago(2 * HOUR - 1),
+    id, org_id: ORG, client_id: u(900), direction: "outbound", channel: "sms", status: "delivered", sender_staff_id: u(950),
+    to_address: "+15555550100", rendered_body: "Please review the saved note.", subject: null,
+    provider: "twilio", provider_message_id: `SM${id.slice(-4)}`, is_demo: false, created_at: ago(2 * HOUR), last_attempt_at: ago(2 * HOUR - 1),
     scheduled_at: null, ...over,
   });
   FIXTURES.set("job:staff-message-sweeper", {
@@ -213,6 +214,22 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
         ["an email that bounced a week after it was typed, inside the lookback", (t) => {
           Object.assign(find(t.messages, u(2)), { status: "bounced", channel: "email", created_at: ago(6 * DAY), last_attempt_at: ago(6 * DAY) });
         }],
+        ["a later unrelated message to the same client does not clear a failed reply", (t) => {
+          Object.assign(find(t.messages, u(1)), { status: "failed", provider_message_id: null });
+          t.messages.push(reply(u(9), { created_at: ago(HOUR), rendered_body: "A different note." }));
+        }, { sample: 4 }],
+        ["a later copy only marked sent does not clear a failed reply", (t) => {
+          Object.assign(find(t.messages, u(1)), { status: "failed", provider_message_id: null });
+          t.messages.push(reply(u(9), { created_at: ago(HOUR), status: "sent" }));
+        }, { sample: 4 }],
+        ["a demo delivery does not clear a real failed reply", (t) => {
+          Object.assign(find(t.messages, u(1)), { status: "failed", provider_message_id: null });
+          t.messages.push(reply(u(9), { created_at: ago(HOUR), is_demo: true }));
+        }, { sample: 3 }],
+        ["a delivery without a provider does not clear the failure", (t) => {
+          Object.assign(find(t.messages, u(1)), { status: "failed", provider_message_id: null });
+          t.messages.push(reply(u(9), { created_at: ago(HOUR), provider: null }));
+        }, { sample: 4 }],
       ],
       "a reply left and got no receipt for a day": [
         ["sent 25 hours ago, still sent", (t) => { find(t.messages, u(2)).last_attempt_at = ago(25 * HOUR); }],
@@ -220,6 +237,10 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
       ],
     },
     ignored: [
+      ["a failed reply has the exact same words delivered to the same address by the same staff member", (t) => {
+        Object.assign(find(t.messages, u(1)), { status: "failed", provider_message_id: null });
+        t.messages.push(reply(u(9), { created_at: ago(HOUR) }));
+      }, { sample: 4 }],
       ["held overnight, due in 4 hours", (t) => { find(t.messages, u(3)).scheduled_at = ago(-4 * HOUR); }],
       ["queued 10 minutes ago and due now", (t) => { Object.assign(find(t.messages, u(3)), { scheduled_at: null, created_at: ago(10) }); }],
       ["sent 23 hours ago and waiting on its receipt", (t) => { find(t.messages, u(2)).last_attempt_at = ago(23 * HOUR); }],
@@ -233,7 +254,7 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
     drops: [
       ["company scope", "m.org_id = $1::uuid", "1 = 1"],
       ["outbound only", "m.direction = 'outbound'", "1 = 1"],
-      ["failed", "m.status IN ('failed', 'bounced')\n         OR ", "1 = 0\n         OR "],
+      ["failed", "(m.status IN ('failed', 'bounced') AND NOT ", "(1 = 0 AND NOT "],
       ["failed alone", "m.status IN ('failed', 'bounced')", "m.status IN ('bounced')"],
       ["bounced alone", "m.status IN ('failed', 'bounced')", "m.status IN ('failed')"],
       ["staff typed only", "AND m.sender_staff_id IS NOT NULL", ""],

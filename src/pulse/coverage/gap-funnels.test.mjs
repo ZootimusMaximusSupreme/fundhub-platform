@@ -90,7 +90,7 @@ const GOOD = {
   "/order": orderHtml(14700),
   "/api/webhooks/clickfunnels": { status: 405, body: '{"ok":false,"error":"Method not allowed"}' },
   "/watch": "Get Started <!-- fh-watch-lede:start -->",
-  "/thank-you": "You're All Set <script src=\"https://fundhub.ai/funnel/thankyou-sort.js\"></script>",
+  "/thank-you": '<section class="hero"><h1>Congratulations!</h1><h1 class="sec" id="fh-hero-sec">Your call is booked.</h1></section><script src="https://fundhub.ai/funnel/thankyou-sort.js"></script>',
   "/roadmap-thank-you": "You're All Set <section id=\"fh-expect\"></section>",
   "/apply": "cf_svy_funding_target_amount fetch('https://fundhub.ai/api/webhooks/clickfunnels', { method: 'POST' }) data-src-unqualified=\"https://apply.fundhub.ai/funding-book-call--02424\"",
   "/roadmap-book": '<iframe id="fh-book-frame" src="https://apply.fundhub.ai/funding-book-call"></iframe>',
@@ -345,6 +345,20 @@ test("gap funnels: watch and thank-you down fail", async () => {
   assert.match(watch.detail, /\/watch answered 503/);
   assert.equal(thanks.status, "FAIL");
   assert.match(thanks.detail, /\/thank-you answered 404/);
+});
+
+test("gap funnels: thank-you requires both visible booking confirmation lines and its script", async () => {
+  const source = GOOD["/thank-you"];
+  for (const [missing, body] of [
+    ["booking confirmation heading", source.replace("Congratulations!", "Thanks!")],
+    ["booked-call confirmation", source.replace("Your call is booked.", "We got your request.")],
+    ["thank-you script thankyou-sort.js", source.replace("thankyou-sort.js", "other.js")]
+  ]) {
+    const rows = await gapChecks(ctx({ ...GOOD, "/thank-you": body }));
+    const thanks = byId(rows, "funnel:thank-you");
+    assert.equal(thanks.status, "FAIL", missing);
+    assert.match(thanks.detail, new RegExp(missing.replaceAll("-", "\\-")));
+  }
 });
 
 test("gap funnels: apply form that cannot post fails", async () => {

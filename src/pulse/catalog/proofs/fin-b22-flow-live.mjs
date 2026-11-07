@@ -22,6 +22,7 @@ import { createHash } from "node:crypto";
 import { TEST_ADDRESS_RE, RECEIPT_AFTER_HOURS } from "../../coverage/gap-sms.mjs";
 import { TEMPLATE_KEYS as WAYPOINT_TEMPLATE_KEYS } from "../../../nudge/ladder.mjs";
 import { PROMOTIONAL_KEY } from "../../../push/message-policy.mjs";
+import { STAFF_EXACT_DELIVERY } from "./fin-b04-sql-messages.mjs";
 import snapshot from "./fin-b22-sql-template-keys.json" with { type: "json" };
 
 export const FIN_B22_LIVE_LANE = "src/pulse/coverage/gap-catalog-flow.mjs";
@@ -140,13 +141,13 @@ SELECT (SELECT count(*)::int FROM sms) AS sample_count,
  * $1 org, $2 since, $3 stuck-before, $4 receipt-before. A staff-typed reply that never reached the customer:
  * still queued past due, stuck on sending, said it left with no provider id, sat on sent a day with no receipt,
  * OR ended failed or bounced (the provider turned it down, the sender gave up after its attempts, or the
- * address bounced). A failed or bounced reply is a final answer and stays red for the whole lookback: the
- * customer never got what the person typed.
+ * address bounced). A failed or bounced reply stays red unless the same staff
+ * member's exact words reach the same address within a day and get a delivery receipt.
  */
 export const STAFF_REPLY_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE
-            m.status IN ('failed', 'bounced')
+            (m.status IN ('failed', 'bounced') AND NOT ${STAFF_EXACT_DELIVERY})
          OR (m.status = 'queued' AND COALESCE(m.scheduled_at, m.created_at) < $3::timestamptz)
          OR (m.status = 'sending' AND COALESCE(m.last_attempt_at, m.created_at) < $3::timestamptz)
          OR (m.status IN ('sent', 'delivered') AND NULLIF(BTRIM(COALESCE(m.provider_message_id, '')), '') IS NULL)
@@ -414,7 +415,7 @@ export const FIN_B22_LIVE = Object.freeze([
     surface: "job:staff-message-sweeper",
     family: "message",
     emptyAs: "quiet",
-    requirement: `Every reply a staff member typed in the last ${STAFF_LOOKBACK_DAYS} days left the queue, carries a provider id, did not end failed or bounced, and is not stuck on sent with no receipt after ${RECEIPT_AFTER_HOURS} hours.`,
+    requirement: `Every reply a staff member typed in the last ${STAFF_LOOKBACK_DAYS} days left the queue, carries a provider id, did not end failed or bounced without an exact later delivery, and is not stuck on sent with no receipt after ${RECEIPT_AFTER_HOURS} hours.`,
     sql: STAFF_REPLY_SQL,
     params: (ctx) => [ctx.orgId, when(ctx, STAFF_LOOKBACK_DAYS * DAY), when(ctx, STUCK_MINUTES * MIN), when(ctx, RECEIPT_AFTER_HOURS * HOUR)],
   }),

@@ -236,6 +236,20 @@ describe("migration 475 against a real Postgres", { skip: SKIP }, () => {
       await link({ url_hash: h });
       await refused(link({ url_hash: h }), "pulse_bank_links_pkey");
     });
+    test("retired links keep history but leave the active cohort; an active read revives one", async () => {
+      const old = await link({ retired_at: new Date(), last_class: "OK", last_good_at: new Date() });
+      const before = await rec.loadBankLinks(db, ORG);
+      assert.equal(before.ok, true);
+      assert.equal(before.rows.some((row) => row.urlHash === old.url_hash), false);
+
+      const saved = await rec.upsertBankLinks(db, { orgId: ORG, rows: [{
+        urlHash: old.url_hash, host: old.host, lastClass: "OK", lastCheckedAt: new Date().toISOString()
+      }] });
+      assert.equal(saved.ok, true);
+      const after = (await db.query(`SELECT retired_at FROM pulse_bank_links WHERE org_id = $1 AND url_hash = $2`,
+        [ORG, old.url_hash])).rows[0];
+      assert.equal(after.retired_at, null);
+    });
   });
 
   describe("locks and grants", () => {
