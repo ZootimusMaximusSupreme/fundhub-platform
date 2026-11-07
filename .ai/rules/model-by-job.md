@@ -15,9 +15,7 @@ alwaysApply: true
 
 ## Check the model before you start (CLAUDE.md section 1)
 
-Right after the split proposal, state one line: the model this work needs, and whether the current one matches.
-
-Format: `Model: <tier> — current is <tier>. Match / Switch.`
+Before you start, check which model this work needs and whether the current one matches. Do it quietly (owner-set 2026-11-05): never write a model line in the chat. Speak up only when the current model is too weak for the work.
 
 Rough mapping:
 
