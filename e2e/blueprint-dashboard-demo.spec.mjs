@@ -202,6 +202,24 @@ for(const width of [1440,390])test.describe(`Full Blueprint demo ${width}px`,()=
     await expect(next,'A new buyer must see one clear action, not competing workspace panels').toHaveCount(1);
     await expect(journey(page).locator('.bj-next')).toBeVisible();
     expect((await journey(page).locator('.bj-next').innerText()).trim().length).toBeGreaterThan(30);
+    if(width===390){
+      const originalViewport=page.viewportSize();
+      try{
+        await page.setViewportSize({width:390,height:844});
+        await page.evaluate(()=>document.fonts.ready);
+        const fit=await next.evaluate(button=>{
+          const rect=button.getBoundingClientRect(),nav=document.querySelector('.client-ios-nav')?.getBoundingClientRect();
+          const hit=y=>{const element=document.elementFromPoint(rect.left+rect.width/2,y);return{clear:!!element&&(element===button||button.contains(element)),text:element?.textContent?.trim().slice(0,40)};};
+          return{top:rect.top,bottom:rect.bottom,height:rect.height,viewport:innerHeight,navTop:nav?.top??innerHeight,navFound:!!nav,center:hit(rect.top+rect.height/2),lower:hit(rect.bottom-2),toolbarOpen:document.querySelector('#blueprint-demo-banner details').open};
+        });
+        await test.info().attach('fresh-phone-primary-fit',{body:Buffer.from(JSON.stringify(fit,null,2)),contentType:'application/json'});
+        expect(fit.toolbarOpen,'The first visit starts with compact demo controls').toBe(false);
+        expect(fit.navFound).toBe(true);expect(fit.top).toBeGreaterThanOrEqual(0);
+        expect(fit.bottom,'The primary action must clear the fixed phone navigation before any scroll').toBeLessThanOrEqual(fit.navTop);
+        expect(fit.center.clear,'The primary center must be clickable without scrolling').toBe(true);
+        expect(fit.lower.clear,'The fixed bar must not cover the bottom of the action').toBe(true);
+      }finally{await page.setViewportSize(originalViewport);}
+    }
     for(const id of ['unlock-modal','book-modal']){
       const modal=page.locator('#'+id);
       await expect(modal,'Legacy payment/booking dialog must be absent from the full-demo interaction surface').toBeHidden();

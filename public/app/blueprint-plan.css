@@ -16,4 +16,5 @@ body.fh-astra.fh-astra-portal[data-blueprint-plan="active"]:not([data-portal-vie
 
 body.fh-astra.fh-astra-portal #blueprint-plan :is(input,select,textarea){font-size:16px!important}
 body.fh-astra-portal[data-portal-state=loading] #blueprint-plan:not([hidden]){display:block!important}
+@media(max-width:600px){#blueprint-plan:has(> .bj-summary) > .bp-spread h2{display:none}}
 #blueprint-plan:has(.bp-skeleton){min-height:600px}

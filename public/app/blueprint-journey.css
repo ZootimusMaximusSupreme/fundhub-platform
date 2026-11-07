@@ -89,6 +89,12 @@
   .bj-credit,
   .bj-next { padding:16px; }
   .bj-next { grid-template-columns:1fr; }
+  .bj-next > div { display:flex;flex-direction:column; }
+  .bj-next > div > .bj-label { order:0; }
+  .bj-next > div > h2 { order:1; }
+  .bj-next > div > .bj-actions { order:2;margin:8px 0 16px; }
+  .bj-next > div > p { order:3; }
+  .bj-next > div > .bj-impact { order:4; }
   .bj-next .bj-readiness { padding-top:16px;border-top:1px solid var(--line); }
   .bj-funding,.bj-finance { padding:16px; }
   .bj-roadmap ol { grid-template-columns:1fr; }
