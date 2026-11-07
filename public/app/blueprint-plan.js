@@ -69,7 +69,7 @@
   function setData(next){data=next;document.dispatchEvent(new CustomEvent('fh:blueprint-plan-updated',{detail:next}));}
   function message(text){if(!authCurrent())return;notice=text;const el=host.querySelector('[data-bp-status]');if(el)el.textContent=text;}
   function shell(content){if(!authCurrent())return;host.innerHTML=`<div class="bp-spread"><div><div class="bp-label">Your 12-month Capital Blueprint</div><h2>${data?.client?.name?'Your next steps, '+esc(String(data.client.name).split(' ')[0])+'.':'Your next steps.'}</h2></div>${badge('Saved to your client file')}</div>${plans().startedAt?`<nav class="bp-tabs" aria-label="Blueprint plan">${[['today','Today'],['businesses','Businesses'],['lessons','Step-by-step help'],['letters','Letters and responses'],['timeline','Timeline'],['support','Get help']].map(([v,t])=>btn(t,'view',false,`data-view="${v}" ${view===v?'aria-current="page"':''}`)).join('')}</nav>`:''}${content}<div class="bp-status" data-bp-status role="status">${esc(notice)}</div><p class="bp-caption bp-end">Your plan uses saved updates, documents and report reviews. Open FinanceOS for your money, credit and planning tools.</p>`;}
-  function setPlanAccess(state,reportReady=false){if(!authCurrent())return false;document.body.dataset.blueprintAccess=state==='active'?'available':state==='loading'?'loading':'unavailable';if(state)document.body.dataset.blueprintPlan=state;else delete document.body.dataset.blueprintPlan;if(state==='active')document.body.dataset.blueprintReportReady=String(reportReady);else delete document.body.dataset.blueprintReportReady;document.dispatchEvent(new Event('fh:blueprint-plan-access'));return authCurrent();}
+  function setPlanAccess(state,reportReady=false){if(!authCurrent())return false;document.body.dataset.blueprintAccess=state==='active'?'available':state==='loading'?'loading':state==='inactive'?'inactive':'unavailable';if(state&&state!=='inactive')document.body.dataset.blueprintPlan=state;else delete document.body.dataset.blueprintPlan;if(state==='active')document.body.dataset.blueprintReportReady=String(reportReady);else delete document.body.dataset.blueprintReportReady;document.dispatchEvent(new Event('fh:blueprint-plan-access'));return authCurrent();}
   async function request(path,init={}){
     requireCurrent();
     const planRead=path==='/api/blueprint/plan';
@@ -85,7 +85,7 @@
         setPlanAccess('active',body.creditContext?.source==='saved_credit_report'&&Boolean(body.creditContext.reportId));requireCurrent();
       }
       return body;
-    }catch(error){if(authCurrent()&&planRead)setPlanAccess([401,403,404].includes(error.status)?null:'error');throw error;}
+    }catch(error){if(authCurrent()&&planRead)setPlanAccess(error.status===403&&error.code==='blueprint_access_inactive'?'inactive':[401,403,404].includes(error.status)?null:'error');throw error;}
   }
   async function load(){if(!authCurrent())return;const id=++loadId;if(!setPlanAccess('loading'))return;host.hidden=false;host.innerHTML='<div role="status" aria-label="Loading your Blueprint"><div class="bp-skeleton"></div><div class="bp-skeleton large"></div><p class="bp-caption">Loading your saved Blueprint…</p></div>';try{const next=await request('/api/blueprint/plan');if(!authCurrent()||id!==loadId)return;setData(next);host.hidden=false;const generic=document.querySelector('.cp-next-action');if(generic)generic.hidden=true;moneyOverview=await request('/api/money/overview').catch(()=>null);if(!authCurrent()||id!==loadId)return;render();}catch(e){if(!authCurrent()||id!==loadId)return;if([401,403,404].includes(e.status)){host.hidden=true;return;}host.innerHTML=`<h2>Your Blueprint couldn’t load.</h2><p>Your saved progress has not been replaced.</p>${btn('Try again','retry',true)}<p class="bp-status" role="alert">${esc(e.message)}</p>`;}}
   async function save(payload){if(!authCurrent()||busy)return false;busy=true;host.querySelectorAll('button[type=submit]').forEach(b=>{b.disabled=true;});try{await request('/api/blueprint/business-plans',{method:'POST',body:JSON.stringify(payload)});if(!authCurrent())return false;const next=await request('/api/blueprint/plan');if(!authCurrent())return false;setData(next);notice='Saved to your client file.';return true;}catch(e){message(e.message);return false;}finally{busy=false;if(authCurrent())host.querySelectorAll('button[type=submit]').forEach(b=>{b.disabled=false;});}}
@@ -237,6 +237,8 @@
       originalPrincipal=Object.freeze({accountId:staff.id,clientId:staff.client_id,orgId:staff.org_id});
       return load();
     }
-    setPlanAccess(null);host.replaceChildren();host.hidden=true;
+    const staff=session.staff;
+    const financeStaff=(session.principal==='staff'||session.principal==null)&&staff?.id&&staff.org_id&&['owner','admin','sales_manager','closer'].includes(staff.role);
+    setPlanAccess(financeStaff?'inactive':null);host.replaceChildren();host.hidden=true;
   },()=>{if(!authCurrent())return;setPlanAccess(null);host.replaceChildren();host.hidden=true;});
 })();
