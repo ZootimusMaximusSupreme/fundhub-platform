@@ -258,6 +258,7 @@ function sideSell(offers, { status = 200, asStaff = false } = {}) {
     encodeURIComponent,
     fetch: (url) => { asked.push(url); return Promise.resolve({ ok: status === 200, json: () => Promise.resolve({ ok: true, offers }) }); }
   };
+  sandbox.window = sandbox;
   vm.runInNewContext(src + `\npaintFinanceOsSideSell(${JSON.stringify(CID)}, ${asStaff});`, sandbox);
   return new Promise((r) => setTimeout(() => r({ card, asked }), 0));
 }

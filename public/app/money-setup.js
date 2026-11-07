@@ -100,6 +100,10 @@
     var fee = d.setup_fee_cents;
     var title = "Pay setup fee (" + price(fee) + ")";
     if (s.done) {
+      if (d.entitled === true && d.paid !== true) {
+        return stepRow(1, "pay", d, title, "Included",
+          '<p class="caption">Your existing package includes FinanceOS setup. No separate setup payment is due.</p>');
+      }
       return stepRow(1, "pay", d, title, "Done" + (d.paid_at ? " · paid " + day(d.paid_at) : ""),
         '<p class="caption">Your one-time setup is paid.</p>');
     }
@@ -125,7 +129,7 @@
     var title = "Run your soft pull (no hard inquiry)";
     if (s.done) {
       return stepRow(2, "soft_pull", d, title, "Done" + (sp.last_pulled_at ? " · last pulled " + day(sp.last_pulled_at) : ""),
-        '<p class="caption">Your business credit is on file. See it on the Credit page.</p>' +
+        '<p class="caption">Your credit report is on file. See it on the Credit page.</p>' +
         '<div class="step-act"><a class="btn-line" href="money-credit.html">See my credit</a></div>');
     }
     if (sp.requested) {
