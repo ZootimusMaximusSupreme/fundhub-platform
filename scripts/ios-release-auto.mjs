@@ -90,8 +90,43 @@ export async function startShippedRelease({ home = releaseHome(), root, command 
   if (!newerRelease(release, prior)) {
     throw new Error(`Native source changed at ${sha}, but the iOS version and build were not both increased`);
   }
-  await ci(sha);
-  await ship(sha);
+  // Every successful Ship pushes a "ship: <sha> is live" log commit, which never gets its own Ship
+  // run. So pin the newest main commit that really shipped, and let main be ahead of it only by
+  // changes outside tools/fundhub-ios/ (the same rule ios-upload-and-submit.mjs already applies).
+  const source = await newestShippedSource({ command, root, sha, ship });
+  if (source !== sha) {
+    await git(command, root, ["merge-base", "--is-ancestor", prior.sha, source]);
+    const unshipped = await git(command, root, ["diff", "--name-only", `${source}..${sha}`, "--",
+      "tools/fundhub-ios/"]);
+    if (unshipped) {
+      throw new Error(`Native source changed at ${sha} has not shipped yet; newest shipped main commit is ${source}`);
+    }
+  }
+  await ci(source, undefined, { allowMainAdvance: true });
+  return submitShippedSource({ home, root, command, checkout, sha: source, release });
+}
+
+const SHIP_LOOKBACK = 20;
+const NOT_SHIPPED = /no successful GitHub Ship run|did not run a successful ship job/;
+
+async function newestShippedSource({ command, root, sha, ship }) {
+  const candidates = (await git(command, root, ["rev-list", "--first-parent",
+    `--max-count=${SHIP_LOOKBACK}`, sha])).split("\n").filter((line) => /^[a-f0-9]{40}$/.test(line));
+  if (candidates[0] !== sha) throw new Error("Remote main history did not start at the fetched main SHA");
+  let firstError;
+  for (const candidate of candidates) {
+    try {
+      await ship(candidate);
+      return candidate;
+    } catch (error) {
+      if (!NOT_SHIPPED.test(String(error?.message))) throw error;
+      firstError ||= error;
+    }
+  }
+  throw firstError;
+}
+
+async function submitShippedSource({ home, root, command, checkout, sha, release }) {
   const ipa = path.join(home, "artifacts", `Fundhub-${release.version}-${release.build}-${sha}.ipa`);
   const intent = { sha, ...release, ipa };
   const pinned = await checkout(intent, home, root, command);

@@ -27,6 +27,7 @@ function commandFor({ changed = "tools/fundhub-ios/Fundhub/FundhubApp.swift",
     if (name === "git") {
       if (argv.includes("fetch") || argv.includes("merge-base")) return { stdout: "" };
       if (argv.includes("rev-parse")) return { stdout: `${newSha}\n` };
+      if (argv.includes("rev-list")) return { stdout: `${newSha}\n${oldSha}\n` };
       if (argv.includes("show")) return { stdout: project(version, build) };
       if (argv.includes("diff")) return { stdout: changed };
     }
@@ -112,4 +113,72 @@ test("unproven Apple command output never advances the cursor", () => fixture(as
   await assert.rejects(() => startShippedRelease({ home, root, command,
     ci: async () => {}, ship: async () => {}, checkout: async () => root }), /did not prove/);
   assert.equal(readAutoState(home).sha, oldSha);
+}));
+
+const logSha = "c".repeat(40);
+function shipLogCommand({ unshipped = "" } = {}) {
+  const calls = [];
+  const command = async (name, argv) => {
+    calls.push({ name, argv });
+    if (name === "git") {
+      if (argv.includes("fetch") || argv.includes("merge-base")) return { stdout: "" };
+      if (argv.includes("rev-parse")) return { stdout: `${logSha}\n` };
+      if (argv.includes("rev-list")) return { stdout: `${logSha}\n${newSha}\n${oldSha}\n` };
+      if (argv.includes("show")) return { stdout: project("1.0.4", "10") };
+      if (argv.includes(`${oldSha}..${logSha}`)) return { stdout: "tools/fundhub-ios/Fundhub/Fundhub.entitlements" };
+      if (argv.includes(`${newSha}..${logSha}`)) return { stdout: unshipped };
+    }
+    if (name === process.execPath) {
+      return { stdout: JSON.stringify({ sha: newSha, version: "1.0.4", build: "10",
+        reviewSubmissionId: "review-43", appStoreState: "WAITING_FOR_REVIEW",
+        submittedDate: "2026-11-07T08:00:00Z" }) };
+    }
+    throw new Error(`Unexpected command: ${name} ${argv.join(" ")}`);
+  };
+  return { command, calls };
+}
+const notShipped = async (sha) => {
+  if (sha !== newSha) throw new Error("Pinned source commit has no successful GitHub Ship run; pin a deployed source commit");
+};
+
+test("a ship-log commit on top of main pins the shipped source below it", () => fixture(async ({ home, root }) => {
+  seedAutoState(home, oldSha, project("1.0.3", "9"));
+  const { command, calls } = shipLogCommand();
+  const ciCalls = [];
+  const result = await startShippedRelease({ home, root, command, ship: notShipped,
+    ci: async (sha, github, options) => { ciCalls.push({ sha, options }); },
+    checkout: async (intent) => {
+      assert.equal(intent.sha, newSha);
+      assert.match(intent.ipa, /Fundhub-1\.0\.4-10-b{40}\.ipa$/);
+      return path.join(home, "checkouts", newSha);
+    } });
+  assert.deepEqual(ciCalls, [{ sha: newSha, options: { allowMainAdvance: true } }]);
+  assert.equal(result.status, "submitted");
+  assert.equal(result.sha, newSha);
+  const apply = calls.filter((call) => call.name === process.execPath);
+  assert.equal(apply.length, 1);
+  assert.equal(apply[0].argv[apply[0].argv.indexOf("--sha") + 1], newSha);
+  assert.equal(readAutoState(home).sha, newSha);
+  assert.equal(readAutoState(home).reviewSubmissionId, "review-43");
+}));
+
+test("a native change that has not shipped yet waits and sends nothing to Apple", () => fixture(async ({ home, root }) => {
+  seedAutoState(home, oldSha, project("1.0.3", "9"));
+  const { command, calls } = shipLogCommand({ unshipped: "tools/fundhub-ios/Fundhub.xcodeproj/project.pbxproj" });
+  await assert.rejects(() => startShippedRelease({ home, root, command, ship: notShipped,
+    ci: async () => { throw new Error("must not check CI"); },
+    checkout: async () => { throw new Error("must not checkout"); } }), /has not shipped yet/);
+  assert.equal(readAutoState(home).sha, oldSha);
+  assert.equal(calls.some((call) => call.name === process.execPath), false);
+}));
+
+test("when no recent main commit shipped, the Ship error is kept and nothing is sent", () => fixture(async ({ home, root }) => {
+  seedAutoState(home, oldSha, project("1.0.3", "9"));
+  const { command, calls } = shipLogCommand();
+  await assert.rejects(() => startShippedRelease({ home, root, command,
+    ship: async () => { throw new Error("Pinned source commit has no successful GitHub Ship run; pin a deployed source commit"); },
+    ci: async () => { throw new Error("must not check CI"); },
+    checkout: async () => { throw new Error("must not checkout"); } }), /no successful GitHub Ship run/);
+  assert.equal(readAutoState(home).sha, oldSha);
+  assert.equal(calls.some((call) => call.name === process.execPath), false);
 }));
