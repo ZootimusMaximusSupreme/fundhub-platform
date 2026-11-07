@@ -884,8 +884,17 @@ test("scripts: pageAssets reads a page's own list: relative, absolute, query, co
 
 test("scripts: read against the real pages in public/, the lists are what the map says", () => {
   const read = (file) => fs.readFileSync(path.join(PUBLIC, file), "utf8");
-  const names = (file, pagePath) =>
-    pageAssets(read(file), `${BASE}${pagePath}`, BASE).map((a) => new URL(a.url).pathname);
+  const names = (file, pagePath) => {
+    const assets = pageAssets(read(file), `${BASE}${pagePath}`, BASE).map((a) => new URL(a.url).pathname);
+    if (file === "progress.html") {
+      // The explicit sample loader precedes the unchanged normal-page assets.
+      // Pin the exact prefix and its file, then compare every remaining asset.
+      assert.equal(assets[0], "/app/blueprint-demo.js");
+      assert.ok(fs.existsSync(path.join(PUBLIC, assets[0])), "Progress sample loader exists");
+      return assets.slice(1);
+    }
+    return assets;
+  };
 
   const sharedTypeAssets = ["/app/fundhub-font.css", "/app/fundhub-font.js"];
   const sharedAstraStyles = ["/app/fundhub-astra.css", "/app/fundhub-astra-client.css"];
@@ -898,7 +907,7 @@ test("scripts: read against the real pages in public/, the lists are what the ma
   assert.ok(money.includes("/app/financeos.js") && money.includes("/app/money-credit.js"));
   assert.deepEqual(names("portal-login.html", "/portal-login.html"), [...sharedTypeAssets, "/fh.css", "/app/client-ios.css", "/portal-login-ios.css", ...sharedAstraStyles, "/funnel/fh-events.js", "/app/client-ios.js"]);
   assert.deepEqual(names("reset-password.html", "/reset-password.html"), [...sharedTypeAssets, "/fh.css", "/pw-toggle.js", ...sharedAstraStyles]);
-  assert.deepEqual(names("progress.html", "/progress.html"), ["/app/blueprint-demo.js", ...sharedTypeAssets, "/app/client-ios.css", "/progress-ios.css", "/app/client-ios.js", ...sharedAstraStyles]);
+  assert.deepEqual(names("progress.html", "/progress.html"), [...sharedTypeAssets, "/app/client-ios.css", "/progress-ios.css", "/app/client-ios.js", ...sharedAstraStyles]);
   assert.deepEqual(names("app/payment-success.html", "/app/payment-success.html"), [...sharedTypeAssets, "/app/fundhub-brand.css", ...sharedAstraStyles]);
   // Every file the pages name is really in public/, so a rename shows up here
   // before it shows up on the live pages.
