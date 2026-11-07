@@ -102,7 +102,10 @@ async function stage(page,value){
   await expect.poll(()=>page.evaluate(()=>window.FHBlueprintDemo.scenario)).toBe(value);
   await expect(journey(page)).toBeVisible();
 }
-async function read(page,path){return page.evaluate(path=>window.FHBlueprintDemo.request(path),path);}
+async function read(page,path){
+  await page.waitForFunction(()=>window.FHBlueprintDemo?.active===true,null,{timeout:10000});
+  return page.evaluate(path=>window.FHBlueprintDemo.request(path),path);
+}
 async function preview(page,context,trigger,kind,inspect=null){
   const pending=page.waitForEvent('popup');await trigger();const popup=await pending;
   await expect(popup).toHaveURL(new RegExp('[?&]preview='+kind+'(?:&|$)'));
@@ -413,7 +416,11 @@ for(const width of [1440,390])test.describe(`Full Blueprint demo ${width}px`,()=
       await page.locator('.client-ios-nav').getByRole('link',{name:'Documents',exact:true}).click();
       expect(new URL(page.url()).searchParams.get('view')).toBe('documents');
       const letters=(await read(page,'/api/blueprint/letter-mailing')).letters;
-      expect(letters.length).toBeGreaterThan(0);await expect(page.locator('body')).toContainText(letters[0].title);
+      expect(letters.length).toBeGreaterThan(0);
+      const owned=(await read(page,'/api/read/documents')).items.find(d=>d.id===letters[0].documentId);
+      expect(owned,'The current letter must be the same owned document in Documents').toBeTruthy();
+      const savedDocument=page.getByRole('link',{name:owned.title,exact:true});await expect(savedDocument).toBeVisible();
+      expect(new URL(await savedDocument.getAttribute('href'),page.url()).searchParams.get('item')).toBe(letters[0].documentId);
       await expect(page.locator('.client-ios-nav').getByRole('link',{name:'Documents',exact:true})).toHaveAttribute('aria-current','page');
       await noOverflow(page);
       await page.locator('.client-ios-nav').getByRole('link',{name:'Home',exact:true}).click();
@@ -691,7 +698,7 @@ for(const width of [1440,390])test.describe(`Full Blueprint demo ${width}px`,()=
           await expect(section).toContainText(/setup fee.*included|one-time setup.*paid|included.*Blueprint|no setup fee/i);
         }
       }
-      await page.locator('#money-back').click();await expect(journey(page)).toBeVisible();
+      await page.locator('.client-ios-nav').getByRole('link',{name:'Home',exact:true}).click();await expect(journey(page)).toBeVisible();
       expect(await page.evaluate(()=>window.FHBlueprintDemo.offer)).toBe(offer);
       expect((await read(page,'/api/blueprint/plan')).opportunity).toEqual(plan.opportunity);
       if(offer==='preparation')await expect(full(page)).toBeHidden();

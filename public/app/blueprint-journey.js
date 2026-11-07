@@ -27,7 +27,7 @@
   const link = (text,path) => `<a href="${esc(route(path))}">${esc(text)}</a>`;
   const done = waypoint => Boolean(waypoint?.completedAt) || ['done','completed','verified'].includes(waypoint?.state);
   function checklist(progress,plans) {
-    const applicable = rows(progress?.waypoints).filter(w => w.closedBy !== 'ongoing' && w.verifyKind !== 'no_new_credit' && w.state !== 'not_applicable');
+    const applicable = rows(progress?.waypoints).filter(w => w.closedBy !== 'ongoing' && w.verifyKind !== 'no_new_credit' && !['skipped','not_applicable'].includes(w.state));
     const completed = applicable.filter(done).length+(plans?.startedAt?1:0);
     const total=applicable.length+(plans?1:0);
     return {completed,total,percent:total?Math.round(completed/total*100):0};
@@ -71,7 +71,7 @@
   }
   function roadmap(data) {
     const progress=data?.progress||{},nextId=data.businessPlans?.startedAt?progress.nextStep?.waypointId:null;
-    const waypoints=rows(progress.waypoints).filter(w=>w.closedBy!=='ongoing'&&w.verifyKind!=='no_new_credit');
+    const waypoints=rows(progress.waypoints).filter(w=>w.closedBy!=='ongoing'&&w.verifyKind!=='no_new_credit'&&!['skipped','not_applicable'].includes(w.state));
     return `<section class="bj-roadmap"><div class="bj-heading"><h3>Your waypoints</h3>${link('View all progress','/progress.html')}</div><ol><li class="bj-step" data-state="${data.businessPlans?.startedAt?'done':'current'}"><div><span class="bj-state">${data.businessPlans?.startedAt?'✓ Complete':'Your next step'}</span><h4>Blueprint onboarding</h4></div></li>${waypoints.slice(0,5).map(w=>`<li class="bj-step" data-state="${done(w)?'done':String(w.id)===String(nextId)?'current':['blocked','awaiting_review'].includes(w.state)?'waiting':'upcoming'}"><div><span class="bj-state">${done(w)?'✓ Complete':String(w.id)===String(nextId)?(w.owner==='client'?'Your next step':'Fundhub team check'):w.state==='blocked'?'Help needed':'Upcoming'}</span><h4>${esc(w.title)}</h4></div>${String(w.id)===String(nextId)?link('Continue','/progress.html#waypoints'):''}</li>`).join('')||`<li class="bj-step" data-state="current"><div><span class="bj-state">Your next step</span><h4>Start your Blueprint onboarding</h4><p class="bj-caption">Confirm your starting point, then build your business plans.</p></div></li>`}</ol></section>`;
   }
   function render({data={},next={},control='',hasFundingEngine=false,moneyOverview=null,fundingState=null}={}) {

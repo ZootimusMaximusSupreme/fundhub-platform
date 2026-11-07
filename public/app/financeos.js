@@ -198,7 +198,10 @@
         if (connect || vaultFile) {
           event.preventDefault(); event.stopImmediatePropagation();
           if (control.type === "file") control.value = "";
-          demoNotice(connect ? "These are fictional sample accounts. Live bank connections stay closed in this demo." : "Try sample document uploads in Blueprint Documents. No file is sent from this sample FinanceOS view.");
+          var message = connect ? "These are fictional sample accounts. Live bank connections stay closed in this demo." : "Try sample document uploads in Blueprint Documents. No file is sent from this sample FinanceOS view.";
+          demoNotice(message);
+          var nearby = control.parentNode && control.parentNode.querySelector(".act-msg");
+          if (nearby) nearby.textContent = message;
           return;
         }
         if (event.type === "submit") { event.preventDefault(); return; }
