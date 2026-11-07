@@ -1,9 +1,7 @@
-/* Fundhub Portal download card for the apply.fundhub.ai /thank-you builder page.
- * The card only renders after the live App Store URL is placed in the
- * adjacent JSON file. That keeps the live funnel free of dead download links. */
+/* Fundhub Portal entry card. Browser-first until a supported phone and the
+ * existing public listing are both known. No automatic Apple redirect. */
 (function () {
   var CONFIG_URL = "https://fundhub.ai/funnel/fundhub-prompter-download.json";
-  var LINK = /^https:\/\/apps\.apple\.com\/(?:[a-z]{2}\/)?app\/(?:[^?#/]+\/)?id[0-9]+\/?$/;
 
   function addStyles() {
     if (document.getElementById("fh-prompter-download-css")) return;
@@ -15,7 +13,7 @@
     (document.head || document.documentElement).appendChild(style);
   }
 
-  function card(url) {
+  function card() {
     if (document.getElementById("fh-prompter-download")) return;
     var root = document.querySelector(".fh-root");
     if (!root) return;
@@ -28,28 +26,51 @@
     var section = document.createElement("section");
     section.id = "fh-prompter-download";
     section.className = "fh-prompter-download";
-    section.setAttribute("aria-label", "Fundhub Portal for iPhone");
+    section.setAttribute("aria-label", "Open Fundhub Portal");
     section.innerHTML =
       '<div class="fh-prompter-download__top">' +
       '<img class="fh-prompter-download__icon" src="https://fundhub.ai/apple-touch-icon.png" alt="Fundhub" width="52" height="52">' +
       '<div><p class="fh-prompter-download__eyebrow">Next step</p><h2 class="fh-prompter-download__title">Get Fundhub Portal</h2>' +
-      '<p class="fh-prompter-download__copy">Download the iPhone app and confirm your call there.</p></div>' +
+      '<p class="fh-prompter-download__copy">Open your portal to confirm your call and see your next steps.</p></div>' +
       '</div>' +
-      '<a class="fh-prompter-download__button" href="' + url + '" target="_blank" rel="noopener noreferrer">Download for iPhone <span aria-hidden="true">→</span></a>' +
-      '<p class="fh-prompter-download__note">On Android or a computer? <a href="https://fundhub.ai/portal-login.html">Use the web portal</a> to confirm your call.</p>';
+      '<a class="fh-prompter-download__button" href="https://fundhub.ai/portal-login.html">Open web portal <span aria-hidden="true">→</span></a>' +
+      '<p class="fh-prompter-download__note"><a href="https://fundhub.ai/devices.html">Use Fundhub on another device</a></p>';
     if (hero && hero.parentNode) hero.parentNode.insertBefore(section, hero.nextSibling);
     else slot.appendChild(section);
   }
 
-  function run() {
-    if (!window.fetch) return;
+  function offerPhone() {
+    var policy = window.FHDeviceDestinations;
+    if (!policy || policy.detect(navigator) !== "iphone" || !window.fetch) return;
     window.fetch(CONFIG_URL, { credentials: "omit", cache: "no-store" })
       .then(function (response) { return response.ok ? response.json() : null; })
       .then(function (config) {
-        var url = String(config && config.app_store_url || "").trim();
-        if (LINK.test(url)) card(url);
+        if (!policy.iphoneUrl(config)) return;
+        var section = document.getElementById("fh-prompter-download");
+        if (!section) return;
+        var button = section.querySelector(".fh-prompter-download__button");
+        button.setAttribute("href", policy.iphoneUrl(config));
+        button.setAttribute("target", "_blank");
+        button.setAttribute("rel", "noopener noreferrer");
+        button.textContent = "Download for iPhone ";
+        var arrow = document.createElement("span");
+        arrow.setAttribute("aria-hidden", "true");
+        arrow.textContent = "→";
+        button.appendChild(arrow);
+        section.querySelector(".fh-prompter-download__copy").textContent = "Use the app on this phone, or open your portal in the browser.";
+        section.querySelector(".fh-prompter-download__note").innerHTML = '<a href="https://fundhub.ai/portal-login.html">Use the web portal</a> · <a href="https://fundhub.ai/devices.html">Add another device</a>';
       })
       .catch(function () {});
+  }
+
+  function run() {
+    card();
+    if (window.FHDeviceDestinations) { offerPhone(); return; }
+    var script = document.createElement("script");
+    script.src = "https://fundhub.ai/funnel/device-destinations.js";
+    script.async = true;
+    script.onload = offerPhone;
+    (document.head || document.documentElement).appendChild(script);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);

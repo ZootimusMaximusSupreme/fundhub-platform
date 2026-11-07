@@ -38,7 +38,7 @@ test("no browser loads, queues or replays a DirectROAS milestone on any tracked 
 });
 
 const TESTFLIGHT = "https://testflight.apple.com/join/AbC123xyz";
-const APP_STORE = "https://apps.apple.com/us/app/fundhub/id1234567890";
+const APP_STORE = "https://apps.apple.com/us/app/fundhub-portal/id6823985032";
 const APPLE = /^https:\/\/(testflight|apps)\.apple\.com\//;
 const SETTING = { testflight_url: TESTFLIGHT, app_store_url: APP_STORE, listing_verified: true };
 const NO_LINK = [
@@ -51,11 +51,13 @@ const CARDS = fs.readdirSync(new URL("../../public/funnel/", import.meta.url)).f
 async function settle() { for (let i = 0; i < 10; i++) await Promise.resolve(); }
 
 /** /thank-you the way ClickFunnels serves it (a .fh-root with a .hero), then the tracker, then one card script. */
-async function thanks(cardSrc, { config = SETTING, ...opts } = {}) {
+async function thanks(cardSrc, { config = SETTING, userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15", ...opts } = {}) {
   const p = makePage({ pathname: "/thank-you", cortana: true, fetchJson: config, ...opts,
     storage: { fh_sid: SID, ...(opts.storage || {}) } });
   p.addHtml('<div class="fh-root"><div class="hero"></div></div>');
-  p.run().runScript(cardSrc);
+  p.win.navigator.userAgent = userAgent;
+  p.win.navigator.platform = /iPhone/.test(userAgent) ? "iPhone" : "";
+  p.run().runScript(fs.readFileSync(new URL("../../public/funnel/device-destinations.js", import.meta.url), "utf8")).runScript(cardSrc);
   await settle();
   return p;
 }
@@ -117,11 +119,24 @@ for (const file of CARDS) {
     assert.deepEqual(names(again), []);
     assert.equal(again.events("app_download_tap").length, 0);
 
-    // The live setting is empty today: no card is drawn, so there is nothing to tap.
+    // Missing/rejected listings leave the browser card and no Apple download.
     for (const config of NO_LINK) {
       const none = await thanks(src, { config });
       assert.equal(downloadButton(none), null, JSON.stringify(config));
       assert.deepEqual(names(none), []);
+    }
+  });
+
+  test(`${file}: non-Apple and uncertain visitors never create an Apple download or false download observation`, async () => {
+    for (const userAgent of ["Mozilla/5.0 (Linux; Android 15)", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Private browser"]) {
+      const p = await thanks(src, { userAgent });
+      assert.equal(downloadButton(p), null);
+      const browser = p.document.querySelector(".fh-prompter-download__button");
+      assert.equal(browser.getAttribute("href"), "https://fundhub.ai/portal-login.html");
+      p.click(browser);
+      assert.equal(p.events("click").length, 1);
+      assert.equal(p.events("app_download_tap").length, 0);
+      assert.deepEqual(names(p), []);
     }
   });
 
