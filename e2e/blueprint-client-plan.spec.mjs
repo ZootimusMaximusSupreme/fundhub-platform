@@ -140,7 +140,12 @@ for(const paymentFlag of[false,true])test(`paid Blueprint includes the missing r
   await expect(tile.locator('.tacts [data-book]:visible,.tacts [data-unlock]:visible')).toHaveCount(0);
   await expect(page.locator('#unlock-note')).not.toContainText('$32');
   await expect(page.locator('#soft-pull-entry-link')).toHaveAttribute('href','#blueprint-plan');
+  await page.locator('.client-ios-nav').getByRole('link',{name:'Documents',exact:true}).click();
+  await expect(tile.getByRole('button',{name:'View report status',exact:true})).toBeVisible();
   await tile.getByRole('button',{name:'View report status',exact:true}).click();
+  await expect(page.locator('body')).toHaveAttribute('data-portal-view','home');
+  expect(new URL(page.url()).searchParams.has('view')).toBe(false);
+  await expect(page.locator('.client-ios-nav').getByRole('link',{name:'Home',exact:true})).toHaveAttribute('aria-current','page');
   await expect(app.getByRole('heading',{name:preparationGuidance().find(x=>x.key==='credit_review').title,exact:true})).toBeVisible();
   await expect(app.getByRole('button',{name:'Save this step',exact:true})).toBeVisible();
   await expect(page.locator('#unlock-modal')).not.toHaveClass(/\bon\b/);

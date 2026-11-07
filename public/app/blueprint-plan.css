@@ -8,8 +8,9 @@ body.fh-astra-portal:is([data-blueprint-access="loading"],[data-blueprint-access
 body.fh-astra-portal[data-blueprint-plan] #blueprint-plan:not([hidden]){display:block!important}
 /* The paid Blueprint overview replaces duplicate pre-call and sales summaries.
    The existing Documents route retains the full account tools. */
-body.fh-astra-portal[data-blueprint-plan="active"] #portal-home :is(.video-card,#fb-wins,#money-link,#portal-status-pre,#portal-status-funded,#prog-link,#sb-scores-card,#promo,#portal-support),
-body.fh-astra-portal[data-blueprint-plan="active"] #portal-home .page > section:has(#unlock-t){display:none!important}
+body.fh-astra-portal[data-blueprint-plan="active"] #portal-home :is(.video-card,#fb-wins,#money-link,#portal-status-pre,#portal-status-funded,#prog-link,#sb-scores-card,#promo,#portal-support){display:none!important}
+body.fh-astra-portal[data-blueprint-plan="active"][data-portal-view="home"] #portal-home .page > section:has(#unlock-t){display:none!important}
+body.fh-astra-portal[data-blueprint-plan="active"]:not([data-portal-view="home"]) :is(#tiles > [data-tile]:not([data-tile="SOFT_PULL"]),#unlock-note){display:none!important}
 body.fh-astra-portal[data-blueprint-plan="active"][data-portal-view="home"] #portal-home :is(#agreements-card,#action-card,#portal-deliverables,#acct){display:none!important}
 body.fh-astra.fh-astra-portal[data-blueprint-plan="active"]:not([data-portal-view="home"]) #portal-home :is(#blueprint-plan,#blueprint-fulfillment){display:none!important}
 

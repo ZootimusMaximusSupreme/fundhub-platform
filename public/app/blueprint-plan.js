@@ -90,6 +90,16 @@
   async function load(){if(!authCurrent())return;const id=++loadId;if(!setPlanAccess('loading'))return;host.hidden=false;host.innerHTML='<div role="status" aria-label="Loading your Blueprint"><div class="bp-skeleton"></div><div class="bp-skeleton large"></div><p class="bp-caption">Loading your saved Blueprint…</p></div>';try{const next=await request('/api/blueprint/plan');if(!authCurrent()||id!==loadId)return;setData(next);host.hidden=false;const generic=document.querySelector('.cp-next-action');if(generic)generic.hidden=true;moneyOverview=await request('/api/money/overview').catch(()=>null);if(!authCurrent()||id!==loadId)return;render();}catch(e){if(!authCurrent()||id!==loadId)return;if([401,403,404].includes(e.status)){host.hidden=true;return;}host.innerHTML=`<h2>Your Blueprint couldn’t load.</h2><p>Your saved progress has not been replaced.</p>${btn('Try again','retry',true)}<p class="bp-status" role="alert">${esc(e.message)}</p>`;}}
   async function save(payload){if(!authCurrent()||busy)return false;busy=true;host.querySelectorAll('button[type=submit]').forEach(b=>{b.disabled=true;});try{await request('/api/blueprint/business-plans',{method:'POST',body:JSON.stringify(payload)});if(!authCurrent())return false;const next=await request('/api/blueprint/plan');if(!authCurrent())return false;setData(next);notice='Saved to your client file.';return true;}catch(e){message(e.message);return false;}finally{busy=false;if(authCurrent())host.querySelectorAll('button[type=submit]').forEach(b=>{b.disabled=false;});}}
   function navigate(next){if(!authCurrent())return;view=next;notice='';render();if(!authCurrent())return;host.scrollIntoView({block:'start',behavior:'smooth'});}
+  function showPlanHome(){
+    const url=new URL(location.href);url.searchParams.delete('view');url.hash='';
+    history.replaceState(history.state,'',url.pathname+url.search);
+    document.body.dataset.portalView='home';
+    for(const link of document.querySelectorAll('.client-ios-links a')){
+      const target=new URL(link.href,location.origin);
+      if(target.pathname==='/app/client-portal.html'&&!target.searchParams.has('view'))link.setAttribute('aria-current','page');
+      else link.removeAttribute('aria-current');
+    }
+  }
   function render(){if(!authCurrent()||!data)return;if(!plans().startedAt&&view!=='setup'&&view!=='support'&&view!=='letters'&&!(view==='lesson'&&lessonKey==='credit_review'))return welcome();if(view==='setup')return setup();const screens={today:dashboard,businesses:businessList,business:businessForm,lessons:lessonList,lesson:lesson,timeline:timeline,letters:letterWorkspace,support:support};(screens[view]||dashboard)();}
   function journey(action={}) {return window.FHBlueprintJourney?.render({data,next:action,control:action.control||'',hasFundingEngine:Boolean(document.body.dataset.blueprintFulfillment)||demo?.offerDetails?.hasFundingEngine===true,moneyOverview})||'';}
   function welcome(){shell(journey());}
@@ -214,7 +224,7 @@
     }[action];
     if(helpText){navigate('support');const input=host.querySelector('textarea[name=message]');if(input)input.value=helpText;}
   });
-  document.addEventListener('fh:blueprint-report-status',()=>{if(!authCurrent()||document.body.dataset.blueprintPlan!=='active'||!data)return;document.getElementById('fh-chat-close')?.click();lessonKey='credit_review';businessId=null;navigate('lesson');});
+  document.addEventListener('fh:blueprint-report-status',()=>{if(!authCurrent()||document.body.dataset.blueprintPlan!=='active'||!data)return;document.getElementById('fh-chat-close')?.click();showPlanHome();document.dispatchEvent(new CustomEvent('fh:blueprint-navigate',{detail:{action:'credit'}}));});
   if(demo){let demoScenario=demo.scenario;window.addEventListener('fh:blueprint-demo-change',()=>{if(demo.scenario!==demoScenario){demoScenario=demo.scenario;view='today';businessId=null;lessonKey=null;lettersData=null;lettersState='idle';mailQuote=null;mailOrder=null;pendingEvidence.clear();selectedLetters.clear();notice='';}if(originalPrincipal&&authCurrent())load();});}
   // The normal portal sign-in saves a bearer. A mutable HttpOnly cookie is
   // not an immutable workspace identity, so never initialize from it alone.

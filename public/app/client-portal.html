@@ -2374,6 +2374,11 @@ document.addEventListener("DOMContentLoaded", async function () {
       note.textContent = blueprintIncluded ? "Your credit analysis is included with Blueprint. Other offers — book a call for pricing"
         : softPullDone ? "Everything here — book a call for pricing" : note.getAttribute("data-diagnostic-note");
     }
+    var heading = document.getElementById("unlock-t");
+    if (heading) {
+      if (!heading.hasAttribute("data-original-heading")) heading.setAttribute("data-original-heading", heading.textContent);
+      heading.textContent = blueprintIncluded ? "Your included credit assessment" : heading.getAttribute("data-original-heading");
+    }
     paintBlueprintReportEntry(blueprintIncluded, blueprintReportReady);
     return out;
   }
