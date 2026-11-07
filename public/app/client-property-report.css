@@ -1,0 +1,5 @@
+#ccp-property-report label { display:flex; align-items:center; gap:var(--space-2,8px); min-height:44px; font-size:16px; line-height:1.5; }
+#ccp-property-report [hidden] { display:none; }
+#ccp-property-report input { flex:none; width:24px; height:24px; }
+#ccp-property-report summary { min-height:44px; padding:8px 0; cursor:pointer; font-size:16px; }
+#ccp-property-result { overflow-wrap:anywhere; }

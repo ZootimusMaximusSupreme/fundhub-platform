@@ -1,0 +1,69 @@
+CRS PROPERTY CONNECTOR — IMPLEMENTATION HANDOFF — 2026-11-06
+
+Root owns the combined board, account/environment work, route registration, generated files, heartbeat integration, independent review and release. This handoff is the local implementation lane only. No production report or customer write was made.
+
+OWNER-DIRECTED CONTRACT EXTENSION
+In the existing Client Workspace → Credit & inquiries, owner/admin/funding_advisor may explicitly Run property report for the selected same-company client after separately recording that client's displayed property-report permission. The server uses only saved encrypted identity. Opening or reloading reads stored results only. One committed claim per normalized identity replays; uncertain provider work requires review. Show the dated CRS receipt and returned property/history. Current mortgage balance, equity and valuation remain unknown. Other roles receive no property controls. No automatic lead lookup, new screen, credit allowance, Meta signal or funnel-routing change.
+
+This is a narrow contract extension under the owner's explicit CRS live-shipping request. Existing intended files were not edited. The existing read-only-on-open promise remains intact; this does not claim a broad journey PASS.
+
+OWNED IMPLEMENTATION FILES
+api/finance/property-report.mjs
+db/migrations/569_crs_property_requests.sql
+e2e/ccp-property-report.spec.mjs
+public/app/client-control-panel.html (one property group and external includes)
+public/app/client-property-report.js
+public/app/client-property-report.css
+src/finance/crs-property-contract.mjs
+src/finance/crs-property-contract.test.mjs
+src/finance/crs-property-client.mjs
+src/finance/crs-property-client.test.mjs
+src/finance/crs-property.mjs
+src/finance/crs-property.test.mjs
+src/finance/crs-property.pg.test.mjs
+src/http/finance-property-report.test.mjs
+src/messaging/providers/crs-property.mjs
+src/messaging/providers/crs-property.test.mjs
+This handoff file.
+
+ROOT INTEGRATION
+Import financePropertyReport from ../../api/finance/property-report.mjs in netlify/functions/api.mjs and map "finance/property-report": financePropertyReport.
+GET /api/finance/property-report?client_id=<uuid> reads safe status, separate permission text/version and the latest saved normalized report.
+POST /api/finance/property-report accepts only client_id, operation_id UUID, consent_accepted true, and consent_version property-report-2026-11-06. Browser identity, org, simulated mode and unrelated fields are refused.
+Generate the migration manifest after the inherited owner has landed;569 is reserved for this ledger. Do not use consumer-credit tables for property reports.
+Root-owned property truth/daily/unit/PG files already exist separately in this worktree. The implementation commit excludes those files. Register their read-only ledger check and the protected read door through root's shared-file ownership handoff.
+Generate actual journeys and record the narrow explicit action, roles and stored effects in the coordinated existing actual-flow record. The global changelog remains owned by the consulting lane.
+
+STORED EFFECT AND RETRY RULE
+crs_property_requests saves requester, operation, separate immutable permission, normalized report, strict UUID provider receipt, status and timestamps. No raw provider Input, SSN, DOB, token or credential fields are retained. Default app grants are revoked before SELECT/INSERT and narrow status/version/receipt UPDATE grants. A scope trigger binds client and staff to the same company; attribution remains immutable.
+identity_fingerprint is an immutable domain-separated HMAC-SHA256 over full normalized name/SSN/DOB and company/client, keyed with existing PII_ENC_KEY. This is the billable dedupe key.
+identity_version_fingerprint is the last revalidated encrypted saved version, used for read staleness without decrypting on GET. Re-encrypting the same SSN can make the old view stale, but the next explicit authorized action audits decryption, finds the stable HMAC, rebinds only the version, and returns the original receipt without another provider call. Historical version drift does not itself invalidate historical evidence.
+The claim commits before the property wire. In-flight, timeout, rejected or malformed provider responses never automatically retry. Identity changes during the wire hide the earlier report and require review.
+
+RUNTIME CONFIGURATION
+CRS_PROPERTY_API_HOST
+CRS_PROPERTY_API_USERNAME
+CRS_PROPERTY_API_PASSWORD
+CRS_PROPERTY_ALLOW_LIVE=on for production
+CRS_PROPERTY_SANDBOX_IDENTITY_SHA256 (private canonical fixture fingerprint; root configured)
+Existing ADAPTERS_DRY_RUN must be explicitly off; existing PII_ENC_KEY is required for saved-client work.
+Sandbox proof maps dedicated sandbox credentials into the property client only within that process. Existing credit/OffersIQ credentials and configuration are never overwritten or borrowed as a property fallback.
+
+EVIDENCE
+ops/workflows/crs-property-setup-2026-11-06-evidence/ has eight marked LOCAL DRAFT screenshots: loading, empty, error, full at1440px and390px. All data in these captures is synthetic. Parent viewed empty-390-MARKED.png and full-1440-MARKED.png. Screenshots remain local ignored evidence, not provider/client receipts.
+The browser proof opens the actual page with intercepted APIs. It proves one explicit click and separate permission create one POST, tab/open/reload are GET only, excluded roles see no controls, session changes discard pending private results, historical original loans remain history and zero foreclosure counts remain zero.
+The PostgreSQL proof uses the guarded disposable loopback property scratch database as fundhub_app NOSUPERUSER/NOBYPASSRLS. It checks true randomized encryptSsn re-encryption, one paid stub call/one ledger row, audited disclosure, immutable attribution and foreign-company rejection. It rolls back synthetic rows. No database test skipped in the explicit run.
+Root separately ran one exact vendor fixture through the implemented createCrsPropertyClient and transport, retaining its private receipt. This lane made no provider requests. Sandbox proof and source/browser/database checks do not establish a production report purchase or deployed customer result.
+
+CONTROLLED FINDINGS REPAIRED BEFORE HANDOFF
+1. Randomized ciphertext was an unsafe billable identity key. Stable keyed full-identity dedupe and a distinct read version now prevent repeat orders on identical SSN re-encryption.
+2. Non-success RequestID headers could contain arbitrary text. Every path now uses strict UUID-or-null; canonical lowercase keeps normalized receipt IDs equal to PostgreSQL UUID values.
+3. A valid-looking report could coexist with a malformed string error field. All known top-level error fields now reject malformed or nonempty shapes, regardless of string/object/array type.
+4. PostgreSQL inherited default table grants could exceed intended privileges.569 explicitly revokes app grants before adding the narrow grants. The final exact migration was applied to the empty guarded scratch table and its restrictions passed the app-role test.
+
+FINISHING CHECKS
+Property unit/API/provider suite plus existing CRS, identity, PII and outbound-fence regressions:97 tests passed across three suites,0 skipped.
+Property PostgreSQL:1 passed,0 skipped.
+Property Playwright:5 passed,0 skipped, eight marked state/width captures.
+TypeScript npx tsc --noEmit passed. Full lint:4780 files/inline scripts parse clean. git diff --check passed. Preflight found only historical overlap warnings and one newer main commit; the local implementation is rebased before root delivery.
+Required route registration, shared heartbeat integration, current-main protected CI, GitHub Ship and authenticated deployed read/UI proof belong to root and remain required before completion. No live release is claimed here.

@@ -395,3 +395,52 @@ a cleared hold back.
   signed settlement, or Cortana receipt has been observed. The three existing funded
   card-stacking rounds have no confirmed approval rows, so they remain internal advisor
   tasks rather than payable invoices. The alt-fin rail remains out of this per-bank scope.
+
+
+## Internal OffersIQ lead sort (approved backend plan, 2026-11-06)
+
+The finished screening ledger keeps a separate internal sort result: Can't tell,
+Super Prime, Prime, Blueprint or Not a fit yet; zero to100 points; the config
+version; retained ranges; and reasons. Only numeric thresholds or numeric pairs
+survive sanitation. The reader requires the complete configured code, name,
+operator and threshold list, including failed and unverifiable rules. Two passing
+ranges for one fact or a changed/partial list yields Can't tell with `rule list
+mismatch`. An unknown score is never bad credit. A verified no-file response with
+no evaluated rules also yields Can't tell.
+
+```mermaid
+flowchart LR
+    FIN[Saved finished check] --> READ[Read exact configured rule list]
+    READ -->|Matches| RANGE[Known ranges or unknown]
+    READ -->|Missing or changed| TELL[Can't tell with reason]
+    RANGE --> SORT[Bucket and points from versioned config]
+    TELL --> SAVE[Save internal sort on same ledger row]
+    SORT --> SAVE
+    FREE[Free stored-report reevaluation after CRS loads list] --> READ
+    SAVE --> PULSE[Daily and hourly read-only integrity check]
+```
+
+The config owns every range, Prime check and point value:123 numeric ranking
+bands plus two original screening guards make125 unique returned conditions.
+All18 enabled attribute code/name pairs were observed in the actual sandbox1237
+response, including full flat/grouped results. The root combines the original
+three-rule screen with an OR group of the other122 bands. The adverse-zero band
+is reused once. Approved, declined and thin-file profiles match the original
+1232 screen; the thin-file case retains five unverifiable conditions for one
+optional attribute. Fractional ranking gaps stay unknown. The boolean bankruptcy
+rule and no-car-loan distinction remain disabled pending supported definitions.
+Production copy1694 is promoted. Fundhub's active selector stays1677 until the
+compatible backend is deployed, read back and activated. Exact starter1677/1232
+receipts continue to receive verified nothing-to-judge heartbeat treatment.
+
+Rescoring reads saved receipts and changes only ranking fields. Free reevaluation
+uses the stored request ID and never starts a paid check; production bulk reruns
+first require a complete matching free proof. The original paid receipt, identity,
+setter cache and current screen stay unchanged. No bucket or point is sent to
+Meta, any other ad platform, calendar routing or lender decisions. No SSN or date
+of birth is added. Sandbox proof uses only the four published test people.
+The actual implemented client proved the complete125-condition list with the
+four fixed no-SSN sandbox identities: three no-file answers remain unknown and
+one complete declined receipt supports internal Blueprint97. Zero production
+orders were made for this proof. The first20 normal setter checks and an actual
+production report remain unverified; no historical client cache is changed. The setter screen is separate later work for Claude/Opus.

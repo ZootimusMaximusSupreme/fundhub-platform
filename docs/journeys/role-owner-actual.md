@@ -34,7 +34,7 @@ flowchart TD
     CAN --> A_dashboard[The dashboard — 7 routes]
     CAN --> A_demo[demo — 2 routes]
     CAN --> A_documents[Documents — 1 route]
-    CAN --> A_finance[Finance — 13 routes]
+    CAN --> A_finance[Finance — 14 routes]
     CAN --> A_gifts[gifts — 1 route]
     CAN --> A_hiring[Hiring — 8 routes]
     CAN --> A_journeys[journeys — 2 routes]
@@ -72,7 +72,7 @@ flowchart TD
 
 ## What they can reach
 
-**340 of 359 routes.**
+**341 of 360 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -179,6 +179,7 @@ flowchart TD
 | `/api/finance/liabilities` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/finance/model` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/finance/paydown-simulator` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/finance/property-report` | GET, POST | owner, admin, funding_advisor |
 | `/api/finance/soft-pull` | GET, POST | employees: owner, admin, closer, funding_advisor<br>plus: client |
 | `/api/finance/subscriptions` | GET, POST | owner, admin, sales_manager |
 | `/api/gifts/message-blaster` | GET, HEAD | staff, affiliate, partner |
@@ -426,7 +427,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**19 of 359 routes.**
+**19 of 360 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

@@ -1,0 +1,15 @@
+# Generated manifest delta prepared on the inherited ordered parent.
+# Local source contains570_offersiq_lead_sort.sql; publication still awaits
+# the active Blueprint manifest owner and controller restack.
+diff --git a/db/expected-migrations.mjs b/db/expected-migrations.mjs
+index 81261c6d6..05ffcca28 100644
+--- a/db/expected-migrations.mjs
++++ b/db/expected-migrations.mjs
+@@ -406,6 +406,7 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
+   "migrations/566_contract_affiliate_actors.sql",
+   "migrations/567_whop_existing_plan_identity.sql",
+   "migrations/568_passkey_bank_stepup.sql",
++  "migrations/570_offersiq_lead_sort.sql",
+   "seed/002_pipelines.sql",
+   "seed/006_message_templates_source_doc.sql",
+   "seed/007_contract_templates.sql",

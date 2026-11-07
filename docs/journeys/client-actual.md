@@ -37,7 +37,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 10 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 266 routes]
+    WHO -->|Yes| CANT[Blocked — 267 routes]
     CANT --> B_adintel[adintel — 1 blocked]
     CANT --> B_affiliates[affiliates — 2 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
@@ -52,7 +52,7 @@ flowchart TD
     CANT --> B_creative[Creative Factory — 7 blocked]
     CANT --> B_dashboard[The dashboard — 7 blocked]
     CANT --> B_demo[demo — 2 blocked]
-    CANT --> B_finance[Finance — 12 blocked]
+    CANT --> B_finance[Finance — 13 blocked]
     CANT --> B_gifts[gifts — 1 blocked]
     CANT --> B_hiring[Hiring — 7 blocked]
     CANT --> B_journeys[journeys — 2 blocked]
@@ -75,7 +75,7 @@ flowchart TD
 
 ## What they can reach
 
-**93 of 359 routes.**
+**93 of 360 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -180,7 +180,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**266 of 359 routes.**
+**267 of 360 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -268,6 +268,7 @@ flowchart TD
 | `/api/finance/liabilities` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/finance/model` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/finance/paydown-simulator` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/finance/property-report` | GET, POST | owner, admin, funding_advisor |
 | `/api/finance/subscriptions` | GET, POST | owner, admin, sales_manager |
 | `/api/gifts/message-blaster` | GET, HEAD | staff, affiliate, partner |
 | `/api/hiring/application` | GET | owner, admin |
