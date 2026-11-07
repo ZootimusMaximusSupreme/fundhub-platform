@@ -1,5 +1,7 @@
 # affiliate — intended
 
+Owner direction, November 6: account creation and normal sign-in stay unchanged. Before opening Plaid or saving an affiliate payout bank, the existing account sets up and separately verifies a passkey and gives explicit bank-data consent. Supported devices may use Face ID, fingerprint, or their passkey unlock. Recovery requires a recent sign-in and an unused recovery code; cancelling setup must preserve access, and replacement registration must be followed by a separate assertion.
+
 > ⚠️ **WRITTEN AFTER THE FACT, NOT BEFORE IT.** CLAUDE.md §4 calls this file the
 > hand-authored source of truth, checked against the code — and says agents do
 > not write it, because an agent writing it would be authoring the very thing

@@ -1,0 +1,61 @@
+{
+  "checkedAt": "2026-11-06T21:34:36.938225+00:00",
+  "scope": "Signed development binaries and entitlements only. No physical-device, WebView passkey, biometric, App Store upload or distribution claim.",
+  "binaries": {
+    "mac": {
+      "bundleIdentifier": "ai.fundhub.mac",
+      "team": "8VDXL37RR6",
+      "applicationIdentifier": "8VDXL37RR6.ai.fundhub.mac",
+      "version": "1.0",
+      "build": "1",
+      "signingType": "Apple Development",
+      "signatureVerified": true,
+      "associatedDomains": [
+        "webcredentials:fundhub.ai"
+      ],
+      "binarySha256": "f7f987b0c9201d2490fb4ee730a6d321cc24a44d42afac2ad93b384a5c6fe215",
+      "artifactPath": "/private/tmp/fundhub-passkey-native-20261106/mac-signed-final/Fundhub.app"
+    },
+    "ios": {
+      "bundleIdentifier": "ai.fundhub.app",
+      "team": "8VDXL37RR6",
+      "applicationIdentifier": "8VDXL37RR6.ai.fundhub.app",
+      "version": "1.0.4",
+      "build": "10",
+      "signingType": "Apple Development",
+      "signatureVerified": true,
+      "associatedDomains": [
+        "applinks:fundhub.ai",
+        "webcredentials:fundhub.ai"
+      ],
+      "binarySha256": "3ec0f717c981b832b135147d168575e61ddb72d9c5c340e58ed201599a652003",
+      "artifactPath": "/private/tmp/fundhub-passkey-native-20261106/ios-development/Build/Products/Debug-iphoneos/Fundhub.app"
+    }
+  },
+  "sourceHashes": {
+    "tools/fundhub-ios/Fundhub/Fundhub.entitlements": "49d21302f59bdf936404ff74a84203946aabb9fcc2f0f880b240af910a481cdd",
+    "tools/fundhub-ios/Fundhub/Fundhub.Release.entitlements": "546ac9596fdc3f1416de30fddbbeb5b537d22be36f0d4b742644ae6b703eea76",
+    "tools/fundhub-ios/Fundhub.xcodeproj/project.pbxproj": "774f35d172ed3e97efcd6692ea7a84aaab4066779f1e6c797dc4787c06199066",
+    "tools/fundhub-mac/FundhubMac.entitlements": "d34745e84e308b008167e5797630502ec06549e18c8b08384ce15004990cde24",
+    "tools/fundhub-mac/build.sh": "3544506a4357fb9efc84ab19b535b53dd06ffca92489ebc59f28080f994fe78b"
+  },
+  "appleProfile": {
+    "name": "Fundhub Mac Passkeys Development 20261106",
+    "state": "ACTIVE",
+    "newCertificateCreated": false,
+    "newDeviceRegistered": false
+  },
+  "iosRelease": {
+    "version": "1.0.4",
+    "build": "10",
+    "availabilityVerifiedAt": "2026-11-06T21:32:12.969Z",
+    "submissionStatus": "Pending protected web release and normal pinned archive/export/upload.",
+    "unrelatedMacReview": "Existing Mac 1.0 IN_REVIEW left unchanged."
+  },
+  "installedMacBeforeUpdate": {
+    "version": "1.0",
+    "build": "1",
+    "bundleIdentifier": "ai.fundhub.mac"
+  },
+  "installedAppChanged": false
+}

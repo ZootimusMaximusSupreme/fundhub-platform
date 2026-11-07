@@ -238,6 +238,24 @@ function primaryGate(file, { sets, wrappers, readSource = read }) {
   }
   const src = code(readSource(file));
 
+  // Bank passkeys have an owner-only staff branch and owned client/affiliate
+  // branches. Trace both; the generic first principal match hides the owner.
+  if (file === "api/auth/passkey.mjs") {
+    const known = principalsFromRequirePrincipal(src)?.join(",") === "client,affiliate" &&
+      /body\.target_kind === "company_bank"/.test(src) &&
+      /\(deps\.requireAuth \|\| requireAuth\)\(req, res,/.test(src) &&
+      /staff\.role !== "owner"/.test(src) &&
+      /targetId: staff\.org_id/.test(src) &&
+      /principal\.kind === "client" && !principal\.authorizedRep/.test(src) &&
+      /principal\.clientId/.test(src) && /principal\.affiliateId/.test(src) &&
+      /accountId: principal\.accountId, sessionId: principal\.sessionId/.test(src);
+    return known
+      ? { kind: "explicit-roles", roles: ["owner"], principals: ["staff", "client", "affiliate"],
+        note: "owner session for company-bank passkeys; own client or affiliate account/session/target for consumer passkeys; no authorized-representative client enrollment and no login-session creation" }
+      : { kind: "unverified", roles: null, principals: null,
+        note: "bank passkey owner/account branches changed and must be traced again" };
+  }
+
   // An MFA challenge is not an open public route and not an existing staff
   // session. The token is minted only after a staff password check, expires,
   // and must be paired with an authenticator or recovery code to mint a session.

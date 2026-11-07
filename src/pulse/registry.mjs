@@ -110,6 +110,7 @@ const API_KEYS = [
   /* GET returns 405 without issuing a challenge, grant, or Link token. The
      saved MFA/consent result is checked by gap-auth each morning. */
   "auth/plaid-mfa",
+  "auth/passkey",
   "auth/reset",
   "auth/send-portal-link",
   "auth/session",

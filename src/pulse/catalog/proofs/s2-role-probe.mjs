@@ -1,13 +1,14 @@
 // A signed-in role probe for the journey "reach" and "stays blocked" rows.
 //
 // It signs in as one kind of person (a staff role or an account kind) against a
-// stand-in database, sends a GET and an empty POST through the REAL api adapter
+// stand-in database, sends a GET and a POST through the REAL api adapter
 // to one route, and says what the route's own gate did with that person. The
 // network is refused and nothing is written anywhere: every read and write goes
 // to the stand-in.
 //
 // What it can and cannot see, said plainly:
 //   - It sees the entry gate (signed in, right kind of person, right role).
+//   - Bank passkey status supplies a concrete owned target and live identity.
 //   - An empty POST body is refused for being empty on some routes BEFORE their
 //     later role check. Those routes look reachable here and are named, one by
 //     one, in the test that uses this file. They are never counted as proved.
@@ -15,6 +16,7 @@ import { fakeDb, useSharedDb, staffSession, accountSession } from "../../../test
 
 const CLIENT_ID = "c1000000-0000-4000-8000-000000000001";
 const PARTNER_ID = "b1000000-0000-4000-8000-000000000001";
+const AFFILIATE_ID = "af000000-0000-4000-8000-000000000001";
 
 /** Journey principals plus staff roles needed by the approved bank outreach boundary. */
 export const PRINCIPALS = Object.freeze({
@@ -43,13 +45,13 @@ const PATH_FOR = Object.freeze({
 const SECRET_DOOR_CODES = new Set(["bad_signature", "invalid_api_key", "missing_api_key"]);
 const CONDITION_CODES = new Set(["no_active_shift", "suite_off"]);
 
-async function oneCall(handler, path, method, rules, anonymous) {
+async function oneCall(handler, path, method, rules, anonymous, postBody = {}) {
   const fake = fakeDb(rules);
   const restore = useSharedDb(fake);
   try {
     const headers = { "content-type": "application/json" };
     if (!anonymous) headers.authorization = "Bearer test-token-not-real";
-    const init = { method, headers, ...(method === "GET" ? {} : { body: "{}" }) };
+    const init = { method, headers, ...(method === "GET" ? {} : { body: JSON.stringify(postBody) }) };
     const response = await Promise.race([
       handler(new Request(`https://example.test/api/${path}`, init), {}),
       new Promise((_resolve, reject) => setTimeout(() => reject(new Error("timeout")), 4000)),
@@ -65,9 +67,42 @@ async function oneCall(handler, path, method, rules, anonymous) {
 }
 
 /** What happened to one person on one route key. */
-export async function probeRoute(handler, key, principalName, { blueprintPaid = true, targetClientId = CLIENT_ID } = {}) {
+export async function probeRoute(handler, key, principalName, { blueprintPaid = true, targetClientId = CLIENT_ID,
+  passkeyTargetKind, passkeyBody, passkeyAffiliateLinked = true, passkeySessionLive = true } = {}) {
   let path = PATH_FOR[key] || key;
   const rules = principalName ? PRINCIPALS[principalName]() : [];
+  let postBody = {};
+  // The passkey door's missing-target 400 is public input validation, not
+  // evidence of role access. Exercise its actual target-specific status gate.
+  if (key === "auth/passkey") {
+    const targetKind = passkeyTargetKind || (principalName === "client" ? "client_bank"
+      : principalName === "affiliate" ? "affiliate_payout" : "company_bank");
+    postBody = passkeyBody || { action: "status", target_kind: targetKind };
+    const staff = principalName?.startsWith("role-") ? rules[0][1]()[0] : null;
+    let account = principalName && !staff ? rules[1][1]()[0] : null;
+    // The affiliate fixture needs its own payout target only for this route;
+    // other routes retain their original target/capability fixtures.
+    if (account && principalName === "affiliate") {
+      account = { ...account, affiliate_id: passkeyAffiliateLinked ? AFFILIATE_ID : null };
+      rules[1] = [rules[1][0], () => [account]];
+    }
+    const orgId = staff?.org_id || account?.org_id;
+    const subjectId = "9e000000-0000-4000-8000-000000000001";
+    const sessionId = staff?.session_id || (account ? rules[0][1]()[0].id : null);
+    const targetId = targetKind === "company_bank" ? orgId
+      : targetKind === "client_bank" ? account?.client_id : account?.affiliate_id;
+    const actorId = staff?.staff_id || account?.id;
+    rules.push([
+      /FROM (?:accounts a JOIN account_sessions s|staff a JOIN sessions s)/,
+      (_sql, params) => passkeySessionLive && actorId && targetId && params.length === 5 &&
+        params.every((value, index) => value === [actorId, orgId, sessionId, targetKind, targetId][index])
+        ? [{ email: "probe@example.test", name: "Probe", fresh_primary: true }] : []
+    ], [
+      /SELECT \* FROM auth_passkey_subjects WHERE org_id=\$1/,
+      (_sql, params) => params.length === 3 && params[0] === orgId && params[1] === (account?.id || null) && params[2] === (staff?.staff_id || null)
+        ? [{ id: subjectId, org_id: orgId, account_id: account?.id || null, staff_id: staff?.staff_id || null, enrolled_at: null }] : []
+    ]);
+  }
   // This client-only door checks that the signed-in client has a file before
   // returning the saved switch. Give the probe that one file; other roles get none.
   if (key === "push/preferences" && principalName === "client") {
@@ -111,7 +146,7 @@ export async function probeRoute(handler, key, principalName, { blueprintPaid = 
     }
   }
   const get = await oneCall(handler, path, "GET", rules, !principalName);
-  const post = await oneCall(handler, path, "POST", rules, !principalName);
+  const post = await oneCall(handler, path, "POST", rules, !principalName, postBody);
   return { GET: get, POST: post };
 }
 

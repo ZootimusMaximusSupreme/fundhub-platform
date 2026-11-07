@@ -173,6 +173,7 @@ test("the forms post the exact request and the section repaints from the answer"
       await own.link.completeStepUp(own.page);
       await waitFor(() => own.link.posts.some((p) => p.path === "link-exchange"));
       assert.deepEqual(own.link.mfaPosts, own.link.expectedMfa());
+      own.link.assertPasskeyGates();
       assert.deepEqual(own.link.posts, own.link.expected());
       assert.deepEqual(own.errors, []);
       await own.page.close();

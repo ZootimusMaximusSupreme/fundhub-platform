@@ -61,10 +61,20 @@ export async function waitFor(done, ms = 20_000) {
 export function bankLink() {
   const posts = [];
   const mfaPosts = [];
+  const passkeyPosts = [];
+  const events = [];
   const grantToken = "fake-plaid-grant-token";
+  const passkey = async (route) => {
+    const body = bodyOf(route);
+    passkeyPosts.push(body);
+    events.push({ endpoint: "passkey", action: body.action, target_kind: body.target_kind });
+    if (body.action !== "status") return json(route, { ok: false, error: "unexpected_passkey_action" }, 400);
+    return json(route, { ok: true, enrolled: true, assured: true, recovery_required: false });
+  };
   const mfa = async (route) => {
     const body = bodyOf(route);
     mfaPosts.push(body);
+    events.push({ endpoint: "consent", action: body.action, target_kind: body.target_kind });
     if (body.action === "consent_details") return json(route,
       { ok: true, consent_text: "I agree to connect my bank.", privacy_url: "/privacy/" });
     if (body.action === "authorize") {
@@ -76,6 +86,7 @@ export function bankLink() {
   const answer = (name) => async (route) => {
     const body = bodyOf(route);
     posts.push({ path: name, body });
+    events.push({ endpoint: "bank", path: name });
     if (body.plaid_grant_token !== grantToken || !mfaPosts.some((p) => p.action === "authorize" && p.consent === true)) {
       return json(route, { ok: false, error: "consent_required" }, 403);
     }
@@ -84,15 +95,34 @@ export function bankLink() {
   return {
     posts,
     mfaPosts,
-    handlers: { "/api/auth/plaid-mfa": mfa, "/api/banking/link-token": answer("link-token"), "/api/banking/link-exchange": answer("link-exchange") },
+    passkeyPosts,
+    handlers: { "/api/auth/passkey": passkey, "/api/auth/plaid-mfa": mfa, "/api/banking/link-token": answer("link-token"), "/api/banking/link-exchange": answer("link-exchange") },
     completeStepUp: async (page) => {
       const dialog = page.locator("dialog.fh-plaid-stepup");
       await dialog.getByRole("heading", { name: "Connect your bank" }).waitFor();
+      assert.deepEqual(passkeyPosts, [{ action: "status", target_kind: "client_bank" }], "assured passkey status precedes consent");
+      const statusIndex = events.findIndex((event) => event.endpoint === "passkey" && event.action === "status");
+      const detailsIndex = events.findIndex((event) => event.endpoint === "consent" && event.action === "consent_details");
+      assert(statusIndex >= 0 && statusIndex < detailsIndex, "passkey gate runs before consent details");
       assert.equal(await dialog.locator('[name="code"]').count(), 0);
       assert.match(await dialog.locator(".fh-plaid-stepup-consent").innerText(), /agree to connect my bank/);
       await dialog.locator('[name="consent"]').check();
       assert.deepEqual(posts, [], "Link has not started before consent");
       await dialog.getByRole("button", { name: "Agree and connect" }).click();
+    },
+    assertPasskeyGates: () => {
+      const statuses = events.map((event, index) => event.endpoint === "passkey" && event.action === "status" ? index : -1).filter((index) => index >= 0);
+      const details = events.findIndex((event) => event.endpoint === "consent" && event.action === "consent_details");
+      const authorize = events.findIndex((event) => event.endpoint === "consent" && event.action === "authorize");
+      const linkToken = events.findIndex((event) => event.endpoint === "bank" && event.path === "link-token");
+      const exchange = events.findIndex((event) => event.endpoint === "bank" && event.path === "link-exchange");
+      assert.equal(statuses.length, 2, "passkey status gates both consent and account exchange");
+      assert(statuses[0] < details && details < authorize && authorize < linkToken && linkToken < statuses[1] && statuses[1] < exchange,
+        "post-Plaid passkey status completes before exchange");
+      assert.deepEqual(passkeyPosts, [
+        { action: "status", target_kind: "client_bank" },
+        { action: "status", target_kind: "client_bank" },
+      ]);
     },
     expectedMfa: () => [
       { action: "consent_details", target_kind: "client_bank" },

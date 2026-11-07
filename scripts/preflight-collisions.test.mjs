@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { blockingOverlaps, chooseMainUpdate, excludeExpectedBase, fileHandoffs, findOverlaps, inheritedOrderedRefs, isOlderOpenPr, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, plannedStackAncestors, recordedExpectedParent, resolveFileHandoffs, stackAncestorNumbers } from "./preflight-collisions.mjs";
+import { blockingOverlaps, chooseMainUpdate, excludeExpectedBase, excludePublishedBranchFiles, fileHandoffs, findOverlaps, inheritedOrderedRefs, isOlderOpenPr, orderChain, orderPrChain, orderedChildRefs, parsePorcelain, parseWorktrees, plannedStackAncestors, publishedUpdateProof, recordedExpectedParent, resolveFileHandoffs, stackAncestorNumbers } from "./preflight-collisions.mjs";
 import { FILE_OVERLAP_CUTOVER } from "./release-control.mjs";
 
 test("parsePorcelain keeps the new path on a rename and strips quotes", () => {
@@ -360,4 +360,156 @@ test("local branches stacked on an ordered child inherit its files too", () => {
   const inherited = inheritedOrderedRefs(sources, children,
     (parent, branch) => parent === "ordered-child" && branch === "local-grandchild");
   assert.deepEqual([...inherited], ["ordered-child", "local-grandchild"]);
+});
+
+// Actual Git trees: the controller-rewritten local candidate is NOT descended
+// from its published PR head. Eight files change; 72 published files do not.
+function publishedUpdateFixture() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fundhub-preflight-update-"));
+  const cwd = path.join(dir, "work"), remote = path.join(dir, "origin.git"), peerWork = path.join(dir, "peer");
+  fs.mkdirSync(cwd);
+  const command = (where, args) => execFileSync("git", args, { cwd: where, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  const git = (...args) => command(cwd, args);
+  git("init", "--bare", remote); git("init", "-b", "main");
+  git("config", "user.name", "Preflight test"); git("config", "user.email", "preflight@example.invalid");
+  const files = Array.from({ length: 80 }, (_, n) => n === 0 ? "policy.txt" : `file-${n}.txt`);
+  for (const file of [...files, "manifest566.txt"]) fs.writeFileSync(path.join(cwd, file), "main\n");
+  git("add", "."); git("commit", "-m", "main"); const initial = git("rev-parse", "HEAD");
+  git("remote", "add", "origin", remote); git("push", "origin", "main");
+  git("switch", "-c", "codex/current");
+  for (const file of files) fs.writeFileSync(path.join(cwd, file), "published\n");
+  fs.writeFileSync(path.join(cwd, "manifest566.txt"), "landed566\n");
+  git("commit", "-am", "published"); git("push", "origin", "codex/current"); const published = git("rev-parse", "HEAD");
+  git("switch", "-c", "codex/peer", initial);
+  for (const file of files) fs.writeFileSync(path.join(cwd, file), "published\n");
+  git("commit", "-am", "independent history, identical published files"); const peer = git("rev-parse", "HEAD");
+  git("switch", "-c", "codex/old-blake", initial);
+  fs.writeFileSync(path.join(cwd, "manifest566.txt"), "stale566\n"); git("commit", "-am", "old manifest");
+  git("switch", "main"); fs.writeFileSync(path.join(cwd, "manifest566.txt"), "landed566\n");
+  git("commit", "-am", "566 already landed"); git("push", "origin", "main"); const main = git("rev-parse", "HEAD");
+  git("switch", "-C", "codex/current", main);
+  for (const [n, file] of files.entries()) fs.writeFileSync(path.join(cwd, file), n < 8 ? "candidate\n" : "published\n");
+  git("commit", "-am", "rewritten candidate with eight new edits"); const head = git("rev-parse", "HEAD");
+  git("worktree", "add", peerWork, "codex/peer");
+  git("worktree", "add", path.join(dir, "blake"), "codex/old-blake");
+  const prs = [{ number: 437, headRefName: "codex/current", headRefOid: published, baseRefName: "main",
+    files: files.map(p => ({ path: p })), labels: [], body: "", createdAt: "2026-11-03T10:00:00Z" }];
+  const bin = path.join(dir, "bin"), ghFile = path.join(dir, "prs.json"); fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, "gh"), `#!${process.execPath}\nconst fs=require('node:fs'),cp=require('node:child_process');
+const file=process.env.PREFLIGHT_TEST_PRS, countFile=file+'.reads';
+const count=fs.existsSync(countFile)?Number(fs.readFileSync(countFile))+1:1;fs.writeFileSync(countFile,String(count));
+if(count===2&&process.env.PREFLIGHT_FINAL_GIT)for(const args of JSON.parse(process.env.PREFLIGHT_FINAL_GIT))cp.execFileSync('git',args,{stdio:'ignore'});
+if(count===2&&process.env.PREFLIGHT_FINAL_WRITE)for(const [file,text] of JSON.parse(process.env.PREFLIGHT_FINAL_WRITE))fs.writeFileSync(file,text);
+process.stdout.write(fs.readFileSync(file));\n`, { mode: 0o755 });
+  const readGit = args => { try { return git(...args); } catch { return null; } };
+  const scan = (finalGit = [], finalWrite = []) => {
+    fs.writeFileSync(ghFile, JSON.stringify(prs)); fs.rmSync(ghFile + ".reads", { force: true });
+    const result = spawnSync(process.execPath, [fileURLToPath(new URL("./preflight-collisions.mjs", import.meta.url)), "--no-fetch", "--json"], {
+      cwd, encoding: "utf8", env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+        PREFLIGHT_TEST_PRS: ghFile, PREFLIGHT_FINAL_GIT: JSON.stringify(finalGit), PREFLIGHT_FINAL_WRITE: JSON.stringify(finalWrite) }
+    });
+    return { status: result.status, report: result.stdout ? JSON.parse(result.stdout) : null, stderr: result.stderr };
+  };
+  return { dir, cwd, remote, peerWork, files, git, command, readGit, published, peer, main, head, prs, scan };
+}
+
+test("existing PR updates compare direct trees and keep real competing owners", async t => {
+  const cases = [
+    ["rewritten nonancestor update has exactly eight real changed files", () => {}, 0],
+    ["real peer policy edit blocks", f => { fs.writeFileSync(path.join(f.peerWork, "policy.txt"), "peer owns a new policy\n"); f.command(f.peerWork, ["commit", "-am", "peer policy"]); }, 1],
+    ["peer mode change blocks identical bytes", f => { f.command(f.peerWork, ["update-index", "--chmod=+x", "policy.txt"]); f.command(f.peerWork, ["commit", "-m", "peer mode"]); }, 1],
+    ["dirty peer stays blocking", f => fs.appendFileSync(path.join(f.peerWork, "policy.txt"), "unsaved\n"), 1],
+    ["explicit PR claim stays blocking", f => f.prs.push({ number: 436, headRefName: "codex/peer", headRefOid: f.peer,
+      baseRefName: "main", labels: [], body: "", files: [{ path: "policy.txt" }], createdAt: "2026-11-03T09:00:00Z" }), 1],
+    ["no own PR retains the original full scope", f => f.prs.splice(0), 1],
+    ["invalid PR identity never exempts", f => { f.prs[0].number = 0; }, 2],
+    ["duplicate PR identity never exempts", f => f.prs.push({ ...f.prs[0], headRefName: "codex/other" }), 2],
+    ["missing tracking ref never exempts", f => f.git("update-ref", "-d", "refs/remotes/origin/codex/current"), 2],
+    ["missing live ref never exempts", f => execFileSync("git", ["--git-dir", f.remote, "update-ref", "-d", "refs/heads/codex/current"]), 2],
+    ["missing published commit never exempts", f => { f.prs[0].headRefOid = "f".repeat(40); }, 2]
+  ];
+  for (const [name, change, expected] of cases) await t.test(name, () => {
+    const f = publishedUpdateFixture();
+    try {
+      change(f);
+      const result = f.scan();
+      assert.equal(result.status, expected, JSON.stringify(result));
+      if (expected === 0) {
+        assert.throws(() => f.git("merge-base", "--is-ancestor", f.published, f.head));
+        assert.throws(() => f.git("merge-base", "--is-ancestor", f.published, f.peer));
+        assert.equal(result.report.myFiles, 8);
+        assert.deepEqual(result.report.blocking, []);
+        assert.ok(!result.report.withMine.some(row => row.files.includes("manifest566.txt")));
+      } else if (expected === 1) assert.ok(result.report.blocking.length);
+      else assert.equal(result.report, null);
+      if (!f.prs.length) assert.equal(result.report.myFiles, 80, "no verified own PR retains the original main-based scope");
+    } finally { fs.rmSync(f.dir, { recursive: true, force: true }); }
+  });
+});
+
+test("published-copy filtering never mutates PR or raw worktree claims", () => {
+  const f = publishedUpdateFixture();
+  try {
+    const proof = publishedUpdateProof(f.prs, "codex/current", f.readGit);
+    const branch = { kind: "branch", refName: "codex/peer", sha: f.peer, files: ["policy.txt"] };
+    const pr = { ...branch, kind: "pr" }, dirty = { ...branch, kind: "worktree" };
+    const filtered = excludePublishedBranchFiles([branch, pr, dirty], proof, ["policy.txt"], f.readGit);
+    assert.deepEqual(filtered.sources, [pr, dirty]);
+    assert.equal(filtered.sources[0], pr); assert.equal(filtered.sources[1], dirty);
+    assert.deepEqual(branch.files, ["policy.txt"]);
+    assert.deepEqual(filtered.excluded, [{ ref: "refs/heads/codex/peer", sha: f.peer }]);
+  } finally { fs.rmSync(f.dir, { recursive: true, force: true }); }
+});
+
+test("full CLI final barrier rejects moving peer, published head and local source", async t => {
+  for (const scenario of ["peer", "published", "local", "commit during status"]) await t.test(scenario, () => {
+    const f = publishedUpdateFixture();
+    try {
+      fs.writeFileSync(path.join(f.peerWork, "policy.txt"), "real concurrent peer edit\n");
+      f.command(f.peerWork, ["commit", "-am", "peer next edit"]);
+      const next = f.command(f.peerWork, ["rev-parse", "HEAD"]);
+      f.command(f.peerWork, ["reset", "--hard", f.peer]);
+      if (scenario === "commit during status") {
+        const realGit = execFileSync("which", ["git"], { encoding: "utf8" }).trim();
+        fs.writeFileSync(path.join(f.dir, "bin", "git"), `#!${process.execPath}
+const fs=require('node:fs'),cp=require('node:child_process'),args=process.argv.slice(2);
+const result=cp.spawnSync(${JSON.stringify(realGit)},args,{encoding:'utf8'});
+const countFile=${JSON.stringify(path.join(f.dir, "prs.json.reads"))}, marker=${JSON.stringify(path.join(f.dir, "status-race"))};
+if(args[0]==='status'&&fs.realpathSync(process.cwd())===fs.realpathSync(${JSON.stringify(f.peerWork)})&&fs.existsSync(countFile)
+  &&Number(fs.readFileSync(countFile))>=2&&!fs.existsSync(marker)){
+  cp.execFileSync(${JSON.stringify(realGit)},['reset','--hard',${JSON.stringify(next)}],{stdio:'ignore'});fs.writeFileSync(marker,'moved');
+}
+process.stdout.write(result.stdout||'');process.stderr.write(result.stderr||'');process.exit(result.status??98);
+`, { mode: 0o755 });
+      }
+      const command = scenario === "peer" ? ["-C", f.peerWork, "reset", "--hard", next]
+        : scenario === "published" ? ["--git-dir", f.remote, "update-ref", "refs/heads/codex/current", f.main]
+          : ["update-ref", "refs/heads/codex/current", f.main];
+      const result = f.scan(scenario === "commit during status" ? [] : [command]);
+      if (scenario === "commit during status") {
+        assert.ok(fs.existsSync(path.join(f.dir, "status-race")), "the real commit during final status was reached");
+        assert.equal(f.command(f.peerWork, ["rev-parse", "HEAD"]), next, "the peer actually committed before judging the guard");
+      }
+      assert.equal(result.status, 2, JSON.stringify(result));
+      assert.equal(result.report, null);
+      assert.match(result.stderr, /proof changed during collision checks/);
+      if (["peer", "commit during status"].includes(scenario)) assert.equal(f.command(f.peerWork, ["rev-parse", "HEAD"]), next);
+    } finally { fs.rmSync(f.dir, { recursive: true, force: true }); }
+  });
+});
+
+test("full CLI final barrier detects new relevant dirty claims and worktrees without blocking unrelated dirty work", async t => {
+  for (const scenario of ["peer dirty", "new own dirty", "new worktree", "unrelated peer dirty"]) await t.test(scenario, () => {
+    const f = publishedUpdateFixture();
+    try {
+      const finalGit = scenario === "new worktree" ? [["worktree", "add", "--detach", path.join(f.dir, "new-owner"), f.main]] : [];
+      const file = scenario === "peer dirty" ? path.join(f.peerWork, "policy.txt")
+        : scenario === "new own dirty" ? path.join(f.cwd, "new-own.txt") : path.join(f.peerWork, "unrelated-peer.txt");
+      const result = f.scan(finalGit, scenario === "new worktree" ? [] : [[file, "new unsaved work\n"]]);
+      assert.equal(result.status, scenario === "unrelated peer dirty" ? 0 : 2, JSON.stringify(result));
+      assert.equal(f.git("rev-parse", "codex/peer"), f.peer, "dirty appearance must be caught without a ref change");
+      if (result.status === 2) { assert.equal(result.report, null); assert.match(result.stderr, /proof changed during collision checks/); }
+      else assert.deepEqual(result.report.blocking, []);
+    } finally { fs.rmSync(f.dir, { recursive: true, force: true }); }
+  });
 });

@@ -222,6 +222,21 @@ describe("the extraction is faithful to the code", () => {
     }
   });
 
+  test("bank passkeys preserve the owner and owned-account branches without opening other staff roles", () => {
+    const gate=data.endpoints.find(row=>row.key==="auth/passkey").gate;
+    for (const subject of ["client","affiliate"]) assert.equal(reaches({type:"principal",subject},gate).reachable,true);
+    assert.equal(reaches({type:"role",subject:"owner"},gate).reachable,true);
+    for (const subject of ["admin","closer","sales_manager"]) assert.equal(reaches({type:"role",subject},gate).reachable,false);
+    for (const subject of ["partner","visitor"]) assert.equal(reaches({type:"principal",subject},gate).reachable,false);
+    const file="api/auth/passkey.mjs", source=fs.readFileSync(path.join(REPO,file),"utf8");
+    for (const from of ["staff.role !== \"owner\"","targetId: staff.org_id","!principal.authorizedRep","accountId: principal.accountId, sessionId: principal.sessionId"]) {
+      assert.ok(source.includes(from));
+      const changed=gateFor(file,{sets:data.roleSets,wrappers:wrapperGates(),
+        readSource:target=>target===file ? source.replace(from,"unverifiedChangedGate") : fs.readFileSync(path.join(REPO,target),"utf8")});
+      assert.equal(changed.kind,"unverified");
+    }
+  });
+
   test("staff payout gates trace the real shared duty helper and preserve the owner read-only branch", () => {
     const read = data.endpoints.find((endpoint) => endpoint.key === "read/staff-payout-account");
     const write = data.endpoints.find((endpoint) => endpoint.key === "staff/payout-account");

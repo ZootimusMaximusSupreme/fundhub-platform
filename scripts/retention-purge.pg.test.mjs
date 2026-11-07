@@ -471,10 +471,38 @@ describe("no retention period means no purge, even under --apply", () => {
     const countsBefore = await census(orgA);
     const contentBefore = await contentFingerprint(orgA);
 
-    const result = await plan(db, { orgId: orgA });
+    const queries = [];
+    const planDb = { query(sql, params) { queries.push(sql); return db.query(sql, params); } };
+    const result = await plan(planDb, { orgId: orgA });
+    assert.equal(result.items.length, DATA_CLASSES.length);
     for (const item of result.items) {
-      assert.match(item.skipped ?? "", /no retention period set/, `${item.dataClass} was not skipped`);
+      const retained = item.dataClass === "broker_upload_rows";
+      assert.equal(item.action, CLASSES[item.dataClass].action);
+      assert.equal(item.signedOff, true, `${item.dataClass} lost its existing sign-off`);
+      assert.equal(item.skipped, retained
+        ? "owner-approved retain in full; no scheduled purge"
+        : "no retention period set — nobody has decided how long this is kept");
+      assert.equal("retainDays" in item, false, `${item.dataClass} gained an unset period`);
+      assert.equal("expired" in item, false, `${item.dataClass} was counted despite a NULL period`);
     }
+    assert.equal(queries.length, 2, "a NULL-period plan must read only policy and policy gaps");
+    assert.ok(queries.every(sql => sql.includes("FROM retention_policy") || sql.includes("FROM v_retention_policy_gaps")),
+      "a NULL-period plan queried a customer data table");
+
+    const oneOrg = { query(sql, params) {
+      if (sql.includes("SELECT id FROM orgs ORDER BY id")) return Promise.resolve({ rows: [{ id: orgA }] });
+      return db.query(sql, params);
+    } };
+    await reviewRetention(oneOrg, { asOf: new Date("2035-02-01T04:00:00Z") });
+    const receipt = (await db.query(
+      `SELECT plan_counts, applied_counts FROM retention_run_receipts
+        WHERE org_id = $1 AND run_key = '2035-02'`, [orgA]
+    )).rows[0];
+    assert.deepEqual(receipt.plan_counts.find(item => item.dataClass === "broker_upload_rows"), {
+      dataClass: "broker_upload_rows", action: "retain", retainDays: null,
+      signedOff: true, expired: null, skipped: "owner-approved retain in full; no scheduled purge"
+    });
+    assert.deepEqual(receipt.applied_counts, []);
 
     const applied = await apply(db, { orgId: orgA, items: result.items, actorId: staffA });
     assert.deepEqual(applied, [], "apply() acted on a class with no retention period");

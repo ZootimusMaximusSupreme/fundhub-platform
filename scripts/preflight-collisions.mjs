@@ -141,6 +141,51 @@ export function inheritedOrderedRefs(sources, childRefs, isAncestor) {
   return inherited;
 }
 
+// An existing PR update replaces its published tree, even after a controller
+// rewrites history. Authenticate that exact tree; ancestry is not ownership.
+export function publishedUpdateProof(prs, current, readGit = git) {
+  const matches = prs.filter((pr) => pr.headRefName === current);
+  if (matches.length !== 1) return null;
+  const pr = matches[0], head = readGit(["rev-parse", "HEAD"]);
+  if (!Number.isSafeInteger(pr.number) || pr.number < 1 || prs.filter((p) => p.number === pr.number).length !== 1
+      || !/^[a-f0-9]{40}$/i.test(pr.headRefOid || "") || !/^[a-f0-9]{40}$/i.test(head || "")
+      || readGit(["cat-file", "-t", pr.headRefOid]) !== "commit") return null;
+  const ref = `refs/heads/${current}`;
+  const remote = lines(readGit(["ls-remote", "--refs", "origin", ref])).map((row) => row.split(/\s+/));
+  if (remote.length !== 1 || remote[0][1] !== ref || remote[0][0] !== pr.headRefOid
+      || readGit(["rev-parse", "--verify", `refs/remotes/origin/${current}`]) !== pr.headRefOid
+      || readGit(["rev-parse", "HEAD"]) !== head || readGit(["symbolic-ref", "--short", "HEAD"]) !== current) return null;
+  return { number: pr.number, branch: current, published: pr.headRefOid, head, base: pr.baseRefName };
+}
+
+// Only committed branch claims can be inherited copies. Keep every PR claim,
+// raw worktree change, differing mode and independently changed file intact.
+export function excludePublishedBranchFiles(sources, proof, mine, readGit = git) {
+  if (!proof) return { sources, excluded: [] };
+  const relevant = new Set(mine), excluded = [], entries = new Map();
+  const entry = (commit, file) => {
+    const key = `${commit}:${file}`;
+    if (!entries.has(key)) {
+      const value = readGit(["ls-tree", commit, "--", file]);
+      const match = /^(?:100644|100755|120000) blob ([a-f0-9]{40})\t[^\n]+$/.exec(value || "");
+      entries.set(key, match && value.endsWith(`\t${file}`) && readGit(["cat-file", "-t", match[1]]) === "blob" ? value : null);
+    }
+    return entries.get(key);
+  };
+  const filtered = sources.map((source) => {
+    if (source.kind !== "branch" || !source.refName || !/^[a-f0-9]{40}$/i.test(source.sha || "")
+        || readGit(["rev-parse", "--verify", `refs/heads/${source.refName}`]) !== source.sha) return source;
+    const files = source.files.filter((file) => {
+      if (!relevant.has(file)) return true;
+      const published = entry(proof.published, file);
+      return !published || entry(source.sha, file) !== published;
+    });
+    if (files.length < source.files.length) excluded.push({ ref: `refs/heads/${source.refName}`, sha: source.sha });
+    return { ...source, files };
+  }).filter((source) => source.files.length);
+  return { sources: filtered, excluded };
+}
+
 // A restacked parent can have a new tip while the child's source preflight
 // deliberately compares against its archived old parent. Resolve that identity
 // only from the current ordered PR and independently matching GitHub/Git refs.
@@ -375,6 +420,8 @@ export function main(argv = process.argv.slice(2)) {
   }
   if (git(["worktree", "prune"]) === null) notes.push("Could not prune dead worktree records.");
   const worktrees = parseWorktrees(git(["worktree", "list", "--porcelain"]));
+  const inventory = (trees) => JSON.stringify(trees.map((wt) => [wt.path, wt.branch, wt.prunable]).sort());
+  const initialInventory = inventory(worktrees), worktreeDirty = new Map();
   const mainTree = worktrees.find((wt) => wt.branch === "main" && !wt.prunable && fs.existsSync(wt.path));
   const mainTip = git(["rev-parse", "--verify", "--quiet", "refs/heads/main"]);
   const mainBehind = mainTip ? Number(git(["rev-list", "--count", `main..${BASE}`]) || 0) : 0;
@@ -410,10 +457,11 @@ export function main(argv = process.argv.slice(2)) {
   const comparisonBase = args.expectedBase || BASE;
   // On main there is no PR work to protect: skip "mine" and show the hot files instead.
   const onMain = current === "main";
-  const mine = onMain ? [] : [
+  let ownDirty = parsePorcelain(gitRaw(["status", "--porcelain"]));
+  let mine = onMain ? [] : [
     ...new Set([
       ...lines(git(["diff", "--name-only", `${comparisonBase}...HEAD`])),
-      ...parsePorcelain(gitRaw(["status", "--porcelain"]))
+      ...ownDirty
     ])
   ];
 
@@ -440,7 +488,9 @@ export function main(argv = process.argv.slice(2)) {
   for (const wt of worktrees) {
     if (wt.prunable || path.resolve(wt.path) === path.resolve(top)) continue;
     if (!fs.existsSync(wt.path)) continue;
-    const files = parsePorcelain(gitRaw(["status", "--porcelain"], wt.path));
+    const status = gitRaw(["status", "--porcelain"], wt.path);
+    const files = parsePorcelain(status);
+    worktreeDirty.set(wt.path, status === null ? null : files);
     if (files.length) {
       sources.push({
         label: `unsaved in ${path.basename(wt.path)} (${wt.branch || "detached"})`,
@@ -475,6 +525,20 @@ export function main(argv = process.argv.slice(2)) {
     }
   }
 
+  const updateProof = !onMain && !args.expectedBase ? publishedUpdateProof(openPrs, current) : null;
+  if (!onMain && !args.expectedBase && openPrs.some((pr) => pr.headRefName === current) && !updateProof) {
+    console.error("preflight: current PR publication could not be verified; no ownership exclusions were applied.");
+    return 2;
+  }
+  if (updateProof) {
+    const changed = git(["diff", "--no-renames", "--name-only", updateProof.published, updateProof.head]);
+    const status = gitRaw(["status", "--porcelain"]);
+    if (changed === null || status === null) return 2;
+    ownDirty = parsePorcelain(status);
+    mine = [...new Set([...lines(changed), ...ownDirty])];
+    notes.push(`Existing PR #${updateProof.number}: checking direct tree changes from published ${updateProof.published}, plus unsaved files.`);
+  }
+
   const openRefs = lines(git(["for-each-ref", "--format=%(refname:short) %(objectname)", "refs/heads", "refs/remotes/origin"]));
   const openNames = new Set();
   const ancestors = [];
@@ -503,7 +567,8 @@ export function main(argv = process.argv.slice(2)) {
   if (recordedParent) notes.push(`Verified recorded parent ${args.expectedBase} belongs to ordered parent ${recordedParent.branch}; only its matching committed tip is excluded.`);
   const collisionSources = excludeExpectedBase(sources, args.expectedBase, recordedParent)
     .filter((source) => !inheritedRefs.has(source.refName));
-  const handoff = resolveFileHandoffs(collisionSources, openPrs, current, canMergeFile);
+  const publishedCopies = excludePublishedBranchFiles(collisionSources, updateProof, mine);
+  const handoff = resolveFileHandoffs(publishedCopies.sources, openPrs, current, canMergeFile);
   for (const item of handoff.accepted) {
     const note = `PR #${item.owner} handed ${item.file} to ${current}; both file versions merge cleanly.`;
     if (!notes.includes(note)) notes.push(note);
@@ -511,6 +576,34 @@ export function main(argv = process.argv.slice(2)) {
   const { withMine, hot } = findOverlaps(mine, handoff.sources);
   const currentPr = openPrs.find((pr) => pr.headRefName === current) ?? null;
   const blocking = blockingOverlaps(withMine, handoff.sources, { currentPr, openPrs, expectedBase: args.expectedBase });
+  if (updateProof) {
+    const freshJson = run("gh", ["pr", "list", "--state", "open", "--limit", "100",
+      "--json", "number,title,headRefName,headRefOid,baseRefName,files,labels,body,createdAt"], { cwd: top });
+    let fresh;
+    try { fresh = freshJson && publishedUpdateProof(JSON.parse(freshJson), current); } catch { fresh = null; }
+    const dirtyStable = () => {
+      const trees = git(["worktree", "list", "--porcelain"]), own = gitRaw(["status", "--porcelain"]);
+      const same = (a, b) => JSON.stringify([...new Set(a)].sort()) === JSON.stringify([...new Set(b)].sort());
+      if (trees === null || inventory(parseWorktrees(trees)) !== initialInventory
+          || own === null || !same(ownDirty, parsePorcelain(own))) return false;
+      const relevant = new Set(mine);
+      for (const [where, before] of worktreeDirty) {
+        const after = gitRaw(["status", "--porcelain"], where);
+        if (before === null || after === null || !same(before.filter((file) => relevant.has(file)),
+          parsePorcelain(after).filter((file) => relevant.has(file)))) return false;
+      }
+      return true;
+    };
+    // Last barrier, after every handoff and network read: no removed claim may
+    // survive a moving peer, published source, local head or branch.
+    if (!fresh || Object.keys(updateProof).some((key) => fresh[key] !== updateProof[key])
+        || !dirtyStable()
+        || publishedCopies.excluded.some(({ ref, sha }) => git(["rev-parse", "--verify", ref]) !== sha)
+        || git(["rev-parse", "HEAD"]) !== updateProof.head || git(["symbolic-ref", "--short", "HEAD"]) !== current) {
+      console.error("preflight: published source or excluded peer proof changed during collision checks; run preflight again.");
+      return 2;
+    }
+  }
   const report = { current, behind, comparisonBase, localMain: { behindBefore: mainBehind, updated: mainUpdated, reason: mainUpdateReason }, openBranches: openNames.size, chain, myFiles: mine.length, scanned: handoff.sources.length, withMine, blocking, hot, notes };
 
   if (args.json) {

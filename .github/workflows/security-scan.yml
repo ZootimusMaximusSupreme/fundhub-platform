@@ -7,7 +7,11 @@ on:
 
 permissions:
   contents: read
-  issues: write
+  actions: read
+
+concurrency:
+  group: fundhub-dependency-scan
+  cancel-in-progress: false
 
 jobs:
   dependency-scan:
@@ -20,6 +24,25 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - name: Restore finding history
+        id: history
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/security-history"
+          gh run list --workflow security-scan.yml --branch main --limit 100 --json databaseId > "$RUNNER_TEMP/security-history-runs.json"
+          while read -r run_id; do
+            if [ "$run_id" = "$GITHUB_RUN_ID" ]; then continue; fi
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" > "$RUNNER_TEMP/security-history-artifacts.json"
+            available=$(jq '[.artifacts[] | select(.name == "fundhub-dependency-scan" and .expired == false)] | length' "$RUNNER_TEMP/security-history-artifacts.json")
+            if [ "$available" = 0 ]; then continue; fi
+            gh run download "$run_id" --name fundhub-dependency-scan --dir "$RUNNER_TEMP/security-history/$run_id"
+            # Failed runs can carry valid findings. Restore the newest ledger,
+            # plus any later scan receipts, rather than requiring a green run.
+            if [ -f "$RUNNER_TEMP/security-history/$run_id/security-findings.json" ] && jq -e '.tracking.complete == true' "$RUNNER_TEMP/security-history/$run_id/security-scan.json" > /dev/null; then break; fi
+          done < <(jq -r '.[].databaseId' "$RUNNER_TEMP/security-history-runs.json")
       - name: Run production dependency audit
         id: audit
         shell: bash
@@ -30,31 +53,15 @@ jobs:
           set -e
           echo "status=$status" >> "$GITHUB_OUTPUT"
       - name: Build finding receipt
+        id: report
         env:
           AUDIT_STATUS: ${{ steps.audit.outputs.status }}
+          TRACKING_RESTORE_OUTCOME: ${{ steps.history.outcome }}
         run: |
-          node scripts/security-scan-report.mjs "$RUNNER_TEMP/security-audit-raw.json" "$RUNNER_TEMP/security-scan.json" "$RUNNER_TEMP/security-scan.md" "$AUDIT_STATUS"
+          node scripts/security-scan-report.mjs "$RUNNER_TEMP/security-audit-raw.json" "$RUNNER_TEMP/security-scan.json" "$RUNNER_TEMP/security-scan.md" "$AUDIT_STATUS" "$RUNNER_TEMP/security-findings.json" "$RUNNER_TEMP/security-history"
           cat "$RUNNER_TEMP/security-scan.md" >> "$GITHUB_STEP_SUMMARY"
-      - name: Track open findings
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          title='[Security scan] Fundhub dependency findings'
-          existing=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "[Security scan] Fundhub dependency findings") | .number' | head -1)
-          needed=$(node -e 'const r=require(process.argv[1]); process.stdout.write(String(r.issueNeeded))' "$RUNNER_TEMP/security-scan.json")
-          if [ "$needed" = true ]; then
-            if [ -n "$existing" ]; then
-              # Keep the issue body, including a human-set owner and due date.
-              # A dated run comment records changed findings without erasing triage.
-              gh issue comment "$existing" --body-file "$RUNNER_TEMP/security-scan.md"
-            else
-              gh issue create --title "$title" --body-file "$RUNNER_TEMP/security-scan.md"
-            fi
-          elif [ -n "$existing" ]; then
-            gh issue close "$existing" --comment "The latest scheduled dependency scan found no vulnerable production packages. See the workflow run artifact for the receipt."
-          fi
       - uses: actions/upload-artifact@v4
+        id: receipts
         if: always()
         with:
           name: fundhub-dependency-scan
@@ -62,9 +69,11 @@ jobs:
             ${{ runner.temp }}/security-audit-raw.json
             ${{ runner.temp }}/security-scan.json
             ${{ runner.temp }}/security-scan.md
-          if-no-files-found: ignore
-          retention-days: 30
-      - name: Keep high or critical findings and incomplete scans red
+            ${{ runner.temp }}/security-findings.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Keep findings, incomplete scans, and tracking failures red
+        if: always()
         shell: bash
         run: |
-          node -e 'const r=require(process.argv[1]); if (r.failed) process.exit(1)' "$RUNNER_TEMP/security-scan.json"
+          node scripts/security-scan-report.mjs --gate "$RUNNER_TEMP/security-scan.json" "${{ steps.history.outcome }}" "${{ steps.report.outcome }}" "${{ steps.receipts.outcome }}"

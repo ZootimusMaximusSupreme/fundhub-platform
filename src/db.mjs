@@ -3,6 +3,7 @@
 // listed in netlify.toml [functions] external_node_modules — esbuild leaves
 // the driver external, and a missing copy 502s /api/health, login, and Start D1.
 import pg from "pg";
+import { databaseConnectionOptions } from "./db/ssl.mjs";
 
 let _pool = null;
 
@@ -45,7 +46,7 @@ export function pool() {
        is the other way to hang past the function's own limit. Both are
        overridable for a slow link or a deliberately long migration run. */
     _pool = new pg.Pool({
-      connectionString,
+      ...databaseConnectionOptions(connectionString),
       max: Number(process.env.PG_POOL_MAX || 10),
       connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS || 5000),
       idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || 30000),

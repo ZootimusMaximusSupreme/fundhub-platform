@@ -69,6 +69,7 @@ test("Connect a bank runs token, bank window and exchange, in the header and in 
     await page.locator('[data-act="connect"]').first().click();
     await link.completeStepUp(page);
     await waitFor(() => link.posts.some((p) => p.path === "link-exchange"));
+    link.assertPasskeyGates();
     assert.deepEqual(link.mfaPosts, link.expectedMfa());
     assert.deepEqual(link.posts, link.expected(sampleAnswer("money-overview.sandbox.json").client.id));
     await waitFor(() => reads.length >= 2);

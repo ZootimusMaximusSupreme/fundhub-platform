@@ -123,12 +123,27 @@ SELECT count(*)::int AS recent_grants,
          OR (g.account_session_id IS NOT NULL AND s.id IS NULL)
          OR (g.target_kind = 'client_bank' AND a.client_id IS DISTINCT FROM g.target_id)
          OR (g.target_kind = 'affiliate_payout' AND a.affiliate_id IS DISTINCT FROM g.target_id)
-         OR g.consent_version <> 'plaid-link-2026-11-02'
+         OR g.consent_version NOT IN ('plaid-link-2026-11-02','plaid-link-2026-11-06')
          OR btrim(g.consent_text) = ''
          OR btrim(g.privacy_url) = ''
          OR (g.target_kind = 'client_bank' AND g.consent_scope <> '["accounts","balances","transactions"]'::jsonb)
          OR (g.target_kind = 'affiliate_payout' AND g.consent_scope <> '["payout_account"]'::jsonb)
          OR (g.consumed_at IS NOT NULL AND g.link_opened_at IS NULL)
+         OR (g.consent_version='plaid-link-2026-11-06'
+             AND (g.mfa_verified_at IS NULL OR NOT EXISTS (
+               SELECT 1 FROM auth_passkey_assurances proof
+               JOIN auth_passkey_subjects subject ON subject.id=proof.subject_id
+               JOIN auth_passkeys credential ON credential.id=proof.credential_id AND credential.subject_id=subject.id
+               WHERE proof.id=g.passkey_assurance_id
+                 AND subject.account_id=g.account_id AND subject.org_id=g.org_id
+                 AND (g.account_session_id IS NULL OR proof.session_id=g.account_session_id)
+                 AND proof.target_kind=g.target_kind AND proof.target_id=g.target_id
+                 AND proof.verified_at=g.mfa_verified_at
+                 AND proof.verified_at<=g.created_at AND proof.expires_at>g.created_at
+                 AND proof.expires_at<=proof.verified_at+interval '15 minutes'
+                 AND (proof.revoked_at IS NULL OR proof.revoked_at>=g.created_at)
+                 AND (credential.revoked_at IS NULL OR credential.revoked_at>=g.created_at)
+             )))
        )::int AS broken_grants
   FROM account_plaid_link_grants g
   LEFT JOIN accounts a ON a.id = g.account_id
@@ -140,7 +155,7 @@ SELECT count(*)::int AS recent_grants,
 
 export const FIX_MAGIC = "A sign-in link or a portal link had no email queued. Read EMAIL-PORTAL-MAGIC-LINK. Do not send from this pulse.";
 export const FIX_SIGNIN = "A sign-in said yes and no session was made, so the person got an error. Read createSession and the account session insert. Do not write from this pulse.";
-export const FIX_PLAID = "Review recent account Plaid consent grants. A broken receipt must not be used to open or exchange a bank Link token.";
+export const FIX_PLAID = "Review recent account Plaid consent grants and their scoped passkey evidence. A broken receipt must not be used to open or exchange a bank Link token.";
 
 export function check(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
