@@ -191,11 +191,13 @@ test("owner controls save reviewed amounts, match only posted debits, and confir
   await page.locator("#ccSaveMatch").click();
   await expect.poll(() => calls.at(-1)?.body.action).toBe("match_payment");
   expect(calls.at(-1).body).toMatchObject({ action: "match_payment", transaction_id: TX_ID, obligation_id: CRS_ID });
+  await expect(page.locator("#ccMatchDialog")).toBeHidden();
 
   await page.getByLabel("Category for CRS").selectOption("crs");
   await page.getByRole("button", { name: "Save tag" }).click();
   await expect.poll(() => calls.at(-1)?.body.action).toBe("tag_transaction");
   expect(calls.at(-1).body).toMatchObject({ action: "tag_transaction", transaction_id: TX_ID, category: "crs" });
+  await expect(page.locator("#ccMessage")).toHaveText("Transaction tag saved.");
 
   await page.getByRole("button", { name: "Use for company cash" }).click();
   await page.locator(`input[name="ccAccount"][value="${OTHER_ACCOUNT_ID}"]`).check();
