@@ -74,7 +74,8 @@ test("the client's own saved property permission lets staff order once, is bound
     const staffId = (await tx.query("INSERT INTO staff(org_id,name,role,status) VALUES($1,'Synthetic property advisor','funding_advisor','active') RETURNING id", [orgId])).rows[0].id;
     const clientId = (await tx.query("INSERT INTO clients(org_id,first_name,last_name,email,is_demo) VALUES($1,'Synthetic','Homeowner',$2,false) RETURNING id",
       [orgId, `property-consent+${randomUUID()}@example.test`])).rows[0].id;
-    const accountId = (await tx.query("INSERT INTO accounts(org_id,kind,email,status,client_id) VALUES($1,'client',$2,'active',$3) RETURNING id",
+    // An active account must carry a password hash (accounts_active_needs_hash); this one is never a login.
+    const accountId = (await tx.query("INSERT INTO accounts(org_id,kind,email,status,password_hash,client_id) VALUES($1,'client',$2,'active','scratch-not-a-login-password',$3) RETURNING id",
       [orgId, `property-consent+${randomUUID()}@example.test`, clientId])).rows[0].id;
     const principal = { kind: "staff", orgId, staffId, role: "funding_advisor" };
     let orders = 0;

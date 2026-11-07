@@ -28,9 +28,9 @@ async function fixture(run) {
     const id=randomUUID();
     await db.query(`INSERT INTO crs_property_requests(id,org_id,client_id,requester_staff_id,operation_id,
       environment,identity_fingerprint,identity_version_fingerprint,consent_text,consent_version,consent_accepted_at,
-      status,provider_request_id,normalized_response,created_at,finished_at,updated_at)
+      status,provider_request_id,normalized_response,created_at,finished_at,updated_at,consent_source)
       VALUES($1,$2,$3,$4,$5,'production',$6,$7,$8,'property-report-2026-11-06',now(),
-      'completed',$9,$10,now(),now(),now())`, [id,orgId,clientId,staffId,randomUUID(),"a".repeat(64),"b".repeat(64),
+      'completed',$9,$10,now(),now(),now(),'staff')`, [id,orgId,clientId,staffId,randomUUID(),"a".repeat(64),"b".repeat(64),
       "Synthetic property-report permission recorded for the exact client.",requestId,report]);
     const check=async (scope=orgId) => (await gapChecks({orgId:scope,db}))[0];
     await run({db,orgId,otherOrg,clientId,id,requestId,report,check});
