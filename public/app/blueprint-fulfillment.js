@@ -15,6 +15,8 @@
   let services = null;
   let repair = null;
   let preparation = null;
+  let preparationLoading = false;
+  let moneyOverview = null;
   let errors = {};
   let view = 'today';
   let busy = false;
@@ -89,6 +91,7 @@
         return;
       }
       funding = next;
+      preparationLoading = true;
       host.hidden = false;
       document.body.dataset.blueprintFulfillment = view === 'preparation' ? 'preparation' : 'active';
       const chat = document.getElementById('fh-chat-panel');
@@ -99,7 +102,7 @@
       render();
       const results = await Promise.allSettled([
         request('/api/blueprint/inquiries'), request('/api/blueprint/services'),
-        request('/api/blueprint/repair'), request('/api/blueprint/plan')
+        request('/api/blueprint/repair'), request('/api/blueprint/plan'), request('/api/money/overview')
       ]);
       if (!current() || run !== generation) return;
       errors = {};
@@ -110,11 +113,13 @@
       if (results[2].status === 'fulfilled') repair = results[2].value;
       else { repair = null; errors.repair = results[2].reason.message; }
       if (results[3].status === 'fulfilled') preparation = results[3].value;
-      else preparation = null;
+      else { preparation = null; errors.preparation = results[3].reason.message; }
+      preparationLoading = false;
+      moneyOverview = results[4].status === 'fulfilled' ? results[4].value : null;
       render();
     } catch (error) {
       if (!current() || run !== generation) return;
-      if (initial && [403,404].includes(error.status)) { host.hidden = true; return; }
+      if ([403,404].includes(error.status)) { funding = null; delete document.body.dataset.blueprintFulfillment; host.hidden = true; return; }
       errors.funding = error.message;
       host.hidden = false;
       render();
@@ -123,8 +128,9 @@
 
   function render() {
     if (!current()) return;
-    const tabs = [['today','Today'],['repair','Credit repair'],['inquiries','Inquiry removal'],['funding','Applications'],['services','Reports and help'],['preparation','Preparation steps']];
-    host.innerHTML = `<div class="bf-header"><div><h2>My funding workspace</h2>${view === 'today' ? '' : `<p class="bf-caption">${esc(stateNames[funding?.state] || 'Your saved funding plan')}</p>`}</div>${button('Refresh','refresh')}</div>
+    if(view === 'preparation') { host.hidden=false;host.innerHTML=button('Back to Blueprint overview','view','data-view="today"');document.body.dataset.blueprintFulfillment='preparation';return; }
+    const tabs = [['today','Overview'],['repair','Credit repair'],['inquiries','Inquiry removal'],['funding','Applications'],['services','Reports and help'],['preparation','Preparation steps']];
+    host.innerHTML = `<div class="bf-header"><div><h2>Your Capital Blueprint</h2>${view === 'today' ? '' : `<p class="bf-caption">${esc(stateNames[funding?.state] || 'Your saved funding plan')}</p>`}</div>${button('Refresh','refresh')}</div>
       <nav class="bf-tabs" aria-label="Funding workspace">${tabs.map(([key,label]) => button(label,'view',`data-view="${key}" ${view === key ? 'aria-current="page"' : ''}`)).join('')}</nav>
       ${view === 'preparation' ? '<p>Your saved preparation steps are below.</p>' : (screens[view] || today)()}
       <div class="bf-status" role="status" aria-live="polite">${esc(notice)}</div>`;
@@ -155,12 +161,17 @@
     if (funding?.state === 'optimize' && repair?.actions?.canGenerate) { destination = 'repair'; label = 'Open my repair work'; }
     const detail = ['optimize','held'].includes(funding?.state) && step?.detail ? step.detail : funding?.nextAction;
     const title = ['optimize','held'].includes(funding?.state) && step?.title ? step.title : stateNames[funding?.state];
-    return `<section class="bf-panel bf-next"><h3>${esc(title || 'Your next step')}</h3>
-      <p>${esc(detail || 'Your next step is being checked against your saved file.')}</p>
-      ${funding?.state === 'completed' ? '<p>Your application and bureau history remain available here.</p>' : button(label,'view',`data-view="${destination}"`,true)}</section>
-      <dl class="bf-facts"><div><dt>Applications tracked</dt><dd>${apps.length}</dd></div><div><dt>Bureau cases</dt><dd>${inquiries ? cases.length : 'Checking…'}</dd></div><div><dt>Next bureau check</dt><dd>${esc(inquiries ? date(nextCheck) || (cases.length ? 'See current case' : 'No pending case') : 'Checking…')}</dd></div></dl>
-      ${errors.inquiries ? errorView('inquiries') : ''}
-      <p>Your saved report, bureau results and current holds determine which bank can open next.</p>`;
+    if (!preparation) {
+      if(preparationLoading)return loadingView('Loading your Blueprint and current report…');
+      const completed=funding?.state==='completed';
+      return `<section class="bf-panel bf-next"><h3>${esc(stateNames[funding?.state]||'Your funding workspace')}</h3><p>${completed?'Your application and bureau history remain available here.':'Your preparation plan could not load. Your saved funding work has not been replaced.'}</p>${button(completed?'Review my applications':'Review my funding work','view','data-view="funding"',true)}</section>${errors.preparation?`<p class="bf-caption">Your preparation plan is unavailable. ${button('Retry preparation plan','refresh')}</p>`:''}`;
+    }
+    let control = funding?.state==='completed' ? button('Review my applications','view','data-view="funding"',true) : button(label,'view',`data-view="${destination}"`,true);
+    if(step && ['optimize','held'].includes(funding?.state)) {
+      control = step.key==='blueprint_dispute_mail_letters' ? button('Open my letters','open-letters','',true)
+        : `<a class="bf-link bf-primary" href="${esc(window.FHBlueprintJourney?.route('/progress.html#waypoints')||'/progress.html#waypoints')}">Open this step →</a>`;
+    }
+    return window.FHBlueprintJourney?.render({data:preparation,next:{...step,title:title||'Your next step',detail:detail||''},control,hasFundingEngine:true,moneyOverview,fundingState:funding?.state}) || loadingView('Loading your next step…');
   }
 
   function inquiryWork() {
@@ -436,6 +447,20 @@
     } finally { busy = false; if (current() && submit.isConnected) submit.disabled = false; }
   });
 
+  document.addEventListener('fh:blueprint-plan-updated',event=>{
+    if(!current()||!principal||!event.detail?.businessPlans)return;
+    const p=event.detail.businessPlans;
+    if(p.clientId!==principal.clientId||p.orgId!==principal.orgId)return;
+    preparation=event.detail;
+    if(funding?.engagement&&view==='today')render();
+  });
+  document.addEventListener('fh:blueprint-navigate',event=>{
+    if(!current()||!funding?.engagement)return;
+    const action=event.detail?.action;
+    if(action==='funding'){view='funding';render();return;}
+    if(action==='repair-help'){view='services';render();return;}
+    if(['onboarding','businesses','letters','lessons','support','credit','document','aged-help','upgrade'].includes(action)){view='preparation';render();}
+  });
   host.addEventListener('click', event => { if (!current()) { event.preventDefault(); event.stopImmediatePropagation(); } },true);
   window.addEventListener('storage', () => current());
   window.addEventListener('focus', () => current());

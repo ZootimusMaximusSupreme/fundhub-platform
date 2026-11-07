@@ -4,6 +4,7 @@ import { readBlueprintLetterReadiness } from "./letter-mailing.mjs";
 import { readClientProgress as readProgress } from "../progress/read.mjs";
 import { bankStrategy as readBankStrategy } from "../finance/bank-strategy.mjs";
 import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
+import { buildFundingOpportunity } from "./funding-opportunity.mjs";
 
 const REQUIRED_READERS = ["readBusinessPlans", "preparationGuidance", "rankLocalCreditUnions", "websitePrompt"];
 const text = (value) => typeof value === "string" && value.trim() ? value.trim() : null;
@@ -83,6 +84,8 @@ export async function buildBlueprintClientPlan(db, { orgId, clientId, now = new 
   const warn = (code, source) => warnings.push({ code, source });
   const readClientProgress = deps.readClientProgress || readProgress;
   const bankStrategy = deps.bankStrategy || readBankStrategy;
+  let creditAnalysis = null;
+  let creditSource = {};
   const [businessPlans, progress, bankPlan, creditContext] = await Promise.all([
     Promise.resolve().then(() => deps.readBusinessPlans(db, scope)).then((value) => {
       if (!value || !Array.isArray(value.businesses) || !Array.isArray(value.existingBusinesses)) {
@@ -111,13 +114,20 @@ export async function buildBlueprintClientPlan(db, { orgId, clientId, now = new 
       if (!row) return unknownCredit();
       assertIdentity(row, scope, { required: true });
       if (!isGenuine(row)) return unknownCredit();
-      try { return creditFacts(row, deps.runTierEngine || runTierEngineFromCrsResult); }
-      catch { warn("credit_context_unavailable", "saved_credit_report"); return unknownCredit(); }
+      try {
+        const result = object(row.result);
+        creditAnalysis = result.consumerSignals ? result : (deps.runTierEngine || runTierEngineFromCrsResult)(result);
+        creditSource = { reportId: row.id, asOf: row.created_at instanceof Date ? row.created_at.toISOString() : text(row.created_at) };
+        return creditFacts(row, () => creditAnalysis);
+      }
+      catch { creditAnalysis = null; creditSource = {}; warn("credit_context_unavailable", "saved_credit_report"); return unknownCredit(); }
     }).catch((error) => {
       if (error?.code === "blueprint_plan_scope_mismatch") throw error;
       warn("credit_context_unavailable", "saved_credit_report"); return unknownCredit();
     })
   ]);
+  creditContext.opportunity = buildFundingOpportunity({ analysis: creditAnalysis,
+    source: creditSource, businessPlans });
   const cf = object(client.custom_fields);
   const homeState = text(businessPlans.homeState) || text(cf.home_state);
   const postalCode = text(businessPlans.postalCode) || text(cf.postal_code) || text(cf.zip);

@@ -223,11 +223,52 @@ test("businesses: one card each, a container with no details asks for them, and 
   assert.match(cards[2], /href="\/app\/financeos\.html#accounts"/);
   // ("Combined with a strong personal profile" is the engine's own LLC sentence,
   // printed verbatim — it is not a total.)
-  assert.doesNotMatch(t, /\bTotal\b|all businesses|businesses combined|combined (estimate|score|funding)/i);
+  assert.doesNotMatch(text(cards.join(' ')), /\bTotal\b|all businesses|businesses combined|combined (estimate|score|funding)/i,
+    "legacy per-business cards never invent a portfolio sum");
+  const combined = html.match(/<section class="card fd-tile" data-opportunity-combined>[\s\S]*?<\/section>/)?.[0];
+  assert.ok(combined, "the shared current-engine view must explain unknown portfolio capacity");
+  assert.match(text(combined), /Combined modeled capacity Current modeled capacity Unknown Modeled scenario Unknown Estimated change Unknown/);
+  assert.match(text(combined), /shared personal-guarantee overlap has been resolved.*personal estimate is counted once/);
+  assert.doesNotMatch(combined, /\$[\d,]+/, "unknown portfolio capacity is never a dollar amount");
+  assert.equal(d.opportunity.combined.currentCents, null);
+  assert.equal(d.opportunity.combined.projectedCents, null);
   const alpha = d.businesses[0].now.funding_estimate_cents;
   const beta = d.businesses[1].now.funding_estimate_cents;
   assert.ok(alpha > 0 && beta > 0);
   assert.doesNotMatch(t, new RegExp(F.money(alpha + beta).replace(/[$]/g, "\\$")), "no summed figure on the page");
+});
+
+test("the current full CRS model renders its exact capacity without the legacy Lite check-count tiles", () => {
+  const d = withBusinesses();
+  d.engine = { name: 'underwrite_iq_crs' };
+  d.opportunity.personal = { currentCents: 9360000, projectedCents: 10400000, liftCents: 1040000 };
+  const html = F.render(d), t = text(html);
+  assert.match(t, /Personal Current modeled capacity \$93,600 Modeled scenario \$104,000 Estimated change \$10,400/);
+  assert.match(t, /Combined modeled capacity Current modeled capacity Unknown/);
+  assert.match(t, /not a bank approval or issued funding/);
+  assert.doesNotMatch(t, /\b[0-9]+ of [0-9]+\b|× band|Fundability now/,
+    "a current full-engine response must not be relabeled with the separate legacy Lite score");
+  assert.equal((html.match(/data-opportunity-business/g) || []).length, 2);
+});
+
+test("a real additive CRS opportunity wins over conflicting legacy dollar estimates and a safety hold stays unknown", () => {
+  const d = withBusinesses();
+  const legacyAmount = d.now.funding_estimate_cents;
+  assert.ok(legacyAmount > 0);
+  d.opportunity.personal = { status: 'modeled', currentCents: 9360000, projectedCents: 10400000, liftCents: 1040000, blockers: [] };
+  assert.notEqual(legacyAmount, d.opportunity.personal.currentCents);
+  let t = text(F.render(d));
+  assert.match(t, /Current modeled capacity \$93,600/);
+  assert.doesNotMatch(t, new RegExp(F.money(legacyAmount).replace(/[$]/g, '\\$')),
+    'the same real file must never show the conflicting legacy personal estimate');
+  assert.doesNotMatch(t, /\b[0-9]+ of [0-9]+\b|× band|Fundability now/);
+  assert.equal(d.now.funding_estimate_cents, legacyAmount, 'legacy API fields are preserved');
+  d.opportunity.personal = { status: 'unknown', currentCents: null, projectedCents: null, liftCents: null,
+    blockers: ['current_engine_does_not_expose_safe_capacity'] };
+  t = text(F.render(d));
+  assert.match(t, /Personal Current modeled capacity Unknown Modeled scenario Unknown/);
+  assert.doesNotMatch(t, new RegExp(F.money(legacyAmount).replace(/[$]/g, '\\$')),
+    'a current full-engine safety hold must not fall back to old dollars');
 });
 
 test("no business yet: says what will appear and one way to make it appear", () => {

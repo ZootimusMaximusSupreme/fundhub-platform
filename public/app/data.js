@@ -50,13 +50,21 @@
 window.FHData = (function () {
   "use strict";
 
+  function clientFetch(path,init) {
+    if (typeof window.FHClientFetch === "function") return window.FHClientFetch(path,init);
+    if (window.__fhBlueprintFullDemoRoute) return Promise.resolve(new Response(JSON.stringify({ok:false,error:"demo_unavailable",sample:true}),{status:503,headers:{"content-type":"application/json"}}));
+    return fetch(path,init);
+  }
+
   function token() {
+    if (window.__fhBlueprintFullDemoRoute) return "";
     try { return localStorage.getItem("fh_token") || ""; } catch (e) { return ""; }
   }
 
   // Signing in through demo mode stores a sentinel token; it is not a real
   // credential and must not be presented as one.
   function isDemo() {
+    if (window.__fhBlueprintFullDemoRoute) return false;
     try {
       if (localStorage.getItem("fh_demo") !== "1") return false;
       var t = localStorage.getItem("fh_token") || "";
@@ -98,7 +106,7 @@ window.FHData = (function () {
     // rejects" contract above is load-bearing — no screen wraps its call in a
     // .catch — so it must hold even if fetch is missing or throws outright.
     try {
-      started = fetch(path, {
+      started = clientFetch(path, {
         headers: t ? { accept: "application/json", authorization: "Bearer " + t }
                    : { accept: "application/json" }
       });
@@ -416,7 +424,7 @@ window.FHData = (function () {
       if (t) headers.authorization = "Bearer " + t;
       var started;
       try {
-        started = fetch(path, {
+        started = clientFetch(path, {
           method: "POST",
           headers: headers,
           body: JSON.stringify(body || {})
@@ -493,7 +501,7 @@ window.FHData = (function () {
 
       var started;
       try {
-        started = fetch(path, { method: "POST", headers: headers, body: form });
+        started = clientFetch(path, { method: "POST", headers: headers, body: form });
       } catch (e) {
         return Promise.resolve(fail("offline", (e && e.message) || "fetch unavailable"));
       }

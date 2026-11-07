@@ -124,11 +124,11 @@ async function open(page,{started=false,business=false,denied=false,malformedPla
 }
 
 test('paid buyer starts one question at a time and server state survives reload',async({page})=>{
-  const{app,state,requests}=await open(page);await app.getByRole('button',{name:'Start my plan',exact:true}).click();await expect(app.getByText('Do you already own a business?',{exact:true})).toBeVisible();
+  const{app,state,requests}=await open(page);await app.locator('.bj-next').getByRole('button',{name:'Start my plan',exact:true}).click();await expect(app.getByText('Do you already own a business?',{exact:true})).toBeVisible();
   await app.getByText('No, I’m preparing my first business',{exact:true}).click();await app.getByRole('button',{name:'Save and continue'}).click();await expect(app.getByText('How many businesses are we preparing?',{exact:true})).toBeVisible();
   await app.getByRole('button',{name:'Save and continue'}).click();await app.locator('select[name=homeState]').selectOption('AZ');await app.locator('input[name=postalCode]').fill('85004');await app.getByRole('button',{name:'Build my plan',exact:true}).click();
-  await expect(app.getByText('Review the balances on your file',{exact:true})).toBeVisible();expect(state.startedAt).toBeTruthy();expect(requests.every(r=>!('client_id'in r)&&!('org_id'in r))).toBeTruthy();
-  await page.evaluate(()=>{for(const key of Object.keys(localStorage))if(key.startsWith('fundhub-blueprint'))localStorage.removeItem(key);});await page.reload();await expect(app.getByText('Review the balances on your file',{exact:true})).toBeVisible();
+  await expect(app.locator('.bj-next').getByText('Review the balances on your file',{exact:true})).toBeVisible();expect(state.startedAt).toBeTruthy();expect(requests.every(r=>!('client_id'in r)&&!('org_id'in r))).toBeTruthy();
+  await page.evaluate(()=>{for(const key of Object.keys(localStorage))if(key.startsWith('fundhub-blueprint'))localStorage.removeItem(key);});await page.reload();await expect(app.locator('.bj-next').getByText('Review the balances on your file',{exact:true})).toBeVisible();
 });
 test('nonbuyer gets no paid plan controls',async({page})=>{const{app}=await open(page,{denied:true});await expect(app).toBeHidden();});
 for(const paymentFlag of[false,true])test(`paid Blueprint includes the missing report without a diagnostic purchase (legacy paid flag ${paymentFlag})`,async({page})=>{
@@ -140,7 +140,12 @@ for(const paymentFlag of[false,true])test(`paid Blueprint includes the missing r
   await expect(tile.locator('.tacts [data-book]:visible,.tacts [data-unlock]:visible')).toHaveCount(0);
   await expect(page.locator('#unlock-note')).not.toContainText('$32');
   await expect(page.locator('#soft-pull-entry-link')).toHaveAttribute('href','#blueprint-plan');
+  await page.locator('.client-ios-nav').getByRole('link',{name:'Documents',exact:true}).click();
+  await expect(tile.getByRole('button',{name:'View report status',exact:true})).toBeVisible();
   await tile.getByRole('button',{name:'View report status',exact:true}).click();
+  await expect(page.locator('body')).toHaveAttribute('data-portal-view','home');
+  expect(new URL(page.url()).searchParams.has('view')).toBe(false);
+  await expect(page.locator('.client-ios-nav').getByRole('link',{name:'Home',exact:true})).toHaveAttribute('aria-current','page');
   await expect(app.getByRole('heading',{name:preparationGuidance().find(x=>x.key==='credit_review').title,exact:true})).toBeVisible();
   await expect(app.getByRole('button',{name:'Save this step',exact:true})).toBeVisible();
   await expect(page.locator('#unlock-modal')).not.toHaveClass(/\bon\b/);
@@ -219,7 +224,15 @@ test('saved step date creates a usable Google calendar event link',async({page})
   await expect(link).toHaveAttribute('href',/calendar\.google\.com\/calendar\/render/);
   expect(new URL(await link.getAttribute('href')).searchParams.get('dates')).toBe('20270201/20270202');
 });
-for(const width of[1440,390])test(`real buyer controls fit at ${width}px`,async({page})=>{await page.setViewportSize({width,height:1000});const{app}=await open(page,{started:true,business:true});for(const name of['Businesses','Step-by-step help','Letters and responses','Timeline','Get help','Today']){await app.getByRole('button',{name,exact:true}).click();expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);}await expect(app).toContainText('FinanceOS is not live yet.');await expect(page.locator('a[href*="finance-os"]:visible,a[href*="financeos"]:visible,#money-link:visible')).toHaveCount(0);});
+for(const width of[1440,390])test(`real buyer controls fit at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:1000});const{app}=await open(page,{started:true,business:true});
+  for(const name of['Businesses','Step-by-step help','Letters and responses','Timeline','Get help','Today']){
+    await app.getByRole('button',{name,exact:true}).click();expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
+  }
+  await expect(app.locator('.bj-finance')).toContainText('Your accounts, cash flow, credit, and financial plan in the same workspace.');
+  await expect(app.locator('.bj-finance').getByRole('link',{name:'Open FinanceOS',exact:true})).toHaveAttribute('href','/app/financeos.html');
+  await expect(app.locator('.bj-finance')).toContainText('Account connection needed');
+});
 
 async function openBusiness(app){
   await app.getByRole('button',{name:'Businesses',exact:true}).click();
@@ -311,7 +324,7 @@ test('Do now skips ongoing and skipped native rows even when they are the curren
     {id:'actionable',title:'Upload the accepted formation record',detail:'Use the actual saved document for this business.',owner:'client',state:'in_progress'}
   ]};
   const{app}=await open(page,{started:true,nativeProgress});
-  const next=app.locator('.bp-next');await expect(next).toContainText('Upload the accepted formation record');await expect(next).toContainText('Use the actual saved document');await expect(next).not.toContainText('Keep the ongoing credit rule');await expect(next).not.toContainText('Previously skipped task');
+  const next=app.locator('.bj-next');await expect(next).toContainText('Upload the accepted formation record');await expect(next).toContainText('Use the actual saved document');await expect(next).not.toContainText('Keep the ongoing credit rule');await expect(next).not.toContainText('Previously skipped task');
 });
 
 test('server setupStep resumes the first unanswered question after reload',async({page})=>{
@@ -521,7 +534,7 @@ test('letters are directly downloadable through authenticated signed links and s
   expect(downloads).toEqual([{id:DOCUMENT,authorization:'Bearer offline-letter-token'}]);if(!popup.isClosed())await popup.close();
   await app.getByText('How to send the letters yourself',{exact:true}).click();
   await expect(app).toContainText('Sign and date where required');await expect(app).toContainText('Keep a copy of your packet.');
-  await expect(app.getByRole('link',{name:'Upload mailing proof in View progress',exact:true})).toHaveAttribute('href','/progress.html');
+  await expect(app.getByRole('link',{name:'Upload mailing proof in View progress',exact:true})).toHaveAttribute('href','/progress.html#waypoints');
   await expect(app.getByRole('link',{name:'Review official dispute instructions',exact:true})).toHaveAttribute('href',/^https:\/\/www.consumerfinance.gov\//);
   expect(mailRequests).toHaveLength(0);
 });
@@ -591,7 +604,7 @@ test('uploaded bureau reply resumes pending and trusts only its exact current-ve
   doc.metadata.bureau_response_validation=validation('hold',{reason:'The response needs team review.'});
   await app.getByRole('button',{name:'Refresh letters and reviews',exact:true}).click();await expect(app.getByText('Team review required',{exact:true})).toBeVisible();
   expect(state.stepProgress).toHaveLength(0);expect(uploadCount()).toBe(1);await expect(app).toContainText('An accepted document is separate from a verified credit-report change.');
-  await app.getByRole('button',{name:'Today',exact:true}).click();await expect(app.getByText('Review the balances on your file',{exact:true})).toBeVisible();
+  await app.getByRole('button',{name:'Today',exact:true}).click();await expect(app.locator('.bj-next').getByText('Review the balances on your file',{exact:true})).toBeVisible();
 });
 
 test('failed new debt save retains the same debt identity for a retry without creating a duplicate',async({page})=>{
@@ -613,23 +626,23 @@ test('new buyer without current letter files gets honest useful preparation inst
   const nativeProgress=nativeMailProgress();const saved=structuredClone(nativeProgress);
   const{app,requests,mailRequests}=await open(page,{started:true,nativeProgress,clientName:null});
   await expect(app.getByRole('heading',{name:'Your next steps.',exact:true})).toBeVisible();
-  const next=app.locator('.bp-next');await expect(next).toContainText('Your current letter pack is not ready yet');
+  const next=app.locator('.bj-next');await expect(next).toContainText('Your current letter pack is not ready yet');
   await expect(next).not.toContainText('Print and mail your dispute letters');await expect(next).not.toContainText('Upload your mailing receipt');
   await expect(next.getByRole('link',{name:'Open this step →'})).toHaveCount(0);
   await next.getByRole('button',{name:'Prepare businesses',exact:true}).click();await expect(app.getByRole('button',{name:'Add a business plan',exact:true})).toBeVisible();
-  await app.getByRole('button',{name:'Today',exact:true}).click();await app.locator('.bp-next').getByRole('button',{name:'Check my letters',exact:true}).click();
+  await app.getByRole('button',{name:'Today',exact:true}).click();await app.locator('.bj-next').getByRole('button',{name:'Check my letters',exact:true}).click();
   await expect(app).toContainText('No current generated letters are available here yet');
   expect(requests).toHaveLength(0);expect(mailRequests).toHaveLength(0);expect(nativeProgress).toEqual(saved);
 });
 test('only current usable funding letters turn the native mail action into the actual letter workspace',async({page})=>{
   const file=currentLetterFile();const{app,mailRequests}=await open(page,{started:true,nativeProgress:nativeMailProgress(),letterFiles:[file],mailing:{letters:[{documentId:DOCUMENT,title:file.title,subtype:file.subtype,bureau:'EX',generatedAt:file.generated_at,eligibleForMailing:true}],orders:[],capabilities:{mailSupported:true}}});
-  const next=app.locator('.bp-next');await expect(next).toContainText('Review and mail your current letters');await expect(next).not.toContainText('not ready yet');
+  const next=app.locator('.bj-next');await expect(next).toContainText('Review and mail your current letters');await expect(next).not.toContainText('not ready yet');
   await next.getByRole('button',{name:'Open my letters',exact:true}).click();await expect(app.getByRole('button',{name:'Download letter',exact:true})).toBeVisible();
   await expect(app.getByRole('button',{name:'Mail these letters for me · $97',exact:true})).toBeVisible();expect(mailRequests).toHaveLength(0);
 });
 test('a saved mailing request opens status even when letter files are no longer available',async({page})=>{
   const{app,mailRequests}=await open(page,{started:true,nativeProgress:nativeMailProgress(),mailing:{letters:[],orders:[{id:ORDER,status:'mailed',totalCents:9700,envelopes:[]}],capabilities:{mailSupported:false}}});
-  const next=app.locator('.bp-next');await expect(next).toContainText('Review your mailing request');await expect(next).not.toContainText('Print and mail');
+  const next=app.locator('.bj-next');await expect(next).toContainText('Review your mailing request');await expect(next).not.toContainText('Print and mail');
   await next.getByRole('button',{name:'Open letters and mailing status',exact:true}).click();await expect(app).toContainText('$97.00 · Submitted for mailing');expect(mailRequests).toHaveLength(0);
 });
 

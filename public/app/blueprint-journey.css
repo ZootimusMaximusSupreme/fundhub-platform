@@ -1,0 +1,97 @@
+/* The existing Blueprint journey in the shared Fundhub client workspace. */
+.bj-summary,
+.bj-roadmap,
+.bj-next { min-width:0;color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5; }
+.bj-summary { display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px;margin:24px 0; }
+.bj-summary > * { grid-column:1/-1;min-width:0; }
+.bj-summary > :is(.bj-funding,.bj-credit,.bj-finance,.bj-help) { grid-column:span 6; }
+.bj-readiness,
+.bj-credit,
+.bj-next { padding:24px;border:1px solid var(--line);border-radius:10px;background:var(--paper); }
+.bj-summary :is(h2,h3),
+.bj-roadmap :is(h2,h3),
+.bj-next :is(h2,h3) { margin:0 0 12px;font-size:22px;line-height:1.3;font-weight:750;letter-spacing:-.02em; }
+.bj-summary p,
+.bj-roadmap p,
+.bj-next p { margin:0 0 16px;overflow-wrap:anywhere; }
+.bj-summary p:last-child,
+.bj-roadmap p:last-child,
+.bj-next p:last-child { margin-bottom:0; }
+.bj-summary :is(small,.bj-caption),
+.bj-roadmap :is(small,.bj-caption),
+.bj-next :is(small,.bj-caption) { font-size:13px;line-height:1.5;color:var(--gray); }
+.bj-readiness progress { display:block;width:100%;height:12px;margin:16px 0;border:0;border-radius:8px;overflow:hidden;accent-color:var(--accent);background:var(--soft); }
+.bj-readiness progress::-webkit-progress-bar { background:var(--soft);border-radius:8px; }
+.bj-readiness progress::-webkit-progress-value { background:var(--accent);border-radius:8px; }
+.bj-readiness progress::-moz-progress-bar { background:var(--accent);border-radius:8px; }
+.bj-summary .bj-value { display:block;margin:8px 0;font-size:32px;line-height:1.2;font-weight:750;font-variant-numeric:tabular-nums; }
+.bj-credit dl { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:16px 0 0; }
+.bj-credit dl > div { min-width:0; }
+.bj-credit dt { margin:0 0 4px;font-size:13px;color:var(--gray); }
+.bj-credit dd { margin:0;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere; }
+.bj-roadmap { margin:24px 0; }
+.bj-roadmap :is(ol,ul) { display:grid;gap:0;margin:16px 0;padding:0;list-style:none; }
+.bj-step { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 24px;align-items:start;padding:24px 0;border-top:1px solid var(--line);min-width:0; }
+.bj-step > * { min-width:0; }
+.bj-step :is(h3,h4) { margin:0 0 8px;font-size:18px;line-height:1.4;font-weight:700; }
+.bj-step[data-state="current"] { border-top:2px solid var(--ink); }
+.bj-step[data-state="waiting"] { color:var(--gray); }
+.bj-step .bj-state { font-size:13px;line-height:1.5;font-weight:700;color:var(--ink); }
+.bj-next { display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,.45fr);gap:24px;margin:0;background:var(--paper); }
+.bj-next .bj-readiness { padding:0;border:0;background:none; }
+.bj-heading { display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap; }
+.bj-label { font-size:13px;color:var(--gray); }
+.bj-next h2 { margin-top:8px; }
+.bj-next .bj-impact { padding:12px 16px;border-radius:10px;background:var(--soft);font-size:14px; }
+.bj-actions { display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
+.bj-funding,.bj-finance { padding:24px;border:1px solid var(--line);border-radius:10px;background:var(--paper); }
+.bj-help { padding:24px 0; }
+.bj-capacity { margin:8px 0;font-size:28px;font-weight:750;font-variant-numeric:tabular-nums; }
+.bj-capacity span { font-size:24px; }
+.bj-funding .bj-impact { font-size:14px; }
+.bj-businesses > div,.bj-total { display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line);font-size:14px; }
+.bj-businesses span { color:var(--gray);text-align:right; }
+.bj-total { border:0;margin-bottom:8px; }
+.bj-finance { background:var(--soft); }
+.bj-finance dl { display:flex;gap:24px;flex-wrap:wrap;margin:16px 0; }
+.bj-finance dt { font-size:13px;color:var(--gray); }
+.bj-finance dd { margin:4px 0 0;font-size:20px;font-weight:700; }
+.bj-milestone { margin-top:16px!important;font-size:13px; }
+.bj-roadmap ol { grid-template-columns:repeat(3,minmax(0,1fr));gap:0 24px; }
+.bj-roadmap .bj-step { grid-template-columns:1fr;gap:8px;padding:16px 0; }
+.bj-roadmap .bj-step h4 { font-size:15px; }
+.bj-step[data-state="done"] .bj-state::before { content:' ';display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:var(--ok); }
+.bj-summary :is(button,a),
+.bj-roadmap :is(button,a),
+.bj-next :is(button,a) { display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font:600 16px/1.5 var(--sans);text-decoration:none;overflow-wrap:anywhere; }
+.bj-summary :is(button,a):focus-visible,
+.bj-roadmap :is(button,a):focus-visible,
+.bj-next :is(button,a):focus-visible { outline:2px solid var(--ink);outline-offset:3px; }
+.bj-next :is(button,a) { min-height:48px;background:var(--ink);color:var(--paper);border-color:var(--ink); }
+.bj-next [data-bj-action="support"] { background:var(--paper);color:var(--ink);border-color:var(--line); }
+.bj-summary[hidden],
+.bj-readiness[hidden],
+.bj-credit[hidden],
+.bj-roadmap[hidden],
+.bj-step[hidden],
+.bj-next[hidden],
+.bj-summary [hidden],
+.bj-roadmap [hidden],
+.bj-next [hidden] { display:none!important; }
+@media(max-width:900px) {
+  .bj-summary > :is(.bj-funding,.bj-credit,.bj-finance,.bj-help) { grid-column:1/-1; }
+}
+@media(max-width:600px) {
+  .bj-summary { gap:16px;margin:16px 0; }
+  .bj-readiness,
+  .bj-credit,
+  .bj-next { padding:16px; }
+  .bj-next { grid-template-columns:1fr; }
+  .bj-next .bj-readiness { padding-top:16px;border-top:1px solid var(--line); }
+  .bj-funding,.bj-finance { padding:16px; }
+  .bj-roadmap ol { grid-template-columns:1fr; }
+  .bj-credit dl { grid-template-columns:1fr;gap:12px; }
+  .bj-credit dl > div { display:flex;align-items:baseline;justify-content:space-between;gap:16px; }
+  .bj-step { grid-template-columns:minmax(0,1fr);gap:12px;padding:16px 0; }
+  .bj-step > :is(button,a) { justify-self:start; }
+}
