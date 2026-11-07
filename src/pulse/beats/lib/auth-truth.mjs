@@ -32,6 +32,9 @@ SELECT template_key, compliance_passed, body, subject
    AND ($1::uuid IS NULL OR org_id = $1::uuid)
 `.trim();
 
+/* owner-set 2026-11-07: 12 months, one use. A sign-in link now lives 12 months, so the old
+   "expires within 20 minutes" filter would hide every link and this check could only pass.
+   Every issued link in the last 24 hours is watched for its email. */
 export const MAGIC_DEAD_SQL = `
 /* gap:auth-magic-link-dead */
 SELECT count(*)::int AS n
@@ -41,7 +44,6 @@ SELECT count(*)::int AS n
    AND m.created_at > now() - interval '24 hours'
    AND m.created_at < now() - interval '2 minutes'
    AND m.expires_at IS NOT NULL
-   AND m.expires_at <= m.created_at + interval '20 minutes'
    AND NOT EXISTS (
      SELECT 1
        FROM messages g
@@ -206,7 +208,7 @@ export async function magicLink(db, orgId) {
     const noun = n === 1 ? "link" : "links";
     return check(id, "FAIL", `${n} sign-in ${noun} in 24 hours had no email queued.`, FIX_MAGIC);
   }
-  return check(id, "PASS", "Sign-in link template can send. No short link in 24 hours is missing its email.");
+  return check(id, "PASS", "Sign-in link template can send. No issued link in 24 hours is missing its email.");
 }
 
 export async function signinNoSession(db) {

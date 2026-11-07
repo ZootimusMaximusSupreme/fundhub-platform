@@ -19,7 +19,8 @@
 // caller is an authenticated owner or admin, the email is queued but the
 // dispatcher is a separate scheduled act (CLAUDE.md §12), and the whole point of
 // this control is that a person on the phone can read the link out now. It is a
-// bearer credential, so it is short-lived and single-use like every other one.
+// bearer credential. It works once, and it stays good for 12 months like every
+// other portal sign-in link (owner-set 2026-11-07: 12 months, one use).
 //
 // NOTHING HERE TRANSMITS. issuePortalLinkForClient() calls sendTemplated(), which
 // writes a `messages` row with status='queued' and stops.

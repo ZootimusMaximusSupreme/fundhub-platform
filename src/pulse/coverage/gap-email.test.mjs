@@ -274,17 +274,18 @@ test("gap email: magic-link template key matches the auth module", () => {
   assert.match(src, /provider_ref sendTemplated synthesises unique per/);
 });
 
-test("gap email: booking sends a lasting portal entry, not an expiring credential", () => {
-  // The booked text/email point at the reusable entry page. Only a sign-in
-  // credential requested from that page expires, and it can be reissued there.
+test("gap email: booking sends a lasting portal entry, and a sign-in link lasts 12 months", () => {
+  // The booked text/email point at the reusable entry page. A sign-in link
+  // stays good for 12 months and works once (owner-set 2026-11-07: 12 months, one use).
   const auth = fs.readFileSync(path.join(REPO_ROOT, "src/auth/magic-link.mjs"), "utf8");
   const booking = fs.readFileSync(path.join(REPO_ROOT, "src/workflows/s-04b-booking-reminders.mjs"), "utf8");
   assert.match(auth, /BOOKING_CONFIRM_LINK_TTL_MINUTES = 365 \* 24 \* 60/);
-  assert.match(auth, /LINK_TTL_MINUTES = 15/);
+  assert.match(auth, /^export const LINK_TTL_MINUTES = 365 \* 24 \* 60;/m);
   assert.match(booking, /bookingClaimUrl\(env = process\.env\)/);
   assert.match(booking, /portalLoginUrl\(env\).*\?mode=claim/);
   assert.doesNotMatch(booking, /queueEmail:\s*false/);
-  assert.match(MAGIC_LINK_SQL, /l\.expires_at - l\.created_at <= interval '1 hour'/);
+  assert.match(MAGIC_LINK_SQL, /l\.outcome = 'issued'/);
+  assert.doesNotMatch(MAGIC_LINK_SQL, /interval '1 hour'/);
   for (const rel of ["api/auth/magic-link.mjs", "api/auth/send-portal-link.mjs", "api/auth/authorized-rep.mjs", "api/soft-pull-approve.mjs", "src/slo/buyer.mjs"]) {
     const src = fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
     assert.doesNotMatch(src, /queueEmail:\s*false/, `${rel} now issues links without queueing the email`);

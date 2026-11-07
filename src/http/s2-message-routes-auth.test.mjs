@@ -3,7 +3,7 @@
 // catalog row names: what the caller is told, and what was queued for the
 // compliance gate.
 //
-//   route:auth/magic-link        client types an email, a 15 minute single-use link is queued
+//   route:auth/magic-link        client types an email, a 12-month single-use link is queued
 //   route:auth/send-portal-link  owner or admin queues a link and reads the URL back
 //   (and magic-link-verify)      the link is spent once, then refused
 //
@@ -30,7 +30,7 @@ const netCalls = refuseNetwork({ before, after });
 const LINK_ROW = "1c000000-0000-4000-8000-000000000001";
 
 describe("POST /api/auth/magic-link", () => {
-  test("a client's address queues one email with a 15 minute single-use link, and the caller is told only the uniform sentence", async () => {
+  test("a client's address queues one email with a 12-month single-use link, and the caller is told only the uniform sentence", async () => {
     const { res, fake } = await call(
       magicLink,
       req("POST", { body: { email: `  ${EMAIL.toUpperCase()}  ` }, headers: { "x-forwarded-for": "203.0.113.9" } }),
@@ -39,7 +39,8 @@ describe("POST /api/auth/magic-link", () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.ok, true);
     assert.match(res.body.message, /If that email address has a Fundhub portal, a sign-in link is on its way/);
-    assert.match(res.body.message, /expires in 15 minutes/);
+    // owner-set 2026-11-07: 12 months, one use.
+    assert.match(res.body.message, /works once and stays good for 12 months/);
     // Nothing that reveals the outcome or the credential reaches the caller.
     assert.deepEqual(Object.keys(res.body).sort(), ["message", "ok"]);
 
@@ -52,7 +53,8 @@ describe("POST /api/auth/magic-link", () => {
     assert.equal(clientId, CLIENT);
     assert.match(tokenHash, /^[0-9a-f]{64}$/);
     const minutes = (new Date(expiresAt).getTime() - Date.now()) / 60000;
-    assert.ok(minutes > 14 && minutes <= 15, `link lifetime was ${minutes} minutes`);
+    const twelveMonths = 365 * 24 * 60;
+    assert.ok(minutes > twelveMonths - 2 && minutes <= twelveMonths + 1, `link lifetime was ${minutes} minutes`);
 
     const [mail] = fake.find(/INSERT INTO messages/);
     const [, mailClient, channel, templateKey, body, , toAddress, subject] = mail.params;
@@ -62,11 +64,12 @@ describe("POST /api/auth/magic-link", () => {
     assert.equal(toAddress, EMAIL);
     assert.equal(subject, "Your Fundhub sign-in link");
     assert.match(mail.sql, /'queued'/);
-    // The mailed token is the one whose hash was stored, and it says 15 minutes.
+    // The mailed token is the one whose hash was stored, and the life handed to the
+    // template is 12 months (365 days) in minutes.
     const token = /portal-login\.html\?t=([A-Za-z0-9_-]+)/.exec(body)?.[1];
     assert.ok(token, "the mailed body carries the sign-in link");
     assert.equal(crypto.createHash("sha256").update(token, "utf8").digest("hex"), tokenHash);
-    assert.match(body, /good for 15 minutes/);
+    assert.match(body, /good for 525600 minutes/);
     assert.equal(netCalls.length, 0);
   });
 
@@ -255,6 +258,51 @@ describe("POST /api/auth/magic-link-verify", () => {
     const unknown = await verify(rules(linkTable()), { token: "not-a-real-token" });
     assert.equal(unknown.res.statusCode, 401);
     assert.deepEqual(unknown.res.body, expired.res.body);
+  });
+
+  // A link mailed by the real sign-in door, then clicked on a later day. The claim
+  // keeps the database's own rule: not spent yet, and expires_at is after "now".
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  async function mailedLink() {
+    const { fake } = await call(
+      magicLink, req("POST", { body: { email: EMAIL } }),
+      [org, noLimit, noAccount, clientByEmail, linkInsert, template, clientRow, queued]
+    );
+    const [link] = fake.find(/INSERT INTO account_magic_links/);
+    const [mail] = fake.find(/INSERT INTO messages/);
+    return {
+      issuedAt: Date.now(),
+      token: /portal-login\.html\?t=([A-Za-z0-9_-]+)/.exec(mail.params[4])?.[1],
+      tokenHash: link.params[4],
+      expiresAt: new Date(link.params[5]).getTime(),
+    };
+  }
+  function linkOnDay(link, day) {
+    const row = { consumed_at: null };
+    const now = () => link.issuedAt + day * DAY_MS;
+    return [/UPDATE account_magic_links\s+SET consumed_at = now\(\)/, (_s, p) => {
+      if (p[0] !== link.tokenHash || row.consumed_at || link.expiresAt <= now()) return [];
+      row.consumed_at = now();
+      return [{ id: LINK_ROW, org_id: ORG_ID, email: EMAIL, account_id: ACCOUNT, client_id: CLIENT }];
+    }];
+  }
+
+  test("owner-set 2026-11-07: 12 months, one use. A mailed link works on day 364, works only once, and is refused on day 366", async () => {
+    const link = await mailedLink();
+    assert.ok(link.token, "the mailed body carries the sign-in link");
+
+    const day364 = linkOnDay(link, 364);
+    const first = await verify(rules(day364), { token: link.token });
+    assert.equal(first.res.statusCode, 200, "day 364 signs in");
+    assert.equal(first.res.body.ok, true);
+    const used = await verify(rules(day364), { token: link.token });
+    assert.equal(used.res.statusCode, 401, "a used link is refused");
+    assert.equal(used.res.body.error, "invalid_link");
+
+    // A fresh, unused copy of the same link, clicked on day 366: refused for age alone.
+    const day366 = await verify(rules(linkOnDay(link, 366)), { token: link.token });
+    assert.equal(day366.res.statusCode, 401, "day 366 is refused");
+    assert.deepEqual(day366.res.body, used.res.body);
   });
 
   test("no token is 400 and a GET is 405, with no database work", async () => {
