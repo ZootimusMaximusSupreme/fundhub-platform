@@ -35,7 +35,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 
 ## 2. How agents work (scope, approval, finishing)
 
-- `split-and-proceed` (both homes): Split substantial work into parallel workflows and execute without an approval pause.
+- `split-and-proceed` (both homes): Split substantial work into parallel workflows and execute without an approval pause. Split quietly: no split line in the chat (owner-set 2026-11-05).
 - `owner-go-no-repeat-approval` (both homes): Carry authorized work through without repeated approval questions; when the rules settle a choice, make it and say what you did.
 - `finish-the-requested-job` (both homes): Finish approved work through required checks, including the launch release checks; holds the stuck rule and the scope-creep line.
 - `ground-rules` (both homes): Repo-only work, look it up, never invent, and owner decisions are final.
@@ -50,7 +50,7 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `named-fix-regression-gate` (both homes): Named-fix hard gate — hole must be real on live; fix must be real on live; no invented holes or fake PASS.
 - `audit-vs-fix-router` (both homes): Route audit vs fix — never mix them in one pass; default to the read-only audit, never ask which.
 - `build-spec-then-backend-then-frontend` (both homes): New work is spec → review → backend → front end. Never HTML first.
-- `model-by-job` (both homes): Which model runs which job (owner calls on Sonnet and Opus).
+- `model-by-job` (both homes): Which model runs which job (owner calls on Sonnet and Opus). Check it quietly: no model line in the chat unless the model is too weak (owner-set 2026-11-05).
 - `rules-no-drift` (both homes): A new rule updates every line that says otherwise, is added once with both links, and updates the index.
 - `no-new-markdown` (both homes): Do not create new .md files unless Chris asks for one. Update an existing file instead.
 - `no-claude-in-cursor` (Cursor-only on purpose): Cursor agents must not invoke Claude or Anthropic models.
@@ -105,7 +105,8 @@ Legend: **both homes** = one real file in `.ai/rules`, linked for Cursor and for
 - `ad-no-recycled-lines` (both homes): Never copy lines between ads. Each ad is a test. Reuse only proven high-converting phrases.
 - `ad-second-line` (both homes): Sentence two of the hook does one job (win, proof, stakes, new detail, reassure).
 - `ad-watch-curve` (both homes): How to read Meta video watch numbers and what to fix when an ad dies.
-- `audience-data-recipient-check` (both homes): Read the list and the platform's accepted data before upload; selection criteria and names count as insights, even when identifiers are hashed. Never use Meta credit-score or income segments as Custom Audience or lookalike seeds (owner-set 2026-11-02).
+- `audience-data-recipient-check` (both homes, **alwaysApply**): Before upload, check selection, uploaded fields, audience names, and metadata; neutral names do not cure credit/income-based selection; segment-repair / batch-lookalike / replace-users scripts refuse until selection code is reviewed (owner-set 2026-11-02, oversight correction same day).
+- `meta-audience-neutral-labels` (both homes, **not always-on**): Superseded naming hygiene only — no credit/income/score words in Meta audience titles; points to audience-data-recipient-check for uploads (owner-set 2026-11-02, superseded same day).
 - `ad-naming` (both homes): Drive ad file names are Offer, ad number, angle name, then take number; ads are found by id, not by name.
 - `proof-cards-from-source` (both homes): Proof cards come from source screenshots — never invent amounts, quotes, or faces.
 - `page-edits-marked-draft` (both homes): Page edits — show Chris a marked draft (red, then green) before anything goes live.

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Orchestration
 
-The split proposal is section 0. It happens before anything else. This section covers how the workflows behave once running. Law: split-and-proceed (.ai/rules/split-and-proceed.md).
+The split is section 0. It happens before anything else, quietly (owner-set 2026-11-05). This section covers how the workflows behave once running. Law: split-and-proceed (.ai/rules/split-and-proceed.md).
 
 ## Rules
 
