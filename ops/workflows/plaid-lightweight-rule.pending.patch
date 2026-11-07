@@ -1,15 +1,16 @@
-# Apply with git apply --unidiff-zero after shared rule ownership is resolved.
+# Core and optional cross-references preserved while the existing quiet-model owner claims model-by-job.
+# The owner-requested lightweight-screen rule is already saved in explicit private memory.
+# Apply only after shared instruction handoff, using git apply --unidiff-zero; do not bypass preflight.
 diff --git a/.ai/rules/model-by-job.md b/.ai/rules/model-by-job.md
-index c934c25cb..56a1b64a7 100644
 --- a/.ai/rules/model-by-job.md
 +++ b/.ai/rules/model-by-job.md
 @@ -2 +2 @@
 -description: Which model runs which job (owner calls on Sonnet and Opus)
 +description: Which model runs which job, including lightweight screen operation
-@@ -9,0 +10,2 @@ alwaysApply: true
-+- **Screen operation uses a lightweight model (2026-11-06).** Chris: "when an operating screen is used a lightweight model for typing in information ... save tokens." Delegate browser and native-app clicking, typing, and other mechanical UI actions to an available lightweight model. The planning/review model supplies precise actions and checks the results; it does not spend the larger model's tokens operating the screen. Prefer a dedicated connector or API when it can do the task. The screen operator still observes current UI state and honors all permission, confirmation, and access boundaries; unexpected results return to the planner. If a lightweight screen operator is unavailable, continue independent API/read work and state that limitation instead of silently using a larger model for screen actions.
+@@ -8,0 +9,2 @@
 +
-@@ -34 +36 @@ Raise thinking effort — not just the tier — for debugging and architecture.
++- **Screen operation uses a lightweight model (2026-11-06).** Chris: "when an operating screen is used a lightweight model for typing in information ... save tokens." Delegate browser and native-app clicking, typing, and other mechanical UI actions to an available lightweight model. The planning/review model supplies precise actions and checks the result. Prefer a dedicated connector or API when it can do the task. The screen operator still observes current UI state and honors permission, confirmation, and access boundaries; unexpected results return to the planner. If a lightweight operator is unavailable, continue independent API/read work and state the limitation instead of silently using a larger model for screen actions.
+@@ -34 +36 @@
 -Overshooting is fine. If in doubt, ask for the higher tier.
 +Outside mechanical screen operation, overshooting is fine. If in doubt about reasoning work, ask for the higher tier; keep actual screen actions on the lightweight operator.
 diff --git a/AGENTS.md b/AGENTS.md
