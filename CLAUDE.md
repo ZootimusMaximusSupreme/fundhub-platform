@@ -117,6 +117,7 @@ No Josh, it is Chris (owner-set 2026-10-31). Josh is gone. Everything a lead, cl
 Check audience data before sharing (owner-set 2026-11-02, corrected oversight same day). Check selection, uploaded fields, names, and metadata; neutral titles do not cure credit/income-filtered lists. Meta write scripts refuse until source selection is changed in code and reviewed. Same law: `.ai/rules/audience-data-recipient-check.md`
 Meta audience naming hygiene only (superseded 2026-11-02 oversight — not always-on). No credit/income words in Meta audience titles; does not authorize segmented uploads. Same file: `.ai/rules/meta-audience-neutral-labels.md`
 Confirm on the calendar, never by reply (owner-set 2026-10-31). No message asks a lead to reply CONFIRM or YES; the one action is accepting the calendar invite in their email. Same law: `.ai/rules/confirm-on-the-calendar.md`
+Short client words (owner-set 2026-11-07). Client screens, dashboards and demos use short labels and one-line captions. No explanation lines under steps, no disclaimers or compliance riders. Same law: `.ai/rules/short-client-words.md`
 
 ## 3. Before writing any code
 
