@@ -930,8 +930,17 @@ test("scripts: pageAssets reads a page's own list: relative, absolute, query, co
 
 test("scripts: read against the real pages in public/, the lists are what the map says", () => {
   const read = (file) => fs.readFileSync(path.join(PUBLIC, file), "utf8");
-  const names = (file, pagePath) =>
-    pageAssets(read(file), `${BASE}${pagePath}`, BASE).map((a) => new URL(a.url).pathname);
+  const names = (file, pagePath) => {
+    const assets = pageAssets(read(file), `${BASE}${pagePath}`, BASE).map((a) => new URL(a.url).pathname);
+    if (file === "progress.html") {
+      // The explicit sample loader precedes the unchanged normal-page assets.
+      // Pin the exact prefix and its file, then compare every remaining asset.
+      assert.equal(assets[0], "/app/blueprint-demo.js");
+      assert.ok(fs.existsSync(path.join(PUBLIC, assets[0])), "Progress sample loader exists");
+      return assets.slice(1);
+    }
+    return assets;
+  };
 
   const sharedTypeAssets = ["/app/fundhub-font.css", "/app/fundhub-font.js"];
   const sharedAstraStyles = ["/app/fundhub-astra.css", "/app/fundhub-astra-client.css"];

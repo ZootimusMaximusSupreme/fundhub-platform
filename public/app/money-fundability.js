@@ -438,9 +438,57 @@
 
   function isEmpty(d) { return !d || d.has_pull !== true; }
 
+  function renderOpportunity(opportunity) {
+    if (!opportunity || opportunity.basis !== "current_crs_engine") return "";
+    function amount(value) { return isNum(value) ? money(value) : "Unknown"; }
+    function figures(value) {
+      value = value || {};
+      return '<dl><dt>Current modeled capacity</dt><dd class="big">' + esc(amount(value.currentCents)) + '</dd>' +
+        '<dt>Modeled scenario</dt><dd>' + esc(amount(value.projectedCents)) + '</dd>' +
+        '<dt>Estimated change</dt><dd>' + esc(amount(value.liftCents)) + '</dd></dl>';
+    }
+    var reasons = {
+      formed_business_not_on_file: "Formed business not on file",
+      formation_evidence_required: "Formation evidence needs review",
+      ein_evidence_required: "EIN confirmation needs review",
+      matched_business_credit_report_required: "Matching business credit report needed",
+      business_age_required: "Business age is unknown",
+      business_report_association_ambiguous: "Business report association needs review",
+      current_engine_does_not_expose_safe_capacity: "Current report needs review before an estimate is shown"
+    };
+    var personal = opportunity.personal || {};
+    var combined = opportunity.combined || {};
+    var html = '<section class="fd-block fd-opportunity" data-funding-opportunity><h2>Funding opportunity from your current report</h2>' +
+      '<p class="caption">One personal file, with each business shown separately. Modeled capacity is not a bank approval or issued funding.</p>' +
+      '<div class="fd-grid fd-halves"><section class="card fd-tile" data-opportunity-personal><h3>Personal</h3>' + figures(personal) + '</section>' +
+      '<section class="card fd-tile" data-opportunity-combined><h3>Combined modeled capacity</h3>' + figures(combined) +
+      (combined.currentCents === null ? '<p class="caption">A total is unknown until each business has reviewed facts and a matching report, and shared personal-guarantee overlap has been resolved. The personal estimate is counted once.</p>' : '') + '</section></div>';
+    var businesses = list(opportunity.businesses);
+    if (businesses.length) html += '<h3>Each business</h3><div class="fd-grid fd-thirds">' + businesses.map(function (business) {
+      return '<section class="card fd-tile" data-opportunity-business><h4>' + esc(business.name || "Business preparation plan") + '</h4>' +
+        figures(business) + '<ul class="caption">' + list(business.blockers).map(function (reason) {
+          return '<li>' + esc(reasons[reason] || "Current business file needs review") + '</li>';
+        }).join('') + '</ul></section>';
+    }).join('') + '</div>';
+    var steps = list(opportunity.steps);
+    var labels = { utilization: "Card balances", credit_repair: "Credit repair", inquiry_cleanup: "Inquiry cleanup", formation: "LLC formation", ein: "EIN confirmation", bank_preparation: "Banking preparation", business_credit: "Business credit" };
+    if (steps.length) html += '<h3>What each step changes</h3><ul>' + steps.map(function (step) {
+      return '<li class="card"><h4>' + esc(labels[step.key] || "Plan step") + '</h4><p><strong>Estimated funding change: ' +
+        esc(isNum(step.liftCents) ? money(step.liftCents) : "Not modeled") + '</strong></p><p class="caption">' + esc(step.reason || "A reviewed report is needed.") + '</p></li>';
+    }).join('') + '</ul>';
+    return html + '<p class="caption">' + list(opportunity.limitations).map(esc).join(' ') + '</p></section>';
+  }
+
   function renderFull(d, links) {
     links = links || {};
+    var current = d.opportunity && d.opportunity.personal;
+    var currentEngine = d.engine && d.engine.name === "underwrite_iq_crs";
+    if (current && (current.status === "modeled" || list(current.blockers).indexOf("current_engine_does_not_expose_safe_capacity") >= 0)) currentEngine = true;
+    if (currentEngine && d.opportunity) {
+      return renderSample(d) + renderHead(d) + renderOpportunity(d.opportunity) + renderMoves(d) + renderCannot(d);
+    }
     return renderSample(d) + renderHead(d) +
+      renderOpportunity(d.opportunity) +
       '<div class="fd-grid fd-thirds">' + renderNowTile(d) + renderFundingTile(d) + renderLaterTile(d) + '</div>' +
       renderMoves(d) +
       '<div class="fd-grid fd-halves">' + renderDrivers(d) + renderChart(d) + '</div>' +
@@ -494,11 +542,13 @@
   }
 
   function call(path) {
+    var localDemo = root.__fhBlueprintFullDemoRoute === true;
     var headers = { accept: "application/json" };
-    var t = token();
+    var t = localDemo ? "" : token();
     if (t) headers.authorization = "Bearer " + t;
     var started;
-    try { started = root.fetch(path, { method: "GET", headers: headers, credentials: "same-origin" }); }
+    if (localDemo && typeof root.FHClientFetch !== "function") return Promise.resolve({ status: 503, body: { ok: false, error: "demo_unavailable" } });
+    try { started = localDemo ? root.FHClientFetch(path, { method: "GET", headers: headers }) : root.fetch(path, { method: "GET", headers: headers, credentials: "same-origin" }); }
     catch (e) { return Promise.resolve({ status: 0, body: null }); }
     return Promise.resolve(started).then(function (r) {
       return r.json().then(function (b) { return { status: r.status, body: b }; },
@@ -637,7 +687,7 @@
   root.FHMoneyFundability = {
     money: money, day: day, scoreText: scoreText, tierWord: tierWord, statusOf: statusOf,
     chartModel: chartModel, renderChart: renderChart, renderDetail: renderDetail,
-    isEmpty: isEmpty, render: render, renderFull: renderFull, renderEmpty: renderEmpty,
+    isEmpty: isEmpty, render: render, renderFull: renderFull, renderEmpty: renderEmpty, renderOpportunity: renderOpportunity,
     renderError: renderError, renderLoading: renderLoading, classify: classify,
     withClient: withClient, mount: mount
   };
