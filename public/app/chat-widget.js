@@ -47,10 +47,20 @@
   }
 
   function api(path, opts) {
-    var t = token();
+    var localDemo = window.__fhBlueprintFullDemoRoute === true;
+    var t = localDemo ? "" : token();
     var headers = { accept: "application/json", "content-type": "application/json" };
     if (t && t !== "demo") headers.authorization = "Bearer " + t;
-    return fetch(path, Object.assign({ headers: headers }, opts || {}))
+    if (localDemo && typeof window.FHClientFetch !== "function") {
+      return Promise.resolve({ ok: false, error: "demo_unavailable" });
+    }
+    var pending;
+    try {
+      pending = localDemo
+        ? window.FHClientFetch(path, Object.assign({ headers: headers }, opts || {}))
+        : fetch(path, Object.assign({ headers: headers }, opts || {}));
+    } catch (_) { return Promise.resolve({ ok: false, error: "network_unavailable" }); }
+    return Promise.resolve(pending)
       .then(function (response) {
         return response.json().catch(function () {
           return { ok: false, error: "invalid_response" };

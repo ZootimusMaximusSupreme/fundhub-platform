@@ -38,6 +38,7 @@
     "money-connections.html": "connections", "money-payments.html": "payments", "money-setup.html": "setup"
   };
   var OVERVIEW = "/api/money/overview";
+  var localDemo = root.__fhBlueprintFullDemoRoute === true;
 
   function esc(v) {
     return String(v == null ? "" : v)
@@ -93,15 +94,17 @@
 
   function call(method, path, body) {
     var headers = { accept: "application/json" };
-    var t = token();
+    var t = localDemo ? "" : token();
     if (t) headers.authorization = "Bearer " + t;
     var init = { method: method, headers: headers, credentials: "same-origin" };
+    if (localDemo) delete init.credentials;
     if (body !== undefined) {
       headers["content-type"] = "application/json";
       init.body = JSON.stringify(body);
     }
     var started;
-    try { started = root.fetch(path, init); } catch (e) { return Promise.resolve({ status: 0, body: null }); }
+    if (localDemo && typeof root.FHClientFetch !== "function") return Promise.resolve({ status: 503, body: { ok: false, error: "demo_unavailable" } });
+    try { started = localDemo ? root.FHClientFetch(path, init) : root.fetch(path, init); } catch (e) { return Promise.resolve({ status: 0, body: null }); }
     return Promise.resolve(started).then(function (r) {
       return r.json().then(function (b) { return { status: r.status, body: b }; },
         function () { return { status: r.status, body: null }; });
@@ -146,15 +149,98 @@
     }
     var skip = doc.querySelector(".fos-skip");
     if (skip && main) skip.addEventListener("click", function (e) { e.preventDefault(); main.focus(); });
-    var cid = param("client_id");
+    var cid = localDemo ? "" : param("client_id");
     var qs = cid ? "?client_id=" + encodeURIComponent(cid) : "";
     var leaving = false;
     var mounted = {};
+    var initialTab = tabFromHash(root.location.hash || (localDemo && param("tab") ? "#" + param("tab") : ""));
+
+    function demoCurrent() { return !localDemo || !!(root.FHBlueprintDemo && root.FHBlueprintDemo.active && root.FHBlueprintDemo.isCurrent()); }
+    function demoRoute(path) {
+      var url = new URL(path, root.location.origin);
+      if (!localDemo) return url.pathname + url.search + url.hash;
+      var view = url.searchParams.get("view");
+      url.search = "";
+      url.searchParams.set("demo", "1");
+      url.searchParams.set("blueprint", "full");
+      var offer = param("offer");
+      if (/^(preparation|implementation)$/.test(offer)) url.searchParams.set("offer", offer);
+      if (view === "documents" && url.pathname === "/app/client-portal.html") url.searchParams.set("view", view);
+      return url.pathname + url.search + url.hash;
+    }
+    function demoNotice(message) {
+      var notice = doc.getElementById("fos-demo-notice");
+      if (notice) notice.textContent = message;
+    }
+    function stopDemo() {
+      if (!localDemo || demoCurrent()) return;
+      leaving = true;
+      Object.keys(mounted).forEach(function (key) { if (mounted[key] && mounted[key].unmount) mounted[key].unmount(); });
+      for (var i = 0; i < TABS.length; i++) { var panel = doc.getElementById("fos-" + TABS[i][0]); if (panel) panel.hidden = true; }
+      demoNotice("Your demo session changed. Reload this sample workspace to continue.");
+    }
+    if (localDemo) {
+      doc.body.classList.add("fos-has-sandbox");
+      var demoBanner = doc.getElementById("fos-demo");
+      if (demoBanner) demoBanner.hidden = false;
+      var demoBack = doc.getElementById("fos-demo-return");
+      var portalBack = doc.getElementById("money-back");
+      if (demoBack) demoBack.href = demoRoute("/app/client-portal.html");
+      if (portalBack) portalBack.href = demoRoute("/app/client-portal.html");
+      if (root.history && root.history.replaceState) root.history.replaceState(null, "", demoRoute("/app/financeos.html#" + initialTab));
+      // These two legacy actions use their own provider/file transport rather
+      // than the frame's JSON ctx. Keep the actual sections, contain the action.
+      function containDemoAction(event) {
+        var target = event.target;
+        var control = target && target.closest ? target.closest("[data-act],input[type='file']") : null;
+        var connect = control && control.getAttribute("data-act") === "connect";
+        var vaultFile = control && control.closest("#fos-vault") && (control.type === "file" || control.getAttribute("data-act") === "pick");
+        if (connect || vaultFile) {
+          event.preventDefault(); event.stopImmediatePropagation();
+          if (control.type === "file") control.value = "";
+          var message = connect ? "These are fictional sample accounts. Live bank connections stay closed in this demo." : "Try sample document uploads in Blueprint Documents. No file is sent from this sample FinanceOS view.";
+          demoNotice(message);
+          var nearby = control.parentNode && control.parentNode.querySelector(".act-msg");
+          if (nearby) nearby.textContent = message;
+          return;
+        }
+        if (event.type === "submit") { event.preventDefault(); return; }
+        var link = target && target.closest ? target.closest("a[href]") : null;
+        if (!link) return;
+        var href = link.getAttribute("href");
+        var tab = tabForHref(href);
+        if (tab) { event.preventDefault(); event.stopImmediatePropagation(); go(tab); if (root.scrollTo) root.scrollTo(0, 0); return; }
+        if (href && href.charAt(0) === "#") return;
+        var url;
+        try { url = new URL(href, root.location.href); } catch (_) {}
+        if (url && url.origin === root.location.origin && url.pathname === "/app/client-portal.html" &&
+            url.searchParams.get("demo") === "1" && url.searchParams.get("blueprint") === "full" &&
+            ["bank", "document", "payment"].indexOf(url.searchParams.get("preview")) >= 0) {
+          var preview = new URL(demoRoute("/app/client-portal.html"), root.location.origin);
+          preview.searchParams.set("preview", url.searchParams.get("preview"));
+          preview.searchParams.set("item", url.searchParams.get("item") || "");
+          link.href = preview.pathname + preview.search;
+          return;
+        }
+        if (url && url.origin === root.location.origin && ["/app/client-portal.html", "/progress.html", "/app/financeos.html"].indexOf(url.pathname) >= 0) {
+          link.href = demoRoute(url.pathname + url.search + url.hash);
+          return;
+        }
+        event.preventDefault(); event.stopImmediatePropagation();
+        demoNotice("Use the sample Blueprint workspace for document, bank, and payment previews. This demo does not open live providers.");
+      }
+      ["click", "auxclick", "change", "submit"].forEach(function (name) { main.addEventListener(name, containDemoAction, true); });
+      root.addEventListener("focus", stopDemo);
+      root.addEventListener("pageshow", stopDemo);
+      root.addEventListener("storage", stopDemo);
+      doc.addEventListener("visibilitychange", function () { if (!doc.hidden) stopDemo(); });
+    }
 
     /* One 401 → one redirect, then nothing else paints. */
     function guard(p) {
       return Promise.resolve(p).then(function (res) {
         if (res && res.status === 401) {
+          if (localDemo) { stopDemo(); return res; }
           if (!leaving) { leaving = true; root.location.href = signInUrl(); }
           return new Promise(function () {});
         }
@@ -174,7 +260,7 @@
         who.textContent = b.client.name;
         who.setAttribute("title", b.client.name);
       }
-      if (b.sandbox === true) {
+      if (b.sandbox === true && !localDemo) {
         var banner = doc.getElementById("fos-sandbox");
         if (banner) banner.hidden = false;
         doc.body.classList.add("fos-has-sandbox");
@@ -192,7 +278,7 @@
         return guard(call("GET", path));
       },
       apiPost: function (path, body) { return guard(call("POST", path, body)); },
-      onSignIn: function () { if (!leaving) { leaving = true; root.location.href = signInUrl(); } }
+      onSignIn: function () { if (localDemo) { stopDemo(); return; } if (!leaving) { leaving = true; root.location.href = signInUrl(); } }
     };
 
     function panelOf(k) { return doc.getElementById("fos-" + k); }
@@ -230,6 +316,7 @@
     }
 
     function show(k) {
+      if (localDemo && (!demoCurrent() || leaving)) { stopDemo(); return; }
       for (var i = 0; i < TABS.length; i++) {
         var key = TABS[i][0];
         var on = key === k;
@@ -306,7 +393,12 @@
       back.textContent = "Back to Finance OS";
     }
 
-    show(tabFromHash(root.location.hash));
+    if (localDemo) root.addEventListener("fh:blueprint-demo-change", function () {
+      if (!demoCurrent()) { stopDemo(); return; }
+      firstOverview = null;
+      Object.keys(mounted).forEach(function (key) { if (mounted[key] && mounted[key].reload) mounted[key].reload(); });
+    });
+    show(initialTab);
   }
 
   root.FHFinanceOS = {
