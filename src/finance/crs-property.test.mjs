@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
-import { getPropertyReport, orderPropertyReport } from "./crs-property.mjs";
-import { PROPERTY_CONSENT_VERSION } from "./crs-property-contract.mjs";
+import { createHash, randomUUID } from "node:crypto";
+import { getPropertyReport, orderPropertyReport, recordClientPropertyConsent } from "./crs-property.mjs";
+import { PROPERTY_CONSENT_TEXT, PROPERTY_CONSENT_VERSION } from "./crs-property-contract.mjs";
 const principal = { kind: "staff", role: "owner", orgId: randomUUID(), staffId: randomUUID() };
 const clientId = randomUUID();
 const env = { CRS_PROPERTY_API_HOST: "mware.crscreditapi.com", CRS_PROPERTY_API_USERNAME: "unit-user", CRS_PROPERTY_API_PASSWORD: "unit-password",
@@ -15,6 +15,19 @@ function fakeDb() {
     state.calls.push({ sql, values });
     if (sql.includes("FROM clients")) return { rows: state.client ? [state.client] : [] };
     if (sql.includes("FROM pii_identity")) return { rows: state.identity ? [state.identity] : [] };
+    if (sql.includes("FROM client_consents c JOIN crs_property_consents")) return { rows: state.clientConsent ? [state.clientConsent] : [] };
+    if (sql.includes("INSERT INTO client_consents")) {
+      const row = { id: randomUUID(), org_id: values[0], client_id: values[1], kind: values[2],
+        consent_text: values[3], consent_version: values[4], granted_by_kind: values[5],
+        granted_by_account_id: values[6], capture_method: values[8], granted_name: values[9] };
+      state.clientConsent = row; return { rows: [row] };
+    }
+    if (sql.includes("INSERT INTO crs_property_consents")) {
+      assert.equal(values[0], state.clientConsent.id);
+      state.clientConsent.identity_version_fingerprint = values[3];
+      state.clientConsent.valid = true;
+      return { rows: [] };
+    }
     if (sql.includes("INSERT INTO crs_property_requests")) {
       const [org_id, client_id, requester_staff_id, operation_id, environment, identity_fingerprint, identity_version_fingerprint, consent_text, consent_version] = values;
       const row = { id: randomUUID(), org_id, client_id, requester_staff_id, operation_id, environment, identity_fingerprint,
@@ -50,6 +63,41 @@ test("property GET only reads saved status and never reveals or orders", async (
   assert.equal(result.body.status, "empty"); assert.equal(result.body.mayOrder, true);
   assert.ok(db.state.calls.every(v => v.sql.startsWith("SELECT")));
   assert.doesNotMatch(JSON.stringify(result), /synthetic-encrypted-value|666123456/);
+});
+test("client property permission records the specific words and account and does not order", async () => {
+  const db = fakeDb(), accountId = randomUUID();
+  await recordClientPropertyConsent(db, { orgId: principal.orgId, clientId, accountId, grantedName: "Synthetic Property" });
+  assert.equal(db.state.clientConsent.kind, "property_report_consent");
+  assert.equal(db.state.clientConsent.consent_text, PROPERTY_CONSENT_TEXT);
+  assert.equal(db.state.clientConsent.consent_version, PROPERTY_CONSENT_VERSION);
+  assert.equal(db.state.clientConsent.granted_by_account_id, accountId);
+  assert.equal(db.state.clientConsent.capture_method, "checkbox");
+  assert.equal((await getPropertyReport(db, principal, { clientId }, { env })).body.clientConsent.valid, true);
+  assert.equal(db.state.rows.length, 0);
+});
+test("recorded property permission is bound to the saved identity and rechecked before ordering", async () => {
+  const db = fakeDb(); let orders = 0;
+  const opts = options(db); const base = opts.client.order;
+  opts.client.order = async args => { orders++; return base(args); };
+  const accepted = { ...input(), consentAccepted: false };
+  await assert.rejects(orderPropertyReport(db, principal, accepted, opts), /property_consent_required/);
+  assert.equal(orders, 0);
+  const fingerprint = createHash("sha256").update(JSON.stringify([
+    db.state.client.first_name, db.state.client.last_name, db.state.identity.dob,
+    db.state.identity.ssn_enc.toString("hex")
+  ])).digest("hex");
+  db.state.clientConsent = { id: randomUUID(), valid: true, consent_version: PROPERTY_CONSENT_VERSION,
+    consent_text: PROPERTY_CONSENT_TEXT, identity_version_fingerprint: fingerprint };
+  assert.equal((await getPropertyReport(db, principal, { clientId }, opts)).body.clientConsent.valid, true);
+  db.state.clientConsent.valid = false;
+  await assert.rejects(orderPropertyReport(db, principal, accepted, opts), /property_consent_required/);
+  db.state.clientConsent.valid = true;
+  db.state.client.first_name = "Changed";
+  assert.equal((await getPropertyReport(db, principal, { clientId }, opts)).body.clientConsent.valid, false);
+  await assert.rejects(orderPropertyReport(db, principal, accepted, opts), /property_consent_required/);
+  db.state.client.first_name = "Synthetic";
+  const result = await orderPropertyReport(db, principal, accepted, opts);
+  assert.equal(result.body.status, "completed"); assert.equal(orders, 1);
 });
 test("property order binds saved identity, records separate permission and replays without another order", async () => {
   const db = fakeDb(); let orders = 0;

@@ -66,6 +66,12 @@ export class ConsentError extends Error {
  *  column — see 099's header for why that set is closed rather than free text. */
 export const CONSENT_KINDS = Object.freeze([
   "soft_pull_consent",
+  // Added 2026-11-06. The client's own permission for a CRS/PitchPoint property
+  // ownership report, ticked as a separate box on the soft-pull authorization
+  // form. It is not credit permission and nothing orders a report from it alone;
+  // src/finance/crs-property.mjs binds it to the saved identity and a staff
+  // member still clicks Run property report. db/migrations/571 widens the CHECK.
+  "property_report_consent",
   "dispute_authorization",
   // Added 2026-09-05 with the CSM role. Two, not one: agreeing to be
   // recorded is not agreeing to be advertised, and a client may grant the

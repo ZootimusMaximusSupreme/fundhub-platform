@@ -44,8 +44,9 @@
       consentText.textContent = data.consent ? data.consent.text : consentText.textContent;
       var mayOrder = data.mayOrder === true;
       order.hidden = !mayOrder;
-      consent.closest("label").hidden = !mayOrder;
-      order.disabled = true;
+      var clientApproved = !!(data.clientConsent && data.clientConsent.valid);
+      consent.closest("label").hidden = !mayOrder || clientApproved;
+      order.disabled = !mayOrder || !clientApproved;
       if (data.status === "completed" && data.report) {
         var report = data.report;
         state.textContent = "Saved property report · " + (data.environment === "sandbox" ? "Sandbox test data · " : "") + (data.checkedAt ? new Date(data.checkedAt).toLocaleString() : "Date unknown");
@@ -70,6 +71,7 @@
       } else if (data.status === "empty") {
         state.textContent = !data.connectionReady ? words.property_not_configured : !data.identityReady ? words.identity_required : "No property report is saved. Get the client's permission, then run one report.";
       } else state.textContent = words[data.reason] || "This property request needs team review. Reload to read its saved status.";
+      if (mayOrder && clientApproved) line(result, "p", "The client approved the property report on their authorization form.");
     }
     function load() {
       var snapshot = context();
@@ -89,7 +91,8 @@
     consent.addEventListener("change", function () { order.disabled = !consent.checked || !current || current.mayOrder !== true; });
     refresh.addEventListener("click", load);
     order.addEventListener("click", function () {
-      if (!current || !current.mayOrder || !consent.checked || loading) return;
+      var clientApproved = !!(current && current.clientConsent && current.clientConsent.valid);
+      if (!current || !current.mayOrder || (!clientApproved && !consent.checked) || loading) return;
       var snapshot = context(), run = ++generation;
       if (!same({ id: clientId, token: token, role: role })) { clear(); load(); return; }
       var operationId;
@@ -99,7 +102,7 @@
       loading = true; order.disabled = true; consent.disabled = true;
       state.textContent = "Requesting this client's property report…";
       fetch("/api/finance/property-report", { method: "POST", headers: headers(), body: JSON.stringify({
-        client_id: clientId, operation_id: operationId, consent_accepted: true, consent_version: current.consent.version
+        client_id: clientId, operation_id: operationId, consent_accepted: !clientApproved && consent.checked, consent_version: current.consent.version
       }) }).then(function (r) { return r.json().then(function (data) { if (!r.ok || !data.ok) throw new Error(data.error); return data; }); })
         .then(function (data) { if (run === generation && same(snapshot)) render(data); })
         .catch(function (error) { if (run === generation && same(snapshot)) { clear(); consent.closest("label").hidden = true; state.textContent = words[error.message] || words.property_provider_uncertain; } })

@@ -28,6 +28,8 @@ h1{font-size:24px;font-weight:800;letter-spacing:-.03em;margin:10px 0 8px;line-h
 .disc{font-size:12.5px;line-height:1.55;color:var(--ink);white-space:pre-wrap}
 label{display:block;font-size:11.5px;font-weight:600;margin:12px 0 5px}
 input{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font:inherit}
+.property-choice{display:flex;align-items:center;gap:12px;min-height:44px;font-size:16px;line-height:1.5}
+.property-choice input{width:44px;min-width:44px;height:44px;padding:0;margin:0;flex:0 0 44px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .btn{margin-top:16px;width:100%;padding:12px 14px;border:0;border-radius:10px;background:var(--ink);color:var(--paper);font:700 13px var(--sans);cursor:pointer}
 .btn:disabled{opacity:.45;cursor:not-allowed}
@@ -367,6 +369,12 @@ ol.next li:last-child{margin-bottom:0}
       '<div><label for="state">State</label><input id="state" name="state" maxlength="2" required placeholder="AZ"></div></div>' +
       '<label for="postal_code">ZIP</label>' +
       '<input id="postal_code" name="postal_code" inputmode="numeric" required>' +
+      (!blueprintMode && data.property_permission && data.property_permission.version && data.property_permission.text ?
+        '<div class="card" style="margin-top:16px"><h2>Add a property report (optional)</h2>' +
+        '<p class="lede" style="margin:0 0 8px">If your funding is for a home or property project, you can also let Fundhub pull your property ownership report. ' +
+        'It is a separate report. It does not change the total on this form, and your Fundhub team still has to request it.</p>' +
+        '<label class="property-choice"><input id="property_consent" type="checkbox"><span>' +
+        esc(data.property_permission.text) + '</span></label></div>' : "") +
       (blueprintMode ? "" : '<div class="card" style="margin-top:16px">' +
       "<h2>Add businesses (optional)</h2>" +
       "<p class=\"lede\" style=\"margin:0 0 8px\">If a company has other owners, say so. Extra owners make funding slower and harder. We usually prefer one-owner companies, but write the truth here anyway.</p>" +
@@ -439,6 +447,11 @@ ol.next li:last-child{margin-bottom:0}
         postal_code: addr.postal_code,
         businesses: businesses
       };
+      var propertyConsent = document.getElementById("property_consent");
+      if (propertyConsent && propertyConsent.checked) {
+        body.property_consent_accepted = true;
+        body.property_consent_version = data.property_permission.version;
+      }
       if (blueprintMode) {
         body.first_name = document.getElementById("first_name").value;
         body.last_name = document.getElementById("last_name").value;

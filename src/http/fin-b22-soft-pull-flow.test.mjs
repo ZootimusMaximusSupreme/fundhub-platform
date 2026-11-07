@@ -18,6 +18,7 @@ import handler from "../../api/soft-pull-approve.mjs";
 import { signSoftPullApproveUrl } from "../consent/approve-token.mjs";
 import { CURRENT_SOFT_PULL_VERSION, SOFT_PULL_DISCLOSURES } from "../consent/disclosures.mjs";
 import { fakeDb, makeRes, ORG_ID } from "../testing/handler-harness.mjs";
+import { PROPERTY_CONSENT_TEXT, PROPERTY_CONSENT_VERSION } from "../finance/crs-property-contract.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const OTHER_CLIENT = "c2000000-0000-4000-8000-000000000002";
@@ -59,12 +60,13 @@ function company(n, over = {}) {
 const ownedBy = (link, org, client) => (link.org_id ?? ORG_ID) === org && (link.client_id ?? CLIENT) === client
   && (link.purpose ?? "diagnostic") === "diagnostic";
 
-function standIn({ openLinks = [], failOn = null } = {}) {
+function standIn({ openLinks = [], failOn = null, extra = [] } = {}) {
   const minted = [];
   const expired = [];
   const marked = [];
   const rules = [
     ...(failOn ? [[failOn, new Error("the database refused this write")]] : []),
+    ...extra,
     [/FROM clients WHERE id = \$1 AND org_id = \$2/, [{ id: CLIENT, first_name: "Dana", last_name: "Whitfield", email: "dana@fundhub-client.test.io" }]],
     [/FROM client_consents\s+WHERE org_id = \$1 AND client_id = \$2 AND kind = \$3/, []],
     [/FROM accounts\s+WHERE client_id = \$1/, [{ id: ACCOUNT }]],
@@ -273,6 +275,89 @@ describe("authorize first, then pay", () => {
       assert.equal(out.res.statusCode, status);
       assert.equal(out.fake.calls.length, 0, "the database was not touched");
     }
+  });
+});
+
+describe("the property report permission is a separate, optional tick on the same form", () => {
+  // The property path reads the identity it has just saved (locked) before it
+  // records the permission. These answer those reads with synthetic saved rows.
+  const propertyReads = [
+    [/SELECT id,first_name,last_name,is_demo FROM clients WHERE id=\$1 AND org_id=\$2/, [{ id: CLIENT, first_name: "Dana", last_name: "Whitfield", is_demo: false }]],
+    [/SELECT id,dob,ssn_enc FROM pii_identity WHERE client_id=\$1 AND org_id=\$2/, [{ id: "pii-1", dob: "1985-04-12", ssn_enc: Buffer.from("synthetic-ciphertext") }]],
+  ];
+  const PROPERTY_WRITE = /INSERT INTO crs_property_consents/;
+
+  test("GET offers the exact server words and version for the optional property permission", async () => {
+    const res = makeRes();
+    await handler({ method: "GET", query: link(), headers: {} }, res, {
+      db: standIn().fake, env: ENV, secret: SECRET, now: NOW,
+      resolvePrincipal: async () => ({ kind: "client", orgId: ORG_ID, clientId: CLIENT, accountId: ACCOUNT })
+    });
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.property_permission, { version: PROPERTY_CONSENT_VERSION, text: PROPERTY_CONSENT_TEXT });
+  });
+
+  test("an unticked box records only the soft-pull consent and changes nothing about the total", async () => {
+    const { res, fake } = await post({ ...person(), businesses: [] }, { db: standIn({ extra: propertyReads }) });
+    assert.equal(res.statusCode, 201);
+    assert.equal(ran(fake, /INSERT INTO client_consents/).length, 1);
+    assert.equal(ran(fake, PROPERTY_WRITE).length, 0);
+    assert.equal(res.body.pricing.total_cents, 3200);
+  });
+
+  test("a ticked box records a second, separate consent in the client's own name with the server's words, bound to the saved identity, and still mints the same $32 checkout", async () => {
+    const { res, fake, minted } = await post({
+      ...person(), businesses: [], property_consent_accepted: true, property_consent_version: PROPERTY_CONSENT_VERSION,
+    }, { db: standIn({ extra: propertyReads }) });
+    assert.equal(res.statusCode, 201);
+    const writes = ran(fake, /INSERT INTO client_consents/);
+    assert.equal(writes.length, 2, "credit authorization, then the property permission");
+    assert.equal(writes[0].params[2], "soft_pull_consent");
+    assert.equal(writes[1].params[2], "property_report_consent");
+    assert.equal(writes[1].params[3], PROPERTY_CONSENT_TEXT, "the property words come from the server, never the body");
+    assert.equal(writes[1].params[4], PROPERTY_CONSENT_VERSION);
+    assert.equal(writes[1].params[5], "client");
+    assert.equal(writes[1].params[6], ACCOUNT);
+    assert.equal(writes[1].params[8], "checkbox");
+    assert.equal(writes[1].params[9], "Dana Whitfield");
+    assert.equal(writes[1].params[10], "203.0.113.5");
+    const [bind] = ran(fake, PROPERTY_WRITE);
+    assert.ok(bind, "the permission is bound to the saved identity version");
+    assert.equal(bind.params[0], "cc-1"); assert.equal(bind.params[1], ORG_ID); assert.equal(bind.params[2], CLIENT);
+    assert.match(bind.params[3], /^[a-f0-9]{64}$/);
+    assert.ok(at(fake, /INSERT INTO pii_identity/) < at(fake, PROPERTY_WRITE), "identity is saved before the permission that points at it");
+    assert.ok(at(fake, PROPERTY_WRITE) < at(fake, NO_PAY), "both permissions are on file before anything to pay");
+    assert.equal(ran(fake, /INSERT INTO crs_property_requests|property_requests SET|pii_access_log/).length, 0, "nothing orders a report or reveals the SSN");
+    assert.equal(minted.length, 1); assert.equal(res.body.pricing.total_cents, 3200);
+    assert.equal(JSON.stringify(res.body).includes("123-45-6789"), false);
+  });
+
+  test("a property tick with the wrong words version, a non-boolean, or a browser-supplied text is refused before anything is written", async () => {
+    const refused = [
+      { property_consent_accepted: true, property_consent_version: "property-report-1999-01-01" },
+      { property_consent_accepted: true },
+      { property_consent_accepted: "yes", property_consent_version: PROPERTY_CONSENT_VERSION },
+      { property_consent_accepted: 1, property_consent_version: PROPERTY_CONSENT_VERSION },
+    ];
+    for (const body of refused) {
+      const out = await post({ ...person(), businesses: [], ...body }, { db: standIn({ extra: propertyReads }) });
+      assert.equal(out.res.statusCode, 400, JSON.stringify(body));
+      assert.equal(out.res.body.error, "invalid_property_consent");
+      assert.equal(ran(out.fake, /INSERT INTO (?:pii_identity|client_consents|crs_property_consents|businesses|payment_links)/).length, 0, JSON.stringify(body));
+    }
+  });
+
+  test("a refused property permission write saves no credit authorization either and mints no link", async () => {
+    const down = standIn({ failOn: PROPERTY_WRITE, extra: propertyReads });
+    const out = await post({
+      ...person(), businesses: [], property_consent_accepted: true, property_consent_version: PROPERTY_CONSENT_VERSION,
+    }, { db: down });
+    assert.notEqual(out.res.statusCode, 201);
+    assert.notEqual(out.res.body && out.res.body.ok, true);
+    assert.equal(out.minted.length, 0);
+    assert.equal(ran(out.fake, NO_PAY).length, 0);
+    // The whole authorization runs in one unit of work when the property box is ticked.
+    assert.equal(out.fake.count("BEGIN"), 1); assert.equal(out.fake.count("ROLLBACK"), 1); assert.equal(out.fake.count("COMMIT"), 0);
   });
 });
 

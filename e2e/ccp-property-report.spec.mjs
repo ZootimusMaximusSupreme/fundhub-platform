@@ -76,6 +76,22 @@ test("opening and reloading only read; a separate permission and one click make 
   expect(posts).toHaveLength(1); expect(posts[0].consent_version).toBe(PROPERTY_CONSENT_VERSION);
   expect(Object.keys(posts[0]).sort()).toEqual(["client_id", "consent_accepted", "consent_version", "operation_id"]);
 });
+test("saved client approval permits a staff order without claiming staff confirmed it", async ({ page }) => {
+  const posts = [];
+  await open(page, route => {
+    if (route.request().method() === "POST") { posts.push(route.request().postDataJSON()); return json(route, full); }
+    return json(route, { ...empty, clientConsent: { valid: true, version: PROPERTY_CONSENT_VERSION } });
+  });
+  await expect(page.locator("#ccp-property-result")).toContainText("The client approved the property report");
+  await expect(page.locator("#ccp-property-consent")).toBeHidden();
+  await expect(page.locator("#ccp-property-order")).toBeEnabled();
+  expect(posts).toHaveLength(0);
+  await page.locator("#ccp-property-order").click();
+  await expect.poll(() => posts.length).toBe(1);
+  expect(posts[0].consent_accepted).toBe(false);
+  expect(posts[0].consent_version).toBe(PROPERTY_CONSENT_VERSION);
+});
+
 test("closer never sees property report controls or makes property reads", async ({ page }) => {
   let reads = 0; await open(page, route => { reads++; return json(route, empty); }, CLOSER);
   await expect(page.locator("#ccp-property-report")).toBeHidden(); expect(reads).toBe(0);

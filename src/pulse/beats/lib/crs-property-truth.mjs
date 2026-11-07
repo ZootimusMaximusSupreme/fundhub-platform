@@ -4,7 +4,10 @@ import { row, runnerOf } from "./money-truth-utils.mjs";
 export const CHECK_IDS = Object.freeze(["property:report-ledger"]);
 export const PROPERTY_LEDGER_COUNTS = Object.freeze({
   rows_n: 0, scope_n: 0, consent_n: 0, identity_n: 0, state_n: 0,
-  receipt_n: 0, report_n: 0, duplicate_receipt_n: 0, private_input_n: 0, stalled_n: 0, unresolved_n: 0
+  receipt_n: 0, report_n: 0, duplicate_receipt_n: 0, private_input_n: 0, stalled_n: 0, unresolved_n: 0,
+  // 571: an order that relied on the client's own saved permission must point at
+  // that exact client-granted property consent row; a staff-confirmed order points at none.
+  client_consent_n: 0
 });
 export const PROPERTY_LEDGER_SQL = `
 WITH saved AS (
@@ -92,7 +95,13 @@ SELECT count(*)::int AS rows_n,
    GROUP BY provider_request_id HAVING count(*)>1))::int AS duplicate_receipt_n,
  count(*) FILTER (WHERE normalized_response::text ~* '"(ssn|ssn_enc|dob|birthDate|password|token|refreshToken|Input)"[[:space:]]*:')::int AS private_input_n,
  count(*) FILTER (WHERE status='in_flight' AND created_at<now()-interval '15 minutes')::int AS stalled_n,
- count(*) FILTER (WHERE status IN ('needs_review','error'))::int AS unresolved_n
+ count(*) FILTER (WHERE status IN ('needs_review','error'))::int AS unresolved_n,
+ count(*) FILTER (WHERE consent_source IS NULL OR consent_source NOT IN ('staff','client')
+   OR (consent_source='staff' AND client_consent_id IS NOT NULL)
+   OR (consent_source='client' AND (client_consent_id IS NULL OR NOT EXISTS (
+     SELECT 1 FROM client_consents cc JOIN crs_property_consents pc ON pc.consent_id=cc.id
+      WHERE cc.id=facts.client_consent_id AND cc.org_id=facts.org_id AND cc.client_id=facts.client_id
+        AND cc.kind='property_report_consent' AND cc.granted_by_kind='client'))))::int AS client_consent_n
 FROM facts
 `.trim();
 

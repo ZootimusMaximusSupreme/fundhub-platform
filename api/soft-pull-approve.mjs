@@ -33,6 +33,9 @@ import {
 } from "../src/consent/index.mjs";
 import { checkFirstName, checkLastName } from "../src/slo/fields.mjs";
 import { storeIdentity, PiiError } from "../src/pii/index.mjs";
+import { withTransaction } from "../src/db/with-transaction.mjs";
+import { recordClientPropertyConsent } from "../src/finance/crs-property.mjs";
+import { PROPERTY_CONSENT_TEXT, PROPERTY_CONSENT_VERSION } from "../src/finance/crs-property-contract.mjs";
 import { getOffer, formatCents } from "../src/config/offers.mjs";
 import {
   softPullTotalCents,
@@ -534,6 +537,7 @@ export default async function handler(req, res, deps = {}) {
           bullets: disclosure.bullets || null
         },
         consent: { valid: !!status.valid, reason: status.reason || null },
+        property_permission: { version: PROPERTY_CONSENT_VERSION, text: PROPERTY_CONSENT_TEXT },
         paid: !!paidEvent || paidLink.rows.length > 0,
         pull,
         pricing,
@@ -550,6 +554,12 @@ export default async function handler(req, res, deps = {}) {
     }
 
     const body = req.body || {};
+    if (body.property_consent_accepted !== undefined && typeof body.property_consent_accepted !== "boolean") {
+      return res.status(400).json({ ok: false, error: "invalid_property_consent" });
+    }
+    if (body.property_consent_accepted === true && (blueprint || body.property_consent_version !== PROPERTY_CONSENT_VERSION)) {
+      return res.status(400).json({ ok: false, error: "invalid_property_consent" });
+    }
     let grantedName = String(body.granted_name || "").trim();
     let legalName = null;
     if (blueprint) {
@@ -642,7 +652,7 @@ export default async function handler(req, res, deps = {}) {
 
       if (!blueprint) await replaceSoftPullBusinesses(writer, { orgId, clientId, businesses });
 
-      return captureConsent(writer, {
+      const creditConsent = await captureConsent(writer, {
         orgId,
         clientId,
         kind: KIND,
@@ -654,6 +664,11 @@ export default async function handler(req, res, deps = {}) {
         capturedIp: clientIp(req),
         capturedUserAgent: req.headers?.["user-agent"] || null
       });
+      if (body.property_consent_accepted === true) await recordClientPropertyConsent(writer, {
+        orgId, clientId, accountId, grantedName, capturedIp: clientIp(req),
+        capturedUserAgent: req.headers?.["user-agent"] || null
+      });
+      return creditConsent;
     }
     if (blueprint) {
       const requested = await finishBlueprintReportSetup(database, blueprintScope, saveAuthorization);
@@ -662,7 +677,9 @@ export default async function handler(req, res, deps = {}) {
         consent: { valid: true, version: CURRENT_SOFT_PULL_VERSION },
         next: "Return to Blueprint to track your included report." });
     }
-    const consent = await saveAuthorization(database);
+    const consent = body.property_consent_accepted === true
+      ? await withTransaction(database, saveAuthorization)
+      : await saveAuthorization(database);
     const portalLink = { sent: false, reason: "already_signed_in" };
 
     // Payment and consent can happen in either order. A payment event is only

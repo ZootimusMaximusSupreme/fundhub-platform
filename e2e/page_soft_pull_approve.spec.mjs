@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import { PROPERTY_CONSENT_TEXT, PROPERTY_CONSENT_VERSION } from '../src/finance/crs-property-contract.mjs';
 const query='?org=mock&client=mock&exp=1999999999&sig=mock';
 const data={ok:true,contact:{first_name:'Dana'},consent:{valid:false},disclosure:{text:'I authorize Fundhub to request a soft credit inquiry for my funding assessment.',version:'2.1'}};
 for(const width of [1440,390,320]) test(`approval professional states and keyboard at ${width}`,async({page})=>{
@@ -24,4 +25,28 @@ for(const width of [1440,390,320]) test(`approval professional states and keyboa
  await expect(page.locator('#f')).toHaveCount(0);
  await expect(page.locator('.err')).toContainText('full link');
  await page.screenshot({path:`ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page_soft_pull_approve-${width}-empty-error.png`,fullPage:true});
+});
+
+for (const selected of [false, true]) test(`property permission is optional on the soft-pull form: ${selected}`, async ({page}) => {
+ let submitted;
+ await page.route('**/api/soft-pull-approve**', async route => {
+  if (route.request().method() === 'GET') return route.fulfill({json:{...data,property_permission:{text:PROPERTY_CONSENT_TEXT,version:PROPERTY_CONSENT_VERSION}}});
+  submitted = route.request().postDataJSON();
+  return route.fulfill({json:{ok:true,paid:false,pricing:{total_display:'$32'},checkout:null}});
+ });
+ await page.goto('/app/soft-pull-approve.html'+query);
+ await expect(page.locator('#property_consent')).not.toBeChecked();
+ await expect(page.getByText(PROPERTY_CONSENT_TEXT)).toBeVisible();
+ if (selected) await page.locator('#property_consent').check();
+ await page.locator('#granted_name').fill('Synthetic Customer');
+ await page.locator('#ssn').fill('000-00-0000');
+ await page.locator('#dob').fill('1980-01-01');
+ await page.locator('#address_line1').fill('100 Test Way');
+ await page.locator('#city').fill('Testville');
+ await page.locator('#state').fill('AZ');
+ await page.locator('#postal_code').fill('85001');
+ await page.locator('#go').click();
+ await expect.poll(() => submitted).toBeTruthy();
+ expect(submitted.property_consent_accepted).toBe(selected ? true : undefined);
+ expect(submitted.property_consent_version).toBe(selected ? PROPERTY_CONSENT_VERSION : undefined);
 });

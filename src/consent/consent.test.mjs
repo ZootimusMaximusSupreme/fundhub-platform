@@ -467,8 +467,11 @@ describe("the words come from the server", () => {
     // call_recording and marketing_use added 2026-09-05 with the CSM role;
     // db/migrations/291 widens the matching CHECK. This list and that
     // constraint must stay in step or a valid kind is refused by Postgres.
+    // property_report_consent added 2026-11-06: the client's own permission for a
+    // CRS/PitchPoint property report, ticked on the soft-pull authorization form.
+    // db/migrations/571 widens the CHECK.
     assert.deepEqual([...CONSENT_KINDS],
-      ["soft_pull_consent", "dispute_authorization", "call_recording", "marketing_use"]);
+      ["soft_pull_consent", "property_report_consent", "dispute_authorization", "call_recording", "marketing_use"]);
   });
 
   test("a known version returns its exact stored text", () => {

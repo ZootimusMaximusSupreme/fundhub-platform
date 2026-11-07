@@ -36,3 +36,11 @@ test("property GET never reaches order and POST carries separate property permis
   const response = res(); await handler({ method: "POST", body: { client_id: clientId, operation_id: randomUUID(), consent_accepted: true, consent_version: "property-report-2026-11-06" } }, response, options);
   assert.equal(response.code, 202); assert.equal(writes, 1);
 });
+test("property POST may rely on the client's own saved permission; the service judges it, the route only passes it", async () => {
+  const seen = [];
+  const options = deps({ orderPropertyReport: async (_db, _actor, args) => { seen.push(args.consentAccepted); return { status: 200, body: { ok: true, status: "completed" } }; } });
+  const response = res(); await handler({ method: "POST", body: { client_id: clientId, operation_id: randomUUID(), consent_accepted: false, consent_version: "property-report-2026-11-06" } }, response, options);
+  assert.equal(response.code, 200); assert.deepEqual(seen, [false]);
+  const refused = res(); await handler({ method: "POST", body: { client_id: clientId, operation_id: randomUUID(), consent_accepted: false, consent_version: "property-report-2026-11-06", consent_source: "client" } }, refused, options);
+  assert.equal(refused.code, 400); assert.deepEqual(seen, [false]);
+});

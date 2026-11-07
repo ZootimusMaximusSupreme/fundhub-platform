@@ -93,3 +93,17 @@ test("actual property ledger SQL keeps uncertain, failed, stalled and duplicate 
     await db.query(`INSERT INTO crs_property_requests SELECT * FROM crs_property_requests WHERE id=$1`,[id]);
     assert.match((await check()).detail,/duplicate_receipt_n=2/);
   }));
+
+test("actual property ledger SQL keeps an order that claims the client's saved permission without that consent row red", options,
+  () => fixture(async ({db,id,check}) => {
+    assert.equal((await check()).status,"PASS");
+    // The connection-local copy carries no CHECK, so the ledger read itself must catch each shape.
+    await db.query("UPDATE crs_property_requests SET consent_source='client',client_consent_id=NULL WHERE id=$1",[id]);
+    assert.match((await check()).detail,/client_consent_n=1/);
+    await db.query("UPDATE crs_property_requests SET consent_source='client',client_consent_id=$2 WHERE id=$1",[id,randomUUID()]);
+    assert.match((await check()).detail,/client_consent_n=1/);
+    await db.query("UPDATE crs_property_requests SET consent_source='staff',client_consent_id=$2 WHERE id=$1",[id,randomUUID()]);
+    assert.match((await check()).detail,/client_consent_n=1/);
+    await db.query("UPDATE crs_property_requests SET consent_source='staff',client_consent_id=NULL WHERE id=$1",[id]);
+    assert.equal((await check()).status,"PASS");
+  }));
