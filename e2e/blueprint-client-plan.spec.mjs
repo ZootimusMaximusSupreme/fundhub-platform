@@ -166,6 +166,15 @@ test('pending Blueprint access hides FinanceOS until known inactive access resol
 });
 
 function staffAuth(role='owner',legacy=false){return{token:'offline-staff-principal',portalClientId:CLIENT,session:{ok:true,...(legacy?{}:{principal:'staff'}),staff:{id:ACCOUNT,org_id:ORG,role,name:'Offline Staff',status:'active'}}};}
+// A signed-out session sends the page to /portal-login.html. On a slow runner
+// that navigation can replace the document while this read is still running,
+// which Playwright reports as a destroyed execution context. Only that one
+// error is read again; every other error still fails, and the final state must
+// still be unavailable or signed out.
+function blueprintAccessState(page){
+  return page.evaluate(()=>location.pathname==='/portal-login.html'?'signed_out':document.body.dataset.blueprintAccess)
+    .catch(error=>{if(/Execution context was destroyed/.test(String(error?.message)))return 'navigating';throw error;});
+}
 for(const [role,legacy]of[['owner',false],['admin',false],['sales_manager',false],['closer',false],['owner',true]]){
   const staffHome={admin:'pipeline.html',sales_manager:'sales-floor.html',closer:'closer-dashboard.html'}[role];
   test(`known FinanceOS staff ${role}${legacy?' legacy projection':''} ${staffHome?'keeps its canonical staff redirect':'retains its independent entry'} without a Blueprint principal`,async({page})=>{
@@ -196,7 +205,7 @@ for(const [label,session,staffHome]of[
   test(`untrusted staff session ${label} cannot reveal FinanceOS or initialize Blueprint`,async({page})=>{
     const{app,httpRequests}=await open(page,{denied:true,authControl:{...staffAuth(),session}});
     if(staffHome)await expect.poll(()=>new URL(page.url()).pathname).toBe('/app/'+staffHome);
-    else await expect.poll(()=>page.evaluate(()=>location.pathname==='/portal-login.html'?'signed_out':document.body.dataset.blueprintAccess)).toMatch(/^(unavailable|signed_out)$/);
+    else await expect.poll(()=>blueprintAccessState(page)).toMatch(/^(unavailable|signed_out)$/);
     await expect(app).toBeHidden();
     await expect(page.locator('a[href*="finance-os"]:visible,a[href*="financeos"]:visible,#money-link:visible')).toHaveCount(0);
     await expect(page.locator('body')).not.toHaveAttribute('data-blueprint-plan','active');
@@ -206,7 +215,7 @@ for(const [label,session,staffHome]of[
 
 test('denied staff session cannot reveal FinanceOS or initialize Blueprint',async({page})=>{
   const{app,httpRequests}=await open(page,{denied:true,authControl:{...staffAuth(),signedOut:true}});
-  await expect.poll(()=>page.evaluate(()=>location.pathname==='/portal-login.html'?'signed_out':document.body.dataset.blueprintAccess)).toMatch(/^(unavailable|signed_out)$/);
+  await expect.poll(()=>blueprintAccessState(page)).toMatch(/^(unavailable|signed_out)$/);
   await expect(app).toBeHidden();
   await expect(page.locator('a[href*="finance-os"]:visible,a[href*="financeos"]:visible,#money-link:visible')).toHaveCount(0);
   expect(httpRequests.filter(r=>r.path.startsWith('/api/blueprint/'))).toHaveLength(0);
