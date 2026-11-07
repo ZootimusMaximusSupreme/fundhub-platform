@@ -70,6 +70,42 @@ test("client-portal: each of its five checks can go red at its own step", async 
   }
 });
 
+test("client-portal: device setup and its QR are read anonymously and each break is red hourly", async () => {
+  assert.ok(beat.covers.includes("page:devices.html"));
+  const calls = [];
+  const passed = await runBeat(beat, ctxWith({ http: (method, url, options) => {
+    calls.push({ method, path: new URL(url).pathname, options });
+    return beat.selfTestHttp(method, url);
+  } }));
+  assert.equal(passed.ok, true, passed.detail);
+  for (const path of ["/devices.html", "/assets/fundhub-devices-qr.svg"]) {
+    assert.ok(calls.some((call) => call.path === path), path);
+  }
+  for (const call of calls) {
+    assert.equal(call.method, "GET");
+    assert.equal(call.options?.headers?.authorization, undefined);
+    assert.equal(call.options?.headers?.cookie, undefined);
+  }
+  const devicePage = beat.selfTestHttp("GET", "https://fundhub.ai/devices.html");
+  assert.doesNotMatch(devicePage.body, /type="(?:email|password)"/i, "the public fixture has no sign-in form");
+  const broken = [
+    ["/devices.html", (response) => ({ ...response, status: 404 }), "/devices.html answered 404"],
+    ["/devices.html", (response) => ({ ...response, body: response.body.replace('value="https://fundhub.ai/devices.html"', 'value="https://fundhub.ai/devices.html?t=private"') }), "has lost its public device link"],
+    ["/devices.html", (response) => ({ ...response, body: response.body.replace('href="/app/client-portal.html"', 'href="/login.html?t=private"') }), "has lost its browser portal link"],
+    ["/assets/fundhub-devices-qr.svg", (response) => ({ ...response, status: 404 }), "/assets/fundhub-devices-qr.svg answered 404"],
+    ["/assets/fundhub-devices-qr.svg", (response) => ({ ...response, body: "not an SVG image" }), "is not a whole SVG image"]
+  ];
+  for (const [path, mutate, expected] of broken) {
+    const result = await runBeat(beat, ctxWith({ http: (method, url) => {
+      const response = beat.selfTestHttp(method, url);
+      return new URL(url).pathname === path ? mutate(response) : response;
+    } }));
+    assert.equal(result.ok, false, expected);
+    assert.equal(result.step, "portal-page-scripts-load");
+    assert.ok(result.detail.includes(expected), result.detail);
+  }
+});
+
 test("client-portal: the documents read is part of the summary step", async () => {
   const result = await runBeat(beat, ctxWith({ rows: [[truth.LIBRARY_SQL, new Error('relation "document_versions" does not exist')]] }));
   assert.equal(result.ok, false);

@@ -2459,6 +2459,7 @@
       '<div class="fh-account-menu"><div class="fh-account-person">' + (role === "outbound_rep" ? '' : avatarChipHtml(staff.avatarUrl)) +
       '<div><strong>' + esc(name) + '</strong><span class="fh-account-role">' + esc(roleLabel) + '</span></div></div>' +
       payoutBankHtml + companyCashHtml +
+      (!demo ? '<a class="fh-account-privacy" data-fh-device-entry href="/devices.html">Add another device</a>' : '') +
       '<button id="fh-shell-out" type="button">Sign out</button>' +
       '<a class="fh-account-privacy" href="/privacy/">Privacy policy</a>' +
       '<details class="fh-account-technical" id="fh-shell-account-diagnostics"><summary>Technical details</summary>' +
