@@ -52,9 +52,11 @@ async function open(page,{started=false,business=false,denied=false,malformedPla
     try{return await(async()=>{
     if(path==='/api/auth/session'){
       if(authControl?.signedOut)return json(route,{ok:false,error:'unauthorized'},401);
+      if(authControl&&Object.hasOwn(authControl,'session'))return json(route,structuredClone(authControl.session));
       return json(route,{ok:true,principal:'client',staff:{id:authControl?.accountId||ACCOUNT,org_id:ORG,client_id:authControl?.clientId||CLIENT,role:'client',principal_kind:'client',name:'Pat Buyer',status:'active'}});
     }
-    if(path==='/api/blueprint/plan'){if(planAccess?.wait)await planAccess.wait;return (planAccess?.denied??denied)?json(route,{ok:false,error:'blueprint_access_inactive'},403):json(route,malformedPlan?{ok:true,items:[]}:await payload());}
+    if(path==='/api/dashboard/client'&&authControl?.portalClientId)return json(route,{ok:true,client:{id:CLIENT,org_id:ORG,first_name:'Pat',last_name:'Buyer'},transactions:[],messages:[],tasks:[],crs_results:[],latest_booking:null});
+    if(path==='/api/blueprint/plan'){if(planAccess?.wait)await planAccess.wait;return (planAccess?.denied??denied)?json(route,{ok:false,error:planAccess?.error||'blueprint_access_inactive'},planAccess?.status||403):json(route,malformedPlan?{ok:true,items:[]}:await payload());}
     if(path==='/api/blueprint/letter-mailing'){
       if(method==='GET')return json(route,{ok:true,...structuredClone(mailingData)});
       const body=route.request().postDataJSON();mailRequests.push(body);
@@ -118,7 +120,7 @@ async function open(page,{started=false,business=false,denied=false,malformedPla
   await page.addLocatorHandler(page.locator('#fh-chat-panel.open'),async()=>{await page.locator('#fh-chat-close').click();});
   if(authControl)await page.addInitScript(token=>{if(token===null)localStorage.removeItem('fh_token');else localStorage.setItem('fh_token',token);},authControl.token);
   else await page.addInitScript(()=>{if(!localStorage.getItem('fh_token'))localStorage.setItem('fh_token','offline-same-client');});
-  await page.goto('/app/client-portal.html');
+  await page.goto('/app/client-portal.html'+(authControl?.portalClientId?'?id='+encodeURIComponent(authControl.portalClientId):''));
   const app=page.locator('#blueprint-plan');if(!denied&&authControl?.token!==null&&authControl?.token!=='demo')await expect(app).toBeVisible();
   return{app,state,requests,downloads,downloadState,uploadFields,mailRequests,mailingData,responseDocuments,bureauUploads,httpRequests,wasUploaded:()=>uploads>0,uploadCount:()=>uploads};
 }
@@ -131,6 +133,98 @@ test('paid buyer starts one question at a time and server state survives reload'
   await page.evaluate(()=>{for(const key of Object.keys(localStorage))if(key.startsWith('fundhub-blueprint'))localStorage.removeItem(key);});await page.reload();await expect(app.locator('.bj-next').getByText('Review the balances on your file',{exact:true})).toBeVisible();
 });
 test('nonbuyer gets no paid plan controls',async({page})=>{const{app}=await open(page,{denied:true});await expect(app).toBeHidden();});
+
+test('known inactive Blueprint access preserves the independent FinanceOS entry',async({page})=>{
+  const{app}=await open(page,{denied:true});
+  await expect(page.locator('body')).toHaveAttribute('data-blueprint-access','inactive');
+  await expect(page.locator('body')).not.toHaveAttribute('data-blueprint-plan');
+  await expect(app).toBeHidden();
+  await expect(page.locator('#money-link')).toBeVisible();
+  await expect(page.locator('#money-link')).toHaveAttribute('href','/app/financeos.html');
+});
+
+for(const denial of [{status:401,error:'unauthorized'},{status:403,error:'forbidden'},{status:404,error:'client_not_found'}]){
+  test(`Blueprint ${denial.status} ${denial.error} keeps FinanceOS access unavailable`,async({page})=>{
+    const{app,httpRequests}=await open(page,{denied:true,planAccess:denial});
+    await expect(page.locator('body')).toHaveAttribute('data-blueprint-access','unavailable');
+    await expect(app).toBeHidden();
+    await expect(page.locator('a[href*="finance-os"]:visible,a[href*="financeos"]:visible,#money-link:visible')).toHaveCount(0);
+    expect(httpRequests.some(r=>r.path==='/api/blueprint/plan')).toBe(true);
+  });
+}
+
+test('pending Blueprint access hides FinanceOS until known inactive access resolves',async({page})=>{
+  let release;const held=new Promise(resolve=>{release=resolve;});
+  try{
+    await open(page,{denied:true,planAccess:{wait:held}});
+    await expect(page.locator('body')).toHaveAttribute('data-blueprint-access','loading');
+    await expect(page.locator('a[href*="finance-os"]:visible,a[href*="financeos"]:visible,#money-link:visible')).toHaveCount(0);
+    release();
+    await expect(page.locator('body')).toHaveAttribute('data-blueprint-access','inactive');
+    await expect(page.locator('#money-link')).toBeVisible();
+  }finally{release();}
+});
+
+function staffAuth(role='owner',legacy=false){return{token:'offline-staff-principal',portalClientId:CLIENT,session:{ok:true,...(legacy?{}:{principal:'staff'}),staff:{id:ACCOUNT,org_id:ORG,role,name:'Offline Staff',status:'active'}}};}
+for(const [role,legacy]of[['owner',false],['admin',false],['sales_manager',false],['closer',false],['owner',true]]){
+  const staffHome={admin:'pipeline.html',sales_manager:'sales-floor.html',closer:'closer-dashboard.html'}[role];
+  test(`known FinanceOS staff ${role}${legacy?' legacy projection':''} ${staffHome?'keeps its canonical staff redirect':'retains its independent entry'} without a Blueprint principal`,async({page})=>{
+    const{app,httpRequests,requests}=await open(page,{denied:true,authControl:staffAuth(role,legacy)});
+    if(staffHome){
+      await expect.poll(()=>new URL(page.url()).pathname).toBe('/app/'+staffHome);
+      await expect(app).toHaveCount(0);
+    }else{
+      await expect(page.locator('body')).toHaveAttribute('data-blueprint-access','inactive');
+      await expect(page.locator('body')).not.toHaveAttribute('data-blueprint-plan');
+      await expect(app).toBeHidden();await expect(app).toBeEmpty();
+      await expect(page.locator('#money-link')).toBeVisible();
+      await expect(page.locator('#money-link')).toHaveAttribute('href','/app/financeos.html?client_id='+CLIENT);
+    }
+    expect(httpRequests.filter(r=>r.path.startsWith('/api/blueprint/'))).toHaveLength(0);expect(requests).toHaveLength(0);
+  });
+}
+
+for(const [label,session,staffHome]of[
+  ['disallowed role',{ok:true,principal:'staff',staff:{id:ACCOUNT,org_id:ORG,role:'funding_advisor'}},'client-control-panel.html'],
+  ['missing staff ID',{ok:true,principal:'staff',staff:{org_id:ORG,role:'owner'}}],
+  ['missing staff org',{ok:true,principal:'staff',staff:{id:ACCOUNT,role:'owner'}}],
+  ['unknown principal',{ok:true,principal:'unknown',staff:{id:ACCOUNT,org_id:ORG,role:'owner'}}],
+  ['malformed client',{ok:true,principal:'client',staff:{id:ACCOUNT,org_id:ORG,role:'client'}}],
+  ['null staff',{ok:true,principal:'staff',staff:null}],
+  ['null session',null]
+]){
+  test(`untrusted staff session ${label} cannot reveal FinanceOS or initialize Blueprint`,async({page})=>{
+    const{app,httpRequests}=await open(page,{denied:true,authControl:{...staffAuth(),session}});
+    if(staffHome)await expect.poll(()=>new URL(page.url()).pathname).toBe('/app/'+staffHome);
+    else await expect.poll(()=>page.evaluate(()=>location.pathname==='/portal-login.html'?'signed_out':document.body.dataset.blueprintAccess)).toMatch(/^(unavailable|signed_out)$/);
+    await expect(app).toBeHidden();
+    await expect(page.locator('a[href*="finance-os"]:visible,a[href*="financeos"]:visible,#money-link:visible')).toHaveCount(0);
+    await expect(page.locator('body')).not.toHaveAttribute('data-blueprint-plan','active');
+    expect(httpRequests.filter(r=>r.path.startsWith('/api/blueprint/'))).toHaveLength(0);
+  });
+}
+
+test('denied staff session cannot reveal FinanceOS or initialize Blueprint',async({page})=>{
+  const{app,httpRequests}=await open(page,{denied:true,authControl:{...staffAuth(),signedOut:true}});
+  await expect.poll(()=>page.evaluate(()=>location.pathname==='/portal-login.html'?'signed_out':document.body.dataset.blueprintAccess)).toMatch(/^(unavailable|signed_out)$/);
+  await expect(app).toBeHidden();
+  await expect(page.locator('a[href*="finance-os"]:visible,a[href*="financeos"]:visible,#money-link:visible')).toHaveCount(0);
+  expect(httpRequests.filter(r=>r.path.startsWith('/api/blueprint/'))).toHaveLength(0);
+});
+
+test('delayed staff session cannot reopen FinanceOS after the captured token changes',async({page})=>{
+  const auth=staffAuth(),gate=requestBarrier();
+  try{
+    const{app,httpRequests}=await open(page,{denied:true,authControl:auth,requestGates:{'GET /api/auth/session':gate}});
+    await gate.arrived;await changePrincipal(page,auth,'switch');
+    await expect(page.locator('body')).toHaveAttribute('data-blueprint-access','unavailable');
+    await finishBarrier(page,gate);
+    await expect(page.locator('body')).toHaveAttribute('data-blueprint-access','unavailable');
+    await expect(app).toBeHidden();await expect(app).toBeEmpty();
+    await expect(page.locator('a[href*="finance-os"]:visible,a[href*="financeos"]:visible,#money-link:visible')).toHaveCount(0);
+    expect(httpRequests.filter(r=>r.path.startsWith('/api/blueprint/'))).toHaveLength(0);
+  }finally{gate.release();}
+});
 for(const paymentFlag of[false,true])test(`paid Blueprint includes the missing report without a diagnostic purchase (legacy paid flag ${paymentFlag})`,async({page})=>{
   const{app,requests}=await open(page,{portalSummary:{soft_pull_complete:paymentFlag}});
   const tile=page.locator('[data-tile="SOFT_PULL"]');
