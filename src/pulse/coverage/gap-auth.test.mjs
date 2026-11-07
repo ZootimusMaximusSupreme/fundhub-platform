@@ -103,7 +103,10 @@ test("gap auth sql is select only", () => {
   assert.match(STAFF_LOGIN_SQL, /auth_attempts/);
   assert.match(MAGIC_TEMPLATE_SQL, /EMAIL-PORTAL-MAGIC-LINK/);
   assert.match(MAGIC_DEAD_SQL, /account_magic_links/);
-  assert.match(MAGIC_DEAD_SQL, /20 minutes/);
+  assert.match(MAGIC_DEAD_SQL, /outcome = 'issued'/);
+  // owner-set 2026-11-07: 12 months, one use. A 12-month link is still a sign-in
+  // link. The old 20-minute cap would hide every link that lives 12 months.
+  assert.doesNotMatch(MAGIC_DEAD_SQL, /interval '20 minutes'/);
   assert.match(SESSION_READ_SQL, /account_sessions/);
   assert.match(RESET_READ_SQL, /password_resets/);
   assert.match(PLAID_GRANT_SQL, /account_plaid_link_grants/);
@@ -224,7 +227,7 @@ test("a draft sign-in template cannot send", async () => {
   assert.match(row.detail, /cannot send/);
 });
 
-test("an issued short link with no email is dead", async () => {
+test("an issued sign-in link with no email is dead", async () => {
   const db = healthyMap({ dead: 2 });
   const row = byId(await gapChecks({ db }))["gap:auth-magic-link-dead"];
   assert.equal(row.status, "FAIL");
@@ -552,7 +555,7 @@ test("the time windows in the sql stay where the board says they are", () => {
   assert.match(SIGNIN_NO_SESSION_SQL, /x\.created_at <= o\.created_at \+ interval '2 minutes'/);
   assert.match(SIGNIN_NO_SESSION_SQL, /x\.created_at >= l\.consumed_at - interval '1 minute'/);
   assert.match(SIGNIN_NO_SESSION_SQL, /x\.created_at <= l\.consumed_at \+ interval '2 minutes'/);
-  // Short magic links: issued in 24 hours, 2 minute grace for the email to queue.
+  // Issued magic links (12 months, one use): the last 24 hours, 2 minute grace for the email to queue.
   assert.match(MAGIC_DEAD_SQL, /m\.created_at > now\(\) - interval '24 hours'/);
   assert.match(MAGIC_DEAD_SQL, /m\.created_at < now\(\) - interval '2 minutes'/);
   // Resets asked in 24 hours. Resend mail looked at over 7 days.
