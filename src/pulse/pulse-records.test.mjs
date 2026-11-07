@@ -218,6 +218,11 @@ describe("migration 475: constraints", () => {
 describe("records.mjs names only columns that migration 475 creates", () => {
   /** The column names of one table, from its CREATE TABLE text. */
   const columns = (table) => new Set([...tableBody(table).matchAll(/^ {2}([a-z_]+)\s+\S/gm)].map((m) => m[1]));
+  /** Columns that later migrations add to one table with ALTER TABLE ... ADD COLUMN (e.g. 551's retired_at). */
+  const addedLater = (table) => new Set(fs.readdirSync(DIR).filter((f) => f.endsWith(".sql") && f > FILE)
+    .flatMap((f) => [...fs.readFileSync(path.join(DIR, f), "utf8")
+      .matchAll(new RegExp(`ALTER TABLE (?:public\\.)?${table}\\s+ADD COLUMN(?: IF NOT EXISTS)? ([a-z_]+)`, "g"))]
+      .map((m) => m[1])));
 
   /** [statement name, table, column names the statement writes or reads] */
   const written = (sql) => {
@@ -260,7 +265,8 @@ describe("records.mjs names only columns that migration 475 creates", () => {
     const tail = sql.slice(sql.indexOf("DO UPDATE SET") + "DO UPDATE SET".length);
     const targets = [...tail.matchAll(/^\s{2}([a-z_]+)\s*=/gm)].map((x) => x[1]);
     assert.ok(targets.length >= 9);
-    for (const c of targets) assert.ok(columns("pulse_bank_links").has(c), `upsert sets ${c}`);
+    const have = new Set([...columns("pulse_bank_links"), ...addedLater("pulse_bank_links")]);
+    for (const c of targets) assert.ok(have.has(c), `upsert sets ${c}`);
     assert.equal(targets.includes("first_seen_at"), false);
     assert.equal(targets.includes("org_id"), false);
     assert.equal(targets.includes("url_hash"), false);

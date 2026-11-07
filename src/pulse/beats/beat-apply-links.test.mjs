@@ -476,16 +476,34 @@ test("URL SHAPE: the list of addresses vanishing is red at url-shape (a wipe)", 
   const wiped = await go({ urls: known.slice(0, 20), state });
   assert.equal(wiped.result.ok, false);
   assert.equal(wiped.result.step, "url-shape");
-  assert.match(wiped.result.detail, /Apply links went missing: 20 addresses on the lenders now, 80 were checked before/);
-  const fine = await go({ urls: known.slice(0, 50), state });
-  assert.equal(fine.result.ok, true, "a drop under half is not a wipe");
+  assert.match(wiped.result.detail, /Apply links went missing: 60 of 80 previously checked addresses disappeared \(20 addresses on the lenders now\)/);
+  const fine = await go({ urls: known.slice(0, 77), state });
+  assert.equal(fine.result.ok, true, "a drop below five percent is not a wipe");
   const none = await go({ urls: [], state });
   assert.equal(none.result.step, "url-shape", "the whole column empty is red");
 });
 
 test("URL SHAPE: a small saved list never trips the wipe check", async () => {
-  const { result } = await go({ urls: banks(2), state: banks(40).map((u) => wasGood(u)) });
+  const { result } = await go({ urls: banks(2), state: banks(9).map((u) => wasGood(u)) });
   assert.equal(result.ok, true);
+});
+
+test("URL SHAPE: a curated 30-link cohort still detects a five-percent wipe", async () => {
+  const known = banks(30);
+  const state = known.map((u) => wasGood(u));
+  assert.equal((await go({ urls: known.slice(0, 29), state })).result.ok, true);
+  const lost = await go({ urls: known.slice(0, 28), state });
+  assert.equal(lost.result.ok, false);
+  assert.equal(lost.result.step, "url-shape");
+  assert.match(lost.result.detail, /2 of 30 previously checked addresses disappeared \(28 addresses on the lenders now\)/);
+  const replacements = banks(32).slice(30);
+  assert.equal((await go({ urls: [...known.slice(0, 29), replacements[0]], state })).result.ok, true,
+    "one vanished link in thirty stays below five percent even when replaced");
+  const replaced = await go({ urls: [...known.slice(0, 28), ...replacements], state });
+  assert.equal(replaced.result.ok, false, "new URLs must not hide two vanished known links");
+  assert.match(replaced.result.detail, /2 of 30 previously checked addresses disappeared \(30 addresses on the lenders now\)/);
+  assert.equal((await go({ urls: known, state: state.slice(0, 17) })).result.ok, true,
+    "an approved catalog cutover with 13 new links is not a wipe");
 });
 
 test("URL SHAPE: a row without a fingerprint, or a failed read, is red at url-shape", async () => {
@@ -783,7 +801,7 @@ test("apply-links: two-org Postgres fixture isolates lender reads and first-pass
     assert.equal(links.rows[0].url_hash, hashOf(ownUrl));
 
     const saved = await db.query(orgs +
-      ", pulse_bank_links(org_id, url_hash) AS (VALUES ($1::uuid, $2::text), ($3::uuid, $4::text)) " +
+      ", pulse_bank_links(org_id, url_hash, retired_at) AS (VALUES ($1::uuid, $2::text, NULL::timestamptz), ($3::uuid, $4::text, NULL::timestamptz)) " +
       beat.SQL_STATE_COUNT,
       [foreign, hashOf(foreignUrl), foreign, hashOf(ownUrl)]);
     assert.equal(Number(saved.rows[0]?.n), 0, "foreign history must not cause false default-org load failure");

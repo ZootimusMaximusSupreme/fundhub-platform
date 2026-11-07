@@ -1,4 +1,4 @@
-// The affiliate's share of the 10% success fee, end to end. SKIPS without DATABASE_URL.
+// The affiliate's share of the 10% success fee, end to end. Runs only on local scratch Postgres.
 //
 // WHAT THIS FILE EXISTS TO PROVE. Three things, none of which were true before
 // 2026-08-31:
@@ -39,8 +39,9 @@ import { register as registerMoneyChain } from "../handlers/money-chain.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { createInvoice, markSent } from "../invoices/index.mjs";
 import { attribute, maybeUnlockTier2, basisFor } from "./economics.mjs";
+import { isLocalScratchDatabaseUrl } from "../verification/scratch-guard.mjs";
 
-const HAS_DB = !!process.env.DATABASE_URL;
+const SAFE_DB = isLocalScratchDatabaseUrl(process.env.DATABASE_URL);
 const MARK = "affsuccessfee_pg";
 const EMAIL = `${MARK}+receipt@example.invalid`;
 
@@ -50,7 +51,7 @@ const DEPOSIT = 3000;    // paid up front, and credited against the 10%
 const BALANCE = 9000;    // invoiced after funding: 10% of 120,000, less the deposit
 const FEE_TOTAL = 12000; // DEPOSIT + BALANCE
 
-describe("affiliate share of the success fee", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => {
+describe("affiliate share of the success fee", { skip: SAFE_DB ? false : "requires local scratch Postgres" }, () => {
   let org, partnerId, clientId, fundingProductId, tier1Id, tier2Id, successFeeInvoiceId;
 
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];

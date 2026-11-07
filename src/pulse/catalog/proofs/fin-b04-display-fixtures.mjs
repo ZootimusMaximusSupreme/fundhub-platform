@@ -92,7 +92,7 @@ const portalNote = (extra = {}) => ({
 const staffText = (extra = {}) => ({
   id: id(2), org_id: ORG, client_id: CLIENT, conversation_id: CONVO, direction: "outbound", channel: "sms",
   rendered_body: "Your documents are in.", provider: "twilio", provider_message_id: "SM-FAKE-1", status: "sent",
-  sender_kind: "staff", sender_staff_id: STAFF, scheduled_at: null, attempts: 1, is_demo: false,
+  sender_kind: "staff", sender_staff_id: STAFF, to_address: "+15555550100", scheduled_at: null, attempts: 1, is_demo: false,
   created_at: RECENT, last_attempt_at: "2026-10-13T20:00:05.000Z", ...extra
 });
 
@@ -108,6 +108,12 @@ const sentAt = (t, iso) => {
   t.messages[0].created_at = iso;
   t.messages[0].last_attempt_at = iso;
   t.shifts[0].started_at = "2026-10-12T00:00:00.000Z";
+};
+
+const exactStaffDelivery = (t, extra = {}) => {
+  const m = t.messages[0];
+  t.messages.push({ ...m, id: id(60), sender_kind: "system", status: "delivered",
+    provider: "twilio", provider_message_id: "SM-REPLACEMENT", created_at: "2026-10-13T21:00:00.000Z", ...extra });
 };
 
 const STAFF_SEND_BREAKS = [
@@ -168,6 +174,38 @@ const STAFF_SEND_BREAKS = [
     t.messages.push({ id: id(60), org_id: ORG, client_id: id(998), channel: "sms", direction: "outbound", sender_kind: "system",
       status: "sent", created_at: "2026-10-13T21:00:00.000Z" });
   }],
+  ["an unrelated later text to the same client has different words", (t) => {
+    Object.assign(t.messages[0], { status: "failed", provider: null, provider_message_id: null });
+    t.staff_events = []; exactStaffDelivery(t, { rendered_body: "A different note." });
+  }],
+  ["a later copy to a different address is not the failed send", (t) => {
+    Object.assign(t.messages[0], { status: "failed", provider: null, provider_message_id: null });
+    t.staff_events = []; exactStaffDelivery(t, { to_address: "+15555550101" });
+  }],
+  ["a later copy without a delivery receipt does not clear the failure", (t) => {
+    Object.assign(t.messages[0], { status: "failed", provider: null, provider_message_id: null });
+    t.staff_events = []; exactStaffDelivery(t, { status: "sent" });
+  }],
+  ["a demo delivery does not clear a real failed send", (t) => {
+    Object.assign(t.messages[0], { status: "failed", provider: null, provider_message_id: null });
+    t.staff_events = []; exactStaffDelivery(t, { is_demo: true });
+  }],
+  ["a delivery without a provider does not clear the failure", (t) => {
+    Object.assign(t.messages[0], { status: "failed", provider: null, provider_message_id: null });
+    t.staff_events = []; exactStaffDelivery(t, { provider: null });
+  }],
+  ["a different staff member's later copy is not the failed send", (t) => {
+    Object.assign(t.messages[0], { status: "failed", provider: null, provider_message_id: null });
+    t.staff_events = []; exactStaffDelivery(t, { sender_staff_id: OTHER_STAFF });
+  }],
+  ["a copy delivered more than a day later does not clear the failure", (t) => {
+    Object.assign(t.messages[0], { status: "failed", provider: null, provider_message_id: null });
+    t.staff_events = []; exactStaffDelivery(t, { created_at: "2026-10-15T00:00:00.000Z" });
+  }],
+  ["a bounced email with no exact delivery stays red", (t) => {
+    Object.assign(t.messages[0], { channel: "email", status: "bounced", provider: "resend", provider_message_id: "EM-BOUNCE" });
+    t.conversations[0].channel = "email"; t.staff_events = [];
+  }],
   ["the text failed and a text after it failed too", (t) => {
     Object.assign(t.messages[0], { status: "failed", provider: null, provider_message_id: null, last_error: "provider said no" });
     t.staff_events = [];
@@ -194,6 +232,18 @@ const STAFF_SEND_BREAKS = [
   }],
   ["a text went out at 3 am Arizona with no schedule", (t) => { sentAt(t, "2026-10-14T10:00:00.000Z"); }],
   ["a text went out at 8:05 pm Arizona with no schedule", (t) => { sentAt(t, "2026-10-15T03:05:00.000Z"); }],
+  ["a setter lead text went out at 10:30 pm Arizona", (t) => {
+    sentAt(t, "2026-10-14T05:30:00.000Z");
+    t.messages[0].provider_ref = `staff:setter-handoff:${CLIENT}:slot:lead`;
+  }],
+  ["a setter lead text went out at 5:30 am Arizona", (t) => {
+    sentAt(t, "2026-10-14T12:30:00.000Z");
+    t.messages[0].provider_ref = `staff:setter-handoff:${CLIENT}:slot:lead`;
+  }],
+  ["a claimed setter ref names a different client, so 8:40 pm is too late", (t) => {
+    sentAt(t, "2026-10-14T03:40:00.000Z");
+    t.messages[0].provider_ref = `staff:setter-handoff:${id(999)}:slot:lead`;
+  }],
   ["a text went out at 7:50 am Arizona with no schedule", (t) => { sentAt(t, "2026-10-14T14:50:00.000Z"); }]
 ];
 
@@ -244,11 +294,10 @@ const STAFF_SEND_OK = [
     t.messages[0].status = "blocked"; t.messages[0].provider = null; t.messages[0].provider_message_id = null; t.staff_events = [];
   }],
   ["an email needs no text_sent event", (t) => { t.messages[0].channel = "email"; t.conversations[0].channel = "email"; t.staff_events = []; }],
-  ["the text failed but a text reached the client after it", (t) => {
+  ["the text failed but the exact same text reached the client after it", (t) => {
     Object.assign(t.messages[0], { status: "failed", provider: null, provider_message_id: null, last_error: "provider said no" });
     t.staff_events = [];
-    t.messages.push({ id: id(60), org_id: ORG, client_id: CLIENT, channel: "sms", direction: "outbound", sender_kind: "system",
-      status: "sent", created_at: "2026-10-13T21:00:00.000Z" });
+    exactStaffDelivery(t);
   }],
   ["the client opted out only after the text went out", (t) => {
     t.opt_outs = [{ client_id: CLIENT, channel: "sms", opted_out_at: "2026-10-13T21:00:00.000Z", opted_in_at: null }];
@@ -261,6 +310,11 @@ const STAFF_SEND_OK = [
   }],
   ["a text at 7:59:30 am Arizona is inside the minute left on the edge", (t) => { sentAt(t, "2026-10-14T14:59:30.000Z"); }],
   ["a text at 8:00:30 pm Arizona is inside the minute left on the edge", (t) => { sentAt(t, "2026-10-15T03:00:30.000Z"); }],
+  ["a setter handoff lead text at 8:40 pm is inside its 6 am to 10 pm window", (t) => {
+    sentAt(t, "2026-10-14T03:40:00.000Z");
+    t.messages[0].provider_ref = `staff:setter-handoff:${CLIENT}:slot:lead`;
+    t.messages[0].scheduled_at = "2026-10-14T03:37:00.000Z";
+  }],
   ["a prove file may be texted at night", (t) => {
     sentAt(t, "2026-10-14T10:00:00.000Z"); t.clients[0].email = "e2e+night@example.test";
   }],
@@ -751,6 +805,23 @@ add("message-held", MESSAGE_HELD_SQL, heldTables,
     ["a delivered text went out at 9:30 pm Arizona with nothing holding it", (t) => {
       wentOut(t, "2026-10-15T04:30:00.000Z", { status: "delivered" });
     }],
+    ["a setter lead text went out at 10:30 pm Arizona", (t) => {
+      wentOut(t, "2026-10-14T05:30:00.000Z", { provider_ref: `staff:setter-handoff:${CLIENT}:slot:lead` });
+    }],
+    ["a setter lead text went out at 5:30 am Arizona", (t) => {
+      wentOut(t, "2026-10-14T12:30:00.000Z", { provider_ref: `staff:setter-handoff:${CLIENT}:slot:lead` });
+    }],
+    ["an ordinary staff text went out at 6:30 am Arizona", (t) => {
+      wentOut(t, "2026-10-14T13:30:00.000Z");
+    }],
+    ["an unrelated staff text at 8:40 pm cannot borrow setter hours", (t) => {
+      wentOut(t, "2026-10-14T03:40:00.000Z", { provider_ref: `staff:setter-handoff:${id(999)}:slot:lead` });
+    }],
+    ["a setter lead hold was aimed at 8 am instead of 6 am", (t) => {
+      Object.assign(t.messages[0], { provider_ref: `staff:setter-handoff:${CLIENT}:slot:lead`,
+        created_at: "2026-10-14T05:30:00.000Z", last_attempt_at: "2026-10-14T05:30:00.000Z",
+        scheduled_at: "2026-10-14T15:00:00.000Z" });
+    }],
     ["a text was blocked for quiet hours and will never go out", (t) => {
       Object.assign(t.messages[0], { status: "blocked", scheduled_at: null, blocked_reason: "quiet_hours", blocked_at: "2026-10-14T05:00:00.000Z" });
     }],
@@ -768,6 +839,15 @@ add("message-held", MESSAGE_HELD_SQL, heldTables,
       t.messages[0].scheduled_at = "2026-10-14T15:00:00.000Z";
     }],
     ["a text went out at 11 am Arizona", (t) => { wentOut(t, "2026-10-14T18:00:00.000Z"); }],
+    ["a setter lead text sent at 8:40 pm with an already due schedule", (t) => {
+      wentOut(t, "2026-10-14T03:40:00.000Z", { provider_ref: `staff:setter-handoff:${CLIENT}:slot:lead`,
+        scheduled_at: "2026-10-14T03:37:00.000Z" });
+    }],
+    ["a setter lead text held until 6 am Arizona", (t) => {
+      Object.assign(t.messages[0], { provider_ref: `staff:setter-handoff:${CLIENT}:slot:lead`,
+        created_at: "2026-10-14T05:30:00.000Z", last_attempt_at: "2026-10-14T05:30:00.000Z",
+        scheduled_at: "2026-10-14T13:00:00.000Z" });
+    }],
     ["an older sent text with no claim time recorded and no schedule", (t) => {
       wentOut(t, "2026-10-14T18:00:00.000Z"); t.messages[0].last_attempt_at = null;
     }],

@@ -31,6 +31,28 @@ const PROVE_SIM_FILE = `(lower(split_part(COALESCE(cl.email, ''), '@', 1)) LIKE 
              OR lower(split_part(COALESCE(cl.email, ''), '@', 1)) LIKE '%+sim-%'
              OR lower(split_part(COALESCE(cl.email, ''), '@', 1)) LIKE '%+colin-qa%')`;
 
+// This exact handoff subtype uses the setter's 06:00-22:00 contact window.
+// Match the client id in the ref so an unrelated staff text cannot borrow it.
+const SETTER_LEAD_TEXT = `(COALESCE(m.provider_ref, '') LIKE 'staff:setter-handoff:' || COALESCE(m.client_id::text, '') || ':%:lead')`;
+
+// A failed staff send is resolved only by the same words reaching the same
+// address from the same staff member soon after. An unrelated later message
+// to the client is not proof that the failed one was received.
+export const STAFF_EXACT_DELIVERY = `EXISTS (SELECT 1 FROM messages later
+                              WHERE later.org_id = m.org_id AND later.client_id = m.client_id
+                                AND later.channel = m.channel AND later.direction = 'outbound'
+                                AND later.sender_staff_id = m.sender_staff_id
+                                AND later.to_address = m.to_address
+                                AND later.rendered_body = m.rendered_body
+                                AND COALESCE(later.subject, '') = COALESCE(m.subject, '')
+                                AND COALESCE(later.template_key, '') = COALESCE(m.template_key, '')
+                                AND later.status = 'delivered'
+                                AND COALESCE(later.is_demo, false) = false
+                                AND NULLIF(BTRIM(COALESCE(later.provider, '')), '') IS NOT NULL
+                                AND NULLIF(BTRIM(COALESCE(later.provider_message_id, '')), '') IS NOT NULL
+                                AND later.created_at > m.created_at
+                                AND later.created_at - interval '24 hours' <= m.created_at)`;
+
 /** The text left the building (last_attempt_at is the claim that sent it) while the
     Arizona clock said 20:00 through 07:59. One minute is left off each edge: the
     claim time is the database clock and the dispatcher's own clock decides, a few
@@ -38,8 +60,11 @@ const PROVE_SIM_FILE = `(lower(split_part(COALESCE(cl.email, ''), '@', 1)) LIKE 
     (a comparison with nothing is unknown, never true). Needs alias m. With
     smsOnly false the caller has already narrowed the rows to texts. */
 const sentInQuietHours = ({ smsOnly = true } = {}) => `(${smsOnly ? "m.channel = 'sms' AND " : ""}m.status IN ('sent', 'delivered')
-             AND (to_char(m.last_attempt_at AT TIME ZONE 'America/Phoenix', 'HH24:MI') >= '${QUIET_START_HOUR}:01'
-                  OR to_char(m.last_attempt_at AT TIME ZONE 'America/Phoenix', 'HH24:MI') < '0${QUIET_END_HOUR - 1}:59')
+             AND (to_char(m.last_attempt_at AT TIME ZONE 'America/Phoenix', 'HH24:MI') >= '22:01'
+               OR to_char(m.last_attempt_at AT TIME ZONE 'America/Phoenix', 'HH24:MI') < '05:59'
+               OR (NOT ${SETTER_LEAD_TEXT}
+                   AND (to_char(m.last_attempt_at AT TIME ZONE 'America/Phoenix', 'HH24:MI') >= '${QUIET_START_HOUR}:01'
+                     OR to_char(m.last_attempt_at AT TIME ZONE 'America/Phoenix', 'HH24:MI') < '0${QUIET_END_HOUR - 1}:59')))
              AND NOT ${PROVE_SIM_FILE})`;
 
 /** The message was sent while the client was opted out on that channel. The opt-out
@@ -125,12 +150,7 @@ const STAFF_SEND_BAD = `s.id IS NULL OR cl.id IS NULL
          OR (m.status IN ('sent', 'delivered')
              AND (NULLIF(BTRIM(COALESCE(m.provider, '')), '') IS NULL
                   OR NULLIF(BTRIM(COALESCE(m.provider_message_id, '')), '') IS NULL))
-         OR (m.status = 'failed'
-             AND NOT EXISTS (SELECT 1 FROM messages later
-                              WHERE later.org_id = m.org_id AND later.client_id = m.client_id
-                                AND later.channel = m.channel AND later.direction = 'outbound'
-                                AND later.status IN ('sent', 'delivered')
-                                AND later.created_at > m.created_at))
+         OR (m.status IN ('failed', 'bounced') AND NOT ${STAFF_EXACT_DELIVERY})
          OR (m.status IN ('queued', 'sending') AND m.created_at < now() - interval '1 day')
          OR ${SENT_WHILE_OPTED_OUT}
          OR ${sentInQuietHours()}
@@ -253,13 +273,16 @@ SELECT count(DISTINCT m.id)::int AS sample_count,
 export const MESSAGE_HELD_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE (m.scheduled_at IS NOT NULL
+             AND NOT (${SETTER_LEAD_TEXT} AND m.scheduled_at <= m.created_at)
              AND (m.channel IS DISTINCT FROM 'sms'
                   OR m.direction IS DISTINCT FROM 'outbound'
                   OR m.scheduled_at <= m.created_at
-                  OR to_char(m.scheduled_at AT TIME ZONE 'America/Phoenix', 'HH24:MI:SS') <> '08:00:00'
+                  OR to_char(m.scheduled_at AT TIME ZONE 'America/Phoenix', 'HH24:MI:SS') <>
+                    CASE WHEN ${SETTER_LEAD_TEXT} THEN '06:00:00' ELSE '08:00:00' END
                   OR NULLIF(BTRIM(COALESCE(m.rendered_body, '')), '') IS NULL
                   OR m.last_attempt_at IS NULL
-                  OR m.scheduled_at > m.last_attempt_at + interval '12 hours'))
+                  OR m.scheduled_at > m.last_attempt_at + interval '12 hours'
+                  OR (${SETTER_LEAD_TEXT} AND m.scheduled_at > m.last_attempt_at + interval '8 hours')))
          OR ${sentInQuietHours({ smsOnly: false })}
          OR m.blocked_reason ~ 'quiet_hours')::int AS bad_count
   FROM messages m

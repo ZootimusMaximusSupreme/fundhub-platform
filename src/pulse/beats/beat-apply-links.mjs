@@ -101,7 +101,7 @@ export const SQL_APPLY_URLS = `SELECT encode(sha256(convert_to(application_url, 
 export const SQL_STATE_TABLE = "SELECT to_regclass('public.pulse_bank_links') IS NOT NULL AS there";
 // The runner loads pulse_bank_links for defaultOrgId(), so both reads MUST use that SAME org.
 // A foreign tenant's history must never turn a genuine first pass into a false load failure.
-export const SQL_STATE_COUNT = "SELECT count(*)::int AS n FROM pulse_bank_links WHERE org_id = (SELECT id FROM orgs WHERE is_default ORDER BY created_at LIMIT 1)";
+export const SQL_STATE_COUNT = "SELECT count(*)::int AS n FROM pulse_bank_links WHERE org_id = (SELECT id FROM orgs WHERE is_default ORDER BY created_at LIMIT 1) AND retired_at IS NULL";
 
 const HASH_RE = /^[0-9a-f]{64}$/;
 const COUNT_KEYS = ["OK", "WALL", "HARD", "SLOW", "BAD_URL"];
@@ -143,10 +143,13 @@ export async function run(ctx) {
       else bad.push({ urlHash, host: shape.host, lenderIds, reason: shape.reason });
     }
     const total = good.length + bad.length;
-    // A wipe: the book is under half of the addresses already checked. (v1 keeps no run counter, so this is a
-    // coarse check against the saved list, not the 5%-since-last-run check in the contract.)
-    if (stateByHash.size >= 50 && total < stateByHash.size / 2) {
-      throw ctx.fail("url-shape", `Apply links went missing: ${total} addresses on the lenders now, ${stateByHash.size} were checked before.`);
+    const currentHashes = new Set([...good, ...bad].map((row) => row.urlHash));
+    const disappeared = [...stateByHash.keys()].filter((hash) => !currentHashes.has(hash)).length;
+    // The saved list is only the active catalog cohort. Retired links remain in the table for history,
+    // but must not turn an owner-approved catalog cutover into a permanent false wipe alert.
+    // A loss of at least 5% of a known cohort of 10 or more still fails before any web reads.
+    if (stateByHash.size >= 10 && disappeared >= Math.ceil(stateByHash.size * 0.05)) {
+      throw ctx.fail("url-shape", `Apply links went missing: ${disappeared} of ${stateByHash.size} previously checked addresses disappeared (${total} addresses on the lenders now).`);
     }
     for (const b of bad) {
       const prev = stateByHash.get(b.urlHash);

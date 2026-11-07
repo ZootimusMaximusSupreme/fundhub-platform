@@ -446,6 +446,7 @@ export const SQL_LOAD_BANK_LINKS = `SELECT url_hash, host, lender_ids, first_see
        last_detail, last_good_at, fail_streak, final_host
   FROM pulse_bank_links
  WHERE org_id = $1::uuid
+   AND retired_at IS NULL
  ORDER BY last_checked_at NULLS FIRST, url_hash
  LIMIT ${LIMITS.bankLinksLoad}`;
 
@@ -543,7 +544,8 @@ ON CONFLICT (org_id, url_hash) DO UPDATE SET
   fail_streak     = CASE WHEN EXCLUDED.last_class IS NULL THEN b.fail_streak
                          WHEN EXCLUDED.last_class = 'OK' THEN 0
                          ELSE b.fail_streak + 1 END,
-  final_host      = CASE WHEN EXCLUDED.last_class IS NULL THEN b.final_host ELSE EXCLUDED.final_host END`;
+  final_host      = CASE WHEN EXCLUDED.last_class IS NULL THEN b.final_host ELSE EXCLUDED.final_host END,
+  retired_at      = NULL`;
 
 /**
  * Save what the apply-links beat learned, in one statement. Nothing else is touched (v1 delta 13).
