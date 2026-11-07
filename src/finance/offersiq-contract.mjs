@@ -21,6 +21,23 @@ export const OFFERSIQ_SANDBOX_IDENTITIES = Object.freeze([
   Object.freeze({ fname: "AAJKITH", mname: "Z", lname: "PDNSX", suffix: "6", houseNumber: "856", streetName: "BPOJVAB", streetType: "XRD", city: "HUNTSVILLE", state: "AL", zip: "35659" })
 ]);
 
+// Production deny-only additions from the current OffersIQ API Guide's ten
+// profiles and request examples. Keep the sandbox's exact four-person fence.
+// Only published name/address fields are retained; no SSN or birth date.
+const OFFERSIQ_PRODUCTION_FIXTURE_IDENTITIES = Object.freeze([
+  ...OFFERSIQ_SANDBOX_IDENTITIES,
+  Object.freeze({ fname: "KBJGCP", lname: "XSCNF", streetName: "1886 VBPLDNRC", city: "TUSCALOOSA", state: "AL", zip: "35425" }),
+  Object.freeze({ fname: "KKKUKUA", lname: "LFYAFGM", houseNumber: "6876", streetName: "REFPP", streetType: "MTN", city: "KETCHIKAN", state: "AK", zip: "99913" }),
+  Object.freeze({ fname: "MKPLOHN", lname: "TUBOSC", houseNumber: "302", streetName: "UCEFSYMLPPLVH", streetType: "PIKE", city: "MOBILE", state: "AL", zip: "36537" }),
+  Object.freeze({ fname: "MDEZF", lname: "WZPZZK", houseNumber: "2753", streetName: "BVUENNXPHLG", streetType: "PL", city: "LU VERNE", state: "AL", zip: "36049" }),
+  Object.freeze({ fname: "DWFXTNT", lname: "NBGTN", houseNumber: "204", streetName: "NMVEUFSY", streetType: "FLDS", city: "BIRMINGHAM", state: "AL", zip: "35204" }),
+  Object.freeze({ fname: "IAEVLOYV", lname: "YOFGUKFJC", houseNumber: "1895", streetName: "NABJCWPV", streetType: "BYU", city: "MOUNTHOPE", state: "AL", zip: "35651" }),
+  Object.freeze({ fname: "INBYNNQQ", lname: "RUJDPP", houseNumber: "715", streetName: "ODCW", streetType: "LK", city: "SELMA", state: "AL", zip: "36734" }),
+  Object.freeze({ fname: "RBDX", lname: "NJMFNUFJWED", houseNumber: "952", streetName: "QJNE", streetType: "MT", city: "SWAINSBORO", state: "GA", zip: "30483" }),
+  Object.freeze({ fname: "NIMR", lname: "VJUNEGZNFOCH", houseNumber: "83", streetName: "DRNVHLJGI", streetType: "PLN", city: "MONTGOMERY", state: "AL", zip: "36055" }),
+  Object.freeze({ fname: "SOXDNLTP", lname: "DJNJV", houseNumber: "66", streetName: "FHMASTXE", streetType: "INLT", city: "MONTGOMERY", state: "AL", zip: "36174" })
+]);
+
 export class OffersIqContractError extends Error {
   constructor(code, message, status = 400) {
     super(message);
@@ -162,7 +179,7 @@ export function isOffersIqProductionFixtureIdentity(consumer) {
   const normalized = value => String(value ?? "").trim().replace(/\s+/g, " ").toUpperCase();
   const street = value => normalized([value.houseNumber, value.streetName, value.streetType].filter(Boolean).join(" "));
   const core = ["fname", "lname", "city", "state", "zip"];
-  return OFFERSIQ_SANDBOX_IDENTITIES.some(fixture =>
+  return OFFERSIQ_PRODUCTION_FIXTURE_IDENTITIES.some(fixture =>
     core.every(key => normalized(consumer[key]) === normalized(fixture[key]))
     && street(consumer) === street(fixture)
   );
