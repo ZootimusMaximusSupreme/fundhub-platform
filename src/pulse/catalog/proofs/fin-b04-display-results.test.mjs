@@ -98,7 +98,7 @@ test("a query that loses its company condition counts another company's row", ()
 test("a query that loses one bad-result condition stops catching that break", () => {
   const c = CASES.find((x) => x.key === "message-held");
   const weak = SQL_BY_KEY.get("message-held")
-    .replace("OR to_char(m.scheduled_at AT TIME ZONE 'America/Phoenix', 'HH24:MI:SS') <> '08:00:00'\n", "\n");
+    .replace("'08:00:00'", "'09:00:00'");
   const tables = c.good();
   tables.messages[0].scheduled_at = "2026-10-14T16:00:00.000Z";
   assert.deepEqual(judge(weak, tables), { sample: 1, bad: 0 });
@@ -262,7 +262,7 @@ test("the quiet window is 8 pm to 8 am Arizona, as the held-text query says", as
   assert.equal(messages.QUIET_START_HOUR, gate.QUIET_START_HOUR);
   assert.equal(gate.QUIET_HOURS_TZ, "America/Phoenix");
   assert.deepEqual([...gate.QUIET_HOURS_CHANNELS], ["sms"]);
-  assert.match(SQL_BY_KEY.get("message-held"), /'America\/Phoenix'.*'HH24:MI:SS'\) <> '08:00:00'/s);
+  assert.match(SQL_BY_KEY.get("message-held"), /'America\/Phoenix'.*'HH24:MI:SS'\) <>\s*CASE WHEN .* THEN '06:00:00' ELSE '08:00:00' END/s);
   // a hold is never longer than the window itself: 8 pm to 8 am is 12 hours
   assert.equal(gate.QUIET_END_HOUR + 24 - gate.QUIET_START_HOUR, 12);
   assert.match(SQL_BY_KEY.get("message-held"), /m\.last_attempt_at \+ interval '12 hours'/);

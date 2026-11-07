@@ -84,9 +84,10 @@ export const GAP_DOORS = [
     host: "funnel",
     path: "/thank-you",
     morning: "none",
-    passDetail: "thank-you copy and thankyou-sort.js",
+    passDetail: "booked-call confirmation and thankyou-sort.js",
     need: [
-      { name: "thank-you copy", re: /You(?:'|’|&rsquo;)re All Set/ },
+      { name: "booking confirmation heading", re: /<h1\b[^>]*>\s*Congratulations!\s*<\/h1>/i },
+      { name: "booked-call confirmation", re: /<h1\b[^>]*\bid=["']fh-hero-sec["'][^>]*>\s*Your call is booked\.\s*<\/h1>/i },
       { name: "thank-you script thankyou-sort.js", re: /thankyou-sort\.js/ }
     ]
   },

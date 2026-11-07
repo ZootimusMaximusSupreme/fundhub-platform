@@ -142,7 +142,7 @@ export const FIN_B04_ROWS = Object.freeze([
     viaStaffUi: true,
     key: "message-held",
     sql: MESSAGE_HELD_SQL,
-    requirement: "Every staff text with a saved send time must be an outbound text held to the next 8:00 am Arizona (no more than 12 hours after the moment it was held) with its words kept; no staff text may have been sent between 8:00 pm and 8:00 am Arizona, and none may be blocked for quiet hours."
+    requirement: "Every staff text held for quiet hours keeps its words and waits until 8:00 am Arizona (6:00 am for a setter handoff lead text); ordinary staff client texts do not leave from 8:00 pm to 8:00 am, setter handoff lead texts do not leave from 10:00 pm to 6:00 am, and none is blocked permanently for quiet hours."
   }),
   Object.freeze({
     sourceFile: "desks-c.json",
@@ -150,7 +150,7 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "Send button (staff reply to a client by text or email; shift clock-in required)",
     key: "staff-message",
     sql: STAFF_MESSAGE_SQL,
-    requirement: "Every staff reply must name the staff member, sit on the client's own thread and channel, keep its words, show a provider receipt once sent, not be failed or stuck, not go to an opted-out client, not be a text sent at night, and be written on that person's open shift."
+    requirement: "Every staff reply must name the staff member, sit on the client's own thread and channel, keep its words, show a provider receipt once sent, not stay failed without exact later delivery or get stuck, not go to an opted-out client or outside its contact hours, and be written on that person's open shift."
   }),
   Object.freeze({
     sourceFile: "desks-f.json",
