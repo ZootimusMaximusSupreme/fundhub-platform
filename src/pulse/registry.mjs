@@ -624,6 +624,7 @@ export const PUBLIC_STATIC_FILES = [
   "consulting/terms/index.html",
   "contract.html",
   "crm.html",
+  "devices.html",
   "education/enroll/index.html",
   "education/index.html",
   "education/learn/index.html",

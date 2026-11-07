@@ -3,24 +3,42 @@
   "use strict";
   var body = document.body;
   if (!body || !body.hasAttribute("data-client-page")) return;
+  var localDemo = window.__fhBlueprintFullDemoRoute === true;
   var client = false;
   var affiliateLink;
   function token() { try { return localStorage.getItem("fh_token") || ""; } catch (_) { return ""; } }
   function read(path) {
-    var headers = { accept: "application/json" }, t = token();
+    var headers = { accept: "application/json" }, t = localDemo ? "" : token();
     if (t) headers.authorization = "Bearer " + t;
-    return fetch(path, { headers: headers, credentials: "same-origin" }).then(function (r) {
+    if (localDemo && typeof window.FHClientFetch !== "function") return Promise.resolve(null);
+    var pending;
+    try {
+      pending = localDemo ? window.FHClientFetch(path, { headers: headers })
+        : fetch(path, { headers: headers, credentials: "same-origin" });
+    } catch (_) { return Promise.resolve(null); }
+    return Promise.resolve(pending).then(function (r) {
       if (!r.ok) return null;
       return r.json();
     }).catch(function () { return null; });
   }
   function refreshAffiliate() {
-    if (!client || !affiliateLink) return Promise.resolve(false);
+    if (localDemo || !client || !affiliateLink) return Promise.resolve(false);
     return read("/api/read/affiliate-portal").then(function (d) {
       var enrolled = !!(d && d.ok === true && d.enrolled === true && d.affiliate && d.affiliate.id);
       affiliateLink.hidden = !enrolled;
       return enrolled;
     });
+  }
+  function clientRoute(path) {
+    if (!localDemo) return path;
+    var next = new URL(path, location.origin);
+    var query = new URLSearchParams(location.search);
+    ["offer"].forEach(function (key) {
+      if (/^(preparation|implementation)$/.test(query.get(key) || "")) next.searchParams.set(key, query.get(key));
+    });
+    next.searchParams.set("demo", "1");
+    next.searchParams.set("blueprint", "full");
+    return next.pathname + next.search + next.hash;
   }
   // The client PWA manifest intentionally covers / so sign-in and password
   // recovery stay inside the installed app. On all installed sign-in entry screens, including generic login reached
@@ -50,13 +68,13 @@
   protectStandaloneClientEntry();
   window.FHClientIOS = { refreshAffiliate: refreshAffiliate };
   function activate() { body.setAttribute("data-client-ios", ""); }
-  if (body.hasAttribute("data-client-public")) { activate(); body.setAttribute("data-client-ready", ""); return; }
+  if (body.hasAttribute("data-client-public") && !localDemo) { activate(); body.setAttribute("data-client-ready", ""); return; }
   read("/api/auth/session").then(function (session) {
     body.setAttribute("data-client-ready", "");
     if (!session || session.ok !== true || session.principal !== "client") return;
     client = true;
     activate();
-    if (session.portal_sample_available === true && !/\/affiliate\.html$/.test(location.pathname)) {
+    if (!localDemo && session.portal_sample_available === true && !/\/affiliate\.html$/.test(location.pathname)) {
       var sampleBar = document.createElement('aside');
       sampleBar.className = 'client-ios-sample';
       sampleBar.setAttribute('aria-label', 'Account data view');
@@ -80,6 +98,7 @@
     nav.className = "client-ios-nav";
     nav.setAttribute("aria-label", "Client portal");
     nav.innerHTML = '<a class="client-ios-brand" href="/app/client-portal.html" aria-label="Client portal home"><span class="client-ios-brand-logo" aria-hidden="true"></span></a><div class="client-ios-nav-label">Your workspace</div><div class="client-ios-links"></div><div class="client-ios-nav-foot">Your team. Your progress.<br>Always within reach.</div>';
+    nav.querySelector(".client-ios-brand").href = clientRoute("/app/client-portal.html");
     var links = nav.querySelector(".client-ios-links");
     var routes = [
       ["/app/client-portal.html", "Home", "M3 10 12 3l9 7v11h-6v-7H9v7H3Z"],
@@ -89,14 +108,16 @@
       ["/app/affiliate.html", "Referrals", "M5 19 19 5M9 5h10v10", "affiliate"]
     ];
     routes.forEach(function (r, i) {
+      if (localDemo && r[3] === "affiliate") return;
       var a = document.createElement("a");
-      a.href = r[0];
+      a.href = clientRoute(r[0]);
       a.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="' + r[2] + '"></path></svg><span></span>';
       a.querySelector("span").textContent = r[1];
       var view = new URLSearchParams(location.search).get("view");
       var onDocuments = location.pathname === "/app/client-portal.html" && /^(documents|agreements)$/.test(view || "");
       if ((location.pathname === r[0] && !(i === 0 && onDocuments)) ||
           (r[3] === "money" && /\/money[^/]*\.html$/.test(location.pathname)) ||
+          (localDemo && r[3] === "money" && location.pathname === "/app/financeos.html") ||
           (r[3] === "documents" && onDocuments)) a.setAttribute("aria-current", "page");
       if (r[3] === "money") a.setAttribute("aria-label", "Money · FinanceOS");
       if (r[3] === "affiliate") { affiliateLink = a; a.hidden = true; a.setAttribute("aria-label", "Affiliate Dashboard"); }
@@ -185,11 +206,13 @@
       accountName.className = 'client-ios-account-name';
       accountName.textContent = session.staff && session.staff.name || 'Your account';
       accountPanel.appendChild(accountName);
+      if (!localDemo) {
       var deviceLink = document.createElement('a');
       deviceLink.href = '/devices.html';
       deviceLink.setAttribute('data-fh-device-entry', '');
       deviceLink.textContent = 'Add another device';
       accountPanel.appendChild(deviceLink);
+      }
       var back = document.getElementById('money-back');
       if (back) accountPanel.appendChild(back);
 
@@ -199,7 +222,7 @@
       tools.appendChild(account);
       var mobileBrand = document.createElement('a');
       mobileBrand.className = 'client-ios-mobile-brand';
-      mobileBrand.href = '/app/client-portal.html';
+      mobileBrand.href = clientRoute('/app/client-portal.html');
       mobileBrand.setAttribute('aria-label', 'Open portal home');
       var mobileLogo = document.createElement('span');
       mobileLogo.className = 'client-ios-mobile-logo';
@@ -241,6 +264,7 @@
         var chatClose = document.getElementById('fh-chat-close');
         if (chatPanel && chatPanel.classList.contains('open') && chatClose) { event.preventDefault(); chatClose.click(); }
       });
+      if (!localDemo) {
       var out = document.createElement("button");
       out.type = "button";
       out.className = "client-ios-signout";
@@ -265,6 +289,7 @@
         });
       });
       accountPanel.appendChild(out);
+      }
     }
     refreshAffiliate();
     window.addEventListener("focus", refreshAffiliate);
