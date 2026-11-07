@@ -120,10 +120,12 @@ export const NOT_SHIPPED_CLAIMS = Object.freeze([
     noun: "the three posted prices ($5,000, $5,000, $10,000) and the three program names",
     pages: Object.freeze(["/consulting/"]),
     anchors: Object.freeze(["consult"]),
+    // "$10,000" alone is not a marker: on 2026-11-06 the owner posted new AI packages at $10,000, $20,000 and
+    // $30,000. The old courses still show up by their names and the $5,000 price.
     markers: Object.freeze([
-      "$5,000", "$10,000", "Operations Foundations", "Operations Systems", "Operations Intensive",
+      "$5,000", "Operations Foundations", "Operations Systems", "Operations Intensive",
     ]),
-    reason: "the owner rewrote /consulting/ as marketing consulting for agencies on 2026-10-05; the journey was not updated",
+    reason: "the owner rewrote /consulting/ as marketing consulting for agencies on 2026-10-05 and as AI consulting packages on 2026-11-06; the journey was not updated",
   }),
   Object.freeze({
     family: "message",

@@ -176,13 +176,24 @@ test("the consulting home is indexable and legal pages stay noindex", () => {
   }
 });
 
-test("the consulting home sells marketing consulting and posts no course prices", () => {
+// Owner-set 2026-11-06: FH Consulting is an AI consulting company. The home page names the four
+// systems and posts the $10,000, $20,000 and $30,000 packages plus a custom package with no price.
+// It never brings back the old course prices, and it says nothing about funding, credit or loans.
+test("the consulting home sells the AI systems and the four packages", () => {
   const html = read("public/consulting/index.html");
-  assert.match(html, /Marketing consulting for agencies/);
-  assert.match(html, /AI tools/);
-  assert.match(html, /Offer tools/);
-  assert.match(html, /Marketing systems/);
+  assert.match(html, /AI consulting for agencies/);
+  assert.match(html, /AI outbound marketing system/);
+  assert.match(html, /AI lead enrichment system/);
+  assert.match(html, /Marketing generation system/);
+  assert.match(html, /Script generation system/);
+  assert.match(html, /id="pkg-launch"[\s\S]*?\$10,000/);
+  assert.match(html, /id="pkg-growth"[\s\S]*?\$20,000/);
+  assert.match(html, /id="pkg-full"[\s\S]*?\$30,000/);
+  const custom = /<article class="pkg custom" id="pkg-custom">([\s\S]*?)<\/article>/.exec(html);
+  assert.ok(custom, "the custom package card is on the page");
+  assert.doesNotMatch(custom[1], /\$\s?\d/, "the custom package shows no price");
   assert.doesNotMatch(html, /Operations Foundations/);
   assert.doesNotMatch(html, /\$5,000/);
-  assert.doesNotMatch(html, /\$10,000/);
+  const words = html.replace(/<[^>]*>/g, " ");
+  assert.doesNotMatch(words, /\bfund(?:ing|ed|s)?\b|\bcredit\b|\bloans?\b|\blend(?:er|ing)?\b/i);
 });
